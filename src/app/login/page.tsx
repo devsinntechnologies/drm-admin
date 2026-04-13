@@ -2,8 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, ChefHat, Lock, Mail, ShieldCheck } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 const gallery = [
   "/business/pic1.jpeg",
@@ -14,7 +16,20 @@ const gallery = [
 ];
 
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const { login, isLoading, error, clearError } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    clearError();
+
+    const isSuccess = await login({ email, password });
+    if (isSuccess) {
+      router.push("/dashboard");
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#ebeefe_0%,_#f7f8ff_50%,_#f2f4ff_100%)] px-4 py-8">
@@ -67,14 +82,18 @@ export default function LoginPage() {
                 <p className="mt-3 text-lg text-[#6d7488]">Sign in to continue managing your restaurant network.</p>
               </div>
 
-              <form className="space-y-5">
+              <form className="space-y-5" onSubmit={handleSubmit}>
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold text-[#394150]">Email address</span>
                   <span className="flex h-14 items-center gap-3 rounded-2xl border border-[#e5e8f0] bg-[#fafbff] px-4 focus-within:border-[#7b46f4] focus-within:bg-white">
                     <Mail className="h-5 w-5 text-[#98a2b3]" />
                     <input
                       type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
                       placeholder="superadmin@restaurantmanager.com"
+                      autoComplete="email"
+                      required
                       className="h-full w-full bg-transparent text-base text-[#161c2d] outline-none placeholder:text-[#98a2b3]"
                     />
                   </span>
@@ -86,11 +105,21 @@ export default function LoginPage() {
                     <Lock className="h-5 w-5 text-[#98a2b3]" />
                     <input
                       type="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
                       placeholder="Enter your password"
+                      autoComplete="current-password"
+                      required
                       className="h-full w-full bg-transparent text-base text-[#161c2d] outline-none placeholder:text-[#98a2b3]"
                     />
                   </span>
                 </label>
+
+                {error ? (
+                  <p className="rounded-xl border border-[#fed7d7] bg-[#fff5f5] px-4 py-3 text-sm font-medium text-[#c53030]">
+                    {error}
+                  </p>
+                ) : null}
 
                 <div className="flex items-center justify-between text-sm">
                   <label className="inline-flex items-center gap-2 text-[#667085]">
@@ -102,13 +131,13 @@ export default function LoginPage() {
                   </button>
                 </div>
 
-                <Link
-                  href="/dashboard"
-                  onClick={() => setLoading(true)}
+                <button
+                  type="submit"
+                  disabled={isLoading}
                   className="inline-flex h-14 w-full items-center justify-center rounded-[18px] bg-[#9146ff] text-lg font-semibold !text-white shadow-[0_12px_24px_rgba(145,70,255,0.25)] transition hover:scale-[1.01]"
                 >
-                  {loading ? "Signing in..." : "Login to Dashboard"}
-                </Link>
+                  {isLoading ? "Signing in..." : "Login to Dashboard"}
+                </button>
               </form>
             </div>
           </div>

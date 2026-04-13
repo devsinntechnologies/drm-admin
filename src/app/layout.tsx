@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import ReduxProvider from "@/components/providers/ReduxProvider";
 
 export const metadata: Metadata = {
   title: "Restaurant Manager Admin",
@@ -13,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="font-sans">{children}</body>
+      <body className="font-sans">
+        <ReduxProvider>{children}</ReduxProvider>
+      </body>
     </html>
   );
 }
