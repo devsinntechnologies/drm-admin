@@ -1,7 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --app-bg: #edf0f5;
+  --app-bg: #f3f7fb;
+  --text-primary: #0f172a;
+  --text-muted: #5b657a;
+  --surface: rgba(255, 255, 255, 0.82);
 }
 
 html,
@@ -27,10 +30,24 @@ html {
 }
 
 body {
-  background: var(--app-bg);
-  color: #111827;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(14, 165, 233, 0.16), transparent 42%),
+    radial-gradient(circle at 100% 10%, rgba(245, 158, 11, 0.2), transparent 34%),
+    linear-gradient(180deg, #f5fbff 0%, #eff4fa 48%, #eef3f8 100%);
+  color: var(--text-primary);
+  font-family: var(--font-plus-jakarta), "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-space-grotesk), var(--font-plus-jakarta), "Segoe UI", sans-serif;
+  letter-spacing: -0.02em;
 }
 
 * {
@@ -40,4 +57,15 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+::selection {
+  background: rgba(14, 165, 233, 0.25);
+}
+
+.portal-surface {
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  box-shadow: 0 20px 36px rgba(15, 23, 42, 0.07);
 }

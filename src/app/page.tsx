@@ -6,7 +6,7 @@ const roles = [
     title: "Super Admin",
     subtitle: "Super-Admin",
     href: "/login",
-    gradient: "from-[#ffb400] to-[#ff6200]",
+    gradient: "from-[#f59e0b] to-[#ea580c]",
     icon: Crown,
     active: true,
   },
@@ -14,7 +14,7 @@ const roles = [
     title: "Admin User",
     subtitle: "Admin",
     href: "#",
-    gradient: "from-[#a855f7] to-[#7e22ce]",
+    gradient: "from-[#0f766e] to-[#0ea5a4]",
     icon: LayoutDashboard,
     active: false,
   },
@@ -30,7 +30,7 @@ const roles = [
     title: "Chef Mike",
     subtitle: "Kitchen",
     href: "#",
-    gradient: "from-[#d946ef] to-[#c026d3]",
+    gradient: "from-[#1d4ed8] to-[#0ea5e9]",
     icon: ChefHat,
     active: false,
   },
@@ -38,15 +38,15 @@ const roles = [
 
 export default function HomePage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f8f9fc] px-4 py-10">
-      <section className="w-full max-w-[460px] rounded-[32px] bg-white px-6 pb-10 pt-10 shadow-[0_20px_60px_rgba(0,0,0,0.05)] sm:px-10">
-        <div className="mx-auto grid h-[100px] w-[100px] place-items-center rounded-full bg-gradient-to-br from-[#7b46f4] to-[#a230ed] text-white shadow-[0_12px_24px_rgba(116,76,241,0.25)]">
+    <main className="flex min-h-screen items-center justify-center px-4 py-10">
+      <section className="portal-surface w-full max-w-115 rounded-4xl px-6 pb-10 pt-10 sm:px-10">
+        <div className="mx-auto grid h-25 w-25 place-items-center rounded-full bg-linear-to-br from-[#0f172a] to-[#0f766e] text-white shadow-[0_16px_30px_rgba(15,23,42,0.32)]">
           <ChefHat className="h-12 w-12" strokeWidth={2} />
         </div>
 
         <div className="mt-6 text-center">
-          <h1 className="text-[2rem] font-semibold tracking-tight text-[#6a35ff]">Restaurant Manager</h1>
-          <p className="mt-2 text-[1.1rem] text-[#6b7280]">Select your role to get started</p>
+          <h1 className="text-[2rem] font-semibold tracking-tight text-[#0f172a]">Restaurant Manager</h1>
+          <p className="mt-2 text-[1.1rem] text-[#5b657a]">Select your role to get started</p>
         </div>
 
         <div className="mt-10 space-y-3.5">
@@ -57,7 +57,7 @@ export default function HomePage() {
               <Link
                 key={role.title}
                 href={role.href}
-                className={`group flex min-h-[86px] items-center justify-between rounded-[24px] bg-gradient-to-r ${role.gradient} px-6 text-white shadow-md transition duration-200 hover:scale-[1.02] hover:shadow-lg`}
+                className={`group flex min-h-21.5 items-center justify-between rounded-3xl bg-linear-to-r ${role.gradient} px-6 text-white shadow-[0_12px_20px_rgba(15,23,42,0.22)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(15,23,42,0.26)]`}
               >
                 <div className="flex items-center gap-4">
                   <div className="grid h-11 w-11 place-items-center rounded-[14px] bg-white/20">

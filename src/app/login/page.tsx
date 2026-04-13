@@ -32,12 +32,12 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#ebeefe_0%,_#f7f8ff_50%,_#f2f4ff_100%)] px-4 py-8">
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-[1220px] items-center justify-center">
-        <section className="grid w-full overflow-hidden rounded-[36px] bg-white shadow-[0_28px_70px_rgba(76,84,131,0.16)] lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="relative overflow-hidden bg-gradient-to-br from-[#594ff4] via-[#7b34f2] to-[#b910f2] p-8 text-white sm:p-10">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_34%),radial-gradient(circle_at_bottom_left,_rgba(255,255,255,0.12),_transparent_32%)]" />
-            <div className="relative z-[1]">
+    <main className="min-h-screen px-4 py-8">
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-305 items-center justify-center">
+        <section className="grid w-full overflow-hidden rounded-[36px] bg-white shadow-[0_28px_70px_rgba(31,41,55,0.22)] lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="relative overflow-hidden bg-linear-to-br from-[#0b1220] via-[#0f2d5c] to-[#0f766e] p-8 text-white sm:p-10">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.2),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(56,189,248,0.2),transparent_36%)]" />
+            <div className="relative z-1">
               <Link href="/" className="inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-sm font-medium text-white/95 transition hover:bg-white/18">
                 <ArrowLeft className="h-4 w-4" />
                 Back to roles
@@ -53,7 +53,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <p className="mt-8 max-w-[480px] text-lg leading-8 text-white/88">
+              <p className="mt-8 max-w-120 text-lg leading-8 text-white/88">
                 Access the control center for businesses, subscriptions, analytics, and operational logs.
               </p>
 
@@ -61,10 +61,10 @@ export default function LoginPage() {
                 {gallery.map((src, index) => (
                   <div
                     key={src}
-                    className={`relative overflow-hidden rounded-[22px] border border-white/12 shadow-[0_12px_24px_rgba(0,0,0,0.14)] ${index === 0 ? "col-span-2 row-span-2 h-[220px]" : "h-[104px]"}`}
+                    className={`relative overflow-hidden rounded-[22px] border border-white/12 shadow-[0_12px_24px_rgba(0,0,0,0.14)] ${index === 0 ? "col-span-2 row-span-2 h-55" : "h-26"}`}
                   >
                     <Image src={src} alt={`Business preview ${index + 1}`} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[rgba(33,12,88,0.28)] to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-t from-[rgba(33,12,88,0.28)] to-transparent" />
                   </div>
                 ))}
               </div>
@@ -134,7 +134,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="inline-flex h-14 w-full items-center justify-center rounded-[18px] bg-[#9146ff] text-lg font-semibold !text-white shadow-[0_12px_24px_rgba(145,70,255,0.25)] transition hover:scale-[1.01]"
+                  className="inline-flex h-14 w-full items-center justify-center rounded-[18px] bg-[linear-gradient(120deg,#0f172a_0%,#155e75_100%)] text-lg font-semibold text-white! shadow-[0_14px_26px_rgba(15,23,42,0.3)] transition hover:scale-[1.01]"
                 >
                   {isLoading ? "Signing in..." : "Login to Dashboard"}
                 </button>

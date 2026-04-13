@@ -1,25 +1,117 @@
 "use client";
 
 import { Download, Filter, Search, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { BASE_URL } from "@/lib/constant";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-const rows = [
-  { when: "Apr 12, 10:13 PM", who: "emma.davis", user: "usr_010", action: "Viewed", actionTag: "Viewed", section: "Webhooks", result: "Failed", resultSub: "Resource not found", duration: "1.2s Slow", durationType: "slow", requestId: "log_00089", method: "GET", endpoint: "/api/webhooks" },
-  { when: "Apr 12, 10:04 PM", who: "james.brown", user: "usr_016", action: "Signed in", actionTag: "Signed in", section: "Products", result: "Succeeded", resultSub: "", duration: "817ms", durationType: "normal", requestId: "log_00088", method: "GET", endpoint: "/api/products" },
-  { when: "Apr 12, 9:47 PM", who: "lisa.wang", user: "usr_004", action: "Viewed", actionTag: "Viewed", section: "Payments", result: "Succeeded", resultSub: "", duration: "338ms", durationType: "normal", requestId: "log_00087", method: "GET", endpoint: "/api/payments" },
-  { when: "Apr 12, 9:44 PM", who: "sarah.chen", user: "usr_011", action: "Deleted", actionTag: "Deleted", section: "Reports", result: "In progress", resultSub: "", duration: "97ms", durationType: "normal", requestId: "log_00086", method: "DELETE", endpoint: "/api/reports" },
-  { when: "Apr 12, 9:41 PM", who: "lisa.wang", user: "usr_012", action: "Updated", actionTag: "Updated", section: "Webhooks", result: "Succeeded", resultSub: "", duration: "210ms", durationType: "normal", requestId: "log_00085", method: "PUT", endpoint: "/api/webhooks" },
-  { when: "Apr 12, 9:28 PM", who: "emma.davis", user: "usr_012", action: "Signed out", actionTag: "Signed out", section: "Settings", result: "Succeeded", resultSub: "", duration: "541ms", durationType: "normal", requestId: "log_00084", method: "POST", endpoint: "/api/logout" },
-  { when: "Apr 12, 9:04 PM", who: "lisa.wang", user: "usr_002", action: "Deleted", actionTag: "Deleted", section: "Payments", result: "Succeeded", resultSub: "", duration: "447ms", durationType: "normal", requestId: "log_00083", method: "DELETE", endpoint: "/api/payments" },
-  { when: "Apr 12, 8:47 PM", who: "mike.wilson", user: "usr_013", action: "Signed in", actionTag: "Signed in", section: "Reports", result: "Warning", resultSub: "", duration: "302ms", durationType: "warning", requestId: "log_00082", method: "POST", endpoint: "/api/reports" },
-  { when: "Apr 12, 8:22 PM", who: "sarah.chen", user: "usr_020", action: "Exported", actionTag: "Exported", section: "Payments", result: "Succeeded", resultSub: "", duration: "723ms", durationType: "normal", requestId: "log_00081", method: "GET", endpoint: "/api/payments/export" },
-  { when: "Apr 12, 7:48 PM", who: "alex.johnson", user: "usr_013", action: "Created", actionTag: "Created", section: "Settings", result: "Warning", resultSub: "", duration: "396ms", durationType: "warning", requestId: "log_00080", method: "POST", endpoint: "/api/settings" },
-  { when: "Apr 12, 7:27 PM", who: "mike.wilson", user: "usr_002", action: "Deleted", actionTag: "Deleted", section: "Payments", result: "Failed", resultSub: "Internal server error — d...", duration: "2.6s Slow", durationType: "slow", requestId: "log_00079", method: "DELETE", endpoint: "/api/payments" },
-  { when: "Apr 12, 7:15 PM", who: "sarah.chen", user: "usr_002", action: "Signed in", actionTag: "Signed in", section: "Payments", result: "Succeeded", resultSub: "", duration: "304ms", durationType: "normal", requestId: "log_00078", method: "POST", endpoint: "/api/payments" },
-  { when: "Apr 12, 7:08 PM", who: "mike.wilson", user: "usr_006", action: "Viewed", actionTag: "Viewed", section: "Orders", result: "Warning", resultSub: "", duration: "484ms", durationType: "warning", requestId: "log_00077", method: "GET", endpoint: "/api/orders" },
-  { when: "Apr 12, 7:01 PM", who: "emma.davis", user: "usr_006", action: "Deleted", actionTag: "Deleted", section: "Settings", result: "Succeeded", resultSub: "", duration: "293ms", durationType: "normal", requestId: "log_00076", method: "DELETE", endpoint: "/api/settings" },
-  { when: "Apr 12, 6:46 PM", who: "mike.wilson", user: "usr_016", action: "Updated", actionTag: "Updated", section: "Webhooks", result: "Succeeded", resultSub: "", duration: "769ms", durationType: "normal", requestId: "log_00075", method: "PUT", endpoint: "/api/webhooks" },
-];
+type ApiLog = {
+  id: string;
+  timestamp: string;
+  userId: string | null;
+  userRole: string | null;
+  actionType: string;
+  module: string;
+  method: string;
+  endpoint: string;
+  statusCode: number;
+  responseStatus: string;
+  durationMs: number | null;
+  ipAddress: string | null;
+  requestPayload: unknown;
+  errorMessage: string | null;
+  level: string;
+};
+
+type ApiResponse = {
+  data: ApiLog[];
+  total: number;
+  page: number;
+  last_page: number;
+};
+
+type UiRow = {
+  id: string;
+  when: string;
+  who: string;
+  user: string;
+  action: string;
+  actionTag: string;
+  section: string;
+  result: string;
+  resultSub: string;
+  duration: string;
+  durationType: "normal" | "warning" | "slow";
+  requestId: string;
+  method: string;
+  endpoint: string;
+  ipAddress: string;
+  statusCode: number;
+  timestamp: string;
+  rawPayload: unknown;
+  errorMessage: string | null;
+};
+
+const formatWhen = (timestamp: string) =>
+  new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(timestamp));
+
+const inferActionTag = (method: string, endpoint: string) => {
+  const upperMethod = method.toUpperCase();
+  const lowerEndpoint = endpoint.toLowerCase();
+
+  if (upperMethod === "POST" && lowerEndpoint.includes("/login")) return "Signed in";
+  if (upperMethod === "POST" && lowerEndpoint.includes("/logout")) return "Signed out";
+  if (upperMethod === "GET") return "Viewed";
+  if (upperMethod === "POST") return "Created";
+  if (upperMethod === "PUT" || upperMethod === "PATCH") return "Updated";
+  if (upperMethod === "DELETE") return "Deleted";
+  return "Viewed";
+};
+
+const mapLogToRow = (log: ApiLog): UiRow => {
+  const actionTag = inferActionTag(log.method, log.endpoint);
+  const durationType: UiRow["durationType"] =
+    (log.durationMs ?? 0) > 1000
+      ? "slow"
+      : (log.durationMs ?? 0) > 500
+        ? "warning"
+        : "normal";
+
+  return {
+    id: log.id,
+    when: formatWhen(log.timestamp),
+    who: log.userRole ?? "Unknown user",
+    user: log.userId ?? "anonymous",
+    action: actionTag,
+    actionTag,
+    section: log.module?.split("?")[0] || "unknown",
+    result: log.responseStatus === "success" ? "Succeeded" : "Failed",
+    resultSub: log.errorMessage ?? "",
+    duration: log.durationMs ? `${log.durationMs}ms` : "-",
+    durationType,
+    requestId: log.id,
+    method: log.method,
+    endpoint: log.endpoint,
+    ipAddress: log.ipAddress ?? "-",
+    statusCode: log.statusCode,
+    timestamp: log.timestamp,
+    rawPayload: log.requestPayload,
+    errorMessage: log.errorMessage,
+  };
+};
 
 const actionStyles: Record<string, string> = {
   Viewed: "bg-[#e6f4ff] text-[#1976d2]",
@@ -39,91 +131,236 @@ const resultStyles: Record<string, string> = {
 };
 
 export default function ActionLogsPage() {
-  const [selected, setSelected] = useState<typeof rows[number] | null>(null);
+  const [rows, setRows] = useState<UiRow[]>([]);
+  const [selected, setSelected] = useState<UiRow | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [lastPage, setLastPage] = useState(1);
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadLogs = async () => {
+      setLoading(true);
+      setError(null);
+
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        if (isMounted) {
+          setRows([]);
+          setTotal(0);
+          setError("No auth token found. Please login again.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const response = await fetch(`${BASE_URL}/log-system?page=${page}`, {
+          method: "GET",
+          headers: {
+            accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Unable to load logs (${response.status}).`);
+        }
+
+        const payload = (await response.json()) as ApiResponse;
+        if (!isMounted) return;
+
+        setRows((payload.data ?? []).map(mapLogToRow));
+        setTotal(payload.total ?? payload.data?.length ?? 0);
+        setLastPage(payload.last_page ?? 1);
+      } catch (err) {
+        if (!isMounted) return;
+        setRows([]);
+        setTotal(0);
+        setError(err instanceof Error ? err.message : "Something went wrong.");
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadLogs();
+    return () => {
+      isMounted = false;
+    };
+  }, [page]);
+
+  const filteredRows = useMemo(() => {
+    const search = query.trim().toLowerCase();
+    if (!search) return rows;
+
+    return rows.filter((row) =>
+      [row.who, row.user, row.action, row.section, row.result, row.endpoint, row.requestId]
+        .join(" ")
+        .toLowerCase()
+        .includes(search),
+    );
+  }, [rows, query]);
+
+  const getActionStyle = (action: string) => actionStyles[action] ?? "bg-[#eef2f7] text-[#475467]";
+  const getResultStyle = (result: string) => resultStyles[result] ?? "bg-[#eef2f7] text-[#475467]";
+
+  const summary = useMemo(() => {
+    const succeeded = filteredRows.filter((item) => item.result === "Succeeded").length;
+    const failed = filteredRows.filter((item) => item.result === "Failed").length;
+    const slow = filteredRows.filter((item) => item.durationType === "slow").length;
+    return { succeeded, failed, slow };
+  }, [filteredRows]);
+
+  const startIndex = filteredRows.length === 0 ? 0 : 1;
+  const endIndex = filteredRows.length;
 
   return (
-    <section className="mx-auto max-w-[1280px]">
-      <div className="mb-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-[0_8px_24px_rgba(10,17,31,0.1)]">
-        <div className="flex w-full items-center gap-3 rounded-xl bg-[#f4f5f7] px-3 py-2 text-sm text-[#6b7280]">
+    <section className="mx-auto max-w-7xl">
+      <div className="mb-4 grid gap-3 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.9),rgba(224,242,254,0.74))] px-4 py-4 shadow-[0_12px_28px_rgba(10,17,31,0.1)] lg:grid-cols-[1fr_auto_auto_auto] lg:items-center">
+        <div className="flex w-full items-center gap-3 rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-3 py-2 text-sm text-[#6b7280]">
           <Search className="h-4 w-4" />
-          Search logs...
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search logs..."
+            className="w-full bg-transparent outline-none"
+          />
         </div>
-        <button className="inline-flex h-9 items-center gap-2 rounded-xl border-2 border-[#e5e7eb] bg-white px-3 text-sm font-semibold">
+        <button className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-[#d7e1ed] bg-white px-3 text-sm font-semibold text-[#1f2937] hover:bg-[#f8fbff]">
           <Filter className="h-4 w-4" /> Filters
         </button>
-        <span className="text-sm text-[#667085]">200 records</span>
-        <button className="inline-flex h-9 items-center gap-2 rounded-xl border-2 border-[#e5e7eb] bg-white px-3 text-sm font-semibold">
+        <span className="rounded-xl border border-[#d7e1ed] bg-white px-3 py-2 text-center text-sm font-medium text-[#667085]">{total} records</span>
+        <button className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-[#d7e1ed] bg-white px-3 text-sm font-semibold text-[#1f2937] hover:bg-[#f8fbff]">
           <Download className="h-4 w-4" /> Export
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-3xl bg-white shadow-[0_8px_24px_rgba(10,17,31,0.1)]">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-[#e5e7eb] text-left">
-              {["When", "Who", "Action", "Section", "Result", "Duration", ""].map((label) => (
-                <th key={label} className="px-4 py-3 font-semibold">
-                  {label}
-                  {label === "When" || label === "Duration" ? "  ↑↓" : ""}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={`${row.when}-${row.user}`} className="cursor-pointer border-b border-[#edf0f5]" onClick={() => setSelected(row)}>
-                <td className="whitespace-nowrap px-4 py-3">{row.when}</td>
-                <td className="px-4 py-3">
-                  <div className="font-semibold text-[#111827]">{row.who}</div>
-                  <div className="text-xs text-[#98a2b3]">{row.user}</div>
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex rounded-lg px-2 py-1 text-xs font-semibold ${actionStyles[row.actionTag]}`}>{row.action}</span>
-                  <div className="text-xs text-[#98a2b3]">{row.section}</div>
-                </td>
-                <td className="px-4 py-3 text-[#475467]">{row.section}</td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex rounded-lg px-2 py-1 text-xs font-semibold ${resultStyles[row.result]}`}>{row.result}</span>
-                  {row.resultSub ? <div className="text-xs text-[#ef4444]">{row.resultSub}</div> : null}
-                </td>
-                <td className={`px-4 py-3 ${row.durationType === "slow" ? "text-[#ef4444]" : row.durationType === "warning" ? "text-[#f59e0b]" : "text-[#111827]"}`}>
-                  {row.duration}
-                </td>
-                <td className="px-4 py-3 text-right text-[#6a4df5]">View →</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+        <article className="rounded-2xl border border-[#dbe7f4] bg-white/85 px-4 py-3 shadow-[0_8px_18px_rgba(10,17,31,0.06)]">
+          <p className="text-xs font-medium text-[#64748b]">Succeeded</p>
+          <p className="mt-1 text-2xl font-semibold text-[#15803d]">{summary.succeeded}</p>
+        </article>
+        <article className="rounded-2xl border border-[#f7d8dc] bg-white/85 px-4 py-3 shadow-[0_8px_18px_rgba(10,17,31,0.06)]">
+          <p className="text-xs font-medium text-[#64748b]">Failed</p>
+          <p className="mt-1 text-2xl font-semibold text-[#dc2626]">{summary.failed}</p>
+        </article>
+        <article className="rounded-2xl border border-[#fde6bf] bg-white/85 px-4 py-3 shadow-[0_8px_18px_rgba(10,17,31,0.06)]">
+          <p className="text-xs font-medium text-[#64748b]">Slow Requests</p>
+          <p className="mt-1 text-2xl font-semibold text-[#d97706]">{summary.slow}</p>
+        </article>
       </div>
 
-      <div className="mt-4 flex items-center justify-between text-sm text-[#667085]">
-        <span>Showing 1–15 of 200</span>
+      <div className="overflow-hidden rounded-3xl border border-[#e4ebf4] bg-white/90 shadow-[0_10px_24px_rgba(10,17,31,0.1)]">
+        <Table className="text-sm">
+          <TableHeader>
+            <TableRow className="border-b border-[#dce7f3] bg-linear-to-r from-[#f8fbff] to-[#eef6ff] text-left hover:bg-linear-to-r hover:from-[#f8fbff] hover:to-[#eef6ff]">
+              {["When", "Who", "Action", "Section", "Result", "Duration", ""].map((label) => (
+                <TableHead key={label} className="px-4 py-3 text-xs font-semibold tracking-[0.08em] text-[#334155] uppercase">
+                  {label}
+                  {label === "When" || label === "Duration" ? "  ↑↓" : ""}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={7} className="px-4 py-8 text-center text-[#667085]">Loading logs...</TableCell>
+              </TableRow>
+            ) : error ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={7} className="px-4 py-8 text-center text-[#ef4444]">{error}</TableCell>
+              </TableRow>
+            ) : filteredRows.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={7} className="px-4 py-8 text-center text-[#667085]">No logs found.</TableCell>
+              </TableRow>
+            ) : filteredRows.map((row) => (
+              <TableRow
+                key={row.id}
+                className="group cursor-pointer border-b border-[#e4edf7] odd:bg-white even:bg-[#f7fbff] transition-colors hover:bg-[#ecf5ff]"
+                onClick={() => setSelected(row)}
+              >
+                <TableCell className="whitespace-nowrap px-4 py-3.5 font-medium text-[#0f172a]">{row.when}</TableCell>
+                <TableCell className="px-4 py-3.5">
+                  <div className="font-semibold text-[#0f172a]">{row.who}</div>
+                  <div className="text-xs text-[#98a2b3]">{row.user}</div>
+                </TableCell>
+                <TableCell className="px-4 py-3.5">
+                  <span className={`inline-flex rounded-lg px-2 py-1 text-xs font-semibold ${getActionStyle(row.actionTag)}`}>{row.action}</span>
+                  <div className="text-xs text-[#98a2b3]">{row.section}</div>
+                </TableCell>
+                <TableCell className="px-4 py-3.5 font-medium text-[#334155]">{row.section}</TableCell>
+                <TableCell className="px-4 py-3.5">
+                  <span className={`inline-flex rounded-lg px-2 py-1 text-xs font-semibold ${getResultStyle(row.result)}`}>{row.result}</span>
+                  {row.resultSub ? <div className="text-xs text-[#ef4444]">{row.resultSub}</div> : null}
+                </TableCell>
+                <TableCell className={`px-4 py-3.5 font-semibold ${row.durationType === "slow" ? "text-[#ef4444]" : row.durationType === "warning" ? "text-[#f59e0b]" : "text-[#0f172a]"}`}>
+                  {row.duration}
+                </TableCell>
+                <TableCell className="px-4 py-3.5 text-right">
+                  <span className="inline-flex items-center rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#155e75] transition group-hover:border-[#7dd3fc] group-hover:bg-[#e0f2fe]">
+                    View →
+                  </span>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between rounded-2xl border border-[#e2e8f0] bg-white/75 px-3 py-2 text-sm text-[#667085]">
+        <span>Showing {startIndex}-{endIndex} of {query ? filteredRows.length : total}</span>
         <div className="flex items-center gap-2">
-          <button className="grid h-8 w-8 place-items-center rounded-xl border border-[#e5e7eb]">‹</button>
-          {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-            <button key={n} className={`grid h-8 w-8 place-items-center rounded-xl border border-[#e5e7eb] ${n === 1 ? "bg-[#5f66f4] text-white" : "bg-white"}`}>
+          <button
+            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            disabled={page <= 1 || loading}
+            className="grid h-8 w-8 place-items-center rounded-xl border border-[#e5e7eb] disabled:opacity-50"
+          >
+            ‹
+          </button>
+          {Array.from({ length: Math.min(lastPage, 7) }, (_, index) => index + 1).map((n) => (
+            <button
+              key={n}
+              onClick={() => setPage(n)}
+              className={`grid h-8 w-8 place-items-center rounded-xl border border-[#e5e7eb] ${n === page ? "bg-[#5f66f4] text-white" : "bg-white"}`}
+            >
               {n}
             </button>
           ))}
-          <button className="grid h-8 w-8 place-items-center rounded-xl border border-[#e5e7eb]">›</button>
+          <button
+            onClick={() => setPage((prev) => Math.min(lastPage, prev + 1))}
+            disabled={page >= lastPage || loading}
+            className="grid h-8 w-8 place-items-center rounded-xl border border-[#e5e7eb] disabled:opacity-50"
+          >
+            ›
+          </button>
         </div>
       </div>
 
       {selected ? (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/30 p-4">
-          <div className="w-full max-w-[520px] rounded-3xl bg-white p-6 shadow-[0_24px_60px_rgba(15,23,42,0.25)]">
+        <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/35 p-4 backdrop-blur-[1px]">
+          <div className="w-full max-w-130 rounded-3xl border border-white bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(240,249,255,0.94))] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.25)]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className={`inline-flex rounded-lg px-2 py-1 text-xs font-semibold ${actionStyles[selected.actionTag]}`}>{selected.action}</span>
+                <span className={`inline-flex rounded-lg px-2 py-1 text-xs font-semibold ${getActionStyle(selected.actionTag)}`}>{selected.action}</span>
                 <span className="inline-flex rounded-lg bg-[#eef2f7] px-2 py-1 text-xs font-semibold text-[#111827]">{selected.section}</span>
               </div>
-              <button onClick={() => setSelected(null)} className="grid h-8 w-8 place-items-center rounded-full border border-[#e5e7eb]">
+              <button onClick={() => setSelected(null)} className="grid h-8 w-8 place-items-center rounded-full border border-[#d7e1ed] bg-white">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="mt-3 flex items-center gap-3 text-sm text-[#667085]">
-              <span className="inline-flex rounded-lg bg-[#dcfce7] px-2 py-1 text-xs font-semibold text-[#16a34a]">204</span>
+              <span className={`inline-flex rounded-lg px-2 py-1 text-xs font-semibold ${selected.result === "Succeeded" ? "bg-[#dcfce7] text-[#16a34a]" : "bg-[#fee2e2] text-[#ef4444]"}`}>
+                {selected.statusCode}
+              </span>
               <span>{selected.requestId}</span>
               <span className="text-[#98a2b3]">{selected.method} {selected.endpoint}</span>
             </div>
@@ -132,13 +369,13 @@ export default function ActionLogsPage() {
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {[
                 { label: "Request ID", value: selected.requestId },
-                { label: "When", value: selected.when.replace("Apr", "4/11/2026,") },
+                { label: "When", value: new Date(selected.timestamp).toLocaleString() },
                 { label: "Who", value: `${selected.who} (${selected.user})` },
-                { label: "IP address", value: "77.61.157.130" },
+                { label: "IP address", value: selected.ipAddress },
                 { label: "Duration", value: selected.duration },
                 { label: "Section", value: selected.section },
               ].map((item) => (
-                <div key={item.label} className="rounded-2xl bg-[#f8fafc] px-4 py-3">
+                <div key={item.label} className="rounded-2xl border border-[#e2e8f0] bg-white/80 px-4 py-3">
                   <div className="text-xs text-[#98a2b3]">{item.label}</div>
                   <div className="mt-1 text-sm font-semibold text-[#111827]">{item.value}</div>
                 </div>
@@ -147,32 +384,47 @@ export default function ActionLogsPage() {
 
             <div className="mt-4 space-y-3">
               {[
-                { label: "What came back", count: "2 keys" },
-                { label: "Request headers (technical)", count: "3 keys" },
+                { label: "Request payload", count: typeof selected.rawPayload === "object" && selected.rawPayload !== null ? `${Object.keys(selected.rawPayload as Record<string, unknown>).length} keys` : "raw" },
+                { label: "Error details", count: selected.errorMessage ? "available" : "none" },
               ].map((item) => (
-                <div key={item.label} className="flex items-center justify-between rounded-2xl border border-[#e5e7eb] px-4 py-3 text-sm">
+                <div key={item.label} className="flex items-center justify-between rounded-2xl border border-[#e2e8f0] bg-white/80 px-4 py-3 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="text-[#667085]">›</span>
                     <span className="font-semibold text-[#344054]">{item.label}</span>
                     <span className="rounded-full bg-[#eef2f7] px-2 py-0.5 text-xs font-semibold text-[#344054]">{item.count}</span>
                   </div>
-                  <button className="text-xs font-semibold text-[#5f66f4]">Copy</button>
+                  <button
+                    onClick={() => {
+                      const value = item.label === "Request payload" ? selected.rawPayload : selected.errorMessage;
+                      void navigator.clipboard.writeText(JSON.stringify(value, null, 2));
+                    }}
+                    className="text-xs font-semibold text-[#155e75]"
+                  >
+                    Copy
+                  </button>
                 </div>
               ))}
             </div>
 
             <div className="mt-4">
               <div className="text-xs text-[#98a2b3]">Device / browser</div>
-              <div className="mt-2 rounded-2xl bg-[#f8fafc] px-4 py-3 text-sm text-[#667085]">
-                Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0
+              <div className="mt-2 rounded-2xl border border-[#e2e8f0] bg-white/80 px-4 py-3 text-sm text-[#667085]">
+                N/A
               </div>
             </div>
 
             <div className="mt-4 flex items-center justify-between">
               <span className="text-xs text-[#98a2b3]">{selected.requestId} • {selected.section}</span>
               <div className="flex items-center gap-2">
-                <button className="rounded-xl border border-[#e5e7eb] px-3 py-2 text-sm font-semibold">Copy raw</button>
-                <button onClick={() => setSelected(null)} className="rounded-xl border border-[#e5e7eb] px-3 py-2 text-sm font-semibold">Close</button>
+                <button
+                  onClick={() => {
+                    void navigator.clipboard.writeText(JSON.stringify(selected, null, 2));
+                  }}
+                  className="rounded-xl border border-[#d7e1ed] bg-white px-3 py-2 text-sm font-semibold"
+                >
+                  Copy raw
+                </button>
+                <button onClick={() => setSelected(null)} className="rounded-xl border border-[#d7e1ed] bg-white px-3 py-2 text-sm font-semibold">Close</button>
               </div>
             </div>
           </div>

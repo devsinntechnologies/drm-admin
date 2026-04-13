@@ -64,8 +64,8 @@ export default function SubscriptionsPage() {
 
   return (
     <AdminShell activeTab="subscriptions">
-      <section className="mx-auto mb-5 flex max-w-[1180px] items-center gap-4 rounded-3xl bg-white px-6 py-5 shadow-[0_8px_28px_rgba(7,16,34,0.09)]">
-        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#9d3df1] text-white">
+      <section className="mx-auto mb-5 flex max-w-7xl items-center gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.9),rgba(254,242,242,0.78))] px-6 py-5 shadow-[0_12px_28px_rgba(7,16,34,0.1)]">
+        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#b45309] text-white shadow-[0_10px_18px_rgba(180,83,9,0.28)]">
           <CreditCard className="h-6 w-6" strokeWidth={1.8} />
         </div>
         <div>
@@ -74,10 +74,10 @@ export default function SubscriptionsPage() {
         </div>
       </section>
 
-      <div ref={menuRef} className="mx-auto max-w-[1180px] overflow-x-auto rounded-3xl bg-white shadow-[0_8px_24px_rgba(10,17,31,0.1)]">
-        <table className="w-full min-w-[1100px] border-collapse">
+      <div ref={menuRef} className="mx-auto max-w-7xl overflow-x-auto rounded-3xl border border-[#e4ebf4] bg-white/90 shadow-[0_10px_24px_rgba(10,17,31,0.1)]">
+        <table className="w-full min-w-275 border-collapse">
           <thead>
-            <tr className="border-b border-[#e2e5ee] text-left text-sm">
+            <tr className="border-b border-[#e2e5ee] bg-[#f8fbff] text-left text-sm">
               {["Business", "Current Plan", "Status", "Expires In", "Revenue", "Actions"].map((label) => (
                 <th key={label} className="px-4 py-4 font-semibold text-[#111827]">{label}</th>
               ))}
@@ -86,7 +86,7 @@ export default function SubscriptionsPage() {
 
           <tbody>
             {rows.map((row, index) => (
-              <tr key={row.name} className="border-b border-[#e8eaf0] text-sm">
+              <tr key={row.name} className="border-b border-[#e8eaf0] text-sm transition hover:bg-[#f9fbff]">
                 <td className="px-4 py-4">
                   <div className="flex items-center gap-3">
                     <div className="h-12 w-12 overflow-hidden rounded-xl bg-[#d7dbe4]">
@@ -103,14 +103,14 @@ export default function SubscriptionsPage() {
                   <button
                     type="button"
                     onClick={() => setOpenMenu(openMenu === `plan-${index}` ? null : `plan-${index}`)}
-                    className="inline-flex h-10 min-w-[140px] items-center justify-between rounded-xl bg-[#f0f1f5] px-4 text-left text-[#111827]"
+                    className="inline-flex h-10 min-w-35 items-center justify-between rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-4 text-left text-[#111827]"
                   >
                     {row.plan}
                     <ChevronDown className="h-4 w-4 text-[#a0a8ba]" />
                   </button>
 
                   {openMenu === `plan-${index}` ? (
-                    <div className="absolute left-4 top-[64px] z-20 min-w-[140px] overflow-hidden rounded-2xl border border-[#e3e6ef] bg-white shadow-[0_12px_24px_rgba(15,23,42,0.14)]">
+                    <div className="absolute left-4 top-16 z-20 min-w-35 overflow-hidden rounded-2xl border border-[#e3e6ef] bg-white shadow-[0_12px_24px_rgba(15,23,42,0.14)]">
                       {planOptions.map((option) => (
                         <button
                           key={option}
@@ -130,14 +130,14 @@ export default function SubscriptionsPage() {
                   <button
                     type="button"
                     onClick={() => setOpenMenu(openMenu === `status-${index}` ? null : `status-${index}`)}
-                    className="inline-flex h-10 min-w-[140px] items-center justify-between rounded-xl bg-[#f0f1f5] px-4 text-left text-[#111827]"
+                    className="inline-flex h-10 min-w-35 items-center justify-between rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-4 text-left text-[#111827]"
                   >
                     {row.status}
                     <ChevronDown className="h-4 w-4 text-[#a0a8ba]" />
                   </button>
 
                   {openMenu === `status-${index}` ? (
-                    <div className="absolute left-4 top-[64px] z-20 min-w-[140px] overflow-hidden rounded-2xl border border-[#e3e6ef] bg-white shadow-[0_12px_24px_rgba(15,23,42,0.14)]">
+                    <div className="absolute left-4 top-16 z-20 min-w-35 overflow-hidden rounded-2xl border border-[#e3e6ef] bg-white shadow-[0_12px_24px_rgba(15,23,42,0.14)]">
                       {statusOptions.map((option) => (
                         <button
                           key={option}
@@ -164,7 +164,7 @@ export default function SubscriptionsPage() {
                 <td className="px-4 py-4">
                   <div className="inline-flex gap-2">
                     {["+3M", "+6M", "+12M"].map((btn) => (
-                      <button key={btn} type="button" className="h-9 min-w-[64px] rounded-xl border border-[#d8dce4] bg-white px-3 text-xs font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+                      <button key={btn} type="button" className="h-9 min-w-16 rounded-xl border border-[#d8dce4] bg-white px-3 text-xs font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] hover:bg-[#f8fbff]">
                         {btn}
                       </button>
                     ))}
