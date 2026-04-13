@@ -105,7 +105,7 @@ export default function LoginPage() {
                 <Link
                   href="/dashboard"
                   onClick={() => setLoading(true)}
-                  className="inline-flex h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-[#5d5ff5] via-[#7b34f2] to-[#b910f2] text-lg font-semibold text-white shadow-[0_16px_28px_rgba(98,73,242,0.28)] transition hover:scale-[1.01]"
+                  className="inline-flex h-14 w-full items-center justify-center rounded-[18px] bg-[#9146ff] text-lg font-semibold !text-white shadow-[0_12px_24px_rgba(145,70,255,0.25)] transition hover:scale-[1.01]"
                 >
                   {loading ? "Signing in..." : "Login to Dashboard"}
                 </Link>

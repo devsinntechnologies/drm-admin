@@ -55,7 +55,7 @@ export default function DashboardPage() {
           </div>
           <div className="px-6 pb-6 pt-5 lg:px-7">
             <div className="relative mt-2 h-[300px] rounded-2xl">
-              <div className="absolute inset-x-10 bottom-6 top-6">
+              <div className="absolute bottom-6 left-[70px] right-4 top-6">
                 <div className="absolute inset-0 border-b-2 border-l-2 border-[#8f96a6]" />
                 <div className="absolute left-0 right-0 top-0 border-t border-dashed border-[#d7dbe6]" />
                 <div className="absolute left-0 right-0 top-[25%] border-t border-dashed border-[#d7dbe6]" />
@@ -63,45 +63,54 @@ export default function DashboardPage() {
                 <div className="absolute left-0 right-0 top-[75%] border-t border-dashed border-[#d7dbe6]" />
                 <div className="absolute bottom-0 left-0 right-0 border-t border-dashed border-[#d7dbe6]" />
               </div>
-              <div className="absolute left-0 top-4 flex h-[260px] flex-col justify-between text-sm font-medium text-[#6b7280]">
+              <div className="absolute left-0 top-4 flex h-[260px] w-[60px] flex-col justify-between pr-2 text-right text-sm font-medium text-[#6b7280]">
                 <span>160000</span>
                 <span>120000</span>
                 <span>80000</span>
                 <span>40000</span>
                 <span>0</span>
               </div>
-              <div className="absolute inset-x-12 bottom-6 flex h-[260px] items-end gap-6">
-                <div className="h-[48%] flex-1 rounded-[28px] bg-[#6267f0]" />
-                <div className="h-[98%] flex-1 rounded-[28px] bg-[#6267f0]" />
-                <div className="h-[78%] flex-1 rounded-[28px] bg-[#6267f0]" />
+              <div className="absolute bottom-6 left-[70px] right-4 flex h-[260px] items-end gap-6 px-4">
+                <div className="h-[48%] flex-1 rounded-t-[10px] bg-[#626af0]" />
+                <div className="h-[98%] flex-1 rounded-t-[10px] bg-[#626af0]" />
+                <div className="h-[78%] flex-1 rounded-t-[10px] bg-[#626af0]" />
               </div>
-              <div className="absolute inset-x-12 bottom-0 flex justify-between text-center text-base font-medium text-[#667085]">
-                <span className="w-full">Basic</span>
-                <span className="w-full">Premium</span>
-                <span className="w-full">Enterprise</span>
+              <div className="absolute bottom-0 left-[70px] right-4 flex justify-between px-4 text-center text-base font-medium text-[#667085]">
+                <span className="flex w-full justify-center">Basic</span>
+                <span className="flex w-full justify-center">Premium</span>
+                <span className="flex w-full justify-center">Enterprise</span>
               </div>
             </div>
           </div>
         </article>
 
         <article className="overflow-hidden rounded-3xl bg-white shadow-[0_7px_22px_rgba(10,17,31,0.08)]">
-          <div className="flex min-h-16 items-center gap-3 bg-gradient-to-r from-[#f4ecff] to-[#f9eef7] px-5 py-3 lg:px-6">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#9d3df1] text-white">
-              <PieChart className="h-4.5 w-4.5" strokeWidth={1.8} />
+          <div className="flex min-h-16 items-center gap-3 bg-[#fdfafb] px-5 py-3 lg:px-6">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#a056f7] text-white shadow-sm">
+              <PieChart className="h-5 w-5" strokeWidth={2} />
             </div>
             <div>
-              <h3 className="text-base font-bold lg:text-lg">Subscription Plans</h3>
-              <p className="text-xs font-medium text-[#606a7f] lg:text-sm">Distribution by plan type</p>
+              <h3 className="text-base font-semibold text-[#111827] lg:text-lg">Subscription Plans</h3>
+              <p className="text-xs font-medium text-[#6b7280] lg:text-sm">Distribution by plan type</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 items-center gap-5 px-5 py-6 lg:grid-cols-[180px_1fr] lg:px-6">
-            <div className="mx-auto h-40 w-40 rounded-full bg-[conic-gradient(#3f80e8_0deg_140deg,#7f55e8_140deg_280deg,#f7a009_280deg_360deg)] p-6">
-              <div className="h-full w-full rounded-full bg-white" />
+          <div className="grid grid-cols-1 items-center gap-8 px-5 py-8 lg:grid-cols-[180px_1fr] lg:px-8">
+            <div className="mx-auto h-40 w-40 rounded-full bg-[conic-gradient(transparent_0_8deg,#4181f7_8deg_135deg,transparent_135deg_145deg,#a056f7_145deg_265deg,transparent_265deg_275deg,#f7a009_275deg_352deg,transparent_352deg_360deg)] p-[22px]">
+              <div className="h-full w-full rounded-full bg-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]" />
             </div>
-            <ul className="space-y-1.5 text-sm lg:text-base">
-              <li className="flex items-center justify-between"><span><span className="mr-2 inline-block h-3 w-3 rounded-full bg-[#3f80e8]" />Basic</span><strong>2</strong></li>
-              <li className="flex items-center justify-between"><span><span className="mr-2 inline-block h-3 w-3 rounded-full bg-[#7f55e8]" />Premium</span><strong>2</strong></li>
-              <li className="flex items-center justify-between"><span><span className="mr-2 inline-block h-3 w-3 rounded-full bg-[#f7a009]" />Enterprise</span><strong>1</strong></li>
+            <ul className="space-y-3 pr-4 text-sm font-medium text-[#374151] lg:text-[0.95rem]">
+              <li className="flex items-center justify-between">
+                <span className="flex items-center gap-2"><span className="inline-block h-2.5 w-2.5 rounded-full bg-[#4181f7]" />Basic</span>
+                <strong className="text-[#111827]">2</strong>
+              </li>
+              <li className="flex items-center justify-between">
+                <span className="flex items-center gap-2"><span className="inline-block h-2.5 w-2.5 rounded-full bg-[#a056f7]" />Premium</span>
+                <strong className="text-[#111827]">2</strong>
+              </li>
+              <li className="flex items-center justify-between">
+                <span className="flex items-center gap-2"><span className="inline-block h-2.5 w-2.5 rounded-full bg-[#f7a009]" />Enterprise</span>
+                <strong className="text-[#111827]">1</strong>
+              </li>
             </ul>
           </div>
         </article>

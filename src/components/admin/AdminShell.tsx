@@ -50,12 +50,13 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
         </div>
         <Link
           href="/"
-          className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl bg-white/15 px-4 text-sm font-semibold text-slate-50 md:h-10 md:text-base lg:h-[44px] lg:rounded-2xl lg:px-5 lg:text-base"
+          className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl bg-white/20 px-4 text-sm font-medium !text-white transition hover:bg-white/30 md:h-10 lg:h-[40px] lg:px-4"
         >
-          <LogOut className="h-4 w-4 lg:h-6 lg:w-6" strokeWidth={2} />
+          <LogOut className="h-[18px] w-[18px] !text-white" strokeWidth={2} />
           Logout
         </Link>
       </header>
+
 
       <main className="px-4 pb-8 pt-5 md:px-8 lg:px-14 lg:pb-11 lg:pt-7">
         <nav className="mb-7 flex gap-2 overflow-x-auto rounded-[28px] bg-[#e9e9ef] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
