@@ -1,227 +1,95 @@
-import Image from "next/image";
-import {
-  Activity,
-  Award,
-  BarChart3,
-  Building2,
-  DollarSign,
-  PieChart,
-  ReceiptText,
-  ShieldCheck,
-  Users,
-} from "lucide-react";
-import AdminShell from "@/components/admin/AdminShell";
+import Link from "next/link";
+import { ArrowRight, ChefHat, ClipboardList, Crown, LayoutDashboard } from "lucide-react";
 
-const topBusinesses = [
-  { rank: 1, name: "The Golden Spoon", orders: "1250 orders", revenue: "$125.0K", plan: "Enterprise", image: "/business/bus1.png" },
-  { rank: 2, name: "Pasta Palace", orders: "890 orders", revenue: "$89.0K", plan: "Premium", image: "/business/bus2.png" },
-  { rank: 3, name: "Sushi World", orders: "520 orders", revenue: "$67.0K", plan: "Premium", image: "/business/bus3.png" },
-  { rank: 4, name: "Burger Haven", orders: "650 orders", revenue: "$45.0K", plan: "Basic", image: "/business/bus4.png" },
-  { rank: 5, name: "Taco Fiesta", orders: "380 orders", revenue: "$32.0K", plan: "Basic", image: "/business/bus5.png" },
-];
-
-const summaryCards = [
+const roles = [
   {
-    title: "Total Businesses",
-    value: "5",
-    sub: "↗ 3 active",
-    bg: "from-[#9041f8] to-[#5052f8]",
-    icon: <Building2 className="h-5 w-5" strokeWidth={1.8} />,
-    ghost: <Building2 className="h-20 w-20 opacity-30" strokeWidth={1.2} />,
+    title: "Super Admin",
+    subtitle: "Super-Admin",
+    href: "/login",
+    gradient: "from-[#ffbf00] via-[#ff8a00] to-[#ff5b00]",
+    icon: Crown,
+    active: true,
   },
   {
-    title: "Total Revenue",
-    value: "$358.0K",
-    sub: "Across all businesses",
-    bg: "from-[#06c364] to-[#05a765]",
-    icon: <DollarSign className="h-5 w-5" strokeWidth={1.8} />,
-    ghost: <DollarSign className="h-20 w-20 opacity-30" strokeWidth={1.2} />,
+    title: "Admin User",
+    subtitle: "Admin",
+    href: "#",
+    gradient: "from-[#5860f5] via-[#7b45f4] to-[#b610f1]",
+    icon: LayoutDashboard,
+    active: false,
   },
   {
-    title: "Total Orders",
-    value: "3,690",
-    sub: "◎ System-wide",
-    bg: "from-[#2f88f1] to-[#1490c7]",
-    icon: <ReceiptText className="h-5 w-5" strokeWidth={1.8} />,
-    ghost: <ReceiptText className="h-20 w-20 opacity-30" strokeWidth={1.2} />,
+    title: "John Waiter",
+    subtitle: "Waiter",
+    href: "#",
+    gradient: "from-[#3291ff] via-[#4769f3] to-[#563ff1]",
+    icon: ClipboardList,
+    active: false,
   },
   {
-    title: "Total Users",
-    value: "35",
-    sub: "⊕ All platforms",
-    bg: "from-[#ff7600] to-[#f70010]",
-    icon: <Users className="h-5 w-5" strokeWidth={1.8} />,
-    ghost: <Users className="h-20 w-20 opacity-30" strokeWidth={1.2} />,
+    title: "Chef Mike",
+    subtitle: "Kitchen",
+    href: "#",
+    gradient: "from-[#b13ef2] via-[#d536ca] to-[#ef0079]",
+    icon: ChefHat,
+    active: false,
   },
 ];
 
-export default function DashboardPage() {
+export default function HomePage() {
   return (
-    <AdminShell activeTab="dashboard">
-      <section className="mx-auto mb-4 grid max-w-[1180px] grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {summaryCards.map((item) => (
-          <article
-            key={item.title}
-            className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${item.bg} p-4 text-white shadow-[0_8px_18px_rgba(28,48,94,0.16)] lg:min-h-[130px]`}
-          >
-            <div className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-2xl bg-white/15 text-white/95">
-              {item.icon}
-            </div>
-            <div className="absolute -right-3 top-2 text-white/10">{item.ghost}</div>
-            <h4 className="relative z-[1] text-sm font-medium lg:text-base">{item.title}</h4>
-            <p className="relative z-[1] mt-4 text-2xl font-semibold leading-none lg:mt-5 lg:text-3xl">{item.value}</p>
-            <p className="relative z-[1] mt-1.5 text-xs text-white/90 lg:text-sm">{item.sub}</p>
-          </article>
-        ))}
-      </section>
+    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_#eef2ff_0%,_#f6f7ff_52%,_#f3f4ff_100%)] px-4 py-10">
+      <section className="w-full max-w-[640px] rounded-[34px] bg-white px-6 pb-8 pt-10 shadow-[0_30px_70px_rgba(68,76,122,0.16)] sm:px-10">
+        <div className="mx-auto grid h-[116px] w-[116px] place-items-center rounded-full bg-gradient-to-br from-[#5960f5] to-[#9624f6] text-white shadow-[0_18px_36px_rgba(116,76,241,0.3)]">
+          <ChefHat className="h-14 w-14" strokeWidth={2.2} />
+        </div>
 
-      <section className="mx-auto mb-4 grid max-w-[1180px] grid-cols-1 gap-4 xl:grid-cols-2">
-        <article className="overflow-hidden rounded-3xl bg-white shadow-[0_7px_22px_rgba(10,17,31,0.08)]">
-          <div className="flex min-h-16 items-center gap-4 bg-gradient-to-r from-[#eef1ff] to-[#f6f7ff] px-6 py-4 lg:px-7">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#5b62f5] text-white">
-              <BarChart3 className="h-5 w-5" strokeWidth={1.8} />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold lg:text-xl">Revenue by Plan</h3>
-              <p className="text-sm font-medium text-[#606a7f] lg:text-base">Performance across subscription tiers</p>
-            </div>
-          </div>
-          <div className="px-6 pb-6 pt-5 lg:px-7">
-            <div className="relative mt-2 h-[300px] rounded-2xl">
-              <div className="absolute inset-x-10 bottom-6 top-6">
-                <div className="absolute inset-0 border-b-2 border-l-2 border-[#8f96a6]" />
-                <div className="absolute left-0 right-0 top-0 border-t border-dashed border-[#d7dbe6]" />
-                <div className="absolute left-0 right-0 top-[25%] border-t border-dashed border-[#d7dbe6]" />
-                <div className="absolute left-0 right-0 top-[50%] border-t border-dashed border-[#d7dbe6]" />
-                <div className="absolute left-0 right-0 top-[75%] border-t border-dashed border-[#d7dbe6]" />
-                <div className="absolute bottom-0 left-0 right-0 border-t border-dashed border-[#d7dbe6]" />
-              </div>
-              <div className="absolute left-0 top-4 flex h-[260px] flex-col justify-between text-sm font-medium text-[#6b7280]">
-                <span>160000</span>
-                <span>120000</span>
-                <span>80000</span>
-                <span>40000</span>
-                <span>0</span>
-              </div>
-              <div className="absolute inset-x-12 bottom-6 flex h-[260px] items-end gap-6">
-                <div className="h-[48%] flex-1 rounded-[28px] bg-[#6267f0]" />
-                <div className="h-[98%] flex-1 rounded-[28px] bg-[#6267f0]" />
-                <div className="h-[78%] flex-1 rounded-[28px] bg-[#6267f0]" />
-              </div>
-              <div className="absolute inset-x-12 bottom-0 flex justify-between text-center text-base font-medium text-[#667085]">
-                <span className="w-full">Basic</span>
-                <span className="w-full">Premium</span>
-                <span className="w-full">Enterprise</span>
-              </div>
-            </div>
-          </div>
-        </article>
+        <div className="mt-8 text-center">
+          <h1 className="text-[2.2rem] font-semibold tracking-[-0.03em] text-[#623ff2] sm:text-[3rem]">Restaurant Manager</h1>
+          <p className="mt-3 text-lg text-[#72778d] sm:text-[1.8rem]">Select your role to get started</p>
+        </div>
 
-        <article className="overflow-hidden rounded-3xl bg-white shadow-[0_7px_22px_rgba(10,17,31,0.08)]">
-          <div className="flex min-h-16 items-center gap-3 bg-gradient-to-r from-[#f4ecff] to-[#f9eef7] px-5 py-3 lg:px-6">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#9d3df1] text-white">
-              <PieChart className="h-4.5 w-4.5" strokeWidth={1.8} />
-            </div>
-            <div>
-              <h3 className="text-base font-bold lg:text-lg">Subscription Plans</h3>
-              <p className="text-xs font-medium text-[#606a7f] lg:text-sm">Distribution by plan type</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 items-center gap-5 px-5 py-6 lg:grid-cols-[180px_1fr] lg:px-6">
-            <div className="mx-auto h-40 w-40 rounded-full bg-[conic-gradient(#3f80e8_0deg_140deg,#7f55e8_140deg_280deg,#f7a009_280deg_360deg)] p-6">
-              <div className="h-full w-full rounded-full bg-white" />
-            </div>
-            <ul className="space-y-1.5 text-sm lg:text-base">
-              <li className="flex items-center justify-between"><span><span className="mr-2 inline-block h-3 w-3 rounded-full bg-[#3f80e8]" />Basic</span><strong>2</strong></li>
-              <li className="flex items-center justify-between"><span><span className="mr-2 inline-block h-3 w-3 rounded-full bg-[#7f55e8]" />Premium</span><strong>2</strong></li>
-              <li className="flex items-center justify-between"><span><span className="mr-2 inline-block h-3 w-3 rounded-full bg-[#f7a009]" />Enterprise</span><strong>1</strong></li>
-            </ul>
-          </div>
-        </article>
-      </section>
+        <div className="mt-12 space-y-4">
+          {roles.map((role) => {
+            const Icon = role.icon;
 
-      <section className="mx-auto mb-4 grid max-w-[1180px] grid-cols-1 gap-4 xl:grid-cols-2">
-        <article className="overflow-hidden rounded-3xl bg-white shadow-[0_7px_22px_rgba(10,17,31,0.08)]">
-          <div className="flex min-h-16 items-center gap-3 bg-[#e8fbf1] px-5 py-3 lg:px-6">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#0ec35a] text-white">
-              <Award className="h-4.5 w-4.5" strokeWidth={1.8} />
-            </div>
-            <div>
-              <h3 className="text-base font-bold lg:text-lg">Top Performing Businesses</h3>
-              <p className="text-xs font-medium text-[#606a7f] lg:text-sm">Ranked by revenue</p>
-            </div>
-          </div>
-          <div className="grid gap-3 p-4 lg:p-5">
-            {topBusinesses.map((business) => (
-              <article key={business.rank} className="grid grid-cols-[58px_1fr] gap-3 rounded-2xl bg-[#f6f8fc] p-3 lg:grid-cols-[64px_1fr_auto] lg:items-center">
-                <div className="relative h-[58px] w-[58px] overflow-hidden rounded-xl bg-[#d7dbe4] lg:h-[64px] lg:w-[64px]">
-                  <Image src={business.image} alt={business.name} fill sizes="82px" className="object-cover" />
-                  <span className="absolute -left-2 -top-2 grid h-7 w-7 place-items-center rounded-full bg-[#f9a602] text-xs font-bold text-white">{business.rank}</span>
-                </div>
-                <div>
-                  <h4 className="text-base font-bold lg:text-lg">{business.name}</h4>
-                  <p className="mt-1 text-xs text-[#667085] lg:text-sm">{business.orders}</p>
-                  <div className="mt-2 lg:hidden">
-                    <strong className="block text-base text-[#07a34d]">{business.revenue}</strong>
+            return role.active ? (
+              <Link
+                key={role.title}
+                href={role.href}
+                className={`group flex min-h-[94px] items-center justify-between rounded-[20px] bg-gradient-to-r ${role.gradient} px-5 text-white shadow-[0_14px_28px_rgba(85,73,233,0.18)] transition duration-200 hover:scale-[1.02] hover:shadow-[0_22px_38px_rgba(85,73,233,0.25)]`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10">
+                    <Icon className="h-7 w-7" strokeWidth={2.2} />
+                  </div>
+                  <div>
+                    <h2 className="text-[1.7rem] font-semibold leading-tight">{role.title}</h2>
+                    <p className="text-[1.15rem] font-medium text-white/90">{role.subtitle}</p>
                   </div>
                 </div>
-                <div className="hidden text-right lg:block">
-                  <strong className="block text-lg text-[#07a34d]">{business.revenue}</strong>
-                  <span className="inline-flex h-7 items-center rounded-full bg-[#02051f] px-3 text-xs font-bold text-white">{business.plan}</span>
+                <ArrowRight className="h-9 w-9 transition group-hover:translate-x-1" strokeWidth={2.1} />
+              </Link>
+            ) : (
+              <div
+                key={role.title}
+                className={`group flex min-h-[94px] items-center justify-between rounded-[20px] bg-gradient-to-r ${role.gradient} px-5 text-white/95 shadow-[0_14px_28px_rgba(85,73,233,0.12)] transition duration-200 hover:scale-[1.01]`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10">
+                    <Icon className="h-7 w-7" strokeWidth={2.2} />
+                  </div>
+                  <div>
+                    <h2 className="text-[1.7rem] font-semibold leading-tight">{role.title}</h2>
+                    <p className="text-[1.15rem] font-medium text-white/90">{role.subtitle}</p>
+                  </div>
                 </div>
-              </article>
-            ))}
-          </div>
-        </article>
-
-        <article className="overflow-hidden rounded-3xl bg-white shadow-[0_7px_22px_rgba(10,17,31,0.08)]">
-          <div className="flex min-h-16 items-center gap-3 bg-gradient-to-r from-[#e6e8f7] to-[#ece6f0] px-5 py-3 lg:px-6">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#3a7eed] text-white">
-              <Activity className="h-4.5 w-4.5" strokeWidth={1.8} />
-            </div>
-            <div>
-              <h3 className="text-base font-bold lg:text-lg">Subscription Status</h3>
-              <p className="text-xs font-medium text-[#606a7f] lg:text-sm">Current status overview</p>
-            </div>
-          </div>
-          <div className="grid gap-4 p-5 lg:p-5">
-            {[
-              { label: "Active", value: "3 (60%)", color: "#12b981", width: "60%" },
-              { label: "Inactive", value: "1 (20%)", color: "#6b7280", width: "20%" },
-              { label: "Expired", value: "1 (20%)", color: "#ef4444", width: "20%" },
-            ].map((row) => (
-              <div key={row.label} className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-                <span className="h-3 w-3 rounded-full" style={{ background: row.color }} />
-                <span className="text-sm font-semibold lg:text-base">{row.label}</span>
-                <span className="text-sm font-bold lg:text-base">{row.value}</span>
-                <div className="col-span-3 h-2 overflow-hidden rounded-full bg-[#e3e5ea]">
-                  <span className="block h-full rounded-full" style={{ width: row.width, background: row.color }} />
-                </div>
+                <ArrowRight className="h-9 w-9 opacity-90" strokeWidth={2.1} />
               </div>
-            ))}
-          </div>
-        </article>
-      </section>
-
-      <section className="mx-auto rounded-3xl bg-gradient-to-br from-[#5b5ff3] to-[#9121f5] p-4 lg:p-5 max-w-[1180px]">
-        <h3 className="flex items-center gap-2 text-base font-medium text-[#f4f7ff] lg:text-lg">
-          <ShieldCheck className="h-4.5 w-4.5" strokeWidth={1.8} />
-          System Overview
-        </h3>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { value: "3", label: "Active Businesses" },
-            { value: "$71600", label: "Avg Revenue/Business" },
-            { value: "738", label: "Avg Orders/Business" },
-            { value: "7", label: "Avg Users/Business" },
-          ].map((stat) => (
-            <article key={stat.label} className="rounded-2xl bg-white/15 p-3 text-center text-[#f2f5ff]">
-              <strong className="text-2xl lg:text-3xl">{stat.value}</strong>
-              <p className="mt-1 text-xs lg:text-sm">{stat.label}</p>
-            </article>
-          ))}
+            );
+          })}
         </div>
       </section>
-    </AdminShell>
+    </main>
   );
 }
