@@ -75,6 +75,7 @@ export default function BusinessesPage() {
   const [editingBusinessId, setEditingBusinessId] = useState<string | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
+  const [deleteTargetBusiness, setDeleteTargetBusiness] = useState<BusinessItem | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All Status" | BusinessItem["status"]>("All Status");
   const [planFilter, setPlanFilter] = useState<"All Plans" | BusinessItem["plan"]>("All Plans");
@@ -97,6 +98,7 @@ export default function BusinessesPage() {
     status: statusQueryParam,
     page: 1,
   });
+  console.log("Fetched businesses:", businessData);
   const [loadBusinessById, { isFetching: isLoadingBusinessById }] =
     useLazyGetBusinessByIdQuery();
   const [createBusiness, { isLoading: isCreatingBusiness }] = useCreateBusinessMutation();
@@ -231,6 +233,7 @@ export default function BusinessesPage() {
     try {
       await deleteBusinessById(id).unwrap();
       void refetch();
+      setDeleteTargetBusiness(null);
     } catch {
       setSubmitError("Failed to delete business. Please try again.");
     }
@@ -531,27 +534,73 @@ export default function BusinessesPage() {
                 >
                   <Pencil className="h-4 w-4" /> Edit
                 </button>
-                <button
+                {/* <button
                   type="button"
                   className={`inline-flex h-10 items-center justify-center rounded-xl border-2 text-sm font-semibold ${
                     business.status === "Active" ? "border-[#ff9097] text-[#f2202f]" : "border-[#67db94] text-[#0ca94f]"
                   }`}
                 >
                   {business.status === "Active" ? "Deactivate" : "Activate"}
-                </button>
+                </button> */}
                 <button
                   type="button"
-                  disabled={isDeletingBusiness}
-                  onClick={() => void handleDeleteBusiness(business.id)}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border-2 border-[#ff9097] px-4 text-sm text-[#f2202f] disabled:opacity-60"
+                  disabled={isDeletingBusiness || business.status !== "Active"}
+                  onClick={() => {
+                    if (business.status !== "Active") return;
+                    setDeleteTargetBusiness(business);
+                  }}
+                  className={`inline-flex h-10 items-center justify-center rounded-xl border-2 text-sm font-semibold ${
+                    business.status === "Active" ? "border-[#ff9097] text-[#f2202f]" : "border-[#67db94] text-[#0ca94f]"
+                  } ${business.status !== "Active" ? "cursor-not-allowed opacity-50" : ""}`}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  {business.status === "Active" ? "Deactivate" : "Activate"}
                 </button>
               </div>
             </div>
           </article>
         ))}
       </section>
+
+      <Dialog
+        open={Boolean(deleteTargetBusiness)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTargetBusiness(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deactivate business?</DialogTitle>
+            <DialogDescription>
+              {deleteTargetBusiness
+                ? `Are you sure you want to deactivate ${deleteTargetBusiness.name}? This action cannot be undone.`
+                : "Are you sure you want to deactivate this business? This action cannot be undone."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setDeleteTargetBusiness(null)}
+              className="inline-flex h-10 items-center rounded-xl border border-[#d7dbe4] px-4 text-sm font-semibold text-[#374151]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isDeletingBusiness || !deleteTargetBusiness}
+              onClick={() => {
+                if (!deleteTargetBusiness) return;
+                void handleDeleteBusiness(deleteTargetBusiness.id);
+              }}
+              className="inline-flex h-10 items-center rounded-xl bg-[#f2202f] px-4 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {isDeletingBusiness ? "Deactivating..." : "Deactivate"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 }

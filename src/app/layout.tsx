@@ -1,16 +1,12 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
+import { Poppins } from "next/font/google";
 import "./globals.css";
 import ReduxProvider from "@/components/providers/ReduxProvider";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+const poppins = Poppins({
   subsets: ["latin"],
-  variable: "--font-plus-jakarta",
-});
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-space-grotesk",
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-poppins",
 });
 
 export const metadata: Metadata = {
@@ -25,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${plusJakartaSans.variable} ${spaceGrotesk.variable}`}>
+      <body className={poppins.variable}>
         <ReduxProvider>{children}</ReduxProvider>
       </body>
     </html>

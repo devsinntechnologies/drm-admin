@@ -35,7 +35,7 @@ body {
     radial-gradient(circle at 100% 10%, rgba(245, 158, 11, 0.2), transparent 34%),
     linear-gradient(180deg, #f5fbff 0%, #eff4fa 48%, #eef3f8 100%);
   color: var(--text-primary);
-  font-family: var(--font-plus-jakarta), "Segoe UI", sans-serif;
+  font-family: var(--font-poppins), "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -46,7 +46,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-space-grotesk), var(--font-plus-jakarta), "Segoe UI", sans-serif;
+  font-family: var(--font-poppins), "Segoe UI", sans-serif;
   letter-spacing: -0.02em;
 }
 
