@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 import ReduxProvider from "@/components/providers/ReduxProvider";
 
@@ -23,6 +24,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={poppins.variable}>
         <ReduxProvider>{children}</ReduxProvider>
+        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   );

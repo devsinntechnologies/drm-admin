@@ -50,7 +50,7 @@ export default function ActionLogsLayout({ children }: { children: React.ReactNo
     <AdminShell activeTab="action-logs">
       <section className="mx-auto mb-6 flex max-w-7xl flex-col gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.9),rgba(236,253,245,0.76))] px-5 py-5 shadow-[0_12px_28px_rgba(15,23,42,0.1)] lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-center gap-4">
-          <div className="grid h-14.5 w-14.5 shrink-0 place-items-center rounded-2xl bg-linear-to-br from-[#0f172a] to-[#0f766e] text-white shadow-[0_10px_20px_rgba(15,23,42,0.24)]">
+          <div className="grid h-14.5 w-14.5 shrink-0 place-items-center rounded-2xl bg-linear-to-br from-[#0f172a] to-[#1E365B] text-white shadow-[0_10px_20px_rgba(15,23,42,0.24)]">
             <Activity className="h-7 w-7" strokeWidth={1.9} />
           </div>
           <div className="min-w-0">
@@ -117,7 +117,7 @@ export default function ActionLogsLayout({ children }: { children: React.ReactNo
                 href={tab.href}
                 className={`inline-flex h-13 items-center gap-3 rounded-[18px] px-5 text-[0.98rem] font-semibold transition ${
                   active
-                    ? "bg-linear-to-r from-[#0f172a] to-[#0f766e] text-white shadow-[inset_0_2px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(15,23,42,0.24)]"
+                    ? "bg-linear-to-r from-[#0f172a] to-[#1E365B] text-white shadow-[inset_0_2px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(15,23,42,0.24)]"
                     : "text-[#202635]"
                 }`}
               >

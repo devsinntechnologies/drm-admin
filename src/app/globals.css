@@ -69,3 +69,41 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.52);
   box-shadow: 0 20px 36px rgba(15, 23, 42, 0.07);
 }
+
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+button:focus-visible,
+input[type="button"]:focus-visible,
+input[type="submit"]:focus-visible,
+input[type="reset"]:focus-visible {
+  outline: 2px solid #f7822d;
+  outline-offset: 2px;
+}
+
+button:disabled,
+input[type="button"]:disabled,
+input[type="submit"]:disabled,
+input[type="reset"]:disabled {
+  opacity: 0.7;
+}
+
+button[class*="text-white"]:not(:has(.lucide-chevron-down)),
+input[type="button"][class*="text-white"],
+input[type="submit"][class*="text-white"],
+input[type="reset"][class*="text-white"] {
+  background-color: #f7822d !important;
+  border-color: #f7822d !important;
+}
+
+button[class*="text-white"]:not(:has(.lucide-chevron-down)):hover,
+input[type="button"][class*="text-white"]:hover,
+input[type="submit"][class*="text-white"]:hover,
+input[type="reset"][class*="text-white"]:hover {
+  background-color: #e6721f !important;
+  border-color: #e6721f !important;
+}

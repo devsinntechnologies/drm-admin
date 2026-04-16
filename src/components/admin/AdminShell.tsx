@@ -1,5 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Activity, Building2, Cloud, Crown, CreditCard, LogOut, Menu, X } from "lucide-react";
+import { Activity, Building2, Crown, CreditCard, LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -47,8 +48,8 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-[#e5edf5] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] lg:flex">
         <div className="border-b border-[#edf2f7] px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[linear-gradient(145deg,#0f172a,#155e75)] text-cyan-50 shadow-[0_12px_24px_rgba(15,23,42,0.18)]">
-              <Cloud className="h-5 w-5" strokeWidth={1.8} />
+            <div >
+              <Image src="/logo.png" alt="Restaurant Manager logo" width={150} height={150} className="h-20 w-20 object-contain" priority />
             </div>
             <div className="min-w-0">
               <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">Restaurant Manager</h1>
@@ -69,7 +70,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                   className={cn(
                     "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition",
                     active
-                      ? "bg-[#16595B] text-white shadow-[0_10px_20px_rgba(31,42,86,0.18)]"
+                      ? "bg-[#1E365B] text-white shadow-[0_10px_20px_rgba(31,42,86,0.18)]"
                       : "text-[#334155] hover:bg-[#f8fafc] hover:text-[#111827]",
                   )}
                 >
@@ -97,8 +98,8 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_0%,rgba(14,165,233,0.14),transparent_38%),radial-gradient(circle_at_0%_100%,rgba(15,118,110,0.12),transparent_42%)]" />
           <div className="relative mx-auto flex w-full max-w-7xl items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3 md:gap-4">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[linear-gradient(145deg,#0f172a,#155e75)] text-cyan-50 shadow-[0_12px_24px_rgba(15,23,42,0.28)] md:h-12 md:w-12 lg:h-14 lg:w-14">
-                <Cloud className="h-6 w-6" strokeWidth={1.8} />
+              <div >
+                <Image src="/logo.png" alt="Restaurant Manager logo" width={150} height={150} className="h-16 w-16 object-contain" priority />
               </div>
               <div className="min-w-0">
                 <h1 className="truncate text-lg font-semibold leading-tight text-[#0f172a] md:text-xl lg:text-2xl">Restaurant Manager</h1>
@@ -135,7 +136,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
             <div className="flex items-center justify-between border-b border-[#edf2f7] px-5 py-4">
               <div className="flex items-center gap-3">
                 <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[linear-gradient(145deg,#0f172a,#155e75)] text-cyan-50 shadow-[0_12px_24px_rgba(15,23,42,0.18)]">
-                  <Cloud className="h-5 w-5" strokeWidth={1.8} />
+                  <Image src="/logo.png" alt="Restaurant Manager logo" width={20} height={20} className="h-5 w-5 object-contain" priority />
                 </div>
                 <div className="min-w-0">
                   <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">Restaurant Manager</h1>

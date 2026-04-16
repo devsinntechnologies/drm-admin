@@ -11,8 +11,12 @@ export type SubscribedBusiness = {
 export type Plan = {
   id: string;
   planName: string;
+  displayName?: string;
   price: number;
   description: string;
+  features?: string[];
+  duration?: string;
+  mostPopular?: boolean;
   isActive: boolean;
   subscribedBusinesses: SubscribedBusiness[];
   createdAt: string;
@@ -30,12 +34,31 @@ export type PlanApiResponse = {
   plans: Plan[];
 };
 
+export type CreatePlanPayload = {
+  planName: string;
+  displayName: string;
+  price: number;
+  description: string;
+  features: string[];
+  duration: string;
+  mostPopular: boolean;
+  isActive: boolean;
+};
+
+export type CreatePlanResponse = Plan;
+
+export type PatchPlanPayload = {
+  id: string;
+  body: CreatePlanPayload;
+};
+
 export const planApi = createApi({
   reducerPath: "planApi",
   baseQuery: fetchBaseQuery({
     baseUrl: BASE_URL,
     prepareHeaders: (headers) => {
       headers.set("accept", "*/*");
+      headers.set("Content-Type", "application/json");
 
       if (typeof window !== "undefined") {
         const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
@@ -51,7 +74,27 @@ export const planApi = createApi({
     getPlans: builder.query<PlanApiResponse, void>({
       query: () => "/plan",
     }),
+    createPlan: builder.mutation<CreatePlanResponse, CreatePlanPayload>({
+      query: (body) => ({
+        url: "/plan",
+        method: "POST",
+        body,
+      }),
+    }),
+    patchPlanById: builder.mutation<Plan, PatchPlanPayload>({
+      query: ({ id, body }) => ({
+        url: `/plan/${id}`,
+        method: "PATCH",
+        body,
+      }),
+    }),
+    deletePlanById: builder.mutation<{ success?: boolean } | void, string>({
+      query: (id) => ({
+        url: `/plan/${id}`,
+        method: "DELETE",
+      }),
+    }),
   }),
 });
 
-export const { useGetPlansQuery } = planApi;
+export const { useGetPlansQuery, useCreatePlanMutation, usePatchPlanByIdMutation, useDeletePlanByIdMutation } = planApi;

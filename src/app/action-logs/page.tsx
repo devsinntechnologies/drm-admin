@@ -567,7 +567,7 @@ export default function ActionLogsPage() {
               key={n}
               onClick={() => setPage(n)}
               className={`grid h-8 w-8 place-items-center rounded-xl border border-[#e5e7eb] ${
-                n === page ? "bg-[#0f766e] text-white" : "bg-white"
+                n === page ? "bg-[#1E365B] text-white" : "bg-white"
               }`}
             >
               {n}

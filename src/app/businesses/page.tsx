@@ -93,12 +93,11 @@ export default function BusinessesPage() {
   const { data: planData, isLoading: isLoadingPlans } = useGetPlansQuery();
   const statusQueryParam: BusinessStatus | undefined =
     statusFilter === "All Status" ? undefined : (statusFilter.toLowerCase() as BusinessStatus);
-  const { data: businessData, refetch } = useGetBusinessesQuery({
+  const { data: businessData, isLoading: isLoadingBusinesses, isFetching: isFetchingBusinesses, refetch } = useGetBusinessesQuery({
     search: searchTerm || undefined,
     status: statusQueryParam,
     page: 1,
   });
-  console.log("Fetched businesses:", businessData);
   const [loadBusinessById, { isFetching: isLoadingBusinessById }] =
     useLazyGetBusinessByIdQuery();
   const [createBusiness, { isLoading: isCreatingBusiness }] = useCreateBusinessMutation();
@@ -147,6 +146,8 @@ export default function BusinessesPage() {
       return planOk;
     });
   }, [mappedBusinesses, planFilter]);
+
+  const showSkeleton = isLoadingBusinesses && !businessData;
 
   const handleFormChange = (field: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -243,7 +244,7 @@ export default function BusinessesPage() {
     <AdminShell activeTab="businesses">
       <section className="mx-auto mb-5 flex max-w-7xl items-center justify-between gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.9),rgba(236,253,245,0.78))] px-6 py-5 shadow-[0_12px_28px_rgba(7,16,34,0.1)]">
         <div className="flex items-center gap-4">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#0f766e] text-white shadow-[0_10px_18px_rgba(15,118,110,0.28)]">
+          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#1E365B] text-white shadow-[0_10px_18px_rgba(15,118,110,0.28)]">
             <Building2 className="h-6 w-6" strokeWidth={1.8} />
           </div>
           <div>
@@ -262,7 +263,7 @@ export default function BusinessesPage() {
           }}
         >
           <DialogTrigger asChild>
-            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl bg-linear-to-r from-[#0f172a] to-[#0f766e] px-5 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(15,23,42,0.22)]">
+            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl bg-linear-to-r from-[#0f172a] to-[#1E365B] px-5 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(15,23,42,0.22)]">
               <Plus className="h-4 w-4" />
               Add Business
             </button>
@@ -397,83 +398,121 @@ export default function BusinessesPage() {
       </section>
 
       <section className="mx-auto mb-5 grid max-w-7xl grid-cols-1 gap-3 rounded-3xl border border-[#e5edf5] bg-white/85 p-4 shadow-[0_10px_26px_rgba(7,16,34,0.08)] lg:grid-cols-3">
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
-          placeholder="Search businesses..."
-          className="h-11 rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-4 text-sm text-[#677084] outline-none focus:ring-2 focus:ring-[#0f766e]/25"
-        />
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => {
-              setStatusOpen((v) => !v);
-              setPlanOpen(false);
-            }}
-            className="flex h-11 w-full items-center justify-between rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-4 text-sm text-[#677084]"
-          >
-            {statusFilter} <ChevronDown className="h-4 w-4" />
-          </button>
-          {statusOpen && (
-            <div className="absolute left-0 top-13 z-20 w-full rounded-xl border border-[#e2e5ee] bg-white p-2 shadow-[0_12px_30px_rgba(15,23,42,0.12)]">
-              {["All Status", "Active", "Inactive", "Expired"].map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => {
-                    const nextStatus = item as typeof statusFilter;
-                    setStatusFilter(nextStatus);
-                    setStatusOpen(false);
-                  }}
-                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
-                    statusFilter === item ? "bg-[#eef0f6] font-semibold" : "hover:bg-[#f3f5f9]"
-                  }`}
-                >
-                  {item}
-                  {statusFilter === item && <span>✓</span>}
-                </button>
-              ))}
+        {showSkeleton ? (
+          <>
+            <div className="h-11 animate-pulse rounded-xl bg-[#edf2f7]" />
+            <div className="h-11 animate-pulse rounded-xl bg-[#edf2f7]" />
+            <div className="h-11 animate-pulse rounded-xl bg-[#edf2f7]" />
+          </>
+        ) : (
+          <>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search businesses..."
+              className="h-11 rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-4 text-sm text-[#677084] outline-none focus:ring-2 focus:ring-[#1E365B]/25"
+            />
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusOpen((v) => !v);
+                  setPlanOpen(false);
+                }}
+                className="flex h-11 w-full items-center justify-between rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-4 text-sm text-[#677084]"
+              >
+                {statusFilter} <ChevronDown className="h-4 w-4" />
+              </button>
+              {statusOpen && (
+                <div className="absolute left-0 top-13 z-20 w-full rounded-xl border border-[#e2e5ee] bg-white p-2 shadow-[0_12px_30px_rgba(15,23,42,0.12)]">
+                  {['All Status', 'Active', 'Inactive', 'Expired'].map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => {
+                        const nextStatus = item as typeof statusFilter;
+                        setStatusFilter(nextStatus);
+                        setStatusOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
+                        statusFilter === item ? 'bg-[#eef0f6] font-semibold' : 'hover:bg-[#f3f5f9]'
+                      }`}
+                    >
+                      {item}
+                      {statusFilter === item && <span>✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => {
-              setPlanOpen((v) => !v);
-              setStatusOpen(false);
-            }}
-            className="flex h-11 w-full items-center justify-between rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-4 text-sm text-[#677084]"
-          >
-            {planFilter} <ChevronDown className="h-4 w-4" />
-          </button>
-          {planOpen && (
-            <div className="absolute left-0 top-13 z-20 w-full rounded-xl border border-[#e2e5ee] bg-white p-2 shadow-[0_12px_30px_rgba(15,23,42,0.12)]">
-              {["All Plans", "Basic", "Premium", "Enterprise"].map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => {
-                    const nextPlan = item as typeof planFilter;
-                    setPlanFilter(nextPlan);
-                    setPlanOpen(false);
-                  }}
-                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
-                    planFilter === item ? "bg-[#eef0f6] font-semibold" : "hover:bg-[#f3f5f9]"
-                  }`}
-                >
-                  {item}
-                  {planFilter === item && <span>✓</span>}
-                </button>
-              ))}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setPlanOpen((v) => !v);
+                  setStatusOpen(false);
+                }}
+                className="flex h-11 w-full items-center justify-between rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-4 text-sm text-[#677084]"
+              >
+                {planFilter} <ChevronDown className="h-4 w-4" />
+              </button>
+              {planOpen && (
+                <div className="absolute left-0 top-13 z-20 w-full rounded-xl border border-[#e2e5ee] bg-white p-2 shadow-[0_12px_30px_rgba(15,23,42,0.12)]">
+                  {['All Plans', 'Basic', 'Premium', 'Enterprise'].map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => {
+                        const nextPlan = item as typeof planFilter;
+                        setPlanFilter(nextPlan);
+                        setPlanOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
+                        planFilter === item ? 'bg-[#eef0f6] font-semibold' : 'hover:bg-[#f3f5f9]'
+                      }`}
+                    >
+                      {item}
+                      {planFilter === item && <span>✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </section>
 
       <section className="mx-auto grid max-w-7xl grid-cols-1 gap-5 lg:grid-cols-3">
-        {filteredBusinesses.map((business) => (
+        {showSkeleton
+          ? Array.from({ length: 6 }, (_, index) => (
+              <article
+                key={index}
+                className="overflow-hidden rounded-3xl border border-[#e4ebf4] bg-white/90 shadow-[0_10px_24px_rgba(10,17,31,0.1)]"
+              >
+                <div className="h-36 animate-pulse bg-[#edf2f7]" />
+                <div className="p-5">
+                  <div className="h-5 w-2/3 animate-pulse rounded bg-[#edf2f7]" />
+                  <div className="mt-3 h-4 w-1/2 animate-pulse rounded bg-[#edf2f7]" />
+                  <div className="mt-4 space-y-2">
+                    <div className="h-4 animate-pulse rounded bg-[#edf2f7]" />
+                    <div className="h-4 animate-pulse rounded bg-[#edf2f7]" />
+                    <div className="h-4 animate-pulse rounded bg-[#edf2f7]" />
+                  </div>
+                  <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-[#f5f6fa] p-3">
+                    <div className="h-10 animate-pulse rounded bg-[#edf2f7]" />
+                    <div className="h-10 animate-pulse rounded bg-[#edf2f7]" />
+                    <div className="h-10 animate-pulse rounded bg-[#edf2f7]" />
+                  </div>
+                  <div className="mt-4 grid grid-cols-1 gap-2 lg:grid-cols-[1fr_1fr_auto]">
+                    <div className="h-10 animate-pulse rounded-xl bg-[#edf2f7]" />
+                    <div className="h-10 animate-pulse rounded-xl bg-[#edf2f7]" />
+                    <div className="h-10 w-10 animate-pulse rounded-xl bg-[#edf2f7]" />
+                  </div>
+                </div>
+              </article>
+            ))
+          : filteredBusinesses.map((business) => (
           <article
             key={business.id}
             id={`business-${business.name.replace(/\\s+/g, "-").toLowerCase()}`}

@@ -66,7 +66,7 @@ export default function DashboardPage() {
     <AdminShell activeTab="dashboard">
       <section className="mx-auto mb-5 grid max-w-7xl grid-cols-1 gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.82),rgba(240,249,255,0.72))] p-5 shadow-[0_18px_30px_rgba(15,23,42,0.09)] lg:grid-cols-[1.2fr_0.8fr]">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0f766e]">Operational Snapshot</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1E365B]">Operational Snapshot</p>
           <h2 className="mt-2 text-2xl font-semibold text-[#0f172a] lg:text-3xl">Control Center Dashboard</h2>
           <p className="mt-2 max-w-2xl text-sm text-[#5b657a] lg:text-base">
             Monitor plan performance, track subscription health, and identify top-performing businesses at a glance.
@@ -175,7 +175,7 @@ export default function DashboardPage() {
       <section className="mx-auto mb-4 grid max-w-7xl grid-cols-1 gap-4 xl:grid-cols-2">
         <article className="overflow-hidden rounded-3xl border border-white bg-white/85 shadow-[0_12px_24px_rgba(10,17,31,0.08)]">
           <div className="flex min-h-16 items-center gap-4 bg-[linear-gradient(120deg,#dcfce7_0%,#ecfeff_100%)] px-6 py-4 lg:px-7">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#0f766e] text-white">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#1E365B] text-white">
               <Award className="h-5 w-5" strokeWidth={1.8} />
             </div>
             <div>
@@ -235,7 +235,7 @@ export default function DashboardPage() {
         </article>
       </section>
 
-      <section className="mx-auto max-w-7xl rounded-3xl bg-linear-to-br from-[#0f172a] to-[#0f766e] p-4 shadow-[0_14px_26px_rgba(15,23,42,0.3)] lg:p-5">
+      <section className="mx-auto max-w-7xl rounded-3xl bg-linear-to-br from-[#0f172a] to-[#1E365B] p-4 shadow-[0_14px_26px_rgba(15,23,42,0.3)] lg:p-5">
         <h3 className="flex items-center gap-2 text-base font-medium text-[#f4f7ff] lg:text-lg">
           <ShieldCheck className="h-4.5 w-4.5" strokeWidth={1.8} />
           System Overview

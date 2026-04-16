@@ -35,7 +35,7 @@ export default function LoginPage() {
     <main className="min-h-screen px-4 py-8">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-305 items-center justify-center">
         <section className="grid w-full overflow-hidden rounded-[36px] bg-white shadow-[0_28px_70px_rgba(31,41,55,0.22)] lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="relative overflow-hidden bg-linear-to-br from-[#0b1220] via-[#0f2d5c] to-[#0f766e] p-8 text-white sm:p-10">
+          <div className="relative overflow-hidden bg-linear-to-br from-[#0b1220] via-[#0f2d5c] to-[#1E365B] p-8 text-white sm:p-10">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.2),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(56,189,248,0.2),transparent_36%)]" />
             <div className="relative z-1">
               <Link href="/" className="inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-sm font-medium text-white/95 transition hover:bg-white/18">

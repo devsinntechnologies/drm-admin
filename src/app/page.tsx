@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, ChefHat, ClipboardList, Crown, LayoutDashboard } from "lucide-react";
+import Image from "next/image";
 
 const roles = [
   {
@@ -14,7 +15,7 @@ const roles = [
     title: "Admin User",
     subtitle: "Admin",
     href: "#",
-    gradient: "from-[#0f766e] to-[#0ea5a4]",
+    gradient: "from-[#1E365B] to-[#0ea5a4]",
     icon: LayoutDashboard,
     active: false,
   },
@@ -40,12 +41,12 @@ export default function HomePage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <section className="portal-surface w-full max-w-115 rounded-4xl px-6 pb-10 pt-10 sm:px-10">
-        <div className="mx-auto grid h-25 w-25 place-items-center rounded-full bg-linear-to-br from-[#0f172a] to-[#0f766e] text-white shadow-[0_16px_30px_rgba(15,23,42,0.32)]">
-          <ChefHat className="h-12 w-12" strokeWidth={2} />
+        <div className="mx-auto grid place-items-center">
+          <Image src="/logo2.png" alt="Restaurant Manager logo" width={250} height={250} className="  object-contain" priority />
         </div>
 
         <div className="mt-6 text-center">
-          <h1 className="text-[2rem] font-semibold tracking-tight text-[#0f172a]">Restaurant Manager</h1>
+          {/* <h1 className="text-[2rem] font-semibold tracking-tight text-[#0f172a]">Restaurant Manager</h1> */}
           <p className="mt-2 text-[1.1rem] text-[#5b657a]">Select your role to get started</p>
         </div>
 
