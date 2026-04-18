@@ -22,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={poppins.variable}>
+      <body className={poppins.variable} suppressHydrationWarning>
         <ReduxProvider>{children}</ReduxProvider>
         <Toaster position="top-right" richColors closeButton />
       </body>

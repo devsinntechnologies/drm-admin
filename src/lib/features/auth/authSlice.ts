@@ -3,9 +3,20 @@ import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/tool
 export type LoginCredentials = {
   email: string;
   password: string;
+  role?: string;
 };
 
 type LoginResponse = {
+  id?: string;
+  email?: string;
+  name?: string;
+  phone?: string;
+  roleName?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  businessId?: string;
+  business_id?: string;
   token?: string;
   access_token?: string;
   message?: string;
@@ -16,16 +27,39 @@ type LoginResponse = {
 type AuthState = {
   user: LoginResponse | null;
   token: string | null;
+  role: string | null;
   isLoading: boolean;
   error: string | null;
 };
 
-const initialState: AuthState = {
-  user: null,
-  token: null,
-  isLoading: false,
-  error: null,
-};
+function getInitialAuthState(): AuthState {
+  if (typeof window === "undefined") {
+    return {
+      user: null,
+      token: null,
+      role: null,
+      isLoading: false,
+      error: null,
+    };
+  }
+
+  const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+  const role =
+    localStorage.getItem("roleName") ||
+    localStorage.getItem("auth_role") ||
+    null;
+  const businessId = localStorage.getItem("businessId");
+
+  return {
+    user: businessId ? { businessId } : null,
+    token,
+    role,
+    isLoading: false,
+    error: null,
+  };
+}
+
+const initialState: AuthState = getInitialAuthState();
 
 export const loginUser = createAsyncThunk<
   LoginResponse,
@@ -73,9 +107,14 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.token = null;
+      state.role = null;
       state.error = null;
       if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("roleName");
+        localStorage.removeItem("businessId");
         localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_role");
       }
     },
     setToken: (state, action: PayloadAction<string | null>) => {
@@ -95,6 +134,40 @@ const authSlice = createSlice({
           (action.payload.token as string | undefined) ||
           (action.payload.access_token as string | undefined) ||
           null;
+        state.role =
+          action.payload.roleName ||
+          (action.meta.arg.role as string | undefined) ||
+          null;
+
+        if (typeof window !== "undefined") {
+          if (state.token) {
+            localStorage.setItem("token", state.token);
+            localStorage.setItem("auth_token", state.token);
+          } else {
+            localStorage.removeItem("token");
+            localStorage.removeItem("auth_token");
+          }
+
+          if (state.role) {
+            localStorage.setItem("roleName", state.role);
+            localStorage.setItem("auth_role", state.role);
+          } else {
+            localStorage.removeItem("roleName");
+            localStorage.removeItem("auth_role");
+          }
+
+          const businessId =
+            typeof action.payload.businessId === "string"
+              ? action.payload.businessId
+              : typeof action.payload.business_id === "string"
+                ? action.payload.business_id
+              : null;
+          if (businessId) {
+            localStorage.setItem("businessId", businessId);
+          } else {
+            localStorage.removeItem("businessId");
+          }
+        }
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;

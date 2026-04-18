@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ChefHat, Lock, Mail, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,17 +17,28 @@ const gallery = [
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, isLoading, error, clearError } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const allowedRoles = ["super_admin", "business_admin", "waiter", "kitchen"];
+  const roleFromQuery = searchParams.get("role");
+  const selectedRole =
+    roleFromQuery && allowedRoles.includes(roleFromQuery)
+      ? roleFromQuery
+      : "super_admin";
+  const selectedTitle = searchParams.get("title") || "Super Admin";
+  const selectedSubtitle = searchParams.get("subtitle") || "Super-Admin";
+
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     clearError();
 
-    const isSuccess = await login({ email, password });
+    const isSuccess = await login({ email, password, role: selectedRole });
     if (isSuccess) {
-      router.push("/dashboard");
+      router.push(selectedRole === "business_admin" ? "/dashboard" : "/dashboard");
     }
   };
 
@@ -49,7 +60,7 @@ export default function LoginPage() {
                 </div>
                 <div>
                   <p className="text-sm uppercase tracking-[0.22em] text-white/70">Secure Access</p>
-                  <h1 className="text-4xl font-semibold tracking-[-0.03em]">Super Admin Login</h1>
+                  <h1 className="text-4xl font-semibold tracking-[-0.03em]">{selectedTitle} Login</h1>
                 </div>
               </div>
 
@@ -76,7 +87,7 @@ export default function LoginPage() {
               <div className="mb-8">
                 <span className="inline-flex items-center gap-2 rounded-full bg-[#f1f2ff] px-4 py-2 text-sm font-semibold text-[#5e4ff2]">
                   <ShieldCheck className="h-4 w-4" />
-                  SUPER-ADMIN
+                  {selectedSubtitle.toUpperCase()}
                 </span>
                 <h2 className="mt-5 text-4xl font-semibold tracking-[-0.03em] text-[#161c2d]">Welcome back</h2>
                 <p className="mt-3 text-lg text-[#6d7488]">Sign in to continue managing your restaurant network.</p>

@@ -16,11 +16,11 @@ import AdminShell from "@/components/admin/AdminShell";
 import { useGetPlansQuery } from "@/hooks/usePlan";
 
 const topBusinesses = [
-  { rank: 1, name: "The Golden Spoon", orders: "1250 orders", revenue: "$125.0K", plan: "Enterprise", image: "/business/pic1.jpeg" },
-  { rank: 2, name: "Pasta Palace", orders: "890 orders", revenue: "$89.0K", plan: "Premium", image: "/business/pic2.jpeg" },
-  { rank: 3, name: "Sushi World", orders: "520 orders", revenue: "$67.0K", plan: "Premium", image: "/business/pic4.jpeg" },
-  { rank: 4, name: "Burger Haven", orders: "650 orders", revenue: "$45.0K", plan: "Basic", image: "/business/pic3.jpeg" },
-  { rank: 5, name: "Taco Fiesta", orders: "380 orders", revenue: "$32.0K", plan: "Basic", image: "/business/pic5.jpeg" },
+  { rank: 1, name: "The Golden Spoon", orders: "1250 orders", revenue: "125.0K", plan: "Enterprise", image: "/business/pic1.jpeg" },
+  { rank: 2, name: "Pasta Palace", orders: "890 orders", revenue: "89.0K", plan: "Premium", image: "/business/pic2.jpeg" },
+  { rank: 3, name: "Sushi World", orders: "520 orders", revenue: "67.0K", plan: "Premium", image: "/business/pic4.jpeg" },
+  { rank: 4, name: "Burger Haven", orders: "650 orders", revenue: "45.0K", plan: "Basic", image: "/business/pic3.jpeg" },
+  { rank: 5, name: "Taco Fiesta", orders: "380 orders", revenue: "32.0K", plan: "Basic", image: "/business/pic5.jpeg" },
 ];
 
 export default function DashboardPage() {
@@ -54,7 +54,7 @@ export default function DashboardPage() {
     },
     {
       title: "Total Revenue",
-      value: "$358.0K",
+      value: "358.0K",
       sub: "Across all businesses",
       bg: "from-[#b45309] to-[#ef4444]",
       icon: <DollarSign className="h-5 w-5" strokeWidth={1.8} />,
@@ -243,7 +243,7 @@ export default function DashboardPage() {
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             { value: "3", label: "Active Businesses" },
-            { value: "$71600", label: "Avg Revenue/Business" },
+            { value: "71600", label: "Avg Revenue/Business" },
             { value: "738", label: "Avg Orders/Business" },
             { value: "7", label: "Avg Users/Business" },
           ].map((stat) => (

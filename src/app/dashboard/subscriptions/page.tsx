@@ -37,11 +37,11 @@ type PlanFormState = {
 };
 
 const initialRows: RowItem[] = [
-  { name: "The Golden Spoon", owner: "John Smith", image: "/business/pic1.jpeg", plan: "Enterprise", status: "Active", expires: "365 days", revenue: "$125.0K" },
-  { name: "Pasta Palace", owner: "Maria Rossi", image: "/business/pic2.jpeg", plan: "Premium", status: "Active", expires: "183 days", revenue: "$89.0K" },
-  { name: "Burger Haven", owner: "Mike Johnson", image: "/business/pic3.jpeg", plan: "Basic", status: "Active", expires: "92 days", revenue: "$45.0K" },
-  { name: "Sushi World", owner: "Kenji Tanaka", image: "/business/pic4.jpeg", plan: "Premium", status: "Expired", expires: "Expired", revenue: "$67.0K" },
-  { name: "Taco Fiesta", owner: "Carlos Rodriguez", image: "/business/pic5.jpeg", plan: "Basic", status: "Inactive", expires: "60 days", revenue: "$32.0K" },
+  { name: "The Golden Spoon", owner: "John Smith", image: "/business/pic1.jpeg", plan: "Enterprise", status: "Active", expires: "365 days", revenue: "125.0K" },
+  { name: "Pasta Palace", owner: "Maria Rossi", image: "/business/pic2.jpeg", plan: "Premium", status: "Active", expires: "183 days", revenue: "89.0K" },
+  { name: "Burger Haven", owner: "Mike Johnson", image: "/business/pic3.jpeg", plan: "Basic", status: "Active", expires: "92 days", revenue: "45.0K" },
+  { name: "Sushi World", owner: "Kenji Tanaka", image: "/business/pic4.jpeg", plan: "Premium", status: "Expired", expires: "Expired", revenue: "67.0K" },
+  { name: "Taco Fiesta", owner: "Carlos Rodriguez", image: "/business/pic5.jpeg", plan: "Basic", status: "Inactive", expires: "60 days", revenue: "32.0K" },
 ];
 
 const planOptions: RowItem["plan"][] = ["Basic", "Premium", "Enterprise"];
@@ -151,7 +151,7 @@ function PlanCard({ plan, onEdit, onDelete }: { plan: Plan; onEdit: (plan: Plan)
           </button>
 
           <div className="text-right">
-            <p className="text-xl font-semibold text-[#111827]">${plan.price}</p>
+            <p className="text-xl font-semibold text-[#111827]">{plan.price}</p>
             <p className="text-xs uppercase tracking-[0.2em] text-[#8a93a8]">{plan.duration || "monthly"}</p>
           </div>
         </div>

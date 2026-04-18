@@ -1,10 +1,13 @@
+ // @ts-nocheck
+"use client";
 import Image from "next/image";
 import Link from "next/link";
-import { Activity, Building2, Crown, CreditCard, LogOut, Menu, X } from "lucide-react";
-import { useState } from "react";
+import { Activity, Building2, Crown, CreditCard, LayoutGrid, LogOut, Menu, ReceiptText, Shapes, Store, Users, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
-type TabKey = "dashboard" | "businesses" | "subscriptions" | "action-logs";
+type TabKey = "dashboard" | "businesses" | "subscriptions" | "action-logs" | "orders" | "products" | "categories" | "tables" | "invoices" | "users";
 
 type AdminShellProps = {
   activeTab: TabKey;
@@ -21,25 +24,89 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
   {
     key: "businesses",
     label: "Businesses",
-    href: "/businesses",
+    href: "/dashboard/businesses",
     icon: <Building2 className="h-5 w-5" />,
   },
   {
     key: "subscriptions",
     label: "Subscriptions",
-    href: "/subscriptions",
+    href: "/dashboard/subscriptions",
     icon: <CreditCard className="h-5 w-5" />,
   },
   {
     key: "action-logs",
     label: "Action Logs",
-    href: "/action-logs",
+    href: "/dashboard/action-logs",
     icon: <Activity className="h-5 w-5" />,
+  },
+  {
+    key: "products",
+    label: "Products",
+    href: "/dashboard/products",
+    icon: <LayoutGrid className="h-5 w-5" />,
+  },
+  {
+    key: "categories",
+    label: "Categories",
+    href: "/dashboard/categories",
+    icon: <Shapes className="h-5 w-5" />,
+  },
+  {
+    key: "tables",
+    label: "Restaurant Tables",
+    href: "/dashboard/tables",
+    icon: <Store className="h-5 w-5" />,
+  },
+  {
+    key: "invoices",
+    label: "Invoices",
+    href: "/dashboard/invoices",
+    icon: <ReceiptText className="h-5 w-5" />,
+  },
+   {
+    key: "orders",
+    label: "Orders",
+    href: "/dashboard/orders",
+    icon: <ReceiptText className="h-5 w-5" />,
+  },
+  {
+    key: "users",
+    label: "Users",
+    href: "/dashboard/users",
+    icon: <Users className="h-5 w-5" />,
   },
 ];
 
+function getVisibleTabs(role: string | null) {
+  if (role === "business_admin") {
+    return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" );
+  }
+
+  return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "action-logs");
+}
+
 export default function AdminShell({ activeTab, children }: AdminShellProps) {
+  const { role } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [resolvedRole, setResolvedRole] = useState<string | null>(() => {
+    if (role) return role;
+    if (typeof window === "undefined") return null;
+
+    return localStorage.getItem("roleName") || localStorage.getItem("auth_role") || localStorage.getItem("role") || null; 
+  });
+
+  useEffect(() => {
+    if (role) {
+      setResolvedRole(role);
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      setResolvedRole(localStorage.getItem("roleName") || localStorage.getItem("auth_role"));
+    }
+  }, [role]);
+
+  const visibleTabs = getVisibleTabs(resolvedRole);
 
   const closeMobileNav = () => setMobileNavOpen(false);
 
@@ -61,7 +128,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
         <div className="flex flex-1 flex-col px-3 py-4">
           <div className="mb-3 px-2 text-xs font-semibold tracking-[0.12em] text-[#94a3b8] uppercase">Navigation</div>
           <nav className="flex flex-1 flex-col gap-1">
-            {tabs.map((tab) => {
+            {visibleTabs.map((tab) => {
               const active = activeTab === tab.key;
               return (
                 <Link
@@ -157,7 +224,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
             <div className="flex flex-1 flex-col px-3 py-4">
               <div className="mb-3 px-2 text-xs font-semibold tracking-[0.12em] text-[#94a3b8] uppercase">Navigation</div>
               <nav className="flex flex-1 flex-col gap-1">
-                {tabs.map((tab) => {
+                {visibleTabs.map((tab) => {
                   const active = activeTab === tab.key;
                   return (
                     <Link

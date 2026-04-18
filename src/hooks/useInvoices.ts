@@ -1,0 +1,126 @@
+import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+
+export type InvoiceStatus = "pending" | "paid" | "overdue" | string;
+
+export interface InvoiceItem {
+  productname: string;
+  image?: string;
+  quantity: number;
+  price: string;
+}
+
+export interface InvoiceRecord {
+  uuid: string;
+  invoiceNumber: string;
+  status: InvoiceStatus;
+  orderNumber: string;
+  businessName: string;
+  orderId: string;
+  totalPrice: string;
+  deliveryCharges: string | null;
+  packagingPrice: string | null;
+  Items: InvoiceItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InvoicesResponse {
+  data: InvoiceRecord[];
+  total: number;
+  page: number;
+  last_page: number;
+}
+
+interface UseInvoicesOptions {
+  page?: number;
+  limit?: number;
+}
+
+export function useInvoices(options: UseInvoicesOptions = {}) {
+  const { page = 1, limit = 20 } = options;
+  const { token } = useAuth();
+
+  const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    last_page: 1,
+  });
+
+  const fetchInvoices = useCallback(async (pageNum: number = 1) => {
+    let authToken = token;
+    if (!authToken && typeof window !== "undefined") {
+      authToken = localStorage.getItem("auth_token");
+    }
+
+    if (!authToken) {
+      setError("No authentication token available");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const url = new URL("https://vendor.umazing.shop/invoice");
+      url.searchParams.append("page", String(pageNum));
+      if (limit) {
+        url.searchParams.append("limit", String(limit));
+      }
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch invoices: ${response.statusText}`);
+      }
+
+      const payload: InvoicesResponse = await response.json();
+      setInvoices(payload.data ?? []);
+      setPagination({
+        total: payload.total ?? 0,
+        page: payload.page ?? pageNum,
+        last_page: payload.last_page ?? 1,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An error occurred while fetching invoices";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, limit]);
+
+  useEffect(() => {
+    fetchInvoices(page);
+  }, [page, fetchInvoices]);
+
+  const nextPage = useCallback(() => {
+    if (pagination.page < pagination.last_page) {
+      fetchInvoices(pagination.page + 1);
+    }
+  }, [fetchInvoices, pagination.last_page, pagination.page]);
+
+  const prevPage = useCallback(() => {
+    if (pagination.page > 1) {
+      fetchInvoices(pagination.page - 1);
+    }
+  }, [fetchInvoices, pagination.page]);
+
+  return {
+    invoices,
+    loading,
+    error,
+    pagination,
+    nextPage,
+    prevPage,
+    refetch: fetchInvoices,
+  };
+}

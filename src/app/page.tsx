@@ -6,34 +6,30 @@ const roles = [
   {
     title: "Super Admin",
     subtitle: "Super-Admin",
-    href: "/login",
+    role: "super_admin",
     gradient: "from-[#f59e0b] to-[#ea580c]",
     icon: Crown,
-    active: true,
   },
   {
-    title: "Admin User",
+    title: "Business Admin",
     subtitle: "Admin",
-    href: "#",
+    role: "business_admin",
     gradient: "from-[#1E365B] to-[#0ea5a4]",
     icon: LayoutDashboard,
-    active: false,
   },
   {
     title: "John Waiter",
     subtitle: "Waiter",
-    href: "#",
+    role: "waiter",
     gradient: "from-[#3b82f6] to-[#2563eb]",
     icon: ClipboardList,
-    active: false,
   },
   {
     title: "Chef Mike",
     subtitle: "Kitchen",
-    href: "#",
+    role: "kitchen",
     gradient: "from-[#1d4ed8] to-[#0ea5e9]",
     icon: ChefHat,
-    active: false,
   },
 ];
 
@@ -53,11 +49,12 @@ export default function HomePage() {
         <div className="mt-10 space-y-3.5">
           {roles.map((role) => {
             const Icon = role.icon;
+            const href = `/login?role=${encodeURIComponent(role.role)}&title=${encodeURIComponent(role.title)}&subtitle=${encodeURIComponent(role.subtitle)}`;
 
             return (
               <Link
                 key={role.title}
-                href={role.href}
+                href={href}
                 className={`group flex min-h-21.5 items-center justify-between rounded-3xl bg-linear-to-r ${role.gradient} px-6 text-white shadow-[0_12px_20px_rgba(15,23,42,0.22)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(15,23,42,0.26)]`}
               >
                 <div className="flex items-center gap-4">
