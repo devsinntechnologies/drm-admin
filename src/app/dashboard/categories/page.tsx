@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { CategoryRecord, useCategories } from "@/hooks/useCategories";
+import { normalizeErrorMessage } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -17,13 +18,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-function ErrorAlert({ message }: { message: string }) {
+function ErrorAlert({ message }: { message: unknown }) {
+  const errorMessage = normalizeErrorMessage(message, "Error loading categories");
+
   return (
     <div className="rounded-2xl border border-[#fecaca] bg-[#fff1f1] p-4 flex items-start gap-3">
       <AlertCircle className="h-5 w-5 text-[#ef4444] shrink-0 mt-0.5" />
       <div>
         <p className="font-semibold text-[#ef4444]">Error loading categories</p>
-        <p className="text-sm text-[#dc2626]">{message}</p>
+        <p className="text-sm text-[#dc2626]">{errorMessage}</p>
       </div>
     </div>
   );

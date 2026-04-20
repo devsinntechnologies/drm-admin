@@ -22,7 +22,7 @@ export interface Product {
   sortOrder: number;
   inStock: number;
   status: "ACTIVE" | "INACTIVE";
-  image: string;
+  image: string | null;
   categoryId?: string;
   category?: ProductCategory | null;
   variants: ProductVariant[];

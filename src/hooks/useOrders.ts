@@ -176,6 +176,39 @@ export function useOrders(options: UseOrdersOptions = {}) {
     [fetchOrders, range, token],
   );
 
+  const updateOrderStatus = useCallback(
+    async (orderId: string, status: string) => {
+      const authToken = getAuthToken(token);
+      if (!authToken) {
+        throw new Error("No authentication token available");
+      }
+
+      setActionLoading(true);
+      try {
+        const response = await fetch(`${BASE_URL}/orders/${orderId}`, {
+          method: "PUT",
+          headers: {
+            accept: "application/json",
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status }),
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || `Failed to update order: ${response.statusText}`);
+        }
+
+        await fetchOrders(range);
+        return true;
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [fetchOrders, range, token],
+  );
+
   return {
     orders,
     loading,
@@ -184,6 +217,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
     fetchOrders,
     refetch: fetchOrders,
     createOrder,
+    updateOrderStatus,
     actionLoading,
   };
 }

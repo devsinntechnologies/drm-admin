@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Bell,
   CheckCircle2,
   ChevronDown,
   CircleDollarSign,
@@ -24,7 +25,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
-import { useOrders } from "@/hooks/useOrders";
+import { useOrders, type OrderRecord } from "@/hooks/useOrders";
 import { useProducts, type Product, type ProductVariant } from "@/hooks/useProducts";
 import { useTables } from "@/hooks/useTables";
 
@@ -41,6 +42,8 @@ type CartItem = {
   image: string;
 };
 
+type KitchenLane = "new" | "cooking" | "ready";
+
 function OrderItemThumbnail({ image, alt }: { image: string; alt: string }) {
   return (
     <div className="relative h-12 w-12 overflow-hidden rounded-xl border border-white/70  shadow-[0_6px_14px_rgba(15,23,42,0.08)]">
@@ -49,7 +52,7 @@ function OrderItemThumbnail({ image, alt }: { image: string; alt: string }) {
   );
 }
 
-function productImageUrl(imagePath?: string) {
+function productImageUrl(imagePath?: string | null) {
   if (!imagePath) {
     return "/business/pic1.jpeg";
   }
@@ -72,6 +75,112 @@ function getDefaultVariant(product: Product): ProductVariant | null {
 function asNumber(value: string) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildOrderInvoicePrintHtml(order: OrderRecord) {
+  const itemsMarkup = order.Items.map((item) => {
+    const unitPrice = asNumber(item.price);
+    const lineTotal = asNumber(item.total);
+    return `
+      <tr>
+        <td>${escapeHtml(item.productName)}</td>
+        <td style="text-align:center;">${item.quantity}</td>
+        <td style="text-align:right;">${unitPrice.toFixed(2)}</td>
+        <td style="text-align:right;">${lineTotal.toFixed(2)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const totalPrice = asNumber(order.totalPrice);
+  const delivery = asNumber(order.deliveryCharges);
+  const packing = asNumber(order.packagingPrice);
+
+  return `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Invoice ${escapeHtml(order.orderNumber)}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 24px; color: #111827; }
+          h1 { margin: 0 0 4px; font-size: 20px; }
+          .muted { color: #6b7280; font-size: 12px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+          th, td { border-bottom: 1px solid #e5e7eb; padding: 8px; font-size: 13px; }
+          th { text-align: left; background: #f9fafb; }
+          .totals { margin-top: 16px; margin-left: auto; width: 260px; }
+          .totals div { display: flex; justify-content: space-between; margin: 4px 0; font-size: 13px; }
+          .grand { font-weight: 700; font-size: 15px; margin-top: 8px; }
+        </style>
+      </head>
+      <body>
+        <h1>Invoice</h1>
+        <div class="muted">Order #${escapeHtml(order.orderNumber)}</div>
+        <div class="muted">Table: ${escapeHtml(order.table || "Take Away")}</div>
+        <div class="muted">Created: ${escapeHtml(new Date(order.createdAt).toLocaleString())}</div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th style="text-align:center;">Qty</th>
+              <th style="text-align:right;">Unit Price</th>
+              <th style="text-align:right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>${itemsMarkup}</tbody>
+        </table>
+
+        <div class="totals">
+          <div><span>Subtotal</span><span>${totalPrice.toFixed(2)}</span></div>
+          <div><span>Delivery</span><span>${delivery.toFixed(2)}</span></div>
+          <div><span>Packaging</span><span>${packing.toFixed(2)}</span></div>
+          <div class="grand"><span>Grand Total</span><span>${(totalPrice + delivery + packing).toFixed(2)}</span></div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+function printHtmlWithIframe(html: string) {
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.srcdoc = html;
+
+  const cleanup = () => {
+    if (iframe.parentNode) {
+      iframe.parentNode.removeChild(iframe);
+    }
+  };
+
+  iframe.onload = () => {
+    const printWindow = iframe.contentWindow;
+    if (!printWindow) {
+      cleanup();
+      return;
+    }
+
+    printWindow.focus();
+    printWindow.print();
+    setTimeout(cleanup, 500);
+  };
+
+  document.body.appendChild(iframe);
 }
 
 function formatElapsed(isoDate: string) {
@@ -110,9 +219,50 @@ function getStatusTone(status: string) {
   return "bg-[#64748b]";
 }
 
+function normalizeKitchenLane(status: string): KitchenLane | null {
+  const value = status.toLowerCase();
+  if (["pending", "new", "placed"].includes(value)) {
+    return "new";
+  }
+
+  if (["preparing", "cooking", "in_progress", "in-progress"].includes(value)) {
+    return "cooking";
+  }
+
+  if (value === "ready") {
+    return "ready";
+  }
+
+  return null;
+}
+
+function laneBadgeColor(lane: KitchenLane) {
+  if (lane === "new") return "bg-[#ef4444]";
+  if (lane === "cooking") return "bg-[#f97316]";
+  return "bg-[#22c55e]";
+}
+
+function laneButtonClass(lane: KitchenLane) {
+  if (lane === "new") return "bg-[#ef000f] hover:bg-[#d9000f]";
+  if (lane === "cooking") return "bg-[#ff7300] hover:bg-[#e96800]";
+  return "bg-[#17b74b] hover:bg-[#12963d]";
+}
+
+function laneTitle(lane: KitchenLane) {
+  if (lane === "new") return "New Orders";
+  if (lane === "cooking") return "Cooking";
+  return "Ready";
+}
+
+function laneActionLabel(lane: KitchenLane) {
+  if (lane === "new") return "Start Preparing";
+  if (lane === "cooking") return "Mark as Ready";
+  return "Order Served";
+}
+
 export default function OrdersPage() {
   const router = useRouter();
-  const { role } = useAuth();
+  const { role, token } = useAuth();
   const [view, setView] = useState<OrderView>("new-order");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedTableId, setSelectedTableId] = useState("");
@@ -122,6 +272,8 @@ export default function OrdersPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedVariantByProduct, setSelectedVariantByProduct] = useState<Record<string, string>>({});
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isKitchenRole, setIsKitchenRole] = useState(false);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
   const {
     products,
@@ -140,6 +292,7 @@ export default function OrdersPage() {
     error: ordersError,
     pagination: ordersPagination,
     actionLoading: createOrderLoading,
+    updateOrderStatus,
   } = useOrders({ range: "day" });
 
   useEffect(() => {
@@ -151,13 +304,93 @@ export default function OrdersPage() {
       return;
     }
 
-    if (currentRole !== "business_admin") {
+    if (currentRole !== "business_admin" && currentRole !== "kitchen" && currentRole !== "waiter") {
       router.replace("/dashboard");
       return;
     }
 
+    setIsKitchenRole(currentRole === "kitchen");
     setIsAuthorized(true);
   }, [role, router]);
+
+  const kitchenOrders = useMemo(
+    () =>
+      activeOrders
+        .map((order) => {
+          const lane = normalizeKitchenLane(order.status);
+          return {
+            ...order,
+            lane,
+          };
+        })
+        .filter((order) => order.lane !== null),
+    [activeOrders],
+  );
+
+  const newOrders = useMemo(() => kitchenOrders.filter((order) => order.lane === "new"), [kitchenOrders]);
+  const cookingOrders = useMemo(() => kitchenOrders.filter((order) => order.lane === "cooking"), [kitchenOrders]);
+  const readyOrders = useMemo(() => kitchenOrders.filter((order) => order.lane === "ready"), [kitchenOrders]);
+
+  async function moveKitchenOrder(orderId: string, lane: KitchenLane) {
+    try {
+      setUpdatingOrderId(orderId);
+      let nextStatus = "cooking";
+      let successMessage = "Order moved to cooking.";
+
+      if (lane === "new") {
+        nextStatus = "cooking";
+        successMessage = "Order moved to cooking.";
+      } else if (lane === "cooking") {
+        nextStatus = "ready";
+        successMessage = "Order marked as ready.";
+      } else if (lane === "ready") {
+        nextStatus = "served";
+        successMessage = "Order served.";
+      }
+
+      await updateOrderStatus(orderId, nextStatus);
+      toast.success(successMessage);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update order status.";
+      toast.error(message);
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  }
+
+  async function handleActiveOrderAction(orderId: string) {
+    try {
+      setUpdatingOrderId(orderId);
+      await updateOrderStatus(orderId, "completed");
+
+      const authToken = token || (typeof window !== "undefined" ? (localStorage.getItem("auth_token") || localStorage.getItem("token")) : null);
+      if (!authToken) {
+        throw new Error("No authentication token available");
+      }
+
+      const invoiceResponse = await fetch("https://vendor.umazing.shop/invoice", {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ orderId }),
+      });
+
+      if (!invoiceResponse.ok) {
+        const text = await invoiceResponse.text();
+        throw new Error(text || `Failed to create invoice: ${invoiceResponse.statusText}`);
+      }
+
+      toast.success("Order marked as completed and invoice created.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to complete order.";
+      toast.error(message);
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  }
 
   const activeProducts = useMemo(() => products.filter((item) => item.status === "ACTIVE"), [products]);
 
@@ -305,6 +538,131 @@ export default function OrdersPage() {
 
   if (!isAuthorized) {
     return null;
+  }
+
+  if (isKitchenRole) {
+    return (
+      <main className="min-h-screen bg-[#f2f4f7] px-4 py-4 md:px-6">
+        <div className="mx-auto max-w-7xl space-y-4">
+          <section className="rounded-2xl bg-[linear-gradient(90deg,#ff7300_0%,#ee0010_100%)] p-6 text-white shadow-[0_12px_24px_rgba(15,23,42,0.18)]">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-full bg-white/20">
+                <CookingPot className="h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold tracking-tight">Kitchen Board</h1>
+                <p className="text-sm text-white/90">{newOrders.length + cookingOrders.length + readyOrders.length} active orders • Keep cooking!</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-4 md:grid-cols-3">
+            <article className="rounded-2xl border border-[#f1d4d6] bg-[#f6ecee] p-4 shadow-[0_6px_14px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#ff2e3b] text-white"><Bell className="h-4 w-4" /></span>
+                <div>
+                  <p className="text-sm text-[#4b5563]">New Orders</p>
+                  <strong className="text-4xl font-bold text-[#111827]">{newOrders.length}</strong>
+                </div>
+              </div>
+            </article>
+            <article className="rounded-2xl border border-[#efdfcc] bg-[#f4efe7] p-4 shadow-[0_6px_14px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#ff7300] text-white"><CookingPot className="h-4 w-4" /></span>
+                <div>
+                  <p className="text-sm text-[#4b5563]">Cooking</p>
+                  <strong className="text-4xl font-bold text-[#111827]">{cookingOrders.length}</strong>
+                </div>
+              </div>
+            </article>
+            <article className="rounded-2xl border border-[#d7e7de] bg-[#eaf4ef] p-4 shadow-[0_6px_14px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#14b84b] text-white"><CheckCircle2 className="h-4 w-4" /></span>
+                <div>
+                  <p className="text-sm text-[#4b5563]">Ready</p>
+                  <strong className="text-4xl font-bold text-[#111827]">{readyOrders.length}</strong>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          {ordersLoading ? (
+            <article className="rounded-2xl bg-white p-5 text-sm text-[#64748b]">
+              <div className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading kitchen orders...
+              </div>
+            </article>
+          ) : null}
+
+          {ordersError ? <article className="rounded-2xl bg-white p-5 text-sm text-[#dc2626]">{ordersError}</article> : null}
+
+          {!ordersLoading && !ordersError ? (
+            <section className="grid gap-4 lg:grid-cols-3">
+              {([
+                { lane: "new" as KitchenLane, data: newOrders },
+                { lane: "cooking" as KitchenLane, data: cookingOrders },
+                { lane: "ready" as KitchenLane, data: readyOrders },
+              ]).map((group) => (
+                <div key={group.lane} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-3xl font-semibold text-[#111827]">{laneTitle(group.lane)}</h2>
+                    <span className="inline-flex min-w-6 items-center justify-center rounded-full px-2 py-1 text-xs font-bold text-white bg-[#ef4444]">{group.data.length}</span>
+                  </div>
+
+                  {group.data.length === 0 ? (
+                    <article className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white/75 p-4 text-sm text-[#64748b]">No orders.</article>
+                  ) : (
+                    group.data.map((order) => (
+                      <article key={order.id} className={`rounded-2xl border p-3 shadow-[0_6px_14px_rgba(15,23,42,0.08)] ${group.lane === "new" ? "border-[#f1d4d6] bg-[#f6ecee]" : group.lane === "cooking" ? "border-[#efdfcc] bg-[#f4efe7]" : "border-[#d7e7de] bg-[#eaf4ef]"}`}>
+                        <div className="mb-2 flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-2xl font-bold text-[#111827]">{order.orderNumber}</h3>
+                            <p className="text-lg text-[#6b7280]">{order.table || "Take Away"}</p>
+                          </div>
+                          <span className={`inline-flex items-center rounded-lg px-2 py-1 text-xs font-bold text-white ${laneBadgeColor(group.lane)}`}>
+                            <Clock3 className="mr-1 h-3.5 w-3.5" /> {formatElapsed(order.createdAt)}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2">
+                          {order.Items.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <div className="relative h-9 w-9 overflow-hidden rounded-lg border border-white/80">
+                                  <Image src={productImageUrl(item.image)} alt={item.productName} fill sizes="36px" className="object-cover" />
+                                </div>
+                                <span className="text-lg font-medium text-[#1f2937]">{item.productName}</span>
+                              </div>
+                              <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-bold text-white ${laneBadgeColor(group.lane)}`}>
+                                {item.quantity}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => moveKitchenOrder(order.id, group.lane)}
+                          disabled={updatingOrderId === order.id}
+                          className={`mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-white transition disabled:opacity-60 disabled:cursor-not-allowed ${laneButtonClass(group.lane)}`}
+                        >
+                          {updatingOrderId === order.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4" />
+                          )}
+                          {laneActionLabel(group.lane)}
+                        </button>
+                      </article>
+                    ))
+                  )}
+                </div>
+              ))}
+            </section>
+          ) : null}
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -634,14 +992,14 @@ export default function OrdersPage() {
               </article>
             ) : null}
 
-            {!ordersLoading && !ordersError && !activeOrders.length ? (
+            {!ordersLoading && !ordersError && !activeOrders.filter((o) => o.status.toLowerCase() !== "completed").length ? (
               <article className="rounded-[28px] border border-white bg-white/95 p-6 text-sm text-[#64748b] shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
                 No active orders found for today.
               </article>
             ) : null}
 
             {!ordersLoading && !ordersError
-              ? activeOrders.map((order) => (
+              ? activeOrders.filter((order) => order.status.toLowerCase() !== "completed").map((order) => (
               <article
                 key={order.id}
                 className="rounded-[28px] border border-white bg-white/95 p-5 shadow-[0_14px_30px_rgba(15,23,42,0.08)]"
@@ -698,11 +1056,16 @@ export default function OrdersPage() {
 
                       <button
                         type="button"
-                        disabled={order.status.toLowerCase() !== "ready"}
+                        onClick={() => handleActiveOrderAction(order.id)}
+                        disabled={updatingOrderId === order.id}
                         className="inline-flex h-11 items-center gap-2 rounded-xl bg-[linear-gradient(120deg,#16a34a_0%,#22c55e_100%)] px-4 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(22,163,74,0.2)] transition hover:-translate-y-px disabled:cursor-not-allowed disabled:bg-[#e5e7eb] disabled:text-[#cbd5e1] disabled:hover:translate-y-0"
                       >
-                        <CheckCircle2 className="h-4.5 w-4.5" />
-                        Complete
+                        {updatingOrderId === order.id ? (
+                          <Loader2 className="h-4.5 w-4.5 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="h-4.5 w-4.5" />
+                        )}
+                        Completed
                       </button>
                     </div>
                   </div>

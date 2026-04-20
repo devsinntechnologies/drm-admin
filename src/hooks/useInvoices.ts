@@ -43,6 +43,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
 
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     total: 0,
@@ -114,13 +115,49 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     }
   }, [fetchInvoices, pagination.page]);
 
+  const updateInvoiceStatus = useCallback(async (invoiceUuid: string, status: InvoiceStatus) => {
+    let authToken = token;
+    if (!authToken && typeof window !== "undefined") {
+      authToken = localStorage.getItem("auth_token") || localStorage.getItem("token");
+    }
+
+    if (!authToken) {
+      throw new Error("No authentication token available");
+    }
+
+    setActionLoading(true);
+    try {
+      const response = await fetch(`https://vendor.umazing.shop/invoice/${invoiceUuid}`, {
+        method: "PUT",
+        headers: {
+          accept: "application/json",
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `Failed to update invoice: ${response.statusText}`);
+      }
+
+      await fetchInvoices(pagination.page);
+      return true;
+    } finally {
+      setActionLoading(false);
+    }
+  }, [fetchInvoices, pagination.page, token]);
+
   return {
     invoices,
     loading,
+    actionLoading,
     error,
     pagination,
     nextPage,
     prevPage,
+    updateInvoiceStatus,
     refetch: fetchInvoices,
   };
 }

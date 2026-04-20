@@ -8,6 +8,7 @@ import { useUsers, type UserRole } from "@/hooks/useUsers";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Edit, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { normalizeErrorMessage } from "@/lib/utils";
 
 function formatJoinedDate(isoDate: string) {
   const date = new Date(isoDate);
@@ -306,7 +307,7 @@ export default function UsersPage() {
         ) : null}
 
         {!loading && error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{normalizeErrorMessage(error, "Error loading users")}</div>
         ) : null}
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

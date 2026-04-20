@@ -82,6 +82,14 @@ function getVisibleTabs(role: string | null) {
     return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" );
   }
 
+  if (role === "kitchen") {
+    return tabs.filter((tab) => tab.key === "orders");
+  }
+
+  if (role === "waiter") {
+    return tabs.filter((tab) => tab.key === "orders");
+  }
+
   return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "action-logs");
 }
 

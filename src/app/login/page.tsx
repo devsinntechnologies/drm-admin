@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ChefHat, Lock, Mail, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { normalizeErrorMessage } from "@/lib/utils";
 
 const gallery = [
   "/business/pic1.jpeg",
@@ -38,7 +39,7 @@ export default function LoginPage() {
 
     const isSuccess = await login({ email, password, role: selectedRole });
     if (isSuccess) {
-      router.push(selectedRole === "business_admin" ? "/dashboard" : "/dashboard");
+      router.push(selectedRole === "kitchen" || selectedRole === "waiter" ? "/dashboard/orders" : "/dashboard");
     }
   };
 
@@ -128,7 +129,7 @@ export default function LoginPage() {
 
                 {error ? (
                   <p className="rounded-xl border border-[#fed7d7] bg-[#fff5f5] px-4 py-3 text-sm font-medium text-[#c53030]">
-                    {error}
+                    {normalizeErrorMessage(error, "Unable to sign in. Please try again.")}
                   </p>
                 ) : null}
 

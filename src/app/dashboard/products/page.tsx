@@ -9,6 +9,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useProducts, type CreateProductVariantPayload, type Product } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
+import { normalizeErrorMessage } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -22,13 +23,15 @@ function formatPrice(value: number) {
   return `${value.toFixed(0)}`;
 }
 
-function ErrorAlert({ message }: { message: string }) {
+function ErrorAlert({ message }: { message: unknown }) {
+  const errorMessage = normalizeErrorMessage(message, "Error loading products");
+
   return (
     <div className="rounded-2xl border border-[#fecaca] bg-[#fff1f1] p-4 flex items-start gap-3">
       <AlertCircle className="h-5 w-5 text-[#ef4444] shrink-0 mt-0.5" />
       <div>
         <p className="font-semibold text-[#ef4444]">Error loading products</p>
-        <p className="text-sm text-[#dc2626]">{message}</p>
+        <p className="text-sm text-[#dc2626]">{errorMessage}</p>
       </div>
     </div>
   );
@@ -120,7 +123,8 @@ function MenuCard({
   const stockStatus = lowStock ? "Low" : "Good";
   const stockColor = lowStock ? "bg-[#ef4444]" : "bg-[#16a34a]";
   const categoryName = item.category?.CategoryName || "Uncategorized";
-  const imageUrl = item.image.startsWith("http") ? item.image : `https://vendor.umazing.shop/${item.image}`;
+  const imagePath = item.image?.trim();
+  const imageUrl = imagePath ? (imagePath.startsWith("http") ? imagePath : `https://vendor.umazing.shop/${imagePath}`) : "/business/pic1.jpeg";
 
   return (
     <article className="overflow-hidden rounded-[28px] border border-[#e4e8f0]  shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
