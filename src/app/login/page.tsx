@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ChefHat, Lock, Mail, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { normalizeErrorMessage } from "@/lib/utils";
 
@@ -16,7 +16,7 @@ const gallery = [
   "/business/pic5.jpeg",
 ];
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, isLoading, error, clearError } = useAuth();
@@ -156,5 +156,13 @@ export default function LoginPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen px-4 py-8" />}>
+      <LoginContent />
+    </Suspense>
   );
 }
