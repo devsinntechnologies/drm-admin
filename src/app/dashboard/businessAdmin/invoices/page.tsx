@@ -2,7 +2,7 @@
 
 import { Download, FileText, Search, CircleDollarSign, Clock3, AlertCircle, ChevronLeft, ChevronRight, Loader2, Eye, Printer } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
@@ -204,6 +204,8 @@ function ErrorAlert({ message }: { message: unknown }) {
 export default function InvoicesPage() {
   const router = useRouter();
   const { role } = useAuth();
+  const searchParams = useSearchParams();
+  const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -222,13 +224,16 @@ export default function InvoicesPage() {
       return;
     }
 
-    if (currentRole !== "business_admin") {
+    const isBusinessRole = currentRole === "business_admin";
+    const isSuperAdminImpersonating = currentRole === "super_admin" && !!impersonatedBusinessId;
+
+    if (!isBusinessRole && !isSuperAdminImpersonating) {
       router.replace("/dashboard");
       return;
     }
 
     setIsAuthorized(true);
-  }, [role, router]);
+  }, [role, router, impersonatedBusinessId]);
 
   const rows = useMemo<InvoiceRow[]>(() => {
     return invoices.map((invoice) => ({

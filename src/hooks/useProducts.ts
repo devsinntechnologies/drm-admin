@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 
 export interface ProductVariant {
   id: string;
@@ -51,7 +52,7 @@ function getAuthToken(reduxToken: string | null) {
     return null;
   }
 
-  return localStorage.getItem("auth_token");
+  return localStorage.getItem("auth_token") || localStorage.getItem("token");
 }
 
 export interface CreateProductVariantPayload {
@@ -72,12 +73,13 @@ export interface CreateProductPayload {
   image?: File | null;
 }
 
-export interface UpdateProductPayload extends CreateProductPayload {}
+export interface UpdateProductPayload extends CreateProductPayload { }
 
 export function useProducts(options: UseProductsOptions = {}) {
   const { page = 1, limit = 30 } = options;
   const { token } = useAuth();
-  
+  const activeBusinessId = useActiveBusinessId();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -102,6 +104,9 @@ export function useProducts(options: UseProductsOptions = {}) {
     try {
       const url = new URL("https://vendor.umazing.shop/products");
       url.searchParams.append("page", pageNum.toString());
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
+      }
       if (limit) {
         url.searchParams.append("limit", limit.toString());
       }
@@ -115,11 +120,19 @@ export function useProducts(options: UseProductsOptions = {}) {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch products: ${response.statusText}`);
+        // Try to extract backend error message
+        let detail = response.statusText;
+        try {
+          const errJson = await response.json();
+          detail = errJson?.message || errJson?.error || (typeof errJson === 'object' ? JSON.stringify(errJson) : String(errJson));
+        } catch {
+          // ignore parse errors
+        }
+        throw new Error(`Failed to fetch products: HTTP ${response.status} - ${detail}`);
       }
 
       const data: ProductsResponse = await response.json();
-      
+
       setProducts(data.data);
       setPagination({
         total: data.total,
@@ -133,7 +146,7 @@ export function useProducts(options: UseProductsOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [token, limit]);
+  }, [token, limit, activeBusinessId]);
 
   useEffect(() => {
     fetchProducts(page);
@@ -179,7 +192,12 @@ export function useProducts(options: UseProductsOptions = {}) {
         formData.append("image", payload.image);
       }
 
-      const response = await fetch("https://vendor.umazing.shop/products", {
+      const url = new URL("https://vendor.umazing.shop/products");
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
+      }
+
+      const response = await fetch(url.toString(), {
         method: "POST",
         headers: {
           accept: "*/*",
@@ -197,7 +215,7 @@ export function useProducts(options: UseProductsOptions = {}) {
     } finally {
       setActionLoading(false);
     }
-  }, [fetchProducts, pagination.page, token]);
+  }, [fetchProducts, pagination.page, token, activeBusinessId]);
 
   const getProductById = useCallback(async (id: string) => {
     const authToken = getAuthToken(token);
@@ -205,7 +223,12 @@ export function useProducts(options: UseProductsOptions = {}) {
       throw new Error("No authentication token available");
     }
 
-    const response = await fetch(`https://vendor.umazing.shop/products/${id}`, {
+    const url = new URL(`https://vendor.umazing.shop/products/${id}`);
+    if (activeBusinessId) {
+      url.searchParams.append("businessId", activeBusinessId);
+    }
+
+    const response = await fetch(url.toString(), {
       method: "GET",
       headers: {
         accept: "*/*",
@@ -218,7 +241,7 @@ export function useProducts(options: UseProductsOptions = {}) {
     }
 
     return (await response.json()) as Product;
-  }, [token]);
+  }, [token, activeBusinessId]);
 
   const updateProduct = useCallback(async (id: string, payload: UpdateProductPayload) => {
     const authToken = getAuthToken(token);
@@ -241,7 +264,12 @@ export function useProducts(options: UseProductsOptions = {}) {
         formData.append("image", payload.image);
       }
 
-      const response = await fetch(`https://vendor.umazing.shop/products/${id}`, {
+      const url = new URL(`https://vendor.umazing.shop/products/${id}`);
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
+      }
+
+      const response = await fetch(url.toString(), {
         method: "PATCH",
         headers: {
           accept: "*/*",
@@ -259,7 +287,7 @@ export function useProducts(options: UseProductsOptions = {}) {
     } finally {
       setActionLoading(false);
     }
-  }, [fetchProducts, pagination.page, token]);
+  }, [fetchProducts, pagination.page, token, activeBusinessId]);
 
   const deleteProduct = useCallback(async (id: string) => {
     const authToken = getAuthToken(token);
@@ -269,7 +297,12 @@ export function useProducts(options: UseProductsOptions = {}) {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`https://vendor.umazing.shop/products/${id}`, {
+      const url = new URL(`https://vendor.umazing.shop/products/${id}`);
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
+      }
+
+      const response = await fetch(url.toString(), {
         method: "DELETE",
         headers: {
           accept: "*/*",
@@ -286,7 +319,7 @@ export function useProducts(options: UseProductsOptions = {}) {
     } finally {
       setActionLoading(false);
     }
-  }, [fetchProducts, pagination.page, token]);
+  }, [fetchProducts, pagination.page, token, activeBusinessId]);
 
   return {
     products,

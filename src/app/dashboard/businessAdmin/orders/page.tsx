@@ -21,13 +21,14 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrders, type OrderRecord } from "@/hooks/useOrders";
 import { useProducts, type Product, type ProductVariant } from "@/hooks/useProducts";
 import { useTables } from "@/hooks/useTables";
+import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 
 type OrderView = "new-order" | "active-orders";
 
@@ -263,6 +264,9 @@ function laneActionLabel(lane: KitchenLane) {
 export default function OrdersPage() {
   const router = useRouter();
   const { role, token } = useAuth();
+  const activeBusinessId = useActiveBusinessId();
+  const searchParams = useSearchParams();
+  const impersonatedBusinessId = searchParams.get("businessId");
   const [view, setView] = useState<OrderView>("new-order");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedTableId, setSelectedTableId] = useState("");
@@ -305,14 +309,17 @@ export default function OrdersPage() {
       return;
     }
 
-    if (currentRole !== "business_admin" && currentRole !== "kitchen" && currentRole !== "waiter") {
+    const isStaffRole = currentRole === "business_admin" || currentRole === "kitchen" || currentRole === "waiter";
+    const isSuperAdminImpersonating = currentRole === "super_admin" && !!impersonatedBusinessId;
+
+    if (!isStaffRole && !isSuperAdminImpersonating) {
       router.replace("/dashboard");
       return;
     }
 
     setIsKitchenRole(currentRole === "kitchen");
     setIsAuthorized(true);
-  }, [role, router]);
+  }, [role, router, impersonatedBusinessId]);
 
   const kitchenOrders = useMemo(
     () =>
@@ -369,7 +376,12 @@ export default function OrdersPage() {
         throw new Error("No authentication token available");
       }
 
-      const invoiceResponse = await fetch("https://vendor.umazing.shop/invoice", {
+      const url = new URL("https://vendor.umazing.shop/invoice");
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
+      }
+
+      const invoiceResponse = await fetch(url.toString(), {
         method: "POST",
         headers: {
           accept: "application/json",
@@ -816,7 +828,7 @@ export default function OrdersPage() {
                 {productsError ? <p className="mt-4 text-sm text-[#dc2626]">{productsError}</p> : null}
 
                 <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {visibleProducts.map((item) => {
+                  {visibleProducts.map((item, index) => {
                     const defaultVariant = getDefaultVariant(item);
                     const selectedVariantId = selectedVariantByProduct[item.id] || defaultVariant?.id || "";
                     const selectedVariant = item.variants.find((variant) => variant.id === selectedVariantId) || defaultVariant;
@@ -825,7 +837,7 @@ export default function OrdersPage() {
 
                     return (
                     <article
-                      key={`${item.name}-${item.price}`}
+                      key={`${item.id}-${index}`}
                       onMouseEnter={() => handleOutOfStockHover(item)}
                       onMouseLeave={() => {
                         if (item.inStock <= 0) {

@@ -39,7 +39,13 @@ function LoginContent() {
 
     const isSuccess = await login({ email, password, role: selectedRole });
     if (isSuccess) {
-      router.push(selectedRole === "kitchen" || selectedRole === "waiter" ? "/dashboard/orders" : "/dashboard");
+      if (selectedRole === "kitchen" || selectedRole === "waiter") {
+        router.push("/dashboard/businessAdmin/orders");
+      } else if (selectedRole === "business_admin") {
+        router.push("/dashboard/businessAdmin");
+      } else {
+        router.push("/dashboard/superAdmin");
+      }
     }
   };
 

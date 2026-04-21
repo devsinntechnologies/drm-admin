@@ -10,6 +10,7 @@ import {
   Plus,
   Pencil,
   Trash2,
+  ExternalLink,
 } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import { useMemo, useState } from "react";
@@ -515,8 +516,9 @@ export default function BusinessesPage() {
           : filteredBusinesses.map((business) => (
           <article
             key={business.id}
-            id={`business-${business.name.replace(/\\s+/g, "-").toLowerCase()}`}
-            className="overflow-hidden rounded-3xl border border-[#e4ebf4] bg-white/90 shadow-[0_10px_24px_rgba(10,17,31,0.1)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_30px_rgba(10,17,31,0.14)]"
+            id={`business-${business.name.replace(/\s+/g, "-").toLowerCase()}`}
+            onClick={() => window.open(`/dashboard/businessAdmin?businessId=${business.id}`, '_blank')}
+            className="group cursor-pointer overflow-hidden rounded-3xl border border-[#e4ebf4] bg-white/90 shadow-[0_10px_24px_rgba(10,17,31,0.1)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_30px_rgba(10,17,31,0.14)]"
           >
             <div className="relative h-36 overflow-hidden">
               <Image
@@ -565,31 +567,29 @@ export default function BusinessesPage() {
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-1 gap-2 lg:grid-cols-[1fr_1fr_auto]">
+              <div className="mt-4 grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => void openEditDialog(business.id)}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border-2 border-[#d3d7e0] bg-white text-sm font-semibold text-[#0f172a]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void openEditDialog(business.id);
+                  }}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border-2 border-[#d3d7e0] bg-white text-sm font-semibold text-[#0f172a] hover:bg-slate-50"
                 >
                   <Pencil className="h-4 w-4" /> Edit
                 </button>
-                {/* <button
-                  type="button"
-                  className={`inline-flex h-10 items-center justify-center rounded-xl border-2 text-sm font-semibold ${
-                    business.status === "Active" ? "border-[#ff9097] text-[#f2202f]" : "border-[#67db94] text-[#0ca94f]"
-                  }`}
-                >
-                  {business.status === "Active" ? "Deactivate" : "Activate"}
-                </button> */}
                 <button
                   type="button"
                   disabled={isDeletingBusiness || business.status !== "Active"}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     if (business.status !== "Active") return;
                     setDeleteTargetBusiness(business);
                   }}
                   className={`inline-flex h-10 items-center justify-center rounded-xl border-2 text-sm font-semibold ${
-                    business.status === "Active" ? "border-[#ff9097] text-[#f2202f]" : "border-[#67db94] text-[#0ca94f]"
+                    business.status === "Active"
+                      ? "border-[#ff9097] text-[#f2202f] hover:bg-red-50"
+                      : "border-[#67db94] text-[#0ca94f] hover:bg-green-50"
                   } ${business.status !== "Active" ? "cursor-not-allowed opacity-50" : ""}`}
                 >
                   {business.status === "Active" ? "Deactivate" : "Activate"}

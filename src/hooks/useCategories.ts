@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 
 export interface CategoryProduct {
   id: string;
@@ -50,6 +51,7 @@ function getAuthToken() {
 
 export function useCategories(options: UseCategoriesOptions = {}) {
   const { page = 1, limit = 10 } = options;
+  const activeBusinessId = useActiveBusinessId();
 
   const [categories, setCategories] = useState<CategoryRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,6 +76,9 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     try {
       const url = new URL(`${BASE_URL}/category`);
       url.searchParams.append("page", pageNum.toString());
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
+      }
       if (limit) {
         url.searchParams.append("limit", limit.toString());
       }
@@ -103,7 +108,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [limit]);
+  }, [limit, activeBusinessId]);
 
   useEffect(() => {
     fetchCategories(page);
@@ -115,7 +120,12 @@ export function useCategories(options: UseCategoriesOptions = {}) {
       throw new Error("No authentication token available");
     }
 
-    const response = await fetch(`${BASE_URL}/category/${id}`, {
+    const url = new URL(`${BASE_URL}/category/${id}`);
+    if (activeBusinessId) {
+      url.searchParams.append("businessId", activeBusinessId);
+    }
+
+    const response = await fetch(url.toString(), {
       method: "GET",
       headers: {
         accept: "*/*",
@@ -128,7 +138,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     }
 
     return (await response.json()) as CategoryRecord;
-  }, []);
+  }, [activeBusinessId]);
 
   const createCategory = useCallback(async (payload: { categoryName: string; sortOrder: number; image?: File | null }) => {
     const token = getAuthToken();
@@ -145,7 +155,12 @@ export function useCategories(options: UseCategoriesOptions = {}) {
         formData.append("image", payload.image);
       }
 
-      const response = await fetch(`${BASE_URL}/category`, {
+      const url = new URL(`${BASE_URL}/category`);
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
+      }
+
+      const response = await fetch(url.toString(), {
         method: "POST",
         headers: {
           accept: "*/*",
@@ -163,7 +178,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     } finally {
       setActionLoading(false);
     }
-  }, [fetchCategories, pagination.page]);
+  }, [fetchCategories, pagination.page, activeBusinessId]);
 
   const updateCategory = useCallback(async (id: string, payload: { categoryName: string; sortOrder: number; image?: File | null }) => {
     const token = getAuthToken();
@@ -180,7 +195,12 @@ export function useCategories(options: UseCategoriesOptions = {}) {
         formData.append("image", payload.image);
       }
 
-      const response = await fetch(`${BASE_URL}/category/${id}`, {
+      const url = new URL(`${BASE_URL}/category/${id}`);
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
+      }
+
+      const response = await fetch(url.toString(), {
         method: "PATCH",
         headers: {
           accept: "*/*",
@@ -198,7 +218,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     } finally {
       setActionLoading(false);
     }
-  }, [fetchCategories, pagination.page]);
+  }, [fetchCategories, pagination.page, activeBusinessId]);
 
   const deleteCategory = useCallback(async (id: string) => {
     const token = getAuthToken();
@@ -208,7 +228,12 @@ export function useCategories(options: UseCategoriesOptions = {}) {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`${BASE_URL}/category/${id}`, {
+      const url = new URL(`${BASE_URL}/category/${id}`);
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
+      }
+
+      const response = await fetch(url.toString(), {
         method: "DELETE",
         headers: {
           accept: "*/*",
@@ -225,7 +250,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     } finally {
       setActionLoading(false);
     }
-  }, [fetchCategories, pagination.page]);
+  }, [fetchCategories, pagination.page, activeBusinessId]);
 
   return {
     categories,

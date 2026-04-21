@@ -3,9 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Activity, Building2, Crown, CreditCard, LayoutGrid, LogOut, Menu, ReceiptText, Shapes, Store, Users, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+import { useSearchParams } from "next/navigation";
 
 type TabKey = "dashboard" | "businesses" | "subscriptions" | "action-logs" | "orders" | "products" | "categories" | "tables" | "invoices" | "users";
 
@@ -24,61 +26,62 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
   {
     key: "businesses",
     label: "Businesses",
-    href: "/dashboard/businesses",
+    href: "/dashboard/superAdmin/businesses",
     icon: <Building2 className="h-5 w-5" />,
   },
   {
     key: "subscriptions",
     label: "Subscriptions",
-    href: "/dashboard/subscriptions",
+    href: "/dashboard/superAdmin/subscriptions",
     icon: <CreditCard className="h-5 w-5" />,
   },
   {
     key: "action-logs",
     label: "Action Logs",
-    href: "/dashboard/action-logs",
+    href: "/dashboard/superAdmin/action-logs",
     icon: <Activity className="h-5 w-5" />,
   },
   {
     key: "products",
     label: "Products",
-    href: "/dashboard/products",
+    href: "/dashboard/businessAdmin/products",
     icon: <LayoutGrid className="h-5 w-5" />,
   },
   {
     key: "categories",
     label: "Categories",
-    href: "/dashboard/categories",
+    href: "/dashboard/businessAdmin/categories",
     icon: <Shapes className="h-5 w-5" />,
   },
   {
     key: "tables",
     label: "Restaurant Tables",
-    href: "/dashboard/tables",
+    href: "/dashboard/businessAdmin/tables",
     icon: <Store className="h-5 w-5" />,
   },
   {
     key: "invoices",
     label: "Invoices",
-    href: "/dashboard/invoices",
+    href: "/dashboard/businessAdmin/invoices",
     icon: <ReceiptText className="h-5 w-5" />,
   },
    {
     key: "orders",
     label: "Orders",
-    href: "/dashboard/orders",
+    href: "/dashboard/businessAdmin/orders",
     icon: <ReceiptText className="h-5 w-5" />,
   },
   {
     key: "users",
     label: "Users",
-    href: "/dashboard/users",
+    href: "/dashboard/businessAdmin/users",
     icon: <Users className="h-5 w-5" />,
   },
 ];
 
-function getVisibleTabs(role: string | null) {
-  if (role === "business_admin") {
+function getVisibleTabs(role: string | null, isImpersonating: boolean = false) {
+  // If we are impersonating, we always want the business admin view
+  if (isImpersonating || role === "business_admin") {
     return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" );
   }
 
@@ -103,18 +106,50 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
     return localStorage.getItem("roleName") || localStorage.getItem("auth_role") || localStorage.getItem("role") || null; 
   });
 
+  const [isMounted, setIsMounted] = useState(false);
+
+  const businessId = useActiveBusinessId();
+  const searchParams = useSearchParams();
+
   useEffect(() => {
+    setIsMounted(true);
     if (role) {
       setResolvedRole(role);
       return;
     }
 
     if (typeof window !== "undefined") {
-      setResolvedRole(localStorage.getItem("roleName") || localStorage.getItem("auth_role"));
+      setResolvedRole(localStorage.getItem("roleName") || localStorage.getItem("auth_role") || localStorage.getItem("role"));
     }
   }, [role]);
 
-  const visibleTabs = getVisibleTabs(resolvedRole);
+  const visibleTabs = useMemo(() => {
+    // During SSR and first paint, we must match the server-rendered role view
+    // without the influence of client-only query params (unless they are stable).
+    const isImpersonating = isMounted && !!businessId;
+    let baseTabs = getVisibleTabs(resolvedRole, isImpersonating);
+
+    // If impersonating, adjust the Dashboard link
+    if (isImpersonating) {
+        baseTabs = baseTabs.map(tab => {
+            if (tab.key === "dashboard") {
+                return { ...tab, href: "/dashboard/businessAdmin" };
+            }
+            return tab;
+        });
+    }
+
+    if (!isImpersonating) return baseTabs;
+
+    // Propagate businessId to links
+    return baseTabs.map(tab => {
+        if (tab.href.includes("businessAdmin") || tab.href === "/dashboard" || tab.href === "/dashboard/businessAdmin") {
+            const separator = tab.href.includes("?") ? "&" : "?";
+            return { ...tab, href: `${tab.href}${separator}businessId=${businessId}` };
+        }
+        return tab;
+    });
+  }, [resolvedRole, businessId, isMounted]);
 
   const closeMobileNav = () => setMobileNavOpen(false);
 
@@ -128,7 +163,12 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
             </div>
             <div className="min-w-0">
               <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">Restaurant Manager</h1>
-              <p className="truncate text-xs font-medium leading-tight text-[#667085]">Super Admin Portal</p>
+              <p className="truncate text-xs font-medium leading-tight text-[#667085]">
+                {!isMounted ? "..." : 
+                 resolvedRole === "business_admin" ? "Business Admin Portal" : 
+                 resolvedRole === "kitchen" || resolvedRole === "waiter" ? "Staff Portal" : 
+                 businessId ? "Super Admin (Impersonating)" : "Super Admin Portal"}
+              </p>
             </div>
           </div>
         </div>
@@ -141,7 +181,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
               return (
                 <Link
                   key={tab.key}
-                  href={tab.href}
+                  href={isMounted ? tab.href : tab.href.split("?")[0]}
                   className={cn(
                     "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition",
                     active
@@ -178,7 +218,12 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
               </div>
               <div className="min-w-0">
                 <h1 className="truncate text-lg font-semibold leading-tight text-[#0f172a] md:text-xl lg:text-2xl">Restaurant Manager</h1>
-                <p className="truncate text-xs font-medium leading-tight text-[#58657a] md:text-sm">Super Admin Portal</p>
+                <p className="truncate text-xs font-medium leading-tight text-[#58657a] md:text-sm">
+                  {!isMounted ? "..." : 
+                   resolvedRole === "business_admin" ? "Business Admin Portal" : 
+                   resolvedRole === "kitchen" || resolvedRole === "waiter" ? "Staff Portal" : 
+                   businessId ? "Super Admin (Impersonating)" : "Super Admin Portal"}
+                </p>
               </div>
             </div>
 
@@ -215,7 +260,12 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                 </div>
                 <div className="min-w-0">
                   <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">Restaurant Manager</h1>
-                  <p className="truncate text-xs font-medium leading-tight text-[#667085]">Super Admin Portal</p>
+                  <p className="truncate text-xs font-medium leading-tight text-[#667085]">
+                    {!isMounted ? "..." : 
+                     resolvedRole === "business_admin" ? "Business Admin Portal" : 
+                     resolvedRole === "kitchen" || resolvedRole === "waiter" ? "Staff Portal" : 
+                     "Super Admin Portal"}
+                  </p>
                 </div>
               </div>
 
@@ -237,7 +287,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                   return (
                     <Link
                       key={tab.key}
-                      href={tab.href}
+                      href={isMounted ? tab.href : tab.href.split("?")[0]}
                       onClick={closeMobileNav}
                       className={cn(
                         "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition",

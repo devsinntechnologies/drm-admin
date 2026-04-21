@@ -84,6 +84,7 @@ export type ActionLogsQueryParams = {
   page?: number;
   limit?: number;
   includeNormalized?: boolean;
+  businessId?: string;
 };
 
 export const actionLogsApi = createApi({
@@ -97,6 +98,13 @@ export const actionLogsApi = createApi({
         const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
         if (token) {
           headers.set("Authorization", `Bearer ${token}`);
+        }
+
+        // Automatically append businessId from URL if present
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlBusinessId = urlParams.get("businessId");
+        if (urlBusinessId) {
+          headers.set("x-business-id", urlBusinessId); // Standard and safe way
         }
       }
 
@@ -119,6 +127,9 @@ export const actionLogsApi = createApi({
         if (params.limit) queryParams.append("limit", String(params.limit));
         if (typeof params.includeNormalized === "boolean") {
           queryParams.append("includeNormalized", String(params.includeNormalized));
+        }
+        if (params.businessId) {
+          queryParams.append("businessId", params.businessId);
         }
 
         return `/log-system?${queryParams.toString()}`;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BASE_URL } from "@/lib/constant";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 
 export type UserRole = "waiter" | "kitchen";
 
@@ -46,16 +47,14 @@ function getAuthToken(reduxToken: string | null) {
   return localStorage.getItem("auth_token") || localStorage.getItem("token");
 }
 
-function getBusinessId() {
-  if (typeof window === "undefined") {
-    return null;
+
+async function fetchRoleUsers(endpoint: string, authToken: string, activeBusinessId?: string | null) {
+  const url = new URL(`${BASE_URL}/${endpoint}`);
+  if (activeBusinessId) {
+    url.searchParams.append("businessId", activeBusinessId);
   }
 
-  return localStorage.getItem("businessId");
-}
-
-async function fetchRoleUsers(endpoint: string, authToken: string) {
-  const response = await fetch(`${BASE_URL}/${endpoint}`, {
+  const response = await fetch(url.toString(), {
     method: "GET",
     headers: {
       accept: "*/*",
@@ -73,6 +72,7 @@ async function fetchRoleUsers(endpoint: string, authToken: string) {
 
 export function useUsers() {
   const { token } = useAuth();
+  const activeBusinessId = useActiveBusinessId();
 
   const [waiters, setWaiters] = useState<StaffUser[]>([]);
   const [kitchens, setKitchens] = useState<StaffUser[]>([]);
@@ -95,8 +95,8 @@ export function useUsers() {
 
     try {
       const [waitersResponse, kitchensResponse] = await Promise.all([
-        fetchRoleUsers("waiters", authToken),
-        fetchRoleUsers("kitchens", authToken),
+        fetchRoleUsers("waiters", authToken, activeBusinessId),
+        fetchRoleUsers("kitchens", authToken, activeBusinessId),
       ]);
 
       setWaiters(waitersResponse.data ?? []);
@@ -117,7 +117,7 @@ export function useUsers() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, activeBusinessId]);
 
   useEffect(() => {
     fetchUsers();
@@ -136,12 +136,8 @@ export function useUsers() {
         password: payload.password,
       };
 
-      if (payload.role === "waiter") {
-        const businessId = getBusinessId();
-        if (!businessId) {
-          throw new Error("Business ID not found in local storage");
-        }
-        requestBody.businessId = businessId;
+      if (activeBusinessId) {
+        requestBody.businessId = activeBusinessId;
       }
 
       setActionLoading(true);
@@ -168,7 +164,7 @@ export function useUsers() {
         setActionLoading(false);
       }
     },
-    [fetchUsers, token],
+    [fetchUsers, token, activeBusinessId],
   );
 
   const users = useMemo(

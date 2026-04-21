@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useUsers, type UserRole } from "@/hooks/useUsers";
+import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Edit, Loader2, Plus, Search, Trash2 } from "lucide-react";
@@ -47,62 +48,77 @@ const getRoleIcon = (
 export default function UsersPage() {
   const router = useRouter();
   const { role, isAuthenticated } = useAuth();
-  const { users, waiters, kitchens, loading, error, actionLoading, createUser } = useUsers();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedRole, setSelectedRole] = useState<UserRole | "all">("all");
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({
-    name: "",
-    password: "",
-    role: "waiter" as UserRole,
-  });
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace("/login?role=business_admin&title=Business%20Admin&subtitle=Admin");
-      return;
-    }
-
-    if (role && role !== "business_admin") {
-      router.replace("/dashboard");
-      return;
-    }
-  }, [isAuthenticated, role, router]);
-
-  const filteredUsers = useMemo(() => {
-    let filtered = users;
-
-    if (selectedRole !== "all") {
-      filtered = filtered.filter((user) => user.role === selectedRole);
-    }
-
-    if (searchTerm.trim()) {
-      const query = searchTerm.trim().toLowerCase();
-      filtered = filtered.filter(
-        (user) => user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query),
-      );
-    }
-
-    return filtered;
-  }, [searchTerm, selectedRole, users]);
-
-  const businessId = typeof window !== "undefined" ? window.localStorage.getItem("businessId") : null;
-
-  const onCreateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const name = createForm.name.trim();
-    const password = createForm.password.trim();
-
-    if (!name || !password) {
-      toast.error("Name and password are required.");
-      return;
-    }
-
-    if (createForm.role === "waiter" && !businessId) {
-      toast.error("Business ID is missing in local storage. Please login again.");
-      return;
-    }
+  const searchParams = useSearchParams();
+    const {
+      users,
+      waiters,
+      kitchens,
+      loading,
+      error,
+      actionLoading,
+      createUser,
+    } = useUsers();
+    const activeBusinessId = useActiveBusinessId();
+    const impersonatedBusinessId = searchParams.get("businessId");
+  
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedRole, setSelectedRole] = useState<UserRole | "all">("all");
+    const [createOpen, setCreateOpen] = useState(false);
+    const [createForm, setCreateForm] = useState({
+      name: "",
+      password: "",
+      role: "waiter" as UserRole,
+    });
+  
+    useEffect(() => {
+      if (!isAuthenticated) {
+        router.replace("/login?role=business_admin&title=Business%20Admin&subtitle=Admin");
+        return;
+      }
+  
+      if (role) {
+        const isBusinessRole = role === "business_admin";
+        const isSuperAdminImpersonating = role === "super_admin" && !!impersonatedBusinessId;
+  
+        if (!isBusinessRole && !isSuperAdminImpersonating) {
+          router.replace("/dashboard");
+          return;
+        }
+      }
+    }, [isAuthenticated, role, router, impersonatedBusinessId]);
+  
+    const filteredUsers = useMemo(() => {
+      let filtered = users;
+  
+      if (selectedRole !== "all") {
+        filtered = filtered.filter((user) => user.role === selectedRole);
+      }
+  
+      if (searchTerm.trim()) {
+        const query = searchTerm.trim().toLowerCase();
+        filtered = filtered.filter(
+          (user) => user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query),
+        );
+      }
+  
+      return filtered;
+    }, [searchTerm, selectedRole, users]);
+  
+    const onCreateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+  
+      const name = createForm.name.trim();
+      const password = createForm.password.trim();
+  
+      if (!name || !password) {
+        toast.error("Name and password are required.");
+        return;
+      }
+  
+      if (!activeBusinessId) {
+        toast.error("Business ID not found. Please ensure a business is selected.");
+        return;
+      }
 
     try {
       await createUser({
@@ -211,7 +227,7 @@ export default function UsersPage() {
 
                 {createForm.role === "waiter" ? (
                   <p className="rounded-lg border border-[#dbe3ef] bg-[#f8fafc] px-3 py-2 text-xs text-[#475569]">
-                    Business ID source: localStorage.businessId {businessId ? "(available)" : "(missing)"}
+                    Active Business ID: {activeBusinessId || "None"}
                   </p>
                 ) : null}
 

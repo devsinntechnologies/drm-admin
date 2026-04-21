@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 
 export type InvoiceStatus = "pending" | "paid" | "overdue" | string;
 
@@ -40,6 +41,7 @@ interface UseInvoicesOptions {
 export function useInvoices(options: UseInvoicesOptions = {}) {
   const { page = 1, limit = 20 } = options;
   const { token } = useAuth();
+  const activeBusinessId = useActiveBusinessId();
 
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,6 +73,9 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
       if (limit) {
         url.searchParams.append("limit", String(limit));
       }
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
+      }
 
       const response = await fetch(url.toString(), {
         method: "GET",
@@ -97,7 +102,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [token, limit]);
+  }, [token, limit, activeBusinessId]);
 
   useEffect(() => {
     fetchInvoices(page);
@@ -127,7 +132,12 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`https://vendor.umazing.shop/invoice/${invoiceUuid}`, {
+      const url = new URL(`https://vendor.umazing.shop/invoice/${invoiceUuid}`);
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
+      }
+
+      const response = await fetch(url.toString(), {
         method: "PUT",
         headers: {
           accept: "application/json",
@@ -147,7 +157,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     } finally {
       setActionLoading(false);
     }
-  }, [fetchInvoices, pagination.page, token]);
+  }, [fetchInvoices, pagination.page, token, activeBusinessId]);
 
   return {
     invoices,

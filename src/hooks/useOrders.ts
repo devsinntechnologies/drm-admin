@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 
 const BASE_URL = "https://vendor.umazing.shop";
 
@@ -81,6 +82,7 @@ interface UseOrdersOptions {
 export function useOrders(options: UseOrdersOptions = {}) {
   const { range = "day" } = options;
   const { token } = useAuth();
+  const activeBusinessId = useActiveBusinessId();
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -106,6 +108,9 @@ export function useOrders(options: UseOrdersOptions = {}) {
         const url = new URL(`${BASE_URL}/orders`);
         if (nextRange) {
           url.searchParams.append("range", nextRange);
+        }
+        if (activeBusinessId) {
+          url.searchParams.append("businessId", activeBusinessId);
         }
 
         const response = await fetch(url.toString(), {
@@ -135,7 +140,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
         setLoading(false);
       }
     },
-    [range, token],
+    [range, token, activeBusinessId],
   );
 
   useEffect(() => {
@@ -151,7 +156,12 @@ export function useOrders(options: UseOrdersOptions = {}) {
 
       setActionLoading(true);
       try {
-        const response = await fetch(`${BASE_URL}/orders/create`, {
+        const url = new URL(`${BASE_URL}/orders/create`);
+        if (activeBusinessId) {
+          url.searchParams.append("businessId", activeBusinessId);
+        }
+
+        const response = await fetch(url.toString(), {
           method: "POST",
           headers: {
             accept: "application/json",
@@ -173,7 +183,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
         setActionLoading(false);
       }
     },
-    [fetchOrders, range, token],
+    [fetchOrders, range, token, activeBusinessId],
   );
 
   const updateOrderStatus = useCallback(
@@ -185,7 +195,12 @@ export function useOrders(options: UseOrdersOptions = {}) {
 
       setActionLoading(true);
       try {
-        const response = await fetch(`${BASE_URL}/orders/${orderId}`, {
+        const url = new URL(`${BASE_URL}/orders/${orderId}`);
+        if (activeBusinessId) {
+          url.searchParams.append("businessId", activeBusinessId);
+        }
+
+        const response = await fetch(url.toString(), {
           method: "PUT",
           headers: {
             accept: "application/json",
@@ -206,7 +221,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
         setActionLoading(false);
       }
     },
-    [fetchOrders, range, token],
+    [fetchOrders, range, token, activeBusinessId],
   );
 
   return {

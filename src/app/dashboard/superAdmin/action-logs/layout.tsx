@@ -7,9 +7,9 @@ import { useEffect, useRef, useState } from "react";
 import { Activity, AlertTriangle, BarChart3, Check, ChevronDown, RefreshCw } from "lucide-react";
 
 const tabs = [
-  { href: "/dashboard/action-logs/dashboard", label: "Dashboard", icon: BarChart3 },
-  { href: "/dashboard/action-logs", label: "Activity Log", icon: Activity },
-  { href: "/dashboard/action-logs/issues-failures", label: "Issues & Failures", icon: AlertTriangle },
+  { href: "/dashboard/superAdmin/action-logs/dashboard", label: "Dashboard", icon: BarChart3 },
+  { href: "/dashboard/superAdmin/action-logs", label: "Activity Log", icon: Activity },
+  { href: "/dashboard/superAdmin/action-logs/issues-failures", label: "Issues & Failures", icon: AlertTriangle },
 ];
 
 const businesses = [

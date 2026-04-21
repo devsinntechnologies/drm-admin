@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Box, ChevronLeft, ChevronRight, Edit, Layers, Loader2, Plus, Search, Store, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import AdminShell from "@/components/admin/AdminShell";
@@ -114,6 +114,8 @@ function CategoryCard({
 export default function CategoriesPage() {
   const router = useRouter();
   const { role } = useAuth();
+  const searchParams = useSearchParams();
+  const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -154,13 +156,16 @@ export default function CategoriesPage() {
       return;
     }
 
-    if (currentRole !== "business_admin") {
+    const isBusinessRole = currentRole === "business_admin";
+    const isSuperAdminImpersonating = currentRole === "super_admin" && !!impersonatedBusinessId;
+
+    if (!isBusinessRole && !isSuperAdminImpersonating) {
       router.replace("/dashboard");
       return;
     }
 
     setIsAuthorized(true);
-  }, [role, router]);
+  }, [role, router, impersonatedBusinessId]);
 
   const filteredCategories = useMemo(() => {
     const query = search.trim().toLowerCase();

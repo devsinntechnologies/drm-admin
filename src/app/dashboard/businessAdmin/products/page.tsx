@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Box, Plus, Search, Trash2, Pencil, Minus, Store, AlertCircle, ChevronLeft, ChevronRight, Loader } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
@@ -206,6 +206,8 @@ function MenuCard({
 export default function MenuItemsPage() {
   const router = useRouter();
   const { role } = useAuth();
+  const searchParams = useSearchParams();
+  const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -252,13 +254,16 @@ export default function MenuItemsPage() {
       return;
     }
 
-    if (currentRole !== "business_admin") {
+    const isBusinessRole = currentRole === "business_admin";
+    const isSuperAdminImpersonating = currentRole === "super_admin" && !!impersonatedBusinessId;
+
+    if (!isBusinessRole && !isSuperAdminImpersonating) {
       router.replace("/dashboard");
       return;
     }
 
     setIsAuthorized(true);
-  }, [role, router]);
+  }, [role, router, impersonatedBusinessId]);
 
   const filteredItems = useMemo(() => {
     return products.filter((item) => {

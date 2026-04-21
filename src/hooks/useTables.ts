@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 
 export type TableStatus = "available" | "occupied" | "reserved";
 
@@ -20,23 +21,15 @@ interface TablesResponse {
   last_page: number;
 }
 
-interface UseTablesOptions {
-  page?: number;
-  limit?: number;
-}
-
 const BASE_URL = "https://vendor.umazing.shop";
 
 function getAuthToken() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
+  if (typeof window === "undefined") return null;
   return localStorage.getItem("auth_token") || localStorage.getItem("token");
 }
 
-export function useTables(options: UseTablesOptions = {}) {
-  const { page = 1, limit = 10 } = options;
+export function useTables() {
+  const activeBusinessId = useActiveBusinessId();
 
   const [tables, setTables] = useState<TableRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,7 +41,7 @@ export function useTables(options: UseTablesOptions = {}) {
     last_page: 1,
   });
 
-  const fetchTables = useCallback(async (pageNum: number = 1) => {
+  const fetchTables = useCallback(async () => {
     const token = getAuthToken();
     if (!token) {
       setError("No authentication token available");
@@ -59,10 +52,10 @@ export function useTables(options: UseTablesOptions = {}) {
     setError(null);
 
     try {
+      // Construction without page and limit as requested
       const url = new URL(`${BASE_URL}/tables`);
-      url.searchParams.append("page", String(pageNum));
-      if (limit) {
-        url.searchParams.append("limit", String(limit));
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
       }
 
       const response = await fetch(url.toString(), {
@@ -81,48 +74,42 @@ export function useTables(options: UseTablesOptions = {}) {
       setTables(data.data ?? []);
       setPagination({
         total: data.total ?? 0,
-        page: data.page ?? pageNum,
+        page: data.page ?? 1,
         last_page: data.last_page ?? 1,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "An error occurred while fetching tables";
-      setError(message);
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
-  }, [limit]);
+  }, [activeBusinessId]);
 
   useEffect(() => {
-    fetchTables(page);
-  }, [page, fetchTables]);
+    fetchTables();
+  }, [fetchTables]);
 
   const getTableById = useCallback(async (id: string) => {
     const token = getAuthToken();
-    if (!token) {
-      throw new Error("No authentication token available");
+    if (!token) throw new Error("No token");
+
+    const url = new URL(`${BASE_URL}/tables/${id}`);
+    if (activeBusinessId) {
+      url.searchParams.append("businessId", activeBusinessId);
     }
 
-    const response = await fetch(`${BASE_URL}/tables/${id}`, {
+    const response = await fetch(url.toString(), {
       method: "GET",
-      headers: {
-        accept: "*/*",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { accept: "*/*", Authorization: `Bearer ${token}` },
     });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch table: ${response.statusText}`);
-    }
-
+    if (!response.ok) throw new Error("Fetch failed");
     return (await response.json()) as TableRecord;
-  }, []);
+  }, [activeBusinessId]);
 
   const createTable = useCallback(
     async (payload: { tableNumber: string; capacity: number; status: TableStatus; image?: File | null }) => {
       const token = getAuthToken();
-      if (!token) {
-        throw new Error("No authentication token available");
-      }
+      if (!token) throw new Error("No token");
 
       setActionLoading(true);
       try {
@@ -130,38 +117,31 @@ export function useTables(options: UseTablesOptions = {}) {
         formData.append("tableNumber", payload.tableNumber);
         formData.append("capacity", String(payload.capacity));
         formData.append("status", payload.status);
-        if (payload.image) {
-          formData.append("image", payload.image);
-        }
+        if (payload.image) formData.append("image", payload.image);
 
-        const response = await fetch(`${BASE_URL}/tables/tables`, {
+        const url = new URL(`${BASE_URL}/tables`);
+        if (activeBusinessId) url.searchParams.append("businessId", activeBusinessId);
+
+        const response = await fetch(url.toString(), {
           method: "POST",
-          headers: {
-            accept: "*/*",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { accept: "*/*", Authorization: `Bearer ${token}` },
           body: formData,
         });
 
-        if (!response.ok) {
-          throw new Error(`Failed to create table: ${response.statusText}`);
-        }
-
-        await fetchTables(pagination.page);
+        if (!response.ok) throw new Error("Create failed");
+        await fetchTables();
         return true;
       } finally {
         setActionLoading(false);
       }
     },
-    [fetchTables, pagination.page],
+    [fetchTables, activeBusinessId],
   );
 
   const updateTable = useCallback(
     async (id: string, payload: { tableNumber: string; capacity: number; status: TableStatus; image?: File | null }) => {
       const token = getAuthToken();
-      if (!token) {
-        throw new Error("No authentication token available");
-      }
+      if (!token) throw new Error("No token");
 
       setActionLoading(true);
       try {
@@ -169,72 +149,51 @@ export function useTables(options: UseTablesOptions = {}) {
         formData.append("tableNumber", payload.tableNumber);
         formData.append("capacity", String(payload.capacity));
         formData.append("status", payload.status);
-        if (payload.image) {
-          formData.append("image", payload.image);
-        }
+        if (payload.image) formData.append("image", payload.image);
 
-        const response = await fetch(`${BASE_URL}/tables/${id}`, {
+        const url = new URL(`${BASE_URL}/tables/${id}`);
+        if (activeBusinessId) url.searchParams.append("businessId", activeBusinessId);
+
+        const response = await fetch(url.toString(), {
           method: "PATCH",
-          headers: {
-            accept: "*/*",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { accept: "*/*", Authorization: `Bearer ${token}` },
           body: formData,
         });
 
-        if (!response.ok) {
-          throw new Error(`Failed to update table: ${response.statusText}`);
-        }
-
-        await fetchTables(pagination.page);
+        if (!response.ok) throw new Error("Update failed");
+        await fetchTables();
         return true;
       } finally {
         setActionLoading(false);
       }
     },
-    [fetchTables, pagination.page],
+    [fetchTables, activeBusinessId],
   );
 
   const deleteTable = useCallback(
     async (id: string) => {
       const token = getAuthToken();
-      if (!token) {
-        throw new Error("No authentication token available");
-      }
+      if (!token) throw new Error("No token");
 
       setActionLoading(true);
       try {
-        const response = await fetch(`${BASE_URL}/tables/${id}`, {
+        const url = new URL(`${BASE_URL}/tables/${id}`);
+        if (activeBusinessId) url.searchParams.append("businessId", activeBusinessId);
+        
+        const response = await fetch(url.toString(), {
           method: "DELETE",
-          headers: {
-            accept: "*/*",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { accept: "*/*", Authorization: `Bearer ${token}` },
         });
 
-        if (!response.ok) {
-          throw new Error(`Failed to delete table: ${response.statusText}`);
-        }
-
-        await fetchTables(pagination.page);
+        if (!response.ok) throw new Error("Delete failed");
+        await fetchTables();
         return true;
       } finally {
         setActionLoading(false);
       }
     },
-    [fetchTables, pagination.page],
+    [fetchTables, activeBusinessId],
   );
 
-  return {
-    tables,
-    loading,
-    actionLoading,
-    error,
-    pagination,
-    fetchTables,
-    getTableById,
-    createTable,
-    updateTable,
-    deleteTable,
-  };
+  return { tables, loading, actionLoading, error, pagination, fetchTables, getTableById, createTable, updateTable, deleteTable };
 }
