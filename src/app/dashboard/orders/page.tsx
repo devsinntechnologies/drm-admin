@@ -274,6 +274,7 @@ export default function OrdersPage() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isKitchenRole, setIsKitchenRole] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [lastOutOfStockToastProductId, setLastOutOfStockToastProductId] = useState<string | null>(null);
 
   const {
     products,
@@ -466,7 +467,21 @@ export default function OrdersPage() {
     }));
   }
 
+  function handleOutOfStockHover(product: Product) {
+    if (product.inStock > 0 || lastOutOfStockToastProductId === product.id) {
+      return;
+    }
+
+    setLastOutOfStockToastProductId(product.id);
+    toast.error("No stock available.");
+  }
+
   function onAddToOrder(product: Product) {
+    if (product.inStock <= 0) {
+      toast.error("No stock available.");
+      return;
+    }
+
     const chosenVariantId = selectedVariantByProduct[product.id] || getDefaultVariant(product)?.id;
     const selectedVariant = product.variants.find((variant) => variant.id === chosenVariantId) || getDefaultVariant(product);
 
@@ -805,11 +820,18 @@ export default function OrdersPage() {
                     const defaultVariant = getDefaultVariant(item);
                     const selectedVariantId = selectedVariantByProduct[item.id] || defaultVariant?.id || "";
                     const selectedVariant = item.variants.find((variant) => variant.id === selectedVariantId) || defaultVariant;
-                    const isLowStock = (selectedVariant?.inStock ?? item.inStock) <= 5;
+                    const isOutOfStock = item.inStock <= 0;
+                    const isLowStock = !isOutOfStock && item.inStock <= 5;
 
                     return (
                     <article
                       key={`${item.name}-${item.price}`}
+                      onMouseEnter={() => handleOutOfStockHover(item)}
+                      onMouseLeave={() => {
+                        if (item.inStock <= 0) {
+                          setLastOutOfStockToastProductId(null);
+                        }
+                      }}
                       className="group relative overflow-hidden rounded-[22px] border border-[#d7e8d8] bg-[#0f172a] shadow-[0_12px_24px_rgba(15,23,42,0.16)]"
                     >
                       <div className="relative h-38">
@@ -820,9 +842,13 @@ export default function OrdersPage() {
                             {selectedVariant.name}
                           </span>
                         ) : null}
-                        {selectedVariant ? (
+                        {isOutOfStock ? (
+                          <span className="absolute right-3 top-3 rounded-full bg-[#ef4444] px-3 py-1 text-xs font-semibold text-white shadow-[0_8px_16px_rgba(239,68,68,0.24)]">
+                            Out of stock
+                          </span>
+                        ) : selectedVariant ? (
                           <span className="absolute right-3 top-3 rounded-full bg-[#ff6a00] px-3 py-1 text-xs font-semibold text-white shadow-[0_8px_16px_rgba(255,106,0,0.24)]">
-                            {isLowStock ? `Low: ${selectedVariant.inStock}` : `${selectedVariant.inStock} in stock`}
+                            {isLowStock ? `Low: ${item.inStock}` : `${item.inStock} in stock`}
                           </span>
                         ) : null}
 
@@ -841,7 +867,8 @@ export default function OrdersPage() {
                         <select
                           value={selectedVariantId}
                           onChange={(event) => onSelectVariant(item.id, event.target.value)}
-                          className="h-9 rounded-xl border border-[#334155] bg-[#0f172a] px-2 text-sm text-white outline-none"
+                          disabled={isOutOfStock}
+                          className="h-9 rounded-xl border border-[#334155] bg-[#0f172a] px-2 text-sm text-white outline-none disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {item.variants.map((variant) => (
                             <option key={variant.id} value={variant.id}>
@@ -852,10 +879,10 @@ export default function OrdersPage() {
                         <button
                           type="button"
                           onClick={() => onAddToOrder(item)}
-                          disabled={!item.variants.length}
+                          disabled={isOutOfStock}
                           className="inline-flex h-9 items-center justify-center rounded-xl bg-[linear-gradient(120deg,#16a34a_0%,#22c55e_100%)] px-3 text-sm font-semibold text-white transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          Add to order
+                          {isOutOfStock ? "Out of stock" : "Add to order"}
                         </button>
                       </div>
                     </article>
