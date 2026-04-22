@@ -3,11 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Activity, Building2, Crown, CreditCard, LayoutGrid, LogOut, Menu, ReceiptText, Shapes, Store, Users, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
-import { useSearchParams } from "next/navigation";
 
 type TabKey = "dashboard" | "businesses" | "subscriptions" | "action-logs" | "orders" | "products" | "categories" | "tables" | "invoices" | "users";
 
@@ -96,7 +95,7 @@ function getVisibleTabs(role: string | null, isImpersonating: boolean = false) {
   return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "action-logs");
 }
 
-export default function AdminShell({ activeTab, children }: AdminShellProps) {
+function AdminShellContent({ activeTab, children }: AdminShellProps) {
   const { role } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [resolvedRole, setResolvedRole] = useState<string | null>(() => {
@@ -109,7 +108,6 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
   const [isMounted, setIsMounted] = useState(false);
 
   const businessId = useActiveBusinessId();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     setIsMounted(true);
@@ -318,5 +316,13 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+export default function AdminShell(props: AdminShellProps) {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <AdminShellContent {...props} />
+    </Suspense>
   );
 }

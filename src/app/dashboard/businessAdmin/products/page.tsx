@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Box, Plus, Search, Trash2, Pencil, Minus, Store, AlertCircle, ChevronLeft, ChevronRight, Loader } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import AdminShell from "@/components/admin/AdminShell";
@@ -203,7 +203,7 @@ function MenuCard({
   );
 }
 
-export default function MenuItemsPage() {
+function MenuItemsPageContent() {
   const router = useRouter();
   const { role } = useAuth();
   const searchParams = useSearchParams();
@@ -839,5 +839,13 @@ export default function MenuItemsPage() {
         </div>
       </main>
     </AdminShell>
+  );
+}
+
+export default function MenuItemsPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen" />}>
+      <MenuItemsPageContent />
+    </Suspense>
   );
 }
