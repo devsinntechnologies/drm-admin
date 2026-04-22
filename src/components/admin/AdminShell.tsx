@@ -15,7 +15,6 @@ type AdminShellProps = {
   activeTab: TabKey;
   children: React.ReactNode;
 };
-
 const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactNode }> = [
   {
     key: "dashboard",
