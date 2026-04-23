@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Box, ChevronLeft, ChevronRight, Edit, Layers, Loader2, Plus, Search, Store, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -111,7 +111,7 @@ function CategoryCard({
   );
 }
 
-function CategoriesPageContent() {
+export default function CategoriesPage() {
   const router = useRouter();
   const { role } = useAuth();
   const searchParams = useSearchParams();
@@ -527,13 +527,5 @@ function CategoriesPageContent() {
         </div>
       </main>
     </AdminShell>
-  );
-}
-
-export default function CategoriesPage() {
-  return (
-    <Suspense fallback={<main className="min-h-screen" />}>
-      <CategoriesPageContent />
-    </Suspense>
   );
 }

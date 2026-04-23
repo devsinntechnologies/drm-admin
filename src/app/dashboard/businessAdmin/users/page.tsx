@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,7 +45,7 @@ const getRoleIcon = (
   }
 };
 
-function UsersPageContent() {
+export default function UsersPage() {
   const router = useRouter();
   const { role, isAuthenticated } = useAuth();
   const searchParams = useSearchParams();
@@ -401,13 +401,5 @@ function UsersPageContent() {
         )}
       </div>
     </AdminShell>
-  );
-}
-
-export default function UsersPage() {
-  return (
-    <Suspense fallback={<main className="min-h-screen" />}>
-      <UsersPageContent />
-    </Suspense>
   );
 }

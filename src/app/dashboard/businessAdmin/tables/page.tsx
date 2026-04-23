@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Bot, ChevronLeft, ChevronRight, Edit, GripVertical, Loader2, Plus, Search, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -104,7 +104,7 @@ function TableCard({
   );
 }
 
-function TablesPageContent() {
+export default function TablesPage() {
   const router = useRouter();
   const { role } = useAuth();
   const searchParams = useSearchParams();
@@ -141,7 +141,7 @@ function TablesPageContent() {
     createTable,
     updateTable,
     deleteTable,
-  } = useTables();
+  } = useTables({ page: currentPage });
 
   useEffect(() => {
     const storedRole = typeof window !== "undefined" ? localStorage.getItem("roleName") : null;
@@ -528,13 +528,5 @@ function TablesPageContent() {
         </div>
       </main>
     </AdminShell>
-  );
-}
-
-export default function TablesPage() {
-  return (
-    <Suspense fallback={<main className="min-h-screen" />}>
-      <TablesPageContent />
-    </Suspense>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { Download, FileText, Search, CircleDollarSign, Clock3, AlertCircle, ChevronLeft, ChevronRight, Loader2, Eye, Printer } from "lucide-react";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -201,7 +201,7 @@ function ErrorAlert({ message }: { message: unknown }) {
   );
 }
 
-function InvoicesPageContent() {
+export default function InvoicesPage() {
   const router = useRouter();
   const { role } = useAuth();
   const searchParams = useSearchParams();
@@ -504,13 +504,5 @@ function InvoicesPageContent() {
         </div>
       </main>
     </AdminShell>
-  );
-}
-
-export default function InvoicesPage() {
-  return (
-    <Suspense fallback={<main className="min-h-screen" />}>
-      <InvoicesPageContent />
-    </Suspense>
   );
 }

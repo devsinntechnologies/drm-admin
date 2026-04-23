@@ -20,7 +20,7 @@ import {
   UtensilsCrossed,
   X,
 } from "lucide-react";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import AdminShell from "@/components/admin/AdminShell";
@@ -261,7 +261,7 @@ function laneActionLabel(lane: KitchenLane) {
   return "Order Served";
 }
 
-function OrdersPageContent() {
+export default function OrdersPage() {
   const router = useRouter();
   const { role, token } = useAuth();
   const activeBusinessId = useActiveBusinessId();
@@ -289,7 +289,7 @@ function OrdersPageContent() {
     tables,
     loading: tablesLoading,
     error: tablesError,
-  } = useTables();
+  } = useTables({ page: 1, limit: 100 });
   const {
     createOrder,
     orders: activeOrders,
@@ -1139,13 +1139,5 @@ function ClipboardCountBadge({ count, active }: { count: number; active: boolean
     <span className={`inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold ${active ? "bg-white text-[#16a34a]" : "bg-[#ef4444] text-white"}`}>
       {count}
     </span>
-  );
-}
-
-export default function OrdersPage() {
-  return (
-    <Suspense fallback={<main className="min-h-screen" />}>
-      <OrdersPageContent />
-    </Suspense>
   );
 }
