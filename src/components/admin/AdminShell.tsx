@@ -15,6 +15,7 @@ type AdminShellProps = {
   activeTab: TabKey;
   children: React.ReactNode;
 };
+
 const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactNode }> = [
   {
     key: "dashboard",
@@ -317,5 +318,13 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+export default function AdminShell(props: AdminShellProps) {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <AdminShellContent {...props} />
+    </Suspense>
   );
 }
