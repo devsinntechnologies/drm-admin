@@ -320,11 +320,3 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
     </div>
   );
 }
-
-export default function AdminShell(props: AdminShellProps) {
-  return (
-    <Suspense fallback={<div className="min-h-screen" />}>
-      <AdminShellContent {...props} />
-    </Suspense>
-  );
-}
