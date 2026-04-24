@@ -17,6 +17,7 @@ const gallery = [
   "/business/pic5.jpeg",
 ];
 
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
