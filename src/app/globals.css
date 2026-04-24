@@ -107,3 +107,13 @@ input[type="reset"][class*="text-white"]:hover {
   background-color: #e6721f !important;
   border-color: #e6721f !important;
 }
+
+.premium-toast {
+  font-family: var(--font-poppins), sans-serif !important;
+  font-weight: 500 !important;
+}
+
+[data-sonner-toast] {
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}

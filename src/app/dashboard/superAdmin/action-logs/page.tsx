@@ -2,6 +2,7 @@
 
 import { CalendarDays, Download, Filter, RefreshCcw, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   type ActionLogRecord,
   type ActionLogsQueryParams,
@@ -188,6 +189,7 @@ const copyTextToClipboard = async (text: string) => {
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
     try {
       await navigator.clipboard.writeText(text);
+      toast.success("Copied to clipboard.");
       return true;
     } catch {
       // Fall through to the legacy clipboard path.
@@ -280,8 +282,8 @@ export default function ActionLogsPage() {
     return count;
   }, [filters]);
 
-  const total = data?.total ?? 0;
-  const lastPage = data?.last_page ?? 1;
+  const total = data?.pagination?.total ?? 0;
+  const lastPage = data?.pagination?.totalPages ?? 1;
   const startIndex = filteredRows.length === 0 ? 0 : 1;
   const endIndex = filteredRows.length;
 
@@ -310,6 +312,7 @@ export default function ActionLogsPage() {
     link.download = `action-logs-page-${page}.json`;
     link.click();
     URL.revokeObjectURL(link.href);
+    toast.success("Logs exported successfully.");
   };
 
   return (

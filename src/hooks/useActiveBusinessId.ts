@@ -6,8 +6,8 @@ import { useMemo } from "react";
 
 /**
  * Hook to get the currently active businessId.
- * Prioritizes the businessId from the URL query parameter if the user is a super_admin.
- * Otherwise, falls back to the businessId stored in localStorage.
+ * Prioritizes the businessId from the URL query parameter if present.
+ * Otherwise, falls back to the businessId stored in localStorage for business staff.
  */
 export function useActiveBusinessId() {
   const { role } = useAuth();
@@ -17,15 +17,18 @@ export function useActiveBusinessId() {
     // 1. Check URL query parameters
     const urlBusinessId = searchParams.get("businessId");
 
-    // 2. If present and user is super_admin, prioritize it
-    // Note: We also check for 'business_admin' in case we want to show the ID in the URL for them too.
-    if (urlBusinessId && (role === "super_admin" || role === "business_admin")) {
-      return urlBusinessId;
+    // 2. If present, prioritize it
+    if (urlBusinessId) {
+      return urlBusinessId.trim();
     }
 
-    // 3. Fallback to localStorage
+    // 3. Fallback to localStorage ONLY for business-related roles
     if (typeof window !== "undefined") {
-      return localStorage.getItem("businessId");
+      const isStaff = role === "business_admin" || role === "kitchen" || role === "waiter";
+      if (isStaff) {
+        const storedId = localStorage.getItem("businessId");
+        return storedId ? storedId.trim() : null;
+      }
     }
 
     return null;

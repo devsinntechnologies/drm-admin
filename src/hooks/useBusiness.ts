@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { BASE_URL } from "@/lib/constant";
+import { getStoredAuthToken } from "@/lib/utils";
 
 export type BusinessStatus = "active" | "inactive" | "expired";
 
@@ -23,9 +24,12 @@ export type BusinessRecord = {
 
 export type GetBusinessesResponse = {
   data: BusinessRecord[];
-  total: number;
-  page: number;
-  last_page: number;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 };
 
 export type GetBusinessesQueryParams = {
@@ -70,16 +74,14 @@ export const businessApi = createApi({
   reducerPath: "businessApi",
   baseQuery: fetchBaseQuery({
     baseUrl: BASE_URL,
-    prepareHeaders: (headers) => {
-      headers.set("accept", "*/*");
-      headers.set("Content-Type", "application/json");
-
-      if (typeof window !== "undefined") {
-        const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
-        if (token) {
-          headers.set("Authorization", `Bearer ${token}`);
-        }
+    prepareHeaders: (headers, { getState }) => {
+      const token = (getState() as any).auth?.token || getStoredAuthToken();
+      
+      if (token) {
+        headers.set("Authorization", `Bearer ${token.trim()}`);
       }
+      
+      headers.set("accept", "*/*");
 
       return headers;
     },
@@ -134,6 +136,7 @@ export const businessApi = createApi({
 export const {
   useGetBusinessesQuery,
   useCreateBusinessMutation,
+  useGetBusinessByIdQuery,
   useLazyGetBusinessByIdQuery,
   usePatchBusinessByIdMutation,
   useDeleteBusinessByIdMutation,

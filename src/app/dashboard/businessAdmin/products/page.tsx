@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Box, Plus, Search, Trash2, Pencil, Minus, Store, AlertCircle, ChevronLeft, ChevronRight, Loader } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import AdminShell from "@/components/admin/AdminShell";
@@ -45,65 +45,80 @@ function VariantsEditor({
   setVariants: React.Dispatch<React.SetStateAction<CreateProductVariantPayload[]>>;
 }) {
   return (
-    <div className="space-y-2 sm:col-span-2">
+    <div className="space-y-3 sm:col-span-2">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-[#111827]">Variants</label>
         <button
           type="button"
           onClick={() => setVariants((prev) => [...prev, { name: "", price: 0, inStock: 0 }])}
-          className="inline-flex items-center gap-1 rounded-lg border border-[#dbe3ef] px-2 py-1 text-xs font-semibold text-[#4f46e5]"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#dbe3ef] bg-white px-3 py-1.5 text-xs font-semibold text-[#4f46e5] shadow-sm transition hover:bg-[#f8faff]"
         >
           <Plus className="h-3.5 w-3.5" /> Add Variant
         </button>
       </div>
 
-      {variants.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-[#dbe3ef] p-3 text-xs text-[#64748b]">
-          No variants added. Product will be created without variants.
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {variants.map((variant, index) => (
-            <div key={`${variant.name}-${index}`} className="grid grid-cols-1 gap-2 rounded-xl border border-[#e2e8f0] p-3 sm:grid-cols-[1.2fr_0.8fr_0.8fr_auto]">
+      {variants.length > 0 && (
+        <div className="grid grid-cols-[2fr_1fr_1fr_auto] gap-2 px-3 text-[11px] font-bold uppercase tracking-wider text-[#94a3b8]">
+          <span>Variant Name</span>
+          <span>Price</span>
+          <span>Stock</span>
+          <div className="w-10"></div>
+        </div>
+      )}
+
+      <div className="max-h-[115px] space-y-2 overflow-y-auto pr-1">
+        {variants.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-6 text-center">
+            <p className="text-xs font-medium text-[#64748b]">
+              No variants added yet.
+            </p>
+            <p className="mt-1 text-[10px] text-[#94a3b8]">Product will be created without multiple options.</p>
+          </div>
+        ) : (
+          variants.map((variant, index) => (
+            <div key={`${variant.name}-${index}`} className="group flex items-center gap-2 rounded-2xl border border-[#e2e8f0] bg-white p-2.5 transition focus-within:border-[#635bff] focus-within:ring-2 focus-within:ring-[#635bff]/5">
               <input
                 value={variant.name}
                 onChange={(event) =>
                   setVariants((prev) => prev.map((item, i) => (i === index ? { ...item, name: event.target.value } : item)))
                 }
-                placeholder="Variant name"
-                className="rounded-lg border border-[#dbe3ef] px-2 py-1.5 text-sm outline-none focus:border-[#635bff]"
+                placeholder="e.g. Regular"
+                className="min-w-0 flex-[2] rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none transition focus:border-[#635bff] focus:bg-white"
               />
               <input
                 type="number"
                 min={0}
                 value={variant.price}
+                onFocus={(e) => e.target.select()}
                 onChange={(event) =>
                   setVariants((prev) => prev.map((item, i) => (i === index ? { ...item, price: Number(event.target.value) } : item)))
                 }
-                placeholder="Price"
-                className="rounded-lg border border-[#dbe3ef] px-2 py-1.5 text-sm outline-none focus:border-[#635bff]"
+                placeholder="0"
+                className="min-w-0 flex-1 rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none transition focus:border-[#635bff] focus:bg-white"
               />
               <input
                 type="number"
                 min={0}
                 value={variant.inStock}
+                onFocus={(e) => e.target.select()}
                 onChange={(event) =>
                   setVariants((prev) => prev.map((item, i) => (i === index ? { ...item, inStock: Number(event.target.value) } : item)))
                 }
-                placeholder="Stock"
-                className="rounded-lg border border-[#dbe3ef] px-2 py-1.5 text-sm outline-none focus:border-[#635bff]"
+                placeholder="0"
+                className="min-w-0 flex-1 rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none transition focus:border-[#635bff] focus:bg-white"
               />
               <button
                 type="button"
                 onClick={() => setVariants((prev) => prev.filter((_, i) => i !== index))}
-                className="inline-flex items-center justify-center rounded-lg border border-[#fecaca] px-2 text-[#ef4444]"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#fee2e2] bg-white text-[#ef4444] transition hover:bg-[#fef2f2] hover:text-[#dc2626]"
+                title="Remove variant"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -129,11 +144,11 @@ function MenuCard({
   return (
     <article className="overflow-hidden rounded-[28px] border border-[#e4e8f0]  shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
       <div className="relative h-52">
-        <Image 
-          src={imageUrl} 
-          alt={item.name} 
-          fill 
-          sizes="(max-width: 640px) 100vw, 25vw" 
+        <Image
+          src={imageUrl}
+          alt={item.name}
+          fill
+          sizes="(max-width: 640px) 100vw, 25vw"
           className="object-cover"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
@@ -177,18 +192,6 @@ function MenuCard({
           </div>
         )}
 
-        <div className="flex items-center justify-between rounded-2xl border border-[#e8ebf3] bg-[#fafbff] px-4 py-3 text-sm text-[#5b6475]">
-          <button type="button" className="grid h-10 w-10 place-items-center rounded-xl border border-[#e5e7eb] bg-white text-[#111827]">
-            <Minus className="h-4 w-4" />
-          </button>
-          <div className="text-center">
-            <p className="font-medium">Quick Adjust</p>
-            <p className="text-xs text-[#667085]">±5 units</p>
-          </div>
-          <button type="button" className="grid h-10 w-10 place-items-center rounded-xl border border-[#e5e7eb] bg-white text-[#111827]">
-            <Plus className="h-4 w-4" />
-          </button>
-        </div>
 
         <div className="grid grid-cols-[1fr_auto] gap-2">
           <button type="button" onClick={() => onEdit(item.id)} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#cfd8ff] bg-[#eef2ff] px-4 py-3 text-sm font-semibold text-[#4f46e5]">
@@ -203,7 +206,7 @@ function MenuCard({
   );
 }
 
-export default function MenuItemsPage() {
+function MenuItemsContent() {
   const router = useRouter();
   const { role } = useAuth();
   const searchParams = useSearchParams();
@@ -335,6 +338,7 @@ export default function MenuItemsPage() {
       return;
     }
 
+    const toastId = toast.loading("Creating product...");
     try {
       await createProduct({
         name: createForm.name.trim(),
@@ -348,15 +352,16 @@ export default function MenuItemsPage() {
         image: createForm.image,
       });
 
-      toast.success("Product created successfully");
+      toast.success("Product created successfully", { id: toastId });
       setCreateOpen(false);
       resetCreateForm();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create product");
+      toast.error(err instanceof Error ? err.message : "Failed to create product", { id: toastId });
     }
   };
 
   const onOpenEdit = async (id: string) => {
+    const toastId = toast.loading("Loading product details...");
     try {
       const product = await getProductById(id);
       setEditId(id);
@@ -377,9 +382,10 @@ export default function MenuItemsPage() {
           inStock: variant.inStock,
         })),
       );
+      toast.dismiss(toastId);
       setEditOpen(true);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load product");
+      toast.error(err instanceof Error ? err.message : "Failed to load product", { id: toastId });
     }
   };
 
@@ -405,6 +411,7 @@ export default function MenuItemsPage() {
       return;
     }
 
+    const toastId = toast.loading("Updating product...");
     try {
       await updateProduct(editId, {
         name: editForm.name.trim(),
@@ -418,11 +425,11 @@ export default function MenuItemsPage() {
         image: editForm.image,
       });
 
-      toast.success("Product updated successfully");
+      toast.success("Product updated successfully", { id: toastId });
       setEditOpen(false);
       resetEditForm();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update product");
+      toast.error(err instanceof Error ? err.message : "Failed to update product", { id: toastId });
     }
   };
 
@@ -432,11 +439,12 @@ export default function MenuItemsPage() {
       return;
     }
 
+    const toastId = toast.loading("Deleting product...");
     try {
       await deleteProduct(id);
-      toast.success("Product deleted successfully");
+      toast.success("Product deleted successfully", { id: toastId });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete product");
+      toast.error(err instanceof Error ? err.message : "Failed to delete product", { id: toastId });
     }
   };
 
@@ -468,7 +476,7 @@ export default function MenuItemsPage() {
                     <Plus className="h-4 w-4" /> Add Product
                   </button>
                 </DialogTrigger>
-                <DialogContent className="max-w-xl">
+                <DialogContent className="max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>Create Product</DialogTitle>
                     <DialogDescription>Create a product using multipart form data. Image is optional.</DialogDescription>
@@ -717,7 +725,7 @@ export default function MenuItemsPage() {
               }
             }}
           >
-            <DialogContent className="max-w-xl">
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Update Product</DialogTitle>
                 <DialogDescription>Update product details, variants, and optional image.</DialogDescription>
@@ -839,5 +847,19 @@ export default function MenuItemsPage() {
         </div>
       </main>
     </AdminShell>
+  );
+}
+
+export default function MenuItemsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <Loader className="h-8 w-8 animate-spin text-[#4f46e5]" />
+        </div>
+      }
+    >
+      <MenuItemsContent />
+    </Suspense>
   );
 }

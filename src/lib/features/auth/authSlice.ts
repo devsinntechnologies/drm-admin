@@ -21,6 +21,14 @@ type LoginResponse = {
   access_token?: string;
   message?: string;
   error?: string;
+  data?: {
+    token?: string;
+    access_token?: string;
+    roleName?: string;
+    businessId?: string;
+    business_id?: string;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 };
 
@@ -51,7 +59,7 @@ function getInitialAuthState(): AuthState {
   const businessId = localStorage.getItem("businessId");
 
   return {
-    user: businessId ? { businessId } : null,
+    user: businessId ? ({ businessId } as any) : null,
     token,
     role,
     isLoading: false,
@@ -86,9 +94,16 @@ export const loginUser = createAsyncThunk<
       );
     }
 
-    const token = payload.token || payload.access_token || null;
+    const token = 
+      payload.token || 
+      payload.access_token || 
+      payload.data?.token || 
+      payload.data?.access_token || 
+      null;
+
     if (typeof window !== "undefined" && token) {
       localStorage.setItem("auth_token", token);
+      localStorage.setItem("token", token);
     }
 
     return payload;
@@ -129,13 +144,23 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload;
-        state.token =
+        // Point to the nested data if available, otherwise fallback to the whole payload
+        state.user = (action.payload.data as any) || action.payload;
+        
+        // Extract token with fallbacks for nested structures
+        const token =
           (action.payload.token as string | undefined) ||
           (action.payload.access_token as string | undefined) ||
+          (action.payload.data?.token as string | undefined) ||
+          (action.payload.data?.access_token as string | undefined) ||
           null;
+        
+        state.token = token;
+
+        // Extract role with fallbacks
         state.role =
           action.payload.roleName ||
+          (action.payload.data?.roleName as string | undefined) ||
           (action.meta.arg.role as string | undefined) ||
           null;
 
@@ -144,28 +169,25 @@ const authSlice = createSlice({
             localStorage.setItem("token", state.token);
             localStorage.setItem("auth_token", state.token);
           } else {
-            localStorage.removeItem("token");
-            localStorage.removeItem("auth_token");
+            // Only remove if we really didn't get a token
+            // This prevents accidental deletion if the response format is unexpected
           }
 
           if (state.role) {
             localStorage.setItem("roleName", state.role);
             localStorage.setItem("auth_role", state.role);
-          } else {
-            localStorage.removeItem("roleName");
-            localStorage.removeItem("auth_role");
           }
 
+          // Extract businessId with fallbacks
           const businessId =
-            typeof action.payload.businessId === "string"
-              ? action.payload.businessId
-              : typeof action.payload.business_id === "string"
-                ? action.payload.business_id
-              : null;
+            (action.payload.businessId as string | undefined) ||
+            (action.payload.business_id as string | undefined) ||
+            (action.payload.data?.businessId as string | undefined) ||
+            (action.payload.data?.business_id as string | undefined) ||
+            null;
+
           if (businessId) {
             localStorage.setItem("businessId", businessId);
-          } else {
-            localStorage.removeItem("businessId");
           }
         }
       })

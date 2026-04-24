@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { BASE_URL } from "@/lib/constant";
+import { getStoredAuthToken } from "@/lib/utils";
 
 export type LogStatus = "success" | "failure";
 
@@ -68,9 +69,12 @@ export type ActionLogRecord = {
 
 export type ActionLogsResponse = {
   data: ActionLogRecord[];
-  total: number;
-  page: number;
-  last_page: number;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 };
 
 export type ActionLogsQueryParams = {
@@ -91,20 +95,21 @@ export const actionLogsApi = createApi({
   reducerPath: "actionLogsApi",
   baseQuery: fetchBaseQuery({
     baseUrl: BASE_URL,
-    prepareHeaders: (headers) => {
+    prepareHeaders: (headers, { getState }) => {
       headers.set("accept", "application/json");
 
-      if (typeof window !== "undefined") {
-        const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
-        if (token) {
-          headers.set("Authorization", `Bearer ${token}`);
-        }
+      const token = (getState() as any).auth?.token || getStoredAuthToken();
+      
+      if (token) {
+        headers.set("Authorization", `Bearer ${token.trim()}`);
+      }
 
+      if (typeof window !== "undefined") {
         // Automatically append businessId from URL if present
         const urlParams = new URLSearchParams(window.location.search);
         const urlBusinessId = urlParams.get("businessId");
         if (urlBusinessId) {
-          headers.set("x-business-id", urlBusinessId); // Standard and safe way
+          headers.set("x-business-id", urlBusinessId); 
         }
       }
 

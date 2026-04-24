@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Check, ChevronDown, CreditCard, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import AdminShell from "@/components/admin/AdminShell";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -182,6 +182,14 @@ function PlanCard({ plan, onEdit, onDelete }: { plan: Plan; onEdit: (plan: Plan)
 }
 
 export default function SubscriptionsPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading Subscriptions...</div>}>
+      <SubscriptionsContent />
+    </Suspense>
+  );
+}
+
+function SubscriptionsContent() {
   const [rows, setRows] = useState(initialRows);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [isAddPlanOpen, setIsAddPlanOpen] = useState(false);
@@ -293,26 +301,28 @@ export default function SubscriptionsPage() {
       isActive: form.isActive,
     };
 
+    const toastId = toast.loading(editingPlanId ? "Updating plan..." : "Creating plan...");
     try {
       const savedPlan = editingPlanId ? await updatePlan({ id: editingPlanId, body: payload }).unwrap() : await createPlan(payload).unwrap();
       await refetchPlans();
-      toast.success(`${savedPlan.displayName || savedPlan.planName} ${editingPlanId ? "updated" : "created"} successfully.`);
+      toast.success(`${savedPlan.displayName || savedPlan.planName} ${editingPlanId ? "updated" : "created"} successfully.`, { id: toastId });
       setEditingPlanId(null);
       resetPlanForm();
       setIsAddPlanOpen(false);
     } catch (error) {
-      toast.error(parsePlanError(error, editingPlanId ? "Unable to update plan. Please try again." : "Unable to create plan. Please try again."));
+      toast.error(parsePlanError(error, editingPlanId ? "Unable to update plan. Please try again." : "Unable to create plan. Please try again."), { id: toastId });
     }
   }
 
   async function handleDeletePlan(plan: Plan) {
+    const toastId = toast.loading("Deleting plan...");
     try {
       await deletePlan(plan.id).unwrap();
       await refetchPlans();
-      toast.success(`${plan.displayName || plan.planName} deleted successfully.`);
+      toast.success(`${plan.displayName || plan.planName} deleted successfully.`, { id: toastId });
       setDeleteTargetPlan(null);
     } catch (error) {
-      toast.error(parsePlanError(error, "Unable to delete plan. Please try again."));
+      toast.error(parsePlanError(error, "Unable to delete plan. Please try again."), { id: toastId });
     }
   }
 

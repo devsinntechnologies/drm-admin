@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import {
   BarChart3,
   Building2,
@@ -23,7 +24,7 @@ const topBusinesses = [
   { rank: 5, name: "Taco Fiesta", orders: "380 orders", revenue: "32.0K", plan: "Basic", image: "/business/pic5.jpeg" },
 ];
 
-export default function SuperAdminDashboard() {
+function SuperAdminDashboardContent() {
   const { data, isLoading } = useGetPlansQuery();
   const stats = data?.stats;
 
@@ -255,5 +256,13 @@ export default function SuperAdminDashboard() {
         </div>
       </section>
     </AdminShell>
+  );
+}
+
+export default function SuperAdminDashboard() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading Dashboard...</div>}>
+      <SuperAdminDashboardContent />
+    </Suspense>
   );
 }

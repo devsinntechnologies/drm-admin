@@ -1,7 +1,7 @@
 "use client";
 
 import { Download, FileText, Search, CircleDollarSign, Clock3, AlertCircle, ChevronLeft, ChevronRight, Loader2, Eye, Printer } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,6 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useInvoices, type InvoiceRecord } from "@/hooks/useInvoices";
 import { normalizeErrorMessage } from "@/lib/utils";
 import { toast } from "sonner";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 type InvoiceRow = {
   id: string;
@@ -201,7 +203,7 @@ function ErrorAlert({ message }: { message: unknown }) {
   );
 }
 
-export default function InvoicesPage() {
+function InvoicesContent() {
   const router = useRouter();
   const { role } = useAuth();
   const searchParams = useSearchParams();
@@ -273,15 +275,68 @@ export default function InvoicesPage() {
   };
 
   const handleMarkPaid = async (invoiceUuid: string) => {
+    const toastId = toast.loading("Updating status...");
     try {
       setUpdatingInvoiceUuid(invoiceUuid);
       await updateInvoiceStatus(invoiceUuid, "paid");
-      toast.success("Invoice marked as paid.");
+      toast.success("Invoice marked as paid.", { id: toastId });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to update invoice status.";
-      toast.error(message);
+      toast.error(message, { id: toastId });
     } finally {
       setUpdatingInvoiceUuid(null);
+    }
+  };
+
+  const handleExportPDF = () => {
+    if (rows.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+
+    const toastId = toast.loading("Generating PDF...");
+    try {
+      const doc = new jsPDF();
+      const title = "Invoices Report";
+      const dateStr = new Date().toLocaleString();
+
+      doc.setFontSize(20);
+      doc.text(title, 14, 22);
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Generated on: ${dateStr}`, 14, 30);
+
+      const tableData = rows.map(r => [
+        r.id,
+        r.orderNumber,
+        r.businessName,
+        r.date,
+        r.amount,
+        r.status
+      ]);
+
+      autoTable(doc, {
+        startY: 35,
+        head: [["Invoice ID", "Order #", "Business", "Date", "Amount", "Status"]],
+        body: tableData,
+        headStyles: { fillColor: [99, 91, 255] }, // Matches brand purple
+        alternateRowStyles: { fillColor: [245, 247, 251] }
+      });
+
+      const totalRevenue = invoices.filter(i => i.status.toLowerCase() === 'paid').reduce((s, i) => s + toAmount(i), 0);
+      const pendingRevenue = invoices.filter(i => i.status.toLowerCase() === 'pending').reduce((s, i) => s + toAmount(i), 0);
+
+      const finalY = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(12);
+      doc.setTextColor(0);
+      doc.text(`Total Paid Revenue: ${formatCurrency(totalRevenue)}`, 14, finalY);
+      doc.text(`Total Pending: ${formatCurrency(pendingRevenue)}`, 14, finalY + 7);
+
+      doc.save(`invoices-report-${new Date().getTime()}.pdf`);
+      toast.success("PDF exported successfully", { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate PDF", { id: toastId });
     }
   };
 
@@ -316,7 +371,11 @@ export default function InvoicesPage() {
                 </div>
               </div>
 
-              <button type="button" className="inline-flex items-center gap-2 rounded-2xl border border-[#cfd8ff] bg-white px-4 py-3 text-sm font-semibold text-[#4f46e5] shadow-[0_10px_20px_rgba(99,91,255,0.08)]">
+              <button
+                type="button"
+                onClick={handleExportPDF}
+                className="inline-flex items-center gap-2 rounded-2xl border border-[#cfd8ff] bg-white px-4 py-3 text-sm font-semibold text-[#4f46e5] shadow-[0_10px_20px_rgba(99,91,255,0.08)] hover:bg-[#f8faff] transition-colors"
+              >
                 <Download className="h-4 w-4" /> Export
               </button>
             </div>
@@ -504,5 +563,19 @@ export default function InvoicesPage() {
         </div>
       </main>
     </AdminShell>
+  );
+}
+
+export default function InvoicesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#4f46e5]" />
+        </div>
+      }
+    >
+      <InvoicesContent />
+    </Suspense>
   );
 }

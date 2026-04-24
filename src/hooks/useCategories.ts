@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 
 export interface CategoryProduct {
@@ -29,9 +30,12 @@ export interface CategoryRecord {
 
 interface CategoriesResponse {
   data: CategoryRecord[];
-  total: number;
-  page: number;
-  last_page: number;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 interface UseCategoriesOptions {
@@ -41,16 +45,15 @@ interface UseCategoriesOptions {
 
 const BASE_URL = "https://vendor.umazing.shop";
 
-function getAuthToken() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
+function getAuthToken(reduxToken: string | null) {
+  if (reduxToken) return reduxToken;
+  if (typeof window === "undefined") return null;
   return localStorage.getItem("auth_token") || localStorage.getItem("token");
 }
 
 export function useCategories(options: UseCategoriesOptions = {}) {
   const { page = 1, limit = 10 } = options;
+  const { token: reduxToken } = useAuth();
   const activeBusinessId = useActiveBusinessId();
 
   const [categories, setCategories] = useState<CategoryRecord[]>([]);
@@ -64,7 +67,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
   });
 
   const fetchCategories = useCallback(async (pageNum: number = 1) => {
-    const token = getAuthToken();
+    const token = getAuthToken(reduxToken);
     if (!token) {
       setError("No authentication token available");
       return;
@@ -92,15 +95,21 @@ export function useCategories(options: UseCategoriesOptions = {}) {
       });
 
       if (!response.ok) {
+        if (response.status === 404) {
+          setCategories([]);
+          setPagination({ total: 0, page: 1, last_page: 1 });
+          setLoading(false);
+          return;
+        }
         throw new Error(`Failed to fetch categories: ${response.statusText}`);
       }
 
       const data: CategoriesResponse = await response.json();
       setCategories(data.data ?? []);
       setPagination({
-        total: data.total ?? 0,
-        page: data.page ?? pageNum,
-        last_page: data.last_page ?? 1,
+        total: data.pagination?.total ?? 0,
+        page: data.pagination?.page ?? pageNum,
+        last_page: data.pagination?.totalPages ?? 1,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "An error occurred while fetching categories";
@@ -108,14 +117,14 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [limit, activeBusinessId]);
+  }, [limit, activeBusinessId, reduxToken]);
 
   useEffect(() => {
     fetchCategories(page);
   }, [page, fetchCategories]);
 
   const getCategoryById = useCallback(async (id: string) => {
-    const token = getAuthToken();
+    const token = getAuthToken(reduxToken);
     if (!token) {
       throw new Error("No authentication token available");
     }
@@ -134,14 +143,25 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch category: ${response.statusText}`);
+      const text = await response.text();
+      let detail: any = text;
+      try {
+        const parsed = JSON.parse(text);
+        detail = parsed.message || parsed.error || text;
+        if (typeof detail === 'object' && detail.message) {
+          detail = detail.message;
+        }
+        if (Array.isArray(detail)) detail = detail.join(", ");
+      } catch (e) { /* not json */ }
+      throw new Error(detail);
     }
 
-    return (await response.json()) as CategoryRecord;
+    const res = await response.json();
+    return (res.data ?? res) as CategoryRecord;
   }, [activeBusinessId]);
 
   const createCategory = useCallback(async (payload: { categoryName: string; sortOrder: number; image?: File | null }) => {
-    const token = getAuthToken();
+    const token = getAuthToken(reduxToken);
     if (!token) {
       throw new Error("No authentication token available");
     }
@@ -170,7 +190,17 @@ export function useCategories(options: UseCategoriesOptions = {}) {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to create category: ${response.statusText}`);
+        const text = await response.text();
+        let detail: any = text;
+        try {
+          const parsed = JSON.parse(text);
+          detail = parsed.message || parsed.error || text;
+          if (typeof detail === 'object' && detail.message) {
+            detail = detail.message;
+          }
+          if (Array.isArray(detail)) detail = detail.join(", ");
+        } catch (e) { /* not json */ }
+        throw new Error(detail);
       }
 
       await fetchCategories(pagination.page);
@@ -181,7 +211,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
   }, [fetchCategories, pagination.page, activeBusinessId]);
 
   const updateCategory = useCallback(async (id: string, payload: { categoryName: string; sortOrder: number; image?: File | null }) => {
-    const token = getAuthToken();
+    const token = getAuthToken(reduxToken);
     if (!token) {
       throw new Error("No authentication token available");
     }
@@ -201,7 +231,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
       }
 
       const response = await fetch(url.toString(), {
-        method: "PATCH",
+        method: "PUT",
         headers: {
           accept: "*/*",
           Authorization: `Bearer ${token}`,
@@ -210,7 +240,17 @@ export function useCategories(options: UseCategoriesOptions = {}) {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to update category: ${response.statusText}`);
+        const text = await response.text();
+        let detail: any = text;
+        try {
+          const parsed = JSON.parse(text);
+          detail = parsed.message || parsed.error || text;
+          if (typeof detail === 'object' && detail.message) {
+            detail = detail.message;
+          }
+          if (Array.isArray(detail)) detail = detail.join(", ");
+        } catch (e) { /* not json */ }
+        throw new Error(detail);
       }
 
       await fetchCategories(pagination.page);
@@ -221,7 +261,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
   }, [fetchCategories, pagination.page, activeBusinessId]);
 
   const deleteCategory = useCallback(async (id: string) => {
-    const token = getAuthToken();
+    const token = getAuthToken(reduxToken);
     if (!token) {
       throw new Error("No authentication token available");
     }
@@ -242,7 +282,17 @@ export function useCategories(options: UseCategoriesOptions = {}) {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to delete category: ${response.statusText}`);
+        const text = await response.text();
+        let detail: any = text;
+        try {
+          const parsed = JSON.parse(text);
+          detail = parsed.message || parsed.error || text;
+          if (typeof detail === 'object' && detail.message) {
+            detail = detail.message;
+          }
+          if (Array.isArray(detail)) detail = detail.join(", ");
+        } catch (e) { /* not json */ }
+        throw new Error(detail);
       }
 
       await fetchCategories(pagination.page);

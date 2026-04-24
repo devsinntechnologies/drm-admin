@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { BASE_URL } from "@/lib/constant";
+import { getStoredAuthToken } from "@/lib/utils";
 
 export type SubscribedBusiness = {
   id: string;
@@ -56,16 +57,14 @@ export const planApi = createApi({
   reducerPath: "planApi",
   baseQuery: fetchBaseQuery({
     baseUrl: BASE_URL,
-    prepareHeaders: (headers) => {
-      headers.set("accept", "*/*");
-      headers.set("Content-Type", "application/json");
-
-      if (typeof window !== "undefined") {
-        const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
-        if (token) {
-          headers.set("Authorization", `Bearer ${token}`);
-        }
+    prepareHeaders: (headers, { getState }) => {
+      const token = (getState() as any).auth?.token || getStoredAuthToken();
+      
+      if (token) {
+        headers.set("Authorization", `Bearer ${token.trim()}`);
       }
+      
+      headers.set("accept", "*/*");
 
       return headers;
     },

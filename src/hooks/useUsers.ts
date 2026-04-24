@@ -24,9 +24,12 @@ export interface StaffUser {
 
 interface StaffListResponse {
   data: StaffUser[];
-  total: number;
-  page: number;
-  last_page: number;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 interface RoleMeta {
@@ -102,14 +105,14 @@ export function useUsers() {
       setWaiters(waitersResponse.data ?? []);
       setKitchens(kitchensResponse.data ?? []);
       setWaitersMeta({
-        total: waitersResponse.total ?? 0,
-        page: waitersResponse.page ?? 1,
-        last_page: waitersResponse.last_page ?? 1,
+        total: waitersResponse.pagination?.total ?? 0,
+        page: waitersResponse.pagination?.page ?? 1,
+        last_page: waitersResponse.pagination?.totalPages ?? 1,
       });
       setKitchensMeta({
-        total: kitchensResponse.total ?? 0,
-        page: kitchensResponse.page ?? 1,
-        last_page: kitchensResponse.last_page ?? 1,
+        total: kitchensResponse.pagination?.total ?? 0,
+        page: kitchensResponse.pagination?.page ?? 1,
+        last_page: kitchensResponse.pagination?.totalPages ?? 1,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch users";
@@ -140,21 +143,38 @@ export function useUsers() {
         requestBody.businessId = activeBusinessId;
       }
 
+      const url = new URL(`${BASE_URL}/${endpoint}`);
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
+      }
+
       setActionLoading(true);
       try {
-        const response = await fetch(`${BASE_URL}/${endpoint}`, {
+        const bodyStr = JSON.stringify(requestBody);
+        console.log(`[createUser] POST ${url.toString()} body:`, bodyStr);
+
+        const response = await fetch(url.toString(), {
           method: "POST",
           headers: {
             accept: "*/*",
             Authorization: `Bearer ${authToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(requestBody),
+          body: bodyStr,
         });
 
         if (!response.ok) {
           const text = await response.text();
-          throw new Error(text || `Failed to create ${payload.role}: ${response.statusText}`);
+          let detail: any = text;
+          try {
+            const parsed = JSON.parse(text);
+            detail = parsed.message || parsed.error || text;
+            if (typeof detail === 'object' && detail.message) {
+              detail = detail.message;
+            }
+            if (Array.isArray(detail)) detail = detail.join(", ");
+          } catch (e) { /* not json */ }
+          throw new Error(detail);
         }
 
         const created = await response.json().catch(() => null);
@@ -172,6 +192,104 @@ export function useUsers() {
     [kitchens, waiters],
   );
 
+  const updatePassword = useCallback(
+    async (user: { id: string; role: UserRole }, newPassword: string) => {
+      const authToken = getAuthToken(token);
+      if (!authToken) throw new Error("No authentication token available");
+
+      // Swagger: PATCH /waiters/{waiterId}/password  or  /kitchens/{id}/password
+      const endpoint = user.role === "waiter"
+        ? `waiters/${user.id}/password`
+        : `kitchens/${user.id}/password`;
+
+      const url = new URL(`${BASE_URL}/${endpoint}`);
+      if (activeBusinessId) url.searchParams.append("businessId", activeBusinessId);
+
+      setActionLoading(true);
+      try {
+        const payload: Record<string, any> = { 
+          password: newPassword,
+          newPassword: newPassword
+        };
+        if (activeBusinessId) {
+          payload.businessId = activeBusinessId;
+        }
+
+        const response = await fetch(url.toString(), {
+          method: "PATCH",
+          headers: {
+            accept: "*/*",
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          let detail: any = text;
+          try {
+            const parsed = JSON.parse(text);
+            detail = parsed.message || parsed.error || text;
+            if (typeof detail === 'object' && detail.message) {
+              detail = detail.message;
+            }
+            if (Array.isArray(detail)) detail = detail.join(", ");
+          } catch (e) { /* not json */ }
+          throw new Error(detail);
+        }
+
+        await fetchUsers();
+        return true;
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [fetchUsers, token, activeBusinessId],
+  );
+
+  const deleteUser = useCallback(
+    async (user: { id: string; role: UserRole }) => {
+      const authToken = getAuthToken(token);
+      if (!authToken) throw new Error("No authentication token available");
+
+      const endpoint = user.role === "waiter" ? `waiters/${user.id}` : `kitchens/${user.id}`;
+      const url = new URL(`${BASE_URL}/${endpoint}`);
+      if (activeBusinessId) url.searchParams.append("businessId", activeBusinessId);
+
+      setActionLoading(true);
+      try {
+        const response = await fetch(url.toString(), {
+          method: "DELETE",
+          headers: {
+            accept: "*/*",
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          let detail: any = text;
+          try {
+            const parsed = JSON.parse(text);
+            detail = parsed.message || parsed.error || text;
+            if (typeof detail === 'object' && detail.message) {
+              detail = detail.message;
+            }
+            if (Array.isArray(detail)) detail = detail.join(", ");
+          } catch (e) { /* not json */ }
+          throw new Error(detail);
+        }
+
+        await fetchUsers();
+        return true;
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [fetchUsers, token, activeBusinessId],
+  );
+
   return {
     users,
     waiters,
@@ -182,6 +300,8 @@ export function useUsers() {
     actionLoading,
     error,
     createUser,
+    updatePassword,
+    deleteUser,
     refetch: fetchUsers,
   };
 }

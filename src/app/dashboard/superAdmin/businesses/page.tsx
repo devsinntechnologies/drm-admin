@@ -13,7 +13,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
-import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Suspense, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -71,7 +72,7 @@ const planColor: Record<BusinessItem["plan"], string> = {
   Basic: "bg-[#3788f8]",
 };
 
-export default function BusinessesPage() {
+function BusinessesContent() {
   const [isAddBusinessOpen, setIsAddBusinessOpen] = useState(false);
   const [editingBusinessId, setEditingBusinessId] = useState<string | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -89,7 +90,7 @@ export default function BusinessesPage() {
     planId: "",
   });
   const [countryCode, setCountryCode] = useState("+92");
-  const [submitError, setSubmitError] = useState<string | null>(null);
+
 
   const { data: planData, isLoading: isLoadingPlans } = useGetPlansQuery();
   const statusQueryParam: BusinessStatus | undefined =
@@ -164,12 +165,12 @@ export default function BusinessesPage() {
       planId: "",
     });
     setCountryCode("+92");
-    setSubmitError(null);
   };
 
   const handleCreateBusiness = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSubmitError(null);
+
+    const toastId = toast.loading(editingBusinessId ? "Updating business..." : "Creating business...");
 
     try {
       const phoneDigits = form.phoneNumber.replace(/\D/g, "");
@@ -187,25 +188,26 @@ export default function BusinessesPage() {
       } else {
         await createBusiness(payload).unwrap();
       }
-
+      toast.success(editingBusinessId ? "Business updated successfully." : "Business created successfully.", { id: toastId });
       void refetch();
       setIsAddBusinessOpen(false);
       setEditingBusinessId(null);
       resetForm();
-    } catch {
-      setSubmitError(
+    } catch (err) {
+      toast.error(
         editingBusinessId
           ? "Failed to update business. Please try again."
           : "Failed to create business. Please try again.",
+        { id: toastId }
       );
     }
   };
 
   const openEditDialog = async (id: string) => {
-    setSubmitError(null);
     setEditingBusinessId(id);
     setIsAddBusinessOpen(true);
 
+    const toastId = toast.loading("Loading business details...");
     try {
       const business = await loadBusinessById(id).unwrap();
 
@@ -226,18 +228,21 @@ export default function BusinessesPage() {
         manager: business.ownerName,
         planId: business.planId,
       });
+      toast.dismiss(toastId);
     } catch {
-      setSubmitError("Failed to load business details.");
+      toast.error("Failed to load business details.", { id: toastId });
     }
   };
 
   const handleDeleteBusiness = async (id: string) => {
+    const toastId = toast.loading("Processing...");
     try {
       await deleteBusinessById(id).unwrap();
+      toast.success("Business status updated successfully.", { id: toastId });
       void refetch();
       setDeleteTargetBusiness(null);
     } catch {
-      setSubmitError("Failed to delete business. Please try again.");
+      toast.error("Failed to update business status. Please try again.", { id: toastId });
     }
   };
 
@@ -250,7 +255,7 @@ export default function BusinessesPage() {
           </div>
           <div>
             <h2 className="text-lg font-semibold lg:text-2xl">Business Management</h2>
-            <p className="text-sm text-[#657084] lg:text-base">{businessData?.total ?? 0} businesses</p>
+            <p className="text-sm text-[#657084] lg:text-base">{businessData?.pagination?.total ?? 0} businesses</p>
           </div>
         </div>
         <Dialog
@@ -367,7 +372,7 @@ export default function BusinessesPage() {
                 </select>
               </label>
 
-              {submitError ? <p className="text-sm font-medium text-[#dc2626]">{submitError}</p> : null}
+
 
               <div className="mt-2 flex items-center justify-end gap-2">
                 <button
@@ -641,5 +646,13 @@ export default function BusinessesPage() {
         </DialogContent>
       </Dialog>
     </AdminShell>
+  );
+}
+
+export default function BusinessesPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading Businesses...</div>}>
+      <BusinessesContent />
+    </Suspense>
   );
 }

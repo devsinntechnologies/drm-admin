@@ -17,12 +17,20 @@ export default function DashboardPage() {
       return;
     }
 
+    const businessId = typeof window !== "undefined" ? localStorage.getItem("businessId") : null;
+
     if (currentRole === "business_admin") {
-      router.replace("/dashboard/businessAdmin");
+      router.replace(businessId ? `/dashboard/businessAdmin?businessId=${businessId}` : "/dashboard/businessAdmin");
     } else if (currentRole === "kitchen" || currentRole === "waiter") {
-      router.replace("/dashboard/businessAdmin/orders");
+      router.replace(businessId ? `/dashboard/businessAdmin/orders?businessId=${businessId}` : "/dashboard/businessAdmin/orders");
+    } else if (currentRole === "super_admin") {
+      // If super_admin is impersonating, take them to the business dashboard
+      if (businessId) {
+        router.replace(`/dashboard/businessAdmin?businessId=${businessId}`);
+      } else {
+        router.replace("/dashboard/superAdmin");
+      }
     } else {
-      // Default to Super Admin for super_admin or any other roles
       router.replace("/dashboard/superAdmin");
     }
   }, [role, router]);

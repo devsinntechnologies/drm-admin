@@ -28,9 +28,12 @@ export interface InvoiceRecord {
 
 export interface InvoicesResponse {
   data: InvoiceRecord[];
-  total: number;
-  page: number;
-  last_page: number;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 interface UseInvoicesOptions {
@@ -56,7 +59,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
   const fetchInvoices = useCallback(async (pageNum: number = 1) => {
     let authToken = token;
     if (!authToken && typeof window !== "undefined") {
-      authToken = localStorage.getItem("auth_token");
+      authToken = localStorage.getItem("auth_token") || localStorage.getItem("token");
     }
 
     if (!authToken) {
@@ -86,15 +89,21 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
       });
 
       if (!response.ok) {
+        if (response.status === 404) {
+          setInvoices([]);
+          setPagination({ total: 0, page: 1, last_page: 1 });
+          setLoading(false);
+          return;
+        }
         throw new Error(`Failed to fetch invoices: ${response.statusText}`);
       }
 
       const payload: InvoicesResponse = await response.json();
       setInvoices(payload.data ?? []);
       setPagination({
-        total: payload.total ?? 0,
-        page: payload.page ?? pageNum,
-        last_page: payload.last_page ?? 1,
+        total: payload.pagination?.total ?? 0,
+        page: payload.pagination?.page ?? pageNum,
+        last_page: payload.pagination?.totalPages ?? 1,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "An error occurred while fetching invoices";

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ChefHat, Lock, Mail, ShieldCheck } from "lucide-react";
 import { Suspense, useState } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { normalizeErrorMessage } from "@/lib/utils";
 
@@ -37,16 +38,33 @@ function LoginContent() {
     event.preventDefault();
     clearError();
 
-    const isSuccess = await login({ email, password, role: selectedRole });
-    if (isSuccess) {
-      if (selectedRole === "kitchen" || selectedRole === "waiter") {
-        router.push("/dashboard/businessAdmin/orders");
-      } else if (selectedRole === "business_admin") {
-        router.push("/dashboard/businessAdmin");
+    const toastId = toast.loading("Authenticating...");
+
+    try {
+      const isSuccess = await login({ email, password, role: selectedRole });
+
+      if (isSuccess) {
+        toast.success("Login successful! Redirecting...", { id: toastId });
+        const businessId = localStorage.getItem("businessId");
+        const businessIdParam = businessId ? `?businessId=${encodeURIComponent(businessId)}` : "";
+
+        if (selectedRole === "kitchen" || selectedRole === "waiter") {
+          router.push(`/dashboard/businessAdmin/orders${businessIdParam}`);
+        } else if (selectedRole === "business_admin") {
+          router.push(`/dashboard/businessAdmin${businessIdParam}`);
+        } else {
+          router.push("/dashboard/superAdmin");
+        }
       } else {
-        router.push("/dashboard/superAdmin");
+        toast.error("Unable to sign in. Please check your credentials.", { id: toastId });
       }
+    } catch (err) {
+      toast.error(normalizeErrorMessage(err, "An unexpected error occurred"), { id: toastId });
     }
+  };
+
+  const handleForgotPassword = () => {
+    toast.info("Password reset feature is coming soon!");
   };
 
   return (
@@ -144,7 +162,11 @@ function LoginContent() {
                     <input type="checkbox" className="h-4 w-4 rounded border-[#d0d5dd]" />
                     Keep me signed in
                   </label>
-                  <button type="button" className="font-semibold text-[#6a4df5]">
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className="font-semibold text-[#6a4df5] hover:text-[#5e4ff2] transition-colors"
+                  >
                     Forgot password?
                   </button>
                 </div>

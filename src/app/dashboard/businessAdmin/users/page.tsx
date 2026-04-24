@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,81 +45,91 @@ const getRoleIcon = (
   }
 };
 
-export default function UsersPage() {
+function UsersContent() {
   const router = useRouter();
   const { role, isAuthenticated } = useAuth();
   const searchParams = useSearchParams();
-    const {
-      users,
-      waiters,
-      kitchens,
-      loading,
-      error,
-      actionLoading,
-      createUser,
-    } = useUsers();
-    const activeBusinessId = useActiveBusinessId();
-    const impersonatedBusinessId = searchParams.get("businessId");
-  
-    const [searchTerm, setSearchTerm] = useState("");
-    const [selectedRole, setSelectedRole] = useState<UserRole | "all">("all");
-    const [createOpen, setCreateOpen] = useState(false);
-    const [createForm, setCreateForm] = useState({
-      name: "",
-      password: "",
-      role: "waiter" as UserRole,
-    });
-  
-    useEffect(() => {
-      if (!isAuthenticated) {
-        router.replace("/login?role=business_admin&title=Business%20Admin&subtitle=Admin");
-        return;
-      }
-  
-      if (role) {
-        const isBusinessRole = role === "business_admin";
-        const isSuperAdminImpersonating = role === "super_admin" && !!impersonatedBusinessId;
-  
-        if (!isBusinessRole && !isSuperAdminImpersonating) {
-          router.replace("/dashboard");
-          return;
-        }
-      }
-    }, [isAuthenticated, role, router, impersonatedBusinessId]);
-  
-    const filteredUsers = useMemo(() => {
-      let filtered = users;
-  
-      if (selectedRole !== "all") {
-        filtered = filtered.filter((user) => user.role === selectedRole);
-      }
-  
-      if (searchTerm.trim()) {
-        const query = searchTerm.trim().toLowerCase();
-        filtered = filtered.filter(
-          (user) => user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query),
-        );
-      }
-  
-      return filtered;
-    }, [searchTerm, selectedRole, users]);
-  
-    const onCreateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-  
-      const name = createForm.name.trim();
-      const password = createForm.password.trim();
-  
-      if (!name || !password) {
-        toast.error("Name and password are required.");
-        return;
-      }
-  
-      if (!activeBusinessId) {
-        toast.error("Business ID not found. Please ensure a business is selected.");
-        return;
-      }
+  const {
+    users,
+    waiters,
+    kitchens,
+    loading,
+    error,
+    actionLoading,
+    createUser,
+    updatePassword,
+    deleteUser,
+  } = useUsers();
+  const activeBusinessId = useActiveBusinessId();
+  const impersonatedBusinessId = searchParams.get("businessId");
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRole, setSelectedRole] = useState<UserRole | "all">("all");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    password: "",
+    role: "waiter" as UserRole,
+  });
+
+  // Edit password state
+  const [editUser, setEditUser] = useState<{ id: string; role: UserRole; name: string } | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+
+  // Delete confirm state
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; role: UserRole; name: string } | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/login?role=business_admin&title=Business%20Admin&subtitle=Admin");
+      return;
+    }
+
+    if (role) {
+      const isBusinessRole = role === "business_admin";
+      const isSuperAdminImpersonating = role === "super_admin" && !!impersonatedBusinessId;
+
+      if (!isBusinessRole && !isSuperAdminImpersonating) {
+        router.replace("/dashboard");
+        return;
+      }
+    }
+  }, [isAuthenticated, role, router, impersonatedBusinessId]);
+
+  const filteredUsers = useMemo(() => {
+    let filtered = users;
+
+    if (selectedRole !== "all") {
+      filtered = filtered.filter((user) => user.role === selectedRole);
+    }
+
+    if (searchTerm.trim()) {
+      const query = searchTerm.trim().toLowerCase();
+      filtered = filtered.filter(
+        (user) => user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query),
+      );
+    }
+
+    return filtered;
+  }, [searchTerm, selectedRole, users]);
+
+  const onCreateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const name = createForm.name.trim();
+    const password = createForm.password.trim();
+
+    if (!name || !password) {
+      toast.error("Name and password are required.");
+      return;
+    }
+
+    if (!activeBusinessId) {
+      toast.error("Business ID not found. Please ensure a business is selected.");
+      return;
+    }
+
+    const toastId = toast.loading("Creating user...");
     try {
       await createUser({
         name,
@@ -127,7 +137,7 @@ export default function UsersPage() {
         role: createForm.role,
       });
 
-      toast.success(`${createForm.role === "waiter" ? "Waiter" : "Kitchen"} created successfully.`);
+      toast.success(`${createForm.role === "waiter" ? "Waiter" : "Kitchen"} created successfully.`, { id: toastId });
       setCreateForm({
         name: "",
         password: "",
@@ -135,9 +145,39 @@ export default function UsersPage() {
       });
       setCreateOpen(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create user.");
+      toast.error(err instanceof Error ? err.message : "Failed to create user.", { id: toastId });
     }
   };
+
+  const onEditSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editUser || !newPassword.trim()) {
+      toast.error("New password is required.");
+      return;
+    }
+    const toastId = toast.loading("Updating password...");
+    try {
+      await updatePassword(editUser, newPassword.trim());
+      toast.success("Password updated successfully.", { id: toastId });
+      setEditUser(null);
+      setNewPassword("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update password.", { id: toastId });
+    }
+  };
+
+  const onDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    const toastId = toast.loading("Deleting user...");
+    try {
+      await deleteUser(deleteTarget);
+      toast.success(`${deleteTarget.name} deleted successfully.`, { id: toastId });
+      setDeleteTarget(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete user.", { id: toastId });
+    }
+  };
+
 
   const stats = [
     {
@@ -283,31 +323,28 @@ export default function UsersPage() {
           <div className="flex items-center gap-2 border-b border-slate-200">
             <button
               onClick={() => setSelectedRole("all")}
-              className={`px-4 py-3 text-sm font-medium transition ${
-                selectedRole === "all"
-                  ? "border-b-2 border-indigo-600 text-indigo-600"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
+              className={`px-4 py-3 text-sm font-medium transition ${selectedRole === "all"
+                ? "border-b-2 border-indigo-600 text-indigo-600"
+                : "text-slate-600 hover:text-slate-900"
+                }`}
             >
               All
             </button>
             <button
               onClick={() => setSelectedRole("waiter")}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition ${
-                selectedRole === "waiter"
-                  ? "border-b-2 border-indigo-600 text-indigo-600"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition ${selectedRole === "waiter"
+                ? "border-b-2 border-indigo-600 text-indigo-600"
+                : "text-slate-600 hover:text-slate-900"
+                }`}
             >
               👨‍💼 Waiters
             </button>
             <button
               onClick={() => setSelectedRole("kitchen")}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition ${
-                selectedRole === "kitchen"
-                  ? "border-b-2 border-indigo-600 text-indigo-600"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition ${selectedRole === "kitchen"
+                ? "border-b-2 border-indigo-600 text-indigo-600"
+                : "text-slate-600 hover:text-slate-900"
+                }`}
             >
               👨‍🍳 Kitchen
             </button>
@@ -348,22 +385,20 @@ export default function UsersPage() {
                         {user.name}
                       </h3>
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${
-                          user.role === "waiter"
-                            ? "bg-blue-100 text-blue-800"
-                            : user.role === "kitchen"
-                              ? "bg-purple-100 text-purple-800"
-                              : "bg-gray-100 text-gray-800"
-                        }`}
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${user.role === "waiter"
+                          ? "bg-blue-100 text-blue-800"
+                          : user.role === "kitchen"
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-gray-100 text-gray-800"
+                          }`}
                       >
                         {user.role}
                       </span>
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          isActive
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${isActive
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                          }`}
                       >
                         {isActive ? "active" : user.status}
                       </span>
@@ -381,11 +416,17 @@ export default function UsersPage() {
                 </div>
 
                 <div className="mt-4 flex items-center gap-3 border-t border-slate-200 pt-4">
-                  <button className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+                  <button
+                    onClick={() => { setEditUser({ id: user.id, role: user.role, name: user.name }); setNewPassword(""); }}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+                  >
                     <Edit className="h-4 w-4" />
-                    Edit
+                    Edit Password
                   </button>
-                  <button className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100">
+                  <button
+                    onClick={() => setDeleteTarget({ id: user.id, role: user.role, name: user.name })}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -400,6 +441,85 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+
+      {/* Edit Password Dialog */}
+      <Dialog open={!!editUser} onOpenChange={(open) => { if (!open) setEditUser(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+            <DialogDescription>
+              Update password for <strong>{editUser?.name}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={onEditSubmit}>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#111827]" htmlFor="new-password">
+                New Password
+              </label>
+              <input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
+                placeholder="Enter new password"
+                autoFocus
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={actionLoading}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#635bff] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {actionLoading ? "Updating..." : "Update Password"}
+            </button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Team Member</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setDeleteTarget(null)}
+              className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onDeleteConfirm}
+              disabled={actionLoading}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {actionLoading ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </AdminShell>
+  );
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#4f46e5]" />
+        </div>
+      }
+    >
+      <UsersContent />
+    </Suspense>
   );
 }

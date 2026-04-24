@@ -33,9 +33,12 @@ export interface Product {
 
 export interface ProductsResponse {
   data: Product[];
-  total: number;
-  page: number;
-  last_page: number;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 interface UseProductsOptions {
@@ -120,6 +123,14 @@ export function useProducts(options: UseProductsOptions = {}) {
       });
 
       if (!response.ok) {
+        // Special case: Backend returns 404 if no products exist for a business
+        if (response.status === 404) {
+          setProducts([]);
+          setPagination({ total: 0, page: 1, last_page: 1 });
+          setLoading(false);
+          return;
+        }
+
         // Try to extract backend error message
         let detail = response.statusText;
         try {
@@ -133,11 +144,11 @@ export function useProducts(options: UseProductsOptions = {}) {
 
       const data: ProductsResponse = await response.json();
 
-      setProducts(data.data);
+      setProducts(data.data ?? []);
       setPagination({
-        total: data.total,
-        page: data.page,
-        last_page: data.last_page,
+        total: data.pagination?.total ?? 0,
+        page: data.pagination?.page ?? 1,
+        last_page: data.pagination?.totalPages ?? 1,
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred while fetching products";
@@ -207,7 +218,17 @@ export function useProducts(options: UseProductsOptions = {}) {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to create product: ${response.statusText}`);
+        const text = await response.text();
+        let detail: any = text;
+        try {
+          const parsed = JSON.parse(text);
+          detail = parsed.message || parsed.error || text;
+          if (typeof detail === 'object' && detail.message) {
+            detail = detail.message;
+          }
+          if (Array.isArray(detail)) detail = detail.join(", ");
+        } catch (e) { /* not json */ }
+        throw new Error(detail);
       }
 
       await fetchProducts(pagination.page);
@@ -237,10 +258,21 @@ export function useProducts(options: UseProductsOptions = {}) {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch product: ${response.statusText}`);
+      const text = await response.text();
+      let detail: any = text;
+      try {
+        const parsed = JSON.parse(text);
+        detail = parsed.message || parsed.error || text;
+        if (typeof detail === 'object' && detail.message) {
+          detail = detail.message;
+        }
+        if (Array.isArray(detail)) detail = detail.join(", ");
+      } catch (e) { /* not json */ }
+      throw new Error(detail);
     }
 
-    return (await response.json()) as Product;
+    const res = await response.json();
+    return (res.data ?? res) as Product;
   }, [token, activeBusinessId]);
 
   const updateProduct = useCallback(async (id: string, payload: UpdateProductPayload) => {
@@ -279,7 +311,17 @@ export function useProducts(options: UseProductsOptions = {}) {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to update product: ${response.statusText}`);
+        const text = await response.text();
+        let detail: any = text;
+        try {
+          const parsed = JSON.parse(text);
+          detail = parsed.message || parsed.error || text;
+          if (typeof detail === 'object' && detail.message) {
+            detail = detail.message;
+          }
+          if (Array.isArray(detail)) detail = detail.join(", ");
+        } catch (e) { /* not json */ }
+        throw new Error(detail);
       }
 
       await fetchProducts(pagination.page);
@@ -311,7 +353,17 @@ export function useProducts(options: UseProductsOptions = {}) {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to delete product: ${response.statusText}`);
+        const text = await response.text();
+        let detail: any = text;
+        try {
+          const parsed = JSON.parse(text);
+          detail = parsed.message || parsed.error || text;
+          if (typeof detail === 'object' && detail.message) {
+            detail = detail.message;
+          }
+          if (Array.isArray(detail)) detail = detail.join(", ");
+        } catch (e) { /* not json */ }
+        throw new Error(detail);
       }
 
       await fetchProducts(pagination.page);

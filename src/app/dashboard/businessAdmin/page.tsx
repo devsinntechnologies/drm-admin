@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -9,6 +9,7 @@ import {
   BarChart3,
   Bell,
   CircleDollarSign,
+  Loader2,
   PieChart,
   ReceiptText,
   ShieldCheck,
@@ -16,6 +17,8 @@ import {
 } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
 
 const fallbackTopSellingProducts = [
   { rank: 1, name: "Pasta Carbonara", sold: "2 units sold", revenue: "$29.98", image: "/business/pic1.jpeg", quantity: 2, revenueRaw: 29.98 },
@@ -88,13 +91,27 @@ function toTitleCase(value: string) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export default function BusinessAdminDashboard() {
+function DashboardContent() {
   const [dashboardData, setDashboardData] = useState<DashboardFullResponse | null>(null);
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const activeBusinessId = useActiveBusinessId();
+  const { role } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     if (typeof window === "undefined") {
+      return;
+    }
+
+    const currentRole = role || localStorage.getItem("roleName") || localStorage.getItem("auth_role");
+    if (!currentRole) {
+      router.replace("/login?role=business_admin&title=Business%20Admin&subtitle=Admin");
+      return;
+    }
+
+    const isBusinessRole = currentRole === "business_admin" || currentRole === "super_admin";
+    if (!isBusinessRole) {
+      router.replace("/dashboard");
       return;
     }
 
@@ -425,5 +442,13 @@ export default function BusinessAdminDashboard() {
         </article>
       </section>
     </AdminShell>
+  );
+}
+
+export default function BusinessAdminDashboard() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#4f46e5]" /></div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

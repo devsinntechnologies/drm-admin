@@ -70,9 +70,12 @@ export interface OrderRecord {
 
 export interface OrdersResponse {
   data: OrderRecord[];
-  total: number;
-  page: number;
-  last_page: number;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 interface UseOrdersOptions {
@@ -94,7 +97,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
   });
 
   const fetchOrders = useCallback(
-    async (nextRange: string = range) => {
+    async (pageNum: number = 1, nextRange: string = range) => {
       const authToken = getAuthToken(token);
       if (!authToken) {
         setError("No authentication token available");
@@ -106,6 +109,8 @@ export function useOrders(options: UseOrdersOptions = {}) {
 
       try {
         const url = new URL(`${BASE_URL}/orders`);
+        url.searchParams.append("page", String(pageNum));
+        url.searchParams.append("limit", "20");
         if (nextRange) {
           url.searchParams.append("range", nextRange);
         }
@@ -122,6 +127,12 @@ export function useOrders(options: UseOrdersOptions = {}) {
         });
 
         if (!response.ok) {
+          if (response.status === 404) {
+            setOrders([]);
+            setPagination({ total: 0, page: 1, last_page: 1 });
+            setLoading(false);
+            return;
+          }
           const text = await response.text();
           throw new Error(text || `Failed to fetch orders: ${response.statusText}`);
         }
@@ -129,9 +140,9 @@ export function useOrders(options: UseOrdersOptions = {}) {
         const data: OrdersResponse = await response.json();
         setOrders(data.data ?? []);
         setPagination({
-          total: data.total ?? 0,
-          page: data.page ?? 1,
-          last_page: data.last_page ?? 1,
+          total: data.pagination?.total ?? 0,
+          page: data.pagination?.page ?? pageNum,
+          last_page: data.pagination?.totalPages ?? 1,
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to fetch orders";
@@ -144,7 +155,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
   );
 
   useEffect(() => {
-    fetchOrders(range);
+    fetchOrders(1, range);
   }, [fetchOrders, range]);
 
   const createOrder = useCallback(
@@ -173,11 +184,20 @@ export function useOrders(options: UseOrdersOptions = {}) {
 
         if (!response.ok) {
           const text = await response.text();
-          throw new Error(text || `Failed to create order: ${response.statusText}`);
+          let detail: any = text;
+          try {
+            const parsed = JSON.parse(text);
+            detail = parsed.message || parsed.error || text;
+            if (typeof detail === 'object' && detail.message) {
+              detail = detail.message;
+            }
+            if (Array.isArray(detail)) detail = detail.join(", ");
+          } catch (e) { /* not json */ }
+          throw new Error(detail);
         }
 
         const createdOrder = await response.json();
-        await fetchOrders(range);
+        await fetchOrders(1, range);
         return createdOrder;
       } finally {
         setActionLoading(false);
@@ -212,10 +232,19 @@ export function useOrders(options: UseOrdersOptions = {}) {
 
         if (!response.ok) {
           const text = await response.text();
-          throw new Error(text || `Failed to update order: ${response.statusText}`);
+          let detail: any = text;
+          try {
+            const parsed = JSON.parse(text);
+            detail = parsed.message || parsed.error || text;
+            if (typeof detail === 'object' && detail.message) {
+              detail = detail.message;
+            }
+            if (Array.isArray(detail)) detail = detail.join(", ");
+          } catch (e) { /* not json */ }
+          throw new Error(detail);
         }
 
-        await fetchOrders(range);
+        await fetchOrders(1, range);
         return true;
       } finally {
         setActionLoading(false);

@@ -1,15 +1,17 @@
- // @ts-nocheck
+// @ts-nocheck
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { Activity, Building2, Crown, CreditCard, LayoutGrid, LogOut, Menu, ReceiptText, Shapes, Store, Users, X } from "lucide-react";
+import { Activity, Building2, Crown, CreditCard, LayoutGrid, LogOut, Menu, ReceiptText, Shapes, Store, Users, UtensilsCrossed, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
+import { toast } from "sonner";
 
-type TabKey = "dashboard" | "businesses" | "subscriptions" | "action-logs" | "orders" | "products" | "categories" | "tables" | "invoices" | "users";
+type TabKey = "dashboard" | "businesses" | "subscriptions" | "action-logs" | "orders" | "kitchen" | "products" | "categories" | "tables" | "invoices" | "users";
 
 type AdminShellProps = {
   activeTab: TabKey;
@@ -65,11 +67,17 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
     href: "/dashboard/businessAdmin/invoices",
     icon: <ReceiptText className="h-5 w-5" />,
   },
-   {
+  {
     key: "orders",
     label: "Orders",
     href: "/dashboard/businessAdmin/orders",
     icon: <ReceiptText className="h-5 w-5" />,
+  },
+  {
+    key: "kitchen",
+    label: "Kitchen",
+    href: "/dashboard/businessAdmin/kitchen",
+    icon: <UtensilsCrossed className="h-5 w-5" />,
   },
   {
     key: "users",
@@ -82,7 +90,7 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
 function getVisibleTabs(role: string | null, isImpersonating: boolean = false) {
   // If we are impersonating, we always want the business admin view
   if (isImpersonating || role === "business_admin") {
-    return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" );
+    return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
   }
 
   if (role === "kitchen") {
@@ -97,22 +105,54 @@ function getVisibleTabs(role: string | null, isImpersonating: boolean = false) {
 }
 
 export default function AdminShell({ activeTab, children }: AdminShellProps) {
-  const { role } = useAuth();
+  const { role, user, logout } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [resolvedRole, setResolvedRole] = useState<string | null>(() => {
-    if (role) return role;
-    if (typeof window === "undefined") return null;
-
-    return localStorage.getItem("roleName") || localStorage.getItem("auth_role") || localStorage.getItem("role") || null; 
-  });
-
+  const [resolvedRole, setResolvedRole] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   const businessId = useActiveBusinessId();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { data: activeBusiness } = useGetBusinessByIdQuery(businessId || "", {
+    skip: !businessId,
+  });
 
   useEffect(() => {
     setIsMounted(true);
+    const currentId = searchParams.get("businessId");
+
+    // Sync businessId from URL to localStorage to prevent stale IDs
+    if (typeof window !== "undefined" && currentId) {
+      localStorage.setItem("businessId", currentId);
+    }
+
+    // Auto-append businessId to URL if missing and we are on a businessAdmin page
+    if (typeof window !== "undefined" && isMounted) {
+      if (!currentId && businessId && window.location.pathname.includes("/businessAdmin")) {
+        const newParams = new URLSearchParams(window.location.search);
+        newParams.set("businessId", businessId);
+        router.replace(`${window.location.pathname}?${newParams.toString()}`);
+      }
+    }
+
+    // Security & Contextual Redirects
+    if (typeof window !== "undefined" && isMounted && resolvedRole) {
+      const isSuperAdminPath = window.location.pathname.includes("/superAdmin");
+      const isBusinessAdminPath = window.location.pathname.includes("/businessAdmin");
+
+      // 1. If a non-super-admin tries to access /superAdmin, kick them out
+      if (isSuperAdminPath && resolvedRole !== "super_admin") {
+        router.replace("/dashboard");
+        return;
+      }
+
+      // 2. If a super-admin is on a business path but HAS NO businessId, kick them to global view
+      if (isBusinessAdminPath && resolvedRole === "super_admin" && !businessId) {
+        router.replace("/dashboard");
+        return;
+      }
+    }
+
     if (role) {
       setResolvedRole(role);
       return;
@@ -121,34 +161,45 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
     if (typeof window !== "undefined") {
       setResolvedRole(localStorage.getItem("roleName") || localStorage.getItem("auth_role") || localStorage.getItem("role"));
     }
-  }, [role]);
+  }, [role, businessId, isMounted, searchParams, router]);
 
   const visibleTabs = useMemo(() => {
-    // During SSR and first paint, we must match the server-rendered role view
-    // without the influence of client-only query params (unless they are stable).
-    const isImpersonating = isMounted && !!businessId;
-    let baseTabs = getVisibleTabs(resolvedRole, isImpersonating);
-
-    // If impersonating, adjust the Dashboard link
-    if (isImpersonating) {
-        baseTabs = baseTabs.map(tab => {
-            if (tab.key === "dashboard") {
-                return { ...tab, href: "/dashboard/businessAdmin" };
-            }
-            return tab;
-        });
+    // During SSR and first paint, we MUST return a static set of tabs that match the server
+    if (!isMounted) {
+      return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "action-logs");
     }
 
-    if (!isImpersonating) return baseTabs;
+    const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+    const isSuperAdminRoute = currentPath.includes("/superAdmin");
+    const isBusinessAdminRoute = currentPath.includes("/businessAdmin");
 
-    // Propagate businessId to links
-    return baseTabs.map(tab => {
-        if (tab.href.includes("businessAdmin") || tab.href === "/dashboard" || tab.href === "/dashboard/businessAdmin") {
-            const separator = tab.href.includes("?") ? "&" : "?";
-            return { ...tab, href: `${tab.href}${separator}businessId=${businessId}` };
+    const isImpersonating = !!businessId && resolvedRole === "super_admin";
+    const shouldShowBusinessTabs = isBusinessAdminRoute || isImpersonating || resolvedRole === "business_admin";
+
+    let baseTabs;
+    if (resolvedRole === "waiter" || resolvedRole === "kitchen") {
+      baseTabs = tabs.filter((tab) => tab.key === "orders");
+    } else if (shouldShowBusinessTabs) {
+      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
+    } else {
+      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "action-logs");
+    }
+
+    // 2. Only modify links if we are NOT on a global Super Admin route
+    if (!isSuperAdminRoute && (isImpersonating || shouldShowBusinessTabs || resolvedRole === "business_admin")) {
+      baseTabs = baseTabs.map(tab => {
+        if (tab.key === "dashboard") {
+          return { ...tab, href: "/dashboard/businessAdmin" };
+        }
+        if (businessId && (tab.href.includes("businessAdmin") || tab.href === "/dashboard")) {
+          const separator = tab.href.includes("?") ? "&" : "?";
+          return { ...tab, href: `${tab.href}${separator}businessId=${businessId}` };
         }
         return tab;
-    });
+      });
+    }
+
+    return baseTabs;
   }, [resolvedRole, businessId, isMounted]);
 
   const closeMobileNav = () => setMobileNavOpen(false);
@@ -162,12 +213,15 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
               <Image src="/logo.png" alt="Restaurant Manager logo" width={150} height={150} className="h-20 w-20 object-contain" priority />
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">Restaurant Manager</h1>
+              <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">
+                {activeBusiness?.name || "Restaurant Manager"}
+              </h1>
               <p className="truncate text-xs font-medium leading-tight text-[#667085]">
-                {!isMounted ? "..." : 
-                 resolvedRole === "business_admin" ? "Business Admin Portal" : 
-                 resolvedRole === "kitchen" || resolvedRole === "waiter" ? "Staff Portal" : 
-                 businessId ? "Super Admin (Impersonating)" : "Super Admin Portal"}
+                {!isMounted ? "..." :
+                  (businessId && resolvedRole === "super_admin" && !window.location.pathname.includes("/superAdmin")) ? "Super Admin (Impersonating)" :
+                    (resolvedRole === "super_admin" || window.location.pathname.includes("/superAdmin")) ? "Super Admin Portal" :
+                      resolvedRole === "business_admin" ? "Business Admin" :
+                        resolvedRole === "kitchen" || resolvedRole === "waiter" ? "Staff Portal" : "Admin Portal"}
               </p>
             </div>
           </div>
@@ -197,13 +251,18 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
           </nav>
 
           <div className="mt-4 border-t border-[#edf2f7] pt-4">
-            <Link
-              href="/"
+            <button
+              type="button"
+              onClick={() => {
+                logout();
+                toast.success("Successfully logged out. See you soon!");
+                router.push("/");
+              }}
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#d7e1ed] bg-white px-4 py-3 text-sm font-semibold text-[#0f172a] shadow-[0_8px_16px_rgba(15,23,42,0.06)] transition hover:bg-[#f4f8fc]"
             >
               <LogOut className="h-4.5 w-4.5" strokeWidth={2} />
               Logout
-            </Link>
+            </button>
           </div>
         </div>
       </aside>
@@ -219,10 +278,11 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
               <div className="min-w-0">
                 <h1 className="truncate text-lg font-semibold leading-tight text-[#0f172a] md:text-xl lg:text-2xl">Restaurant Manager</h1>
                 <p className="truncate text-xs font-medium leading-tight text-[#58657a] md:text-sm">
-                  {!isMounted ? "..." : 
-                   resolvedRole === "business_admin" ? "Business Admin Portal" : 
-                   resolvedRole === "kitchen" || resolvedRole === "waiter" ? "Staff Portal" : 
-                   businessId ? "Super Admin (Impersonating)" : "Super Admin Portal"}
+                  {!isMounted ? "..." :
+                    (businessId && resolvedRole === "super_admin" && !window.location.pathname.includes("/superAdmin")) ? "Super Admin (Impersonating)" :
+                      (resolvedRole === "super_admin" || window.location.pathname.includes("/superAdmin")) ? "Super Admin Portal" :
+                        resolvedRole === "business_admin" ? "Business Admin" :
+                          resolvedRole === "kitchen" || resolvedRole === "waiter" ? "Staff Portal" : "Admin Portal"}
                 </p>
               </div>
             </div>
@@ -261,10 +321,10 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                 <div className="min-w-0">
                   <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">Restaurant Manager</h1>
                   <p className="truncate text-xs font-medium leading-tight text-[#667085]">
-                    {!isMounted ? "..." : 
-                     resolvedRole === "business_admin" ? "Business Admin Portal" : 
-                     resolvedRole === "kitchen" || resolvedRole === "waiter" ? "Staff Portal" : 
-                     "Super Admin Portal"}
+                    {!isMounted ? "..." :
+                      resolvedRole === "business_admin" ? "Business Admin Portal" :
+                        resolvedRole === "kitchen" || resolvedRole === "waiter" ? "Staff Portal" :
+                          "Super Admin Portal"}
                   </p>
                 </div>
               </div>
@@ -304,14 +364,19 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
               </nav>
 
               <div className="mt-4 border-t border-[#edf2f7] pt-4">
-                <Link
-                  href="/"
-                  onClick={closeMobileNav}
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMobileNav();
+                    logout();
+                    toast.success("Successfully logged out. See you soon!");
+                    router.push("/");
+                  }}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#d7e1ed] bg-white px-4 py-3 text-sm font-semibold text-[#0f172a] shadow-[0_8px_16px_rgba(15,23,42,0.06)] transition hover:bg-[#f4f8fc]"
                 >
                   <LogOut className="h-4.5 w-4.5" strokeWidth={2} />
                   Logout
-                </Link>
+                </button>
               </div>
             </div>
           </aside>

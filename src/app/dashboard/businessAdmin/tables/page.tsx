@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Bot, ChevronLeft, ChevronRight, Edit, GripVertical, Loader2, Plus, Search, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -104,7 +104,7 @@ function TableCard({
   );
 }
 
-export default function TablesPage() {
+function TablesContent() {
   const router = useRouter();
   const { role } = useAuth();
   const searchParams = useSearchParams();
@@ -165,7 +165,7 @@ export default function TablesPage() {
 
   const filteredTables = useMemo(() => {
     return tables.filter((table) => {
-      const matchesStatus = status === "all" || table.status === status;
+      const matchesStatus = status === "all" || table.status?.toLowerCase() === status.toLowerCase();
       const matchesSearch = table.tableNumber.toLowerCase().includes(search.toLowerCase());
       return matchesStatus && matchesSearch;
     });
@@ -195,11 +195,7 @@ export default function TablesPage() {
   const onCreateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!createForm.tableNumber.trim()) {
-      toast.error("Table number is required");
-      return;
-    }
-
+    const toastId = toast.loading("Creating table...");
     try {
       await createTable({
         tableNumber: createForm.tableNumber.trim(),
@@ -207,15 +203,16 @@ export default function TablesPage() {
         status: createForm.status,
         image: createForm.image,
       });
-      toast.success("Table created successfully");
+      toast.success("Table created successfully", { id: toastId });
       setCreateOpen(false);
       resetCreate();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create table");
+      toast.error(err instanceof Error ? err.message : "Failed to create table", { id: toastId });
     }
   };
 
   const onOpenEdit = async (id: string) => {
+    const toastId = toast.loading("Loading table details...");
     try {
       const table = await getTableById(id);
       setEditId(id);
@@ -225,9 +222,10 @@ export default function TablesPage() {
         status: table.status,
         image: null,
       });
+      toast.dismiss(toastId);
       setEditOpen(true);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load table details");
+      toast.error(err instanceof Error ? err.message : "Failed to load table details", { id: toastId });
     }
   };
 
@@ -238,11 +236,7 @@ export default function TablesPage() {
       return;
     }
 
-    if (!editForm.tableNumber.trim()) {
-      toast.error("Table number is required");
-      return;
-    }
-
+    const toastId = toast.loading("Updating table...");
     try {
       await updateTable(editId, {
         tableNumber: editForm.tableNumber.trim(),
@@ -250,25 +244,24 @@ export default function TablesPage() {
         status: editForm.status,
         image: editForm.image,
       });
-      toast.success("Table updated successfully");
+      toast.success("Table updated successfully", { id: toastId });
       setEditOpen(false);
       resetEdit();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update table");
+      toast.error(err instanceof Error ? err.message : "Failed to update table", { id: toastId });
     }
   };
 
   const onDelete = async (id: string) => {
     const confirmed = typeof window !== "undefined" ? window.confirm("Delete this table?") : false;
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
+    const toastId = toast.loading("Deleting table...");
     try {
       await deleteTable(id);
-      toast.success("Table deleted successfully");
+      toast.success("Table deleted successfully", { id: toastId });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete table");
+      toast.error(err instanceof Error ? err.message : "Failed to delete table", { id: toastId });
     }
   };
 
@@ -399,9 +392,8 @@ export default function TablesPage() {
                       key={item.label}
                       type="button"
                       onClick={() => setStatus(item.value)}
-                      className={`inline-flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition ${
-                        active ? "bg-[#635bff] text-white shadow-[0_10px_20px_rgba(99,91,255,0.18)]" : "border border-[#e3e7f0] bg-white text-[#222] hover:bg-[#f8fbff]"
-                      }`}
+                      className={`inline-flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition ${active ? "bg-[#635bff] text-white shadow-[0_10px_20px_rgba(99,91,255,0.18)]" : "border border-[#e3e7f0] bg-white text-[#222] hover:bg-[#f8fbff]"
+                        }`}
                     >
                       {item.label}
                     </button>
@@ -528,5 +520,19 @@ export default function TablesPage() {
         </div>
       </main>
     </AdminShell>
+  );
+}
+
+export default function TablesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#4f46e5]" />
+        </div>
+      }
+    >
+      <TablesContent />
+    </Suspense>
   );
 }

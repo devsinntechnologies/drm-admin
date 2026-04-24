@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Box, ChevronLeft, ChevronRight, Edit, Layers, Loader2, Plus, Search, Store, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -111,7 +111,7 @@ function CategoryCard({
   );
 }
 
-export default function CategoriesPage() {
+function CategoriesContent() {
   const router = useRouter();
   const { role } = useAuth();
   const searchParams = useSearchParams();
@@ -206,28 +206,27 @@ export default function CategoriesPage() {
   };
 
   const onCreateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
     if (!createForm.categoryName.trim()) {
       toast.error("Category name is required");
       return;
     }
-
+    const toastId = toast.loading("Creating category...");
     try {
       await createCategory({
         categoryName: createForm.categoryName.trim(),
         sortOrder: Number(createForm.sortOrder),
         image: createForm.image,
       });
-      toast.success("Category created successfully");
+      toast.success("Category created successfully", { id: toastId });
       setCreateOpen(false);
       resetCreate();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create category");
+      toast.error(err instanceof Error ? err.message : "Failed to create category", { id: toastId });
     }
   };
 
   const onOpenEdit = async (id: string) => {
+    const toastId = toast.loading("Loading category details...");
     try {
       const category = await getCategoryById(id);
       setEditId(id);
@@ -236,49 +235,42 @@ export default function CategoriesPage() {
         sortOrder: category.sortOrder ?? 0,
         image: null,
       });
+      toast.dismiss(toastId);
       setEditOpen(true);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load category details");
+      toast.error(err instanceof Error ? err.message : "Failed to load category details", { id: toastId });
     }
   };
 
   const onEditSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!editId) {
+    if (!editId || !editForm.categoryName.trim()) {
+      if (!editForm.categoryName.trim()) toast.error("Category name is required");
       return;
     }
-
-    if (!editForm.categoryName.trim()) {
-      toast.error("Category name is required");
-      return;
-    }
-
+    const toastId = toast.loading("Updating category...");
     try {
       await updateCategory(editId, {
         categoryName: editForm.categoryName.trim(),
         sortOrder: Number(editForm.sortOrder),
         image: editForm.image,
       });
-      toast.success("Category updated successfully");
+      toast.success("Category updated successfully", { id: toastId });
       setEditOpen(false);
       resetEdit();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update category");
+      toast.error(err instanceof Error ? err.message : "Failed to update category", { id: toastId });
     }
   };
 
   const onDelete = async (id: string) => {
     const confirmed = typeof window !== "undefined" ? window.confirm("Delete this category?") : false;
-    if (!confirmed) {
-      return;
-    }
-
+    if (!confirmed) return;
+    const toastId = toast.loading("Deleting category...");
     try {
       await deleteCategory(id);
-      toast.success("Category deleted successfully");
+      toast.success("Category deleted successfully", { id: toastId });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete category");
+      toast.error(err instanceof Error ? err.message : "Failed to delete category", { id: toastId });
     }
   };
 
@@ -527,5 +519,19 @@ export default function CategoriesPage() {
         </div>
       </main>
     </AdminShell>
+  );
+}
+
+export default function CategoriesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#4f46e5]" />
+        </div>
+      }
+    >
+      <CategoriesContent />
+    </Suspense>
   );
 }
