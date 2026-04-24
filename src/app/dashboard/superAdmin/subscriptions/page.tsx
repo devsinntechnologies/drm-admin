@@ -202,7 +202,19 @@ function SubscriptionsContent() {
   const [deletePlan, { isLoading: isDeletingPlan }] = useDeletePlanByIdMutation();
   const { data: planData, isFetching: isPlansFetching, isError: hasPlansError, refetch: refetchPlans } = useGetPlansQuery();
 
-  const plans = useMemo(() => planData?.plans ?? [], [planData?.plans]);
+  const plans = useMemo(() => {
+    if (!planData) return [];
+    if (Array.isArray(planData)) return planData;
+    
+    // Check for data.plans (the exact structure you shared)
+    if (planData.data && Array.isArray(planData.data.plans)) return planData.data.plans;
+    
+    // Fallbacks for other possible structures
+    if (planData.plans && Array.isArray(planData.plans)) return planData.plans;
+    if (planData.data && Array.isArray(planData.data)) return planData.data;
+    
+    return [];
+  }, [planData]);
   const editingPlan = useMemo(() => plans.find((plan) => plan.id === editingPlanId) ?? null, [editingPlanId, plans]);
   const isSavingPlan = isCreatingPlan || isUpdatingPlan;
 

@@ -194,7 +194,7 @@ export function useTables(options: UseTablesOptions = {}) {
           body = formData;
         }
 
-        const url = new URL(`${BASE_URL}/tables`);
+        const url = new URL(`${BASE_URL}/tables/tables`);
         if (activeBusinessId) {
           url.searchParams.append("businessId", activeBusinessId);
         }

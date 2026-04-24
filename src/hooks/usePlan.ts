@@ -31,8 +31,13 @@ export type PlanStats = {
 };
 
 export type PlanApiResponse = {
-  stats: PlanStats;
-  plans: Plan[];
+  success?: boolean;
+  data?: {
+    stats?: PlanStats;
+    plans?: Plan[];
+  };
+  plans?: Plan[]; // fallback for other structures
+  stats?: PlanStats;
 };
 
 export type CreatePlanPayload = {
@@ -70,7 +75,7 @@ export const planApi = createApi({
     },
   }),
   endpoints: (builder) => ({
-    getPlans: builder.query<PlanApiResponse, void>({
+    getPlans: builder.query<PlanApiResponse | Plan[], void>({
       query: () => "/plan",
     }),
     createPlan: builder.mutation<CreatePlanResponse, CreatePlanPayload>({

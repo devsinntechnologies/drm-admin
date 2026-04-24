@@ -24,6 +24,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useGetPlansQuery } from "@/hooks/usePlan";
+import type { Plan as PlanInterface } from "@/hooks/usePlan";
 import {
   type BusinessStatus,
   useCreateBusinessMutation,
@@ -364,11 +365,24 @@ function BusinessesContent() {
                   className="h-11 rounded-xl border border-[#d7dbe4] px-3 outline-none focus:border-[#5e5df2] disabled:bg-[#f4f5f7]"
                 >
                   <option value="">{isLoadingPlans ? "Loading plans..." : "Select a plan"}</option>
-                  {(planData?.plans ?? []).map((plan) => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.planName}
-                    </option>
-                  ))}
+                  {(() => {
+                    let list: PlanInterface[] = [];
+                    if (Array.isArray(planData)) {
+                      list = planData;
+                    } else if (planData?.data && Array.isArray(planData.data.plans)) {
+                      list = planData.data.plans;
+                    } else if (planData?.plans && Array.isArray(planData.plans)) {
+                      list = planData.plans;
+                    } else if (planData?.data && Array.isArray(planData.data)) {
+                      list = planData.data as any;
+                    }
+                    
+                    return list.map((plan) => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.planName}
+                      </option>
+                    ));
+                  })()}
                 </select>
               </label>
 

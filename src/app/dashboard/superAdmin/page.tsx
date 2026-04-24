@@ -26,7 +26,7 @@ const topBusinesses = [
 
 function SuperAdminDashboardContent() {
   const { data, isLoading } = useGetPlansQuery();
-  const stats = data?.stats;
+  const stats = data && !Array.isArray(data) ? data.stats : undefined;
 
   const summaryCards = [
     {

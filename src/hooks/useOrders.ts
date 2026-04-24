@@ -24,7 +24,7 @@ export interface CreateOrderItemPayload {
 }
 
 export interface CreateOrderPayload {
-  tableId: string;
+  tableId?: string;
   items: CreateOrderItemPayload[];
   totalPrice: number;
   deliveryCharges: number;

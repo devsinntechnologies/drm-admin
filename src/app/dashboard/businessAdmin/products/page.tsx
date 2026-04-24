@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProducts, type CreateProductVariantPayload, type Product } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
 import { normalizeErrorMessage } from "@/lib/utils";
+import { DeleteConfirmDialog } from "@/components/common/DeleteConfirmDialog";
 import {
   Dialog,
   DialogContent,
@@ -217,6 +218,8 @@ function MenuItemsContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: "",
     price: 0,
@@ -434,15 +437,19 @@ function MenuItemsContent() {
   };
 
   const onDelete = async (id: string) => {
-    const confirmed = typeof window !== "undefined" ? window.confirm("Delete this product?") : false;
-    if (!confirmed) {
-      return;
-    }
+    setDeleteId(id);
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
 
     const toastId = toast.loading("Deleting product...");
     try {
-      await deleteProduct(id);
+      await deleteProduct(deleteId);
       toast.success("Product deleted successfully", { id: toastId });
+      setDeleteOpen(false);
+      setDeleteId(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete product", { id: toastId });
     }
@@ -844,6 +851,15 @@ function MenuItemsContent() {
               </form>
             </DialogContent>
           </Dialog>
+
+          <DeleteConfirmDialog
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            onConfirm={confirmDelete}
+            title="Delete Product?"
+            description="Are you sure you want to delete this product? This action cannot be undone."
+            loading={actionLoading}
+          />
         </div>
       </main>
     </AdminShell>

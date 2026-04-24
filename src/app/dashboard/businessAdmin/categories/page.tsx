@@ -9,6 +9,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { CategoryRecord, useCategories } from "@/hooks/useCategories";
 import { normalizeErrorMessage } from "@/lib/utils";
+import { DeleteConfirmDialog } from "@/components/common/DeleteConfirmDialog";
 import {
   Dialog,
   DialogContent,
@@ -122,6 +123,8 @@ function CategoriesContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [createForm, setCreateForm] = useState({
     categoryName: "",
@@ -263,12 +266,19 @@ function CategoriesContent() {
   };
 
   const onDelete = async (id: string) => {
-    const confirmed = typeof window !== "undefined" ? window.confirm("Delete this category?") : false;
-    if (!confirmed) return;
+    setDeleteId(id);
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+
     const toastId = toast.loading("Deleting category...");
     try {
-      await deleteCategory(id);
+      await deleteCategory(deleteId);
       toast.success("Category deleted successfully", { id: toastId });
+      setDeleteOpen(false);
+      setDeleteId(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete category", { id: toastId });
     }
@@ -516,6 +526,15 @@ function CategoriesContent() {
               </form>
             </DialogContent>
           </Dialog>
+
+          <DeleteConfirmDialog
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            onConfirm={confirmDelete}
+            title="Delete Category?"
+            description="Are you sure you want to delete this category? This will also affect products in this category."
+            loading={actionLoading}
+          />
         </div>
       </main>
     </AdminShell>

@@ -9,6 +9,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { TableRecord, TableStatus, useTables } from "@/hooks/useTables";
 import { normalizeErrorMessage } from "@/lib/utils";
+import { DeleteConfirmDialog } from "@/components/common/DeleteConfirmDialog";
 import {
   Dialog,
   DialogContent,
@@ -75,10 +76,6 @@ function TableCard({
       <div className="space-y-4 p-4">
         <div>
           <h3 className="text-xl font-semibold text-[#111827]">{table.tableNumber}</h3>
-          <div className="mt-2 flex items-end justify-between text-sm text-[#6b7280]">
-            <span>{table.capacity} people</span>
-            <span>ID: {table.id}</span>
-          </div>
         </div>
 
         <div>
@@ -116,6 +113,8 @@ function TablesContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [createForm, setCreateForm] = useState({
     tableNumber: "",
@@ -253,13 +252,19 @@ function TablesContent() {
   };
 
   const onDelete = async (id: string) => {
-    const confirmed = typeof window !== "undefined" ? window.confirm("Delete this table?") : false;
-    if (!confirmed) return;
+    setDeleteId(id);
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
 
     const toastId = toast.loading("Deleting table...");
     try {
-      await deleteTable(id);
+      await deleteTable(deleteId);
       toast.success("Table deleted successfully", { id: toastId });
+      setDeleteOpen(false);
+      setDeleteId(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete table", { id: toastId });
     }
@@ -517,6 +522,15 @@ function TablesContent() {
               </form>
             </DialogContent>
           </Dialog>
+
+          <DeleteConfirmDialog
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            onConfirm={confirmDelete}
+            title="Delete Table?"
+            description="Are you sure you want to delete this table? This action cannot be undone."
+            loading={actionLoading}
+          />
         </div>
       </main>
     </AdminShell>

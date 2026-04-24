@@ -21,7 +21,15 @@ import {
   Table2,
   UtensilsCrossed,
   X,
+  Store as StoreIcon,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -280,6 +288,8 @@ function OrdersContent() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isKitchenRole, setIsKitchenRole] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [isOrderTypeDialogOpen, setIsOrderTypeDialogOpen] = useState(false);
+  const [orderType, setOrderType] = useState<"take-away" | "dine-in" | null>(null);
   const [lastOutOfStockToastProductId, setLastOutOfStockToastProductId] = useState<string | null>(null);
 
   const {
@@ -534,20 +544,25 @@ function OrdersContent() {
   }
 
   async function onCreateOrder() {
-    if (!selectedTableId) {
-      toast.error("Please select a table.");
+    if (!cartItems.length) {
+      toast.error("Add at least one product to create an order.");
       return;
     }
 
-    if (!cartItems.length) {
-      toast.error("Add at least one product to create an order.");
+    setIsOrderTypeDialogOpen(true);
+    setOrderType(null); // Reset for new selection
+  }
+
+  async function finalizeOrder() {
+    if (orderType === "dine-in" && !selectedTableId) {
+      toast.error("Please select a table for Dine In.");
       return;
     }
 
     const toastId = toast.loading("Creating order...");
     try {
       await createOrder({
-        tableId: selectedTableId,
+        tableId: orderType === "dine-in" ? selectedTableId : undefined,
         items: cartItems.map((item) => ({
           productId: item.productId,
           variantId: item.variantId,
@@ -561,6 +576,9 @@ function OrdersContent() {
 
       toast.success("Order created successfully.", { id: toastId });
       setCartItems([]);
+      setSelectedTableId("");
+      setOrderType(null);
+      setIsOrderTypeDialogOpen(false);
       setDeliveryCharges("0");
       setPackagingPrice("0");
     } catch (error) {
@@ -749,36 +767,7 @@ function OrdersContent() {
           {view === "new-order" ? (
             <section className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(340px,0.9fr)]">
               <div className="space-y-5">
-                <article className="rounded-[28px] border border-white bg-[linear-gradient(180deg,#eaf2ff_0%,#f4f8ff_100%)] p-5 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#3b82f6] text-white shadow-[0_10px_18px_rgba(59,130,246,0.22)]">
-                      <Table2 className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-semibold text-[#1f2937]">Select Table</h2>
-                      <p className="text-sm text-[#64748b]">Assign the order to a dining area</p>
-                    </div>
-                  </div>
 
-                  <div className="mt-5 rounded-2xl border border-[#d9e5f4] bg-white px-4 py-3 text-sm shadow-[0_6px_14px_rgba(15,23,42,0.04)]">
-                    <div className="flex items-center justify-between gap-3">
-                      <select
-                        value={selectedTableId}
-                        onChange={(event) => setSelectedTableId(event.target.value)}
-                        className="h-8 w-full appearance-none bg-transparent text-[#334155] outline-none"
-                      >
-                        <option value="">Choose a table...</option>
-                        {tables.filter(t => t.status?.toLowerCase() === 'available').map((table) => (
-                          <option key={table.id} value={table.id}>
-                            {table.tableNumber} (Seats: {table.capacity})
-                          </option>
-                        ))}
-                      </select>
-                      {tablesLoading ? <Loader2 className="h-4 w-4 animate-spin text-[#94a3b8]" /> : <ChevronDown className="h-4 w-4 text-[#94a3b8]" />}
-                    </div>
-                    {tablesError ? <p className="mt-2 text-xs text-[#dc2626]">{tablesError}</p> : null}
-                  </div>
-                </article>
 
                 <article className="rounded-[28px] border border-white bg-white/90 p-5 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
                   <div className="flex items-start justify-between gap-4">
@@ -787,7 +776,7 @@ function OrdersContent() {
                       <p className="text-sm text-[#667085]">{activeProducts.length} active items available</p>
                     </div>
                     <span className="inline-flex items-center gap-2 rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-semibold text-[#1d4ed8]">
-                      <Store className="h-3.5 w-3.5" />
+                      <StoreIcon className="h-3.5 w-3.5" />
                       Business-admin view
                     </span>
                   </div>
@@ -1157,6 +1146,118 @@ function OrdersContent() {
             Logout
           </button>
         </div> */}
+          <Dialog open={isOrderTypeDialogOpen} onOpenChange={setIsOrderTypeDialogOpen}>
+            <DialogContent className="sm:max-w-2xl overflow-hidden rounded-[28px] border-none p-0 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)]">
+              <DialogHeader className="sr-only">
+                <DialogTitle>Order Type</DialogTitle>
+                <DialogDescription>Select order type and table</DialogDescription>
+              </DialogHeader>
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderType("take-away");
+                      setSelectedTableId("");
+                    }}
+                    className={`group relative flex flex-col items-center justify-center gap-4 rounded-[24px] border-2 p-8 transition-all duration-300 ${orderType === "take-away"
+                        ? "border-[#0dbf5f] bg-[#f0fdf4] shadow-[0_12px_24px_rgba(13,191,95,0.15)] scale-[1.02]"
+                        : "border-gray-100 bg-white hover:border-[#0dbf5f]/30 hover:bg-gray-50/50"
+                      }`}
+                  >
+                    <div className={`grid h-16 w-16 place-items-center rounded-2xl transition-all duration-500 ${orderType === "take-away" ? "bg-[#0dbf5f] text-white rotate-[360deg]" : "bg-gray-100 text-gray-500"}`}>
+                      <StoreIcon className="h-8 w-8" />
+                    </div>
+                    <div className="text-center">
+                      <span className={`block text-lg font-bold transition-colors ${orderType === "take-away" ? "text-[#065f46]" : "text-gray-700"}`}>Take Away</span>
+                      <span className="text-xs text-gray-400 font-medium">Quick Pickup</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setOrderType("dine-in")}
+                    className={`group relative flex flex-col items-center justify-center gap-4 rounded-[24px] border-2 p-8 transition-all duration-300 ${orderType === "dine-in"
+                        ? "border-[#3b82f6] bg-[#eff6ff] shadow-[0_12px_24px_rgba(59,130,246,0.15)] scale-[1.02]"
+                        : "border-gray-100 bg-white hover:border-[#3b82f6]/30 hover:bg-gray-50/50"
+                      }`}
+                  >
+                    <div className={`grid h-16 w-16 place-items-center rounded-2xl transition-all duration-500 ${orderType === "dine-in" ? "bg-[#3b82f6] text-white rotate-[360deg]" : "bg-gray-100 text-gray-500"}`}>
+                      <Table2 className="h-8 w-8" />
+                    </div>
+                    <div className="text-center">
+                      <span className={`block text-lg font-bold transition-colors ${orderType === "dine-in" ? "text-[#1e40af]" : "text-gray-700"}`}>Dine In</span>
+                      <span className="text-xs text-gray-400 font-medium">Table Service</span>
+                    </div>
+                  </button>
+                </div>
+
+                {orderType === "dine-in" && (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <label className="text-sm font-bold text-gray-700 uppercase tracking-wider">Select Available Table</label>
+                      {tablesLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-3 sm:grid-cols-5 md:grid-cols-6">
+                      {tables.filter(t => t.status?.toLowerCase() === 'available').map((table) => {
+                        const isSelected = selectedTableId === table.id;
+                        return (
+                          <button
+                            key={table.id}
+                            type="button"
+                            onClick={() => setSelectedTableId(table.id)}
+                            className={`flex flex-col items-center justify-center rounded-2xl border-2 py-3 px-2 transition-all duration-300 active:scale-95 ${isSelected
+                                ? "border-[#3b82f6] bg-[#3b82f6] text-white shadow-lg"
+                                : "border-gray-100 bg-white hover:border-[#3b82f6]/40 hover:bg-gray-50"
+                              }`}
+                          >
+                            <span className={`text-base font-black ${isSelected ? "text-white" : "text-gray-800"}`}>
+                              {table.tableNumber}
+                            </span>
+                            <span className={`text-[9px] font-bold uppercase ${isSelected ? "text-white/80" : "text-gray-400"}`}>
+                              {table.capacity} S
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {tables.filter(t => t.status?.toLowerCase() === 'available').length === 0 && !tablesLoading && (
+                      <div className="rounded-2xl bg-red-50 p-4 text-center">
+                        <p className="text-sm font-medium text-red-600">No available tables found at the moment.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsOrderTypeDialogOpen(false)}
+                    className="flex-1 rounded-2xl border-2 border-gray-100 py-4 text-sm font-bold text-gray-500 transition-all hover:bg-gray-50 hover:text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={finalizeOrder}
+                    disabled={!orderType || (orderType === "dine-in" && !selectedTableId) || createOrderLoading}
+                    className="flex-[2] relative overflow-hidden group rounded-2xl bg-[linear-gradient(135deg,#0dbf5f_0%,#099247_100%)] py-4 text-sm font-bold text-white shadow-[0_20px_40px_-12px_rgba(13,191,95,0.3)] transition-all hover:shadow-[0_24px_48px_-12px_rgba(13,191,95,0.4)] disabled:opacity-50 disabled:grayscale"
+                  >
+                    <div className="relative z-10 flex items-center justify-center gap-2">
+                      {createOrderLoading ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-5 w-5" />
+                      )}
+                      <span>{createOrderLoading ? "Placing Order..." : "Confirm & Place Order"}</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </main>
     </AdminShell>
