@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+import { BASE_URL } from "@/lib/constant";
 
 export interface ProductVariant {
   id: string;
@@ -105,7 +106,7 @@ export function useProducts(options: UseProductsOptions = {}) {
     setError(null);
 
     try {
-      const url = new URL("https://vendor.umazing.shop/products");
+      const url = new URL(`https://${BASE_URL}/products`);
       url.searchParams.append("page", pageNum.toString());
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
@@ -203,7 +204,7 @@ export function useProducts(options: UseProductsOptions = {}) {
         formData.append("image", payload.image);
       }
 
-      const url = new URL("https://vendor.umazing.shop/products");
+      const url = new URL(`https://${BASE_URL}/products`);
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
@@ -244,7 +245,7 @@ export function useProducts(options: UseProductsOptions = {}) {
       throw new Error("No authentication token available");
     }
 
-    const url = new URL(`https://vendor.umazing.shop/products/${id}`);
+    const url = new URL(`https://${BASE_URL}/products/${id}`);
     if (activeBusinessId) {
       url.searchParams.append("businessId", activeBusinessId);
     }
@@ -296,7 +297,7 @@ export function useProducts(options: UseProductsOptions = {}) {
         formData.append("image", payload.image);
       }
 
-      const url = new URL(`https://vendor.umazing.shop/products/${id}`);
+      const url = new URL(`https://${BASE_URL}/products/${id}`);
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
@@ -339,7 +340,7 @@ export function useProducts(options: UseProductsOptions = {}) {
 
     setActionLoading(true);
     try {
-      const url = new URL(`https://vendor.umazing.shop/products/${id}`);
+      const url = new URL(`https://${BASE_URL}/products/${id}`);
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }

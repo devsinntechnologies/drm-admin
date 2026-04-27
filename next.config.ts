@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "vendor.umazing.shop",
+        hostname: "drm.devsinntechnologies.com",
       },
     ],
   },

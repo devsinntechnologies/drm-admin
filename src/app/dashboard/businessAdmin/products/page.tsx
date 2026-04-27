@@ -141,7 +141,7 @@ function MenuCard({
   const stockColor = lowStock ? "bg-[#ef4444]" : "bg-[#16a34a]";
   const categoryName = item.category?.CategoryName || "Uncategorized";
   const imagePath = item.image?.trim();
-  const imageUrl = imagePath ? (imagePath.startsWith("http") ? imagePath : `https://${BASE_URL} /${imagePath}`) : "/business/pic1.jpeg";
+  const imageUrl = imagePath ? (imagePath.startsWith("http") ? imagePath : `https://${BASE_URL}/${imagePath}`) : "/business/pic1.jpeg";
 
   return (
     <article className="overflow-hidden rounded-[28px] border border-[#e4e8f0]  shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
