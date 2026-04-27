@@ -58,7 +58,7 @@ function TableCard({
   deleting: boolean;
 }) {
   const imageUrl = table.image
-    ? (table.image.startsWith("http") ? table.image : `https://${BASE_URL}/${table.image}`)
+    ? (table.image.startsWith("http") ? table.image : `${BASE_URL}/${table.image}`)
     : "/business/pic1.jpeg";
 
   return (

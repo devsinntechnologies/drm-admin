@@ -72,7 +72,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     setError(null);
 
     try {
-      const url = new URL(`https://${BASE_URL}/invoice`);
+      const url = new URL(`${BASE_URL}/invoice`);
       url.searchParams.append("page", String(pageNum));
       if (limit) {
         url.searchParams.append("limit", String(limit));
@@ -142,7 +142,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
 
     setActionLoading(true);
     try {
-      const url = new URL(`https://${BASE_URL}/invoice/${invoiceUuid}`);
+      const url = new URL(`${BASE_URL}/invoice/${invoiceUuid}`);
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }

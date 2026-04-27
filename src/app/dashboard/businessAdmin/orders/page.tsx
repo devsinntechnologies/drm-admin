@@ -73,7 +73,7 @@ function productImageUrl(imagePath?: string | null) {
     return imagePath;
   }
 
-  return `https://${BASE_URL}/${imagePath}`;
+  return `${BASE_URL}/${imagePath}`;
 }
 
 function getDefaultVariant(product: Product): ProductVariant | null {
@@ -392,7 +392,7 @@ function OrdersContent() {
         throw new Error("No authentication token available");
       }
 
-      const url = new URL(`https://${BASE_URL}/invoice`);
+      const url = new URL(`${BASE_URL}/invoice`);
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }

@@ -44,7 +44,7 @@ function productImageUrl(imagePath?: string | null) {
   if (imagePath.startsWith("http")) {
     return imagePath;
   }
-  return `https://${BASE_URL}/${imagePath}`;
+  return `${BASE_URL}/${imagePath}`;
 }
 
 function normalizeKitchenLane(status: string): KitchenLane | null {

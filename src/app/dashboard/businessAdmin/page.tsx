@@ -128,7 +128,7 @@ function DashboardContent() {
 
       try {
         const response = await fetch(
-          `https://${BASE_URL}/dashboard/full?businessId=${encodeURIComponent(activeBusinessId)}`,
+          `${BASE_URL}/dashboard/full?businessId=${encodeURIComponent(activeBusinessId)}`,
           {
             method: "GET",
             headers: {

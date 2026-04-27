@@ -106,7 +106,7 @@ export function useProducts(options: UseProductsOptions = {}) {
     setError(null);
 
     try {
-      const url = new URL(`https://${BASE_URL}/products`);
+      const url = new URL(`${BASE_URL}/products`);
       url.searchParams.append("page", pageNum.toString());
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
@@ -204,7 +204,7 @@ export function useProducts(options: UseProductsOptions = {}) {
         formData.append("image", payload.image);
       }
 
-      const url = new URL(`https://${BASE_URL}/products`);
+      const url = new URL(`${BASE_URL}/products`);
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
@@ -245,7 +245,7 @@ export function useProducts(options: UseProductsOptions = {}) {
       throw new Error("No authentication token available");
     }
 
-    const url = new URL(`https://${BASE_URL}/products/${id}`);
+    const url = new URL(`${BASE_URL}/products/${id}`);
     if (activeBusinessId) {
       url.searchParams.append("businessId", activeBusinessId);
     }
@@ -297,7 +297,7 @@ export function useProducts(options: UseProductsOptions = {}) {
         formData.append("image", payload.image);
       }
 
-      const url = new URL(`https://${BASE_URL}/products/${id}`);
+      const url = new URL(`${BASE_URL}/products/${id}`);
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
@@ -340,7 +340,7 @@ export function useProducts(options: UseProductsOptions = {}) {
 
     setActionLoading(true);
     try {
-      const url = new URL(`https://${BASE_URL}/products/${id}`);
+      const url = new URL(`${BASE_URL}/products/${id}`);
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
