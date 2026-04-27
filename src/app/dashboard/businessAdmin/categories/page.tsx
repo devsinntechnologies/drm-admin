@@ -18,6 +18,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { BASE_URL } from "@/lib/constant";
+
 
 function ErrorAlert({ message }: { message: unknown }) {
   const errorMessage = normalizeErrorMessage(message, "Error loading categories");
@@ -45,7 +47,7 @@ function CategoryCard({
   deleting: boolean;
 }) {
   const imageUrl = category.image
-    ? (category.image.startsWith("http") ? category.image : `https://vendor.umazing.shop/${category.image}`)
+    ? (category.image.startsWith("http") ? category.image : `${BASE_URL}/${category.image}`)
     : "/business/pic1.jpeg";
 
   return (

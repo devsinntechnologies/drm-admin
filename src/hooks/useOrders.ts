@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
-
-const BASE_URL = "https://vendor.umazing.shop";
+import { BASE_URL } from "@/lib/constant";
 
 function getAuthToken(reduxToken: string | null) {
   if (reduxToken) {

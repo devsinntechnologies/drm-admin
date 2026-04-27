@@ -19,6 +19,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { BASE_URL } from "@/lib/constant";
 
 const fallbackTopSellingProducts = [
   { rank: 1, name: "Pasta Carbonara", sold: "2 units sold", revenue: "$29.98", image: "/business/pic1.jpeg", quantity: 2, revenueRaw: 29.98 },
@@ -127,7 +128,7 @@ function DashboardContent() {
 
       try {
         const response = await fetch(
-          `https://vendor.umazing.shop/dashboard/full?businessId=${encodeURIComponent(activeBusinessId)}`,
+          `https://${BASE_URL}/dashboard/full?businessId=${encodeURIComponent(activeBusinessId)}`,
           {
             method: "GET",
             headers: {

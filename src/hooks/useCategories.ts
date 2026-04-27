@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+import { BASE_URL } from "@/lib/constant";
 
 export interface CategoryProduct {
   id: string;
@@ -43,7 +44,7 @@ interface UseCategoriesOptions {
   limit?: number;
 }
 
-const BASE_URL = "https://vendor.umazing.shop";
+
 
 function getAuthToken(reduxToken: string | null) {
   if (reduxToken) return reduxToken;

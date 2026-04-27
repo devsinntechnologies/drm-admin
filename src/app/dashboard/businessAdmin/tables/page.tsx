@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { BASE_URL } from "@/lib/constant";
 
 function ErrorAlert({ message }: { message: unknown }) {
   const errorMessage = normalizeErrorMessage(message, "Error loading tables");
@@ -57,7 +58,7 @@ function TableCard({
   deleting: boolean;
 }) {
   const imageUrl = table.image
-    ? (table.image.startsWith("http") ? table.image : `https://vendor.umazing.shop/${table.image}`)
+    ? (table.image.startsWith("http") ? table.image : `https://${BASE_URL}/${table.image}`)
     : "/business/pic1.jpeg";
 
   return (

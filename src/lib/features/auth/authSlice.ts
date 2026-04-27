@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { BASE_URL } from "@/lib/constant";
 
 export type LoginCredentials = {
   email: string;
@@ -75,7 +76,7 @@ export const loginUser = createAsyncThunk<
   { rejectValue: string }
 >("auth/loginUser", async (credentials, { rejectWithValue }) => {
   try {
-    const response = await fetch("https://vendor.umazing.shop/users/login", {
+    const response = await fetch(`https://${BASE_URL}/users/login`, {
       method: "POST",
       headers: {
         accept: "application/json",

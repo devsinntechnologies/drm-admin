@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
-
+import { BASE_URL } from "@/lib/constant";
 export type TableStatus = "available" | "occupied" | "reserved";
 
 export interface TableRecord {
@@ -28,7 +28,6 @@ interface TablesResponse {
   };
 }
 
-const BASE_URL = "https://vendor.umazing.shop";
 
 function getAuthToken(reduxToken: string | null) {
   if (reduxToken) return reduxToken;

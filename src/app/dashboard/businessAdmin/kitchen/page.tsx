@@ -15,6 +15,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrders } from "@/hooks/useOrders";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+import { BASE_URL } from "@/lib/constant";
 
 type KitchenLane = "new" | "cooking" | "ready";
 
@@ -43,7 +44,7 @@ function productImageUrl(imagePath?: string | null) {
   if (imagePath.startsWith("http")) {
     return imagePath;
   }
-  return `https://vendor.umazing.shop/${imagePath}`;
+  return `https://${BASE_URL}/${imagePath}`;
 }
 
 function normalizeKitchenLane(status: string): KitchenLane | null {

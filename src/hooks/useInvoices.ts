@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+import { BASE_URL } from "@/lib/constant";
 
 export type InvoiceStatus = "pending" | "paid" | "overdue" | string;
 
@@ -71,7 +72,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     setError(null);
 
     try {
-      const url = new URL("https://vendor.umazing.shop/invoice");
+      const url = new URL(`https://${BASE_URL}/invoice`);
       url.searchParams.append("page", String(pageNum));
       if (limit) {
         url.searchParams.append("limit", String(limit));
@@ -141,7 +142,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
 
     setActionLoading(true);
     try {
-      const url = new URL(`https://vendor.umazing.shop/invoice/${invoiceUuid}`);
+      const url = new URL(`https://${BASE_URL}/invoice/${invoiceUuid}`);
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }

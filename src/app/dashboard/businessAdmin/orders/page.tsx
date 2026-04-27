@@ -39,6 +39,7 @@ import { useOrders, type OrderRecord } from "@/hooks/useOrders";
 import { useProducts, type Product, type ProductVariant } from "@/hooks/useProducts";
 import { useTables } from "@/hooks/useTables";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+import { BASE_URL } from "@/lib/constant";
 
 type OrderView = "new-order" | "active-orders";
 
@@ -72,7 +73,7 @@ function productImageUrl(imagePath?: string | null) {
     return imagePath;
   }
 
-  return `https://vendor.umazing.shop/${imagePath}`;
+  return `https://${BASE_URL}/${imagePath}`;
 }
 
 function getDefaultVariant(product: Product): ProductVariant | null {
@@ -391,7 +392,7 @@ function OrdersContent() {
         throw new Error("No authentication token available");
       }
 
-      const url = new URL("https://vendor.umazing.shop/invoice");
+      const url = new URL(`https://${BASE_URL}/invoice`);
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
