@@ -13,6 +13,7 @@ import {
 import { Loader2, Trash2 } from "lucide-react"
 
 interface DeleteConfirmDialogProps {
+  
   open: boolean
   onOpenChange: (open: boolean) => void
   onConfirm: () => void
