@@ -22,7 +22,7 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
   {
     key: "dashboard",
     label: "Dashboard",
-    href: "/dashboard", // This will be dynamically updated in useMemo for Super Admins
+    href: "/dashboard", // This will be dynamically updated in useMemo for Super Admins // This will be dynamically updated in useMemo for Super Admins
     icon: <Crown className="h-5 w-5" />,
   },
   {
@@ -184,7 +184,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
     } else {
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "action-logs");
       // Force Super Admin dashboard link to the superAdmin route
-      baseTabs = baseTabs.map(tab => 
+      baseTabs = baseTabs.map(tab =>
         tab.key === "dashboard" ? { ...tab, href: "/dashboard/superAdmin" } : tab
       );
     }

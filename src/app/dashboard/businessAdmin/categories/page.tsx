@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, Box, ChevronLeft, ChevronRight, Edit, Layers, Loader2, Plus, Search, Store, Trash2 } from "lucide-react";
+import { AlertCircle, Box, ChevronLeft, ChevronRight, Edit, Layers, Loader2, Plus, Search, Store, Trash2, X, Image as ImageIconLucide, RotateCcw, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,82 +35,43 @@ function ErrorAlert({ message }: { message: unknown }) {
   );
 }
 
-function CategoryCard({
+function CategoryListItem({
   category,
   onEdit,
-  onDelete,
-  deleting,
 }: {
   category: CategoryRecord;
   onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
-  deleting: boolean;
 }) {
   const imageUrl = category.image
     ? (category.image.startsWith("http") ? category.image : `${BASE_URL}/${category.image}`)
     : "/business/pic1.jpeg";
+=======
+    ? (category.image.startsWith("http") ? category.image : `${BASE_URL}/${category.image}`)
+    : null;
+>>>>>>> Stashed changes
 
   return (
-    <article className="rounded-3xl border border-[#e4e8f0] bg-white overflow-hidden shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
-      <div className="relative h-42">
-        <Image src={imageUrl} alt={category.CategoryName} fill sizes="(max-width: 640px) 100vw, 33vw" className="object-cover" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.08)_0%,rgba(15,23,42,0.5)_100%)]" />
-        <div className="absolute left-3 right-3 bottom-3 flex items-end justify-between gap-3 text-white">
-          <div>
-            <h3 className="text-lg font-semibold">{category.CategoryName}</h3>
-            <p className="text-xs text-white/80">{category.businessName}</p>
-          </div>
-          <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
-            {category.products.length} products
-          </span>
-        </div>
-      </div>
-
-      <div className="p-4 space-y-3">
-        <div className="flex items-center justify-between text-sm text-[#64748b]">
-          <span>Sort Order</span>
-          <span className="font-semibold text-[#111827]">{category.sortOrder}</span>
-        </div>
-
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#94a3b8]">Products</p>
-          {category.products.length === 0 ? (
-            <p className="text-sm text-[#94a3b8]">No products in this category</p>
+    <div className="flex items-center justify-between rounded-2xl border border-[#f1f5f9] bg-white p-4 transition hover:border-[#4f46e5]/20 hover:shadow-sm">
+      <div className="flex items-center gap-4">
+        <div className="relative h-12 w-12 overflow-hidden rounded-xl bg-[#f8fafc] flex items-center justify-center border border-[#f1f5f9]">
+          {imageUrl ? (
+            <Image src={imageUrl} alt={category.CategoryName} fill className="object-cover" />
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {category.products.slice(0, 4).map((product) => (
-                <span key={product.id} className="rounded-full bg-[#f1f5f9] px-3 py-1 text-xs text-[#334155]">
-                  {product.name}
-                </span>
-              ))}
-              {category.products.length > 4 && (
-                <span className="rounded-full bg-[#eef2ff] px-3 py-1 text-xs text-[#4f46e5]">
-                  +{category.products.length - 4} more
-                </span>
-              )}
-            </div>
+            <ImageIcon className="h-6 w-6 text-[#94a3b8]" />
           )}
         </div>
-
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => onEdit(category.id)}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#cfd8ff] bg-[#eef2ff] px-4 py-3 text-sm font-semibold text-[#4f46e5]"
-          >
-            <Edit className="h-4 w-4" /> Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(category.id)}
-            disabled={deleting}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#fecaca] bg-white px-4 py-3 text-sm font-semibold text-[#ef4444] disabled:opacity-60"
-          >
-            <Trash2 className="h-4 w-4" /> Delete
-          </button>
+        <div>
+          <h4 className="text-sm font-bold text-[#111827]">{category.CategoryName}</h4>
+          <p className="text-xs text-[#64748b]">Sort order: {category.sortOrder}</p>
         </div>
       </div>
-    </article>
+      <button
+        onClick={() => onEdit(category.id)}
+        className="text-sm font-semibold text-[#6366f1] transition hover:text-[#4f46e5]"
+      >
+        Edit
+      </button>
+    </div>
   );
 }
 
@@ -186,21 +147,6 @@ function CategoriesContent() {
     });
   }, [categories, search]);
 
-  const metrics = useMemo(() => {
-    const totalProducts = categories.reduce((sum, category) => sum + category.products.length, 0);
-    const activeProducts = categories.reduce(
-      (sum, category) => sum + category.products.filter((product) => product.status === "ACTIVE").length,
-      0,
-    );
-    const businessCount = new Set(categories.map((category) => category.businessId)).size;
-
-    return {
-      totalProducts,
-      activeProducts,
-      businessCount,
-    };
-  }, [categories]);
-
   const resetCreate = () => {
     setCreateForm({ categoryName: "", sortOrder: 0, image: null });
   };
@@ -211,6 +157,7 @@ function CategoriesContent() {
   };
 
   const onCreateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (!createForm.categoryName.trim()) {
       toast.error("Category name is required");
       return;
@@ -223,7 +170,6 @@ function CategoriesContent() {
         image: createForm.image,
       });
       toast.success("Category created successfully", { id: toastId });
-      setCreateOpen(false);
       resetCreate();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create category", { id: toastId });
@@ -241,13 +187,13 @@ function CategoriesContent() {
         image: null,
       });
       toast.dismiss(toastId);
-      setEditOpen(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to load category details", { id: toastId });
     }
   };
 
   const onEditSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (!editId || !editForm.categoryName.trim()) {
       if (!editForm.categoryName.trim()) toast.error("Category name is required");
       return;
@@ -260,7 +206,6 @@ function CategoriesContent() {
         image: editForm.image,
       });
       toast.success("Category updated successfully", { id: toastId });
-      setEditOpen(false);
       resetEdit();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update category", { id: toastId });
@@ -292,80 +237,109 @@ function CategoriesContent() {
 
   return (
     <AdminShell activeTab="categories">
-      <main className="min-h-screen">
-        <div className="mx-auto max-w-7xl space-y-5">
-          <section className="rounded-[28px] border border-white bg-white/85 p-5 shadow-[0_14px_28px_rgba(15,23,42,0.08)] backdrop-blur">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="grid h-14 w-14 place-items-center rounded-2xl bg-[#4f46e5] text-white shadow-[0_10px_18px_rgba(79,70,229,0.25)]">
-                  <Layers className="h-6 w-6" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-semibold text-[#111827]">Categories</h1>
-                  <p className="text-sm text-[#6b7280]">Manage category list for your business</p>
-                </div>
+      <main className="h-[calc(100vh-80px)] overflow-hidden">
+        <div className="mx-auto max-w-7xl h-full p-6">
+          <div className="h-full rounded-[32px] border border-white bg-white p-8 shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between mb-8 shrink-0">
+              <div>
+                <h1 className="text-3xl font-extrabold text-[#111827]">Manage Categories</h1>
+                <p className="text-base text-[#6b7280]">Add, update, and sort categories from one place</p>
               </div>
+              <button onClick={() => router.back()} className="rounded-full p-2 hover:bg-[#f3f4f6] text-[#94a3b8] transition">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
 
-              <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogTrigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 rounded-2xl bg-[#635bff] px-4 py-3 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(99,91,255,0.24)]"
-                  >
-                    <Plus className="h-4 w-4" /> Add Category
-                  </button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create Category</DialogTitle>
-                    <DialogDescription>Add a new category with optional image.</DialogDescription>
-                  </DialogHeader>
-                  <form className="space-y-4" onSubmit={onCreateSubmit}>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-[#111827]" htmlFor="categoryName">Category Name</label>
-                      <input
-                        id="categoryName"
-                        value={createForm.categoryName}
-                        onChange={(event) => setCreateForm((prev) => ({ ...prev, categoryName: event.target.value }))}
-                        className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                        placeholder="e.g. Beverages"
-                      />
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-8 flex-1 min-h-0">
+              {/* Left Column: Form */}
+              <div className="rounded-3xl border border-[#f1f5f9] bg-[#f8fafc]/50 p-6 flex flex-col min-h-0">
+                <h3 className="text-xl font-bold text-[#111827] mb-6 shrink-0">{editId ? "Update Category" : "Add Category"}</h3>
+                
+                <form className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar" onSubmit={editId ? onEditSubmit : onCreateSubmit}>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-[#64748b]">Category Name</label>
+                    <input
+                      value={editId ? editForm.categoryName : createForm.categoryName}
+                      onChange={(e) => editId ? setEditForm(p => ({ ...p, categoryName: e.target.value })) : setCreateForm(p => ({ ...p, categoryName: e.target.value }))}
+                      placeholder="Enter category name"
+                      className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-sm font-medium outline-none transition focus:border-[#f97316]/50"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-[#64748b]">Sort Order</label>
+                    <input
+                      type="number"
+                      value={editId ? editForm.sortOrder : createForm.sortOrder}
+                      onChange={(e) => editId ? setEditForm(p => ({ ...p, sortOrder: Number(e.target.value) })) : setCreateForm(p => ({ ...p, sortOrder: Number(e.target.value) }))}
+                      className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-sm font-medium outline-none transition focus:border-[#f97316]/50"
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="text-sm font-bold text-[#64748b]">Image</label>
+                    <div>
+                      <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-[#d1d5db] bg-white px-6 py-2.5 text-sm font-bold text-[#6366f1] transition hover:bg-[#f9fafb]">
+                        Choose Image
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => editId ? setEditForm(p => ({ ...p, image: e.target.files?.[0] ?? null })) : setCreateForm(p => ({ ...p, image: e.target.files?.[0] ?? null }))}
+                          className="hidden"
+                        />
+                      </label>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-[#111827]" htmlFor="sortOrder">Sort Order</label>
-                      <input
-                        id="sortOrder"
-                        type="number"
-                        value={createForm.sortOrder}
-                        onChange={(event) => setCreateForm((prev) => ({ ...prev, sortOrder: Number(event.target.value) }))}
-                        className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                      />
+                    <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-[#f1f5f9] flex flex-col items-center justify-center text-[#94a3b8] border-2 border-dashed border-[#e5e7eb]">
+                      {(editId ? editForm.image : createForm.image) ? (
+                        <p className="text-sm font-bold text-[#10b981]">{(editId ? editForm.image : createForm.image)?.name}</p>
+                      ) : (
+                        <span className="text-sm font-medium">No image selected</span>
+                      )}
                     </div>
+                  </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-[#111827]" htmlFor="image">Image</label>
-                      <input
-                        id="image"
-                        type="file"
-                        accept="image/*"
-                        onChange={(event) => setCreateForm((prev) => ({ ...prev, image: event.target.files?.[0] ?? null }))}
-                        className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm"
-                      />
-                    </div>
-
+                  <div className="grid grid-cols-2 gap-4 pt-4 sticky bottom-0 bg-[#f8fafc]/90 py-2">
+                    <button
+                      type="button"
+                      onClick={editId ? resetEdit : resetCreate}
+                      className="flex items-center justify-center gap-2 rounded-2xl border-2 border-[#e5e7eb] bg-white py-3.5 text-sm font-bold text-[#111827] transition hover:bg-[#f9fafb]"
+                    >
+                      <RotateCcw className="h-4 w-4" /> Reset
+                    </button>
                     <button
                       type="submit"
                       disabled={actionLoading}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#635bff] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-[#f97316] py-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-[#ea580c] disabled:opacity-60"
                     >
-                      {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                      Create Category
+                      {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                      Save
                     </button>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                  </div>
+                </form>
+              </div>
+
+              {/* Right Column: List */}
+              <div className="rounded-3xl border border-[#f1f5f9] bg-white p-6 shadow-sm flex flex-col min-h-0">
+                <div className="mb-6 shrink-0">
+                  <h3 className="text-xl font-bold text-[#111827]">Category List</h3>
+                  <p className="text-xs text-[#6b7280]">Sorted by sort order from the API</p>
+                </div>
+
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                  {loading ? (
+                    <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-[#f97316]" /></div>
+                  ) : filteredCategories.length === 0 ? (
+                    <div className="text-center py-12 text-[#94a3b8] text-sm font-medium">No categories found</div>
+                  ) : (
+                    filteredCategories.map((category) => (
+                      <CategoryListItem key={category.id} category={category} onEdit={onOpenEdit} />
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
+<<<<<<< Updated upstream
           </section>
 
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -528,6 +502,8 @@ function CategoriesContent() {
               </form>
             </DialogContent>
           </Dialog>
+=======
+          </div>
 
           <DeleteConfirmDialog
             open={deleteOpen}
@@ -537,6 +513,7 @@ function CategoriesContent() {
             description="Are you sure you want to delete this category? This will also affect products in this category."
             loading={actionLoading}
           />
+>>>>>>> Stashed changes
         </div>
       </main>
     </AdminShell>
@@ -548,7 +525,7 @@ export default function CategoriesPage() {
     <Suspense
       fallback={
         <div className="flex h-screen items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#4f46e5]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#f97316]" />
         </div>
       }
     >

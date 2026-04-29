@@ -9,13 +9,19 @@ import {
   CookingPot,
   Loader2,
   Store,
+  CheckCircle2,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrders } from "@/hooks/useOrders";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+<<<<<<< Updated upstream
+=======
 import { BASE_URL } from "@/lib/constant";
+import { cn } from "@/lib/utils";
+>>>>>>> Stashed changes
 
 type KitchenLane = "new" | "cooking" | "ready";
 
@@ -44,45 +50,7 @@ function productImageUrl(imagePath?: string | null) {
   if (imagePath.startsWith("http")) {
     return imagePath;
   }
-  return `${BASE_URL}/${imagePath}`;
-}
-
-function normalizeKitchenLane(status: string): KitchenLane | null {
-  const value = status.toLowerCase();
-  if (["pending", "new", "placed"].includes(value)) {
-    return "new";
-  }
-  if (["preparing", "cooking", "in_progress", "in-progress"].includes(value)) {
-    return "cooking";
-  }
-  if (value === "ready") {
-    return "ready";
-  }
-  return null;
-}
-
-function laneBadgeColor(lane: KitchenLane) {
-  if (lane === "new") return "bg-[#ef4444]";
-  if (lane === "cooking") return "bg-[#f97316]";
-  return "bg-[#22c55e]";
-}
-
-function laneButtonClass(lane: KitchenLane) {
-  if (lane === "new") return "bg-[#ef000f] hover:bg-[#d9000f]";
-  if (lane === "cooking") return "bg-[#ff7300] hover:bg-[#e96800]";
-  return "bg-[#17b74b] hover:bg-[#12963d]";
-}
-
-function laneTitle(lane: KitchenLane) {
-  if (lane === "new") return "New Orders";
-  if (lane === "cooking") return "Cooking";
-  return "Ready";
-}
-
-function laneActionLabel(lane: KitchenLane) {
-  if (lane === "new") return "Start Preparing";
-  if (lane === "cooking") return "Mark as Ready";
-  return "Mark as Served";
+  return `https://vendor.umazing.shop/${imagePath}`;
 }
 
 function KitchenPageContent() {
@@ -97,6 +65,7 @@ function KitchenPageContent() {
     orders: activeOrders,
     loading: ordersLoading,
     updateOrderStatus,
+    refetch,
   } = useOrders({ range: "day" });
 
   useEffect(() => {
@@ -119,44 +88,34 @@ function KitchenPageContent() {
     setIsAuthorized(true);
   }, [role, router, impersonatedBusinessId]);
 
-  const kitchenOrders = useMemo(
-    () =>
-      activeOrders
-        .map((order) => {
-          const lane = normalizeKitchenLane(order.status);
-          return {
-            ...order,
-            lane,
-          };
-        })
-        .filter((order) => order.lane !== null),
-    [activeOrders],
+  // Filter orders into Takeaway vs Dining
+  const takeawayOrders = useMemo(() => 
+    activeOrders.filter(o => !o.table || o.orderType?.toLowerCase() === 'takeaway'), 
+    [activeOrders]
+  );
+  
+  const diningOrders = useMemo(() => 
+    activeOrders.filter(o => !!o.table && o.orderType?.toLowerCase() !== 'takeaway'), 
+    [activeOrders]
   );
 
-  const newOrders = useMemo(() => kitchenOrders.filter((order) => order.lane === "new"), [kitchenOrders]);
-  const cookingOrders = useMemo(() => kitchenOrders.filter((order) => order.lane === "cooking"), [kitchenOrders]);
-  const readyOrders = useMemo(() => kitchenOrders.filter((order) => order.lane === "ready"), [kitchenOrders]);
-
-  async function moveKitchenOrder(orderId: string, lane: KitchenLane) {
+  async function moveKitchenOrder(orderId: string, currentStatus: string) {
     setUpdatingOrderId(orderId);
     let nextStatus = "cooking";
-    let successMessage = "Order moved to cooking.";
+    const status = currentStatus.toLowerCase();
 
-    if (lane === "new") {
+    if (["pending", "new", "placed"].includes(status)) {
       nextStatus = "cooking";
-      successMessage = "Order moved to cooking.";
-    } else if (lane === "cooking") {
+    } else if (["preparing", "cooking", "in_progress", "in-progress"].includes(status)) {
       nextStatus = "ready";
-      successMessage = "Order marked as ready.";
-    } else if (lane === "ready") {
+    } else if (status === "ready") {
       nextStatus = "served";
-      successMessage = "Order served.";
     }
 
     const toastId = toast.loading("Updating order status...");
     try {
       await updateOrderStatus(orderId, nextStatus);
-      toast.success(successMessage, { id: toastId });
+      toast.success(`Order moved to ${nextStatus}`, { id: toastId });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to update order status.";
       toast.error(message, { id: toastId });
@@ -165,130 +124,161 @@ function KitchenPageContent() {
     }
   }
 
-  if (!isAuthorized) {
-    return null;
-  }
+  if (!isAuthorized) return null;
 
   return (
     <AdminShell activeTab="kitchen">
-      <main className="min-h-screen">
-        <div className="mx-auto max-w-7xl space-y-4">
-          <section className="rounded-2xl bg-[linear-gradient(90deg,#ff7300_0%,#ee0010_100%)] p-6 text-white shadow-[0_12px_24px_rgba(15,23,42,0.18)] border border-white/20">
-            <div className="flex items-center gap-3">
-              <div className="grid h-11 w-11 place-items-center rounded-full bg-white/20">
-                <CookingPot className="h-6 w-6" />
+      <main className="h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc]">
+        <div className="h-full flex flex-col p-6">
+          
+          {/* Main Grid: Two Columns */}
+          <div className="flex-1 grid grid-cols-2 gap-8 min-h-0">
+            
+            {/* Take Away / Packaging Column */}
+            <div className="flex flex-col gap-6">
+              {/* Summary Card */}
+              <div className="bg-[#fff7ed] rounded-[32px] p-6 flex items-center gap-4 shadow-sm border border-[#ffedd5]">
+                <div className="h-14 w-14 rounded-full bg-[#f97316] flex items-center justify-center shadow-lg shadow-orange-200">
+                  <Bell className="h-7 w-7 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-[#9a3412] font-black text-sm uppercase tracking-wider">Take Away / Packaging</h2>
+                  <p className="text-4xl font-black text-[#7c2d12]">{takeawayOrders.length}</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-4xl font-bold tracking-tight">Kitchen Board</h1>
-                <p className="text-sm text-white/90">{kitchenOrders.length} active orders • Manage preparation flow</p>
+
+              {/* Lane Container */}
+              <div className="flex-1 bg-[#fff7ed]/50 rounded-[40px] border border-[#ffedd5] overflow-hidden flex flex-col p-6">
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                  {takeawayOrders.length > 0 ? (
+                    <div className="grid gap-4">
+                      {takeawayOrders.map(order => (
+                        <OrderCard key={order.id} order={order} onMove={moveKitchenOrder} updating={updatingOrderId === order.id} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+                      <div className="h-24 w-24 rounded-full bg-[#ffedd5] flex items-center justify-center mb-4">
+                        <CookingPot className="h-12 w-12 text-[#9a3412]" />
+                      </div>
+                      <h3 className="text-2xl font-black text-[#7c2d12]">No orders</h3>
+                      <p className="text-[#9a3412] font-medium">New orders will appear here</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </section>
 
-          <section className="grid gap-4 md:grid-cols-3">
-            <article className="rounded-2xl border border-[#f1d4d6] bg-[#f6ecee] p-4 shadow-[0_6px_14px_rgba(15,23,42,0.08)]">
-              <div className="flex items-center gap-3">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#ff2e3b] text-white"><Bell className="h-4 w-4" /></span>
+            {/* Dining Order Column */}
+            <div className="flex flex-col gap-6">
+              {/* Summary Card */}
+              <div className="bg-[#f0fdf4] rounded-[32px] p-6 flex items-center gap-4 shadow-sm border border-[#dcfce7]">
+                <div className="h-14 w-14 rounded-full bg-[#0f9d58] flex items-center justify-center shadow-lg shadow-green-200">
+                  <CheckCircle2 className="h-7 w-7 text-white" />
+                </div>
                 <div>
-                  <p className="text-sm text-[#4b5563]">New Orders</p>
-                  <strong className="text-4xl font-bold text-[#111827]">{newOrders.length}</strong>
+                  <h2 className="text-[#166534] font-black text-sm uppercase tracking-wider">Dining Order</h2>
+                  <p className="text-4xl font-black text-[#14532d]">{diningOrders.length}</p>
                 </div>
               </div>
-            </article>
 
-            <article className="rounded-2xl border border-[#feeacc] bg-[#fff9ef] p-4 shadow-[0_6px_14px_rgba(15,23,42,0.08)]">
-              <div className="flex items-center gap-3">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#ff9500] text-white"><CookingPot className="h-4 w-4" /></span>
-                <div>
-                  <p className="text-sm text-[#4b5563]">In Cooking</p>
-                  <strong className="text-4xl font-bold text-[#111827]">{cookingOrders.length}</strong>
-                </div>
-              </div>
-            </article>
-
-            <article className="rounded-2xl border border-[#dcfce7] bg-[#f0fdf4] p-4 shadow-[0_6px_14px_rgba(15,23,42,0.08)]">
-              <div className="flex items-center gap-3">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#16a34a] text-white"><Clock3 className="h-4 w-4" /></span>
-                <div>
-                  <p className="text-sm text-[#4b5563]">Ready for Service</p>
-                  <strong className="text-4xl font-bold text-[#111827]">{readyOrders.length}</strong>
-                </div>
-              </div>
-            </article>
-          </section>
-
-          <section className="grid items-start gap-5 lg:grid-cols-3">
-            {(["new", "cooking", "ready"] as const).map((lane) => {
-              const laneOrders = lane === "new" ? newOrders : lane === "cooking" ? cookingOrders : readyOrders;
-              return (
-                <div key={lane} className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm border border-[#e5edf5]">
-                    <div className="flex items-center gap-2">
-                       <span className={`h-2.5 w-2.5 rounded-full ${laneBadgeColor(lane)}`} />
-                       <h2 className="text-sm font-bold uppercase tracking-wider text-[#4b5563]">{laneTitle(lane)}</h2>
+              {/* Lane Container */}
+              <div className="flex-1 bg-[#f0fdf4]/50 rounded-[40px] border border-[#dcfce7] overflow-hidden flex flex-col p-6">
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                  {diningOrders.length > 0 ? (
+                    <div className="grid gap-4">
+                      {diningOrders.map(order => (
+                        <OrderCard key={order.id} order={order} onMove={moveKitchenOrder} updating={updatingOrderId === order.id} />
+                      ))}
                     </div>
-                    <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{laneOrders.length}</span>
-                  </div>
-
-                  <div className="flex flex-col gap-3">
-                    {laneOrders.map((order) => (
-                      <article
-                        key={order.id}
-                        className="group relative flex flex-col gap-3 rounded-2xl border border-white bg-white/90 p-4 shadow-[0_8px_20px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(15,23,42,0.1)]"
-                      >
-                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-[#64748b]">{order.orderNumber}</span>
-                            <span className="flex items-center gap-1 text-[11px] font-medium text-[#94a3b8]">
-                               <Clock3 className="h-3 w-3" /> {formatElapsed(order.createdAt)}
-                            </span>
-                         </div>
-
-                         <div className="flex items-center gap-2">
-                            <Store className="h-3.5 w-3.5 text-[#64748b]" />
-                            <span className="text-sm font-semibold text-[#111827]">{order.table || "Take Away"}</span>
-                         </div>
-
-                         <div className="space-y-2.5 border-y border-dashed border-slate-200 py-3">
-                            {order.Items.map((item) => (
-                              <div key={item.id} className="flex items-center gap-3">
-                                 <div className="relative h-10 w-10 overflow-hidden rounded-lg border border-slate-100 shadow-sm">
-                                    <Image src={productImageUrl(item.image)} alt={item.productName} fill sizes="40px" className="object-cover" />
-                                 </div>
-                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-bold text-[#334155]">
-                                       <span className="mr-1 text-[#ef4444]">{item.quantity}x</span> {item.productName}
-                                    </p>
-                                    <p className="text-[11px] text-[#94a3b8]">{item.variant.name}</p>
-                                 </div>
-                              </div>
-                            ))}
-                         </div>
-
-                         <button
-                           type="button"
-                           disabled={updatingOrderId === order.id}
-                           onClick={() => moveKitchenOrder(order.id, lane)}
-                           className={`mt-1 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold text-white shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 ${laneButtonClass(lane)}`}
-                         >
-                           {updatingOrderId === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                           {laneActionLabel(lane)}
-                         </button>
-                      </article>
-                    ))}
-
-                    {laneOrders.length === 0 && (
-                      <div className="flex h-32 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-4 text-center">
-                         <p className="text-xs font-medium text-slate-400">No orders in this phase</p>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+                      <div className="h-24 w-24 rounded-full bg-[#dcfce7] flex items-center justify-center mb-4">
+                        <CookingPot className="h-12 w-12 text-[#166534]" />
                       </div>
-                    )}
-                  </div>
+                      <h3 className="text-2xl font-black text-[#14532d]">No orders</h3>
+                      <p className="text-[#166534] font-medium">New orders will appear here</p>
+                    </div>
+                  )}
                 </div>
-              );
-            })}
-          </section>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Floating Refresh */}
+          <button 
+            onClick={() => refetch()}
+            className="fixed bottom-8 right-8 h-14 w-14 rounded-2xl bg-[#ef4444] text-white shadow-xl shadow-red-200 flex items-center justify-center hover:scale-110 transition-all z-50 group"
+          >
+            <RotateCcw className={cn("h-6 w-6 transition-transform group-hover:rotate-180", ordersLoading && "animate-spin")} />
+          </button>
+
         </div>
       </main>
     </AdminShell>
+  );
+}
+
+function OrderCard({ order, onMove, updating }: { order: any, onMove: any, updating: boolean }) {
+  const status = order.status.toLowerCase();
+  const isNew = ["pending", "new", "placed"].includes(status);
+  const isCooking = ["preparing", "cooking", "in_progress", "in-progress"].includes(status);
+  const isReady = status === "ready";
+
+  return (
+    <div className="bg-white rounded-[24px] p-5 shadow-sm border border-slate-100 flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className={cn(
+            "h-2.5 w-2.5 rounded-full",
+            isNew ? "bg-[#ef4444]" : isCooking ? "bg-[#f97316]" : "bg-[#0f9d58]"
+          )} />
+          <h4 className="text-sm font-black text-slate-400 uppercase tracking-tighter">{order.orderNumber}</h4>
+        </div>
+        <div className="flex items-center gap-1 text-xs font-bold text-slate-400">
+          <Clock3 className="h-3.5 w-3.5" />
+          {formatElapsed(order.createdAt)}
+        </div>
+      </div>
+
+      {order.table && (
+        <div className="flex items-center gap-2">
+          <Store className="h-4 w-4 text-[#ef4444]" />
+          <span className="text-lg font-black text-[#111827]">{order.table}</span>
+        </div>
+      )}
+
+      <div className="space-y-3 py-4 border-y border-dashed border-slate-100">
+        {order.Items.map((item: any) => (
+          <div key={item.id} className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden relative">
+              <Image src={productImageUrl(item.image)} alt={item.productName} fill className="object-cover" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-black text-[#1e293b] truncate">
+                <span className="text-[#ef4444]">{item.quantity}x</span> {item.productName}
+              </p>
+              {item.variant?.name && (
+                <p className="text-[10px] font-bold text-slate-400 uppercase">{item.variant.name}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={() => onMove(order.id, order.status)}
+        disabled={updating}
+        className={cn(
+          "w-full h-12 rounded-2xl text-sm font-black text-white transition-all shadow-md flex items-center justify-center gap-2",
+          isNew ? "bg-[#ef4444]" : isCooking ? "bg-[#f97316]" : "bg-[#0f9d58]"
+        )}
+      >
+        {updating && <Loader2 className="h-4 w-4 animate-spin" />}
+        {isNew ? "START COOKING" : isCooking ? "MARK AS READY" : "MARK AS SERVED"}
+      </button>
+    </div>
   );
 }
 

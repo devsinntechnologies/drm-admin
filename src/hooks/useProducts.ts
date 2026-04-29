@@ -27,6 +27,7 @@ export interface Product {
   image: string | null;
   categoryId?: string;
   category?: ProductCategory | null;
+  isKitchen: boolean;
   variants: ProductVariant[];
   createdAt: string;
   updatedAt: string;
@@ -49,14 +50,15 @@ interface UseProductsOptions {
 
 function getAuthToken(reduxToken: string | null) {
   if (reduxToken) {
-    return reduxToken;
+    return reduxToken.trim();
   }
 
   if (typeof window === "undefined") {
     return null;
   }
 
-  return localStorage.getItem("auth_token") || localStorage.getItem("token");
+  const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+  return token ? token.trim() : null;
 }
 
 export interface CreateProductVariantPayload {
@@ -115,6 +117,8 @@ export function useProducts(options: UseProductsOptions = {}) {
         url.searchParams.append("limit", limit.toString());
       }
 
+      console.log(`[useProducts] Fetching products from: ${url.toString()}`);
+
       const response = await fetch(url.toString(), {
         method: "GET",
         headers: {
@@ -154,7 +158,12 @@ export function useProducts(options: UseProductsOptions = {}) {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred while fetching products";
       setError(errorMessage);
-      console.error("Error fetching products:", err);
+      console.error("[useProducts] Fetch error:", {
+        message: errorMessage,
+        error: err,
+        url: `${BASE_URL}/products`,
+        activeBusinessId
+      });
     } finally {
       setLoading(false);
     }
