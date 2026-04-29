@@ -47,5 +47,6 @@ export function normalizeErrorMessage(error: unknown, fallbackMessage = "Somethi
 }
 export function getStoredAuthToken() {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("auth_token") || localStorage.getItem("token");
+  const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+  return token ? token.trim() : null;
 }

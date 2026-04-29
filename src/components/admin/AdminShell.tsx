@@ -22,7 +22,7 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
   {
     key: "dashboard",
     label: "Dashboard",
-    href: "/dashboard",
+    href: "/dashboard", // This will be dynamically updated in useMemo for Super Admins
     icon: <Crown className="h-5 w-5" />,
   },
   {
@@ -183,6 +183,10 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
     } else {
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "action-logs");
+      // Force Super Admin dashboard link to the superAdmin route
+      baseTabs = baseTabs.map(tab =>
+        tab.key === "dashboard" ? { ...tab, href: "/dashboard/superAdmin" } : tab
+      );
     }
 
     // 2. Only modify links if we are NOT on a global Super Admin route

@@ -6,14 +6,15 @@ const BASE_URL = "https://vendor.umazing.shop";
 
 function getAuthToken(reduxToken: string | null) {
   if (reduxToken) {
-    return reduxToken;
+    return reduxToken.trim();
   }
 
   if (typeof window === "undefined") {
     return null;
   }
 
-  return localStorage.getItem("auth_token") || localStorage.getItem("token");
+  const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+  return token ? token.trim() : null;
 }
 
 export interface CreateOrderItemPayload {

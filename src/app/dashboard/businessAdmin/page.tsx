@@ -1,33 +1,33 @@
 "use client";
 
 import Image from "next/image";
-import { Suspense, useEffect, useMemo, useState } from "react";
-import {
-  Activity,
-  AlertTriangle,
-  Award,
-  BarChart3,
-  Bell,
-  CircleDollarSign,
-  Loader2,
-  PieChart,
-  ReceiptText,
-  ShieldCheck,
-  TrendingUp,
-} from "lucide-react";
+import { Suspense } from "react";
 import AdminShell from "@/components/admin/AdminShell";
+<<<<<<< Updated upstream
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+=======
+import {
+  Loader2,
+  ShoppingBag,
+  TriangleAlert,
+  PieChart,
+  ShoppingCart,
+  ReceiptText,
+  CheckCircle2,
+  Flame,
+  Clock3,
+  Printer,
+} from "lucide-react";
+>>>>>>> Stashed changes
 
-const fallbackTopSellingProducts = [
-  { rank: 1, name: "Pasta Carbonara", sold: "2 units sold", revenue: "$29.98", image: "/business/pic1.jpeg", quantity: 2, revenueRaw: 29.98 },
-  { rank: 2, name: "Margherita Pizza", sold: "2 units sold", revenue: "$25.98", image: "/business/pic2.jpeg", quantity: 2, revenueRaw: 25.98 },
-  { rank: 3, name: "Chocolate Cake", sold: "3 units sold", revenue: "$20.97", image: "/business/pic3.jpeg", quantity: 3, revenueRaw: 20.97 },
-  { rank: 4, name: "Grilled Salmon", sold: "1 units sold", revenue: "$18.99", image: "/business/pic4.jpeg", quantity: 1, revenueRaw: 18.99 },
-  { rank: 5, name: "Tiramisu", sold: "2 units sold", revenue: "$15.98", image: "/business/pic5.jpeg", quantity: 2, revenueRaw: 15.98 },
-];
+function DonutChart({ slices }: { slices: Array<{ color: string; value: number }> }) {
+  const total = slices.reduce((sum, item) => sum + item.value, 0) || 1;
+  const stops: string[] = [];
+  let current = 0;
 
+<<<<<<< Updated upstream
 const fallbackRecentOrders = [
   { table: "Patio 3", time: "3h ago", amount: "$36.96", status: "Ready" },
   { table: "Table 5", time: "8h ago", amount: "$34.97", status: "New" },
@@ -223,223 +223,203 @@ function DashboardContent() {
 
   const totalStockUnits = topSellingProducts.reduce((sum, product) => sum + product.quantity, 0);
   const avgOrderValue = totalOrdersMonthly > 0 ? monthlyTotal / totalOrdersMonthly : 0;
+=======
+  slices.forEach((slice) => {
+    const start = (current / total) * 100;
+    current += slice.value;
+    const end = (current / total) * 100;
+    stops.push(`${slice.color} ${start}% ${end}%`);
+  });
+>>>>>>> Stashed changes
 
   return (
+    <div
+      className="relative h-44 w-44 rounded-full"
+      style={{ background: `conic-gradient(${stops.join(", ")})` }}
+    >
+      <div className="absolute inset-[30px] rounded-full bg-white" />
+    </div>
+  );
+}
+
+const topSelling = [
+  { id: "1", name: "Biryani", stocks: 10, revenue: "PKR 0.00", img: "/business/pic1.jpeg" },
+  { id: "2", name: "coke", stocks: 900, revenue: "PKR 888.00", img: "/business/pic2.jpeg" },
+];
+
+const recentOrders = [
+  { id: "ord-1", label: "3", title: "6a55704b-aebc-4a41-ac6d-06490634ed41", ago: "0m", status: "OrderStatus.pending", user: "test" },
+];
+
+function DashboardStatic() {
+  return (
     <AdminShell activeTab="dashboard">
-      <section className="mx-auto max-w-7xl space-y-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            {
-              title: "Total Revenue",
-              value: loadingDashboard ? "..." : formatMoney(dailyPaid),
-              sub: `From ${completedMonthly} paid invoices`,
-              icon: <CircleDollarSign className="h-4 w-4" />,
-              bg: "from-[#00b45e] to-[#00a76f]",
-            },
-            {
-              title: "Today's Revenue",
-              value: loadingDashboard ? "..." : formatMoney(dailyTotal),
-              sub: `${totalOrdersDaily} orders today`,
-              icon: <TrendingUp className="h-4 w-4" />,
-              bg: "from-[#3b82f6] to-[#4f46e5]",
-            },
-            {
-              title: "Active Orders",
-              value: loadingDashboard ? "..." : String(activeOrders),
-              sub: `${completedMonthly} completed`,
-              icon: <ReceiptText className="h-4 w-4" />,
-              bg: "from-[#a855f7] to-[#db2777]",
-            },
-            {
-              title: "Low Stock Alerts",
-              value: loadingDashboard ? "..." : String(lowStockItems.length),
-              sub: `${lowStockItems.length} tracked products`,
-              icon: <AlertTriangle className="h-4 w-4" />,
-              bg: "from-[#f97316] to-[#ef4444]",
-            },
-          ].map((card) => (
-            <article key={card.title} className={`relative overflow-hidden rounded-2xl bg-linear-to-br ${card.bg} p-4 text-white shadow-[0_10px_24px_rgba(15,23,42,0.22)]`}>
-              <div className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-xl bg-white/18">{card.icon}</div>
-              <p className="text-xs font-medium text-white/80">{card.title}</p>
-              <p className="mt-3 text-3xl font-semibold">{card.value}</p>
-              <p className="mt-1 text-xs text-white/85">{card.sub}</p>
-            </article>
-          ))}
+      <section className="mx-auto max-w-[86rem] space-y-6 px-4 py-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <article className="relative rounded-2xl bg-gradient-to-br from-violet-500 to-violet-400 p-8 text-white shadow-lg h-64 md:h-72 overflow-hidden">
+            <div className="flex flex-col h-full justify-between">
+              <div>
+                <p className="text-sm opacity-90">Active Orders</p>
+              </div>
+              <div>
+                <h3 className="text-4xl font-bold">1</h3>
+                <p className="mt-2 text-sm opacity-80">3 completed</p>
+              </div>
+            </div>
+            <div className="absolute right-4 top-4 rounded-2xl bg-white/20 p-3">
+              <ShoppingBag className="h-5 w-5" />
+            </div>
+            <div className="absolute right-2 top-2 text-white/10">
+              <ShoppingBag className="h-28 w-28" strokeWidth={1.4} />
+            </div>
+          </article>
+
+          <article className="relative rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 p-8 text-white shadow-lg h-64 md:h-72 overflow-hidden">
+            <div className="flex flex-col h-full justify-between">
+              <div>
+                <p className="text-sm opacity-90">Low Stock Alerts</p>
+              </div>
+              <div>
+                <h3 className="text-4xl font-bold">2</h3>
+                <p className="mt-2 text-sm opacity-80">Out of 8 products</p>
+              </div>
+            </div>
+            <div className="absolute right-4 top-4 rounded-2xl bg-white/20 p-3">
+              <TriangleAlert className="h-5 w-5" />
+            </div>
+            <div className="absolute -right-8 -top-8 text-white/12">
+              <TriangleAlert className="h-44 w-44" strokeWidth={1.2} />
+            </div>
+          </article>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {[
-            { title: "Total Orders", value: loadingDashboard ? "..." : String(totalOrdersMonthly), sub: "All time orders", icon: <ReceiptText className="h-3.5 w-3.5" />, tone: "#3b82f6" },
-            { title: "Pending Invoices", value: loadingDashboard ? "..." : String(pendingInvoices), sub: "Awaiting payment", icon: <Bell className="h-3.5 w-3.5" />, tone: "#f59e0b" },
-            { title: "Completion Rate", value: loadingDashboard ? "..." : `${completionRate.toFixed(1)}%`, sub: "Orders completed", icon: <ShieldCheck className="h-3.5 w-3.5" />, tone: "#22c55e" },
-          ].map((stat) => (
-            <article key={stat.title} className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
-              <div className="flex items-start justify-between">
-                <p className="text-xs font-medium text-[#64748b]">{stat.title}</p>
-                <span className="grid h-6 w-6 place-items-center rounded-md text-white" style={{ background: stat.tone }}>{stat.icon}</span>
+        <article className="rounded-2xl bg-white shadow-md overflow-hidden">
+          <div className="flex items-start justify-between bg-[#f2ecf5] px-6 py-5 border-b">
+            <div className="flex items-start gap-4">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#5b3fd1] text-white shadow-md">
+                <PieChart className="h-5 w-5" />
+              </span>
+              <div>
+                <h4 className="text-lg font-bold">Order Status</h4>
+                <p className="text-sm text-gray-500">Current order distribution</p>
               </div>
-              <p className="mt-4 text-3xl font-semibold text-[#0f172a]">{stat.value}</p>
-              <p className="mt-1 text-xs text-[#64748b]">{stat.sub}</p>
-            </article>
-          ))}
+            </div>
+          </div>
+          <div className="flex items-start justify-center gap-12 px-6 py-8">
+            <div className="flex items-center gap-14">
+              <DonutChart slices={[{ color: "#3b82f6", value: 1 }, { color: "#10b981", value: 1 }, { color: "#f59e0b", value: 1 }]} />
+              <ul className="space-y-3">
+                <li className="grid grid-cols-[12px_1fr_auto] items-center gap-3"><span className="h-3 w-3 rounded-sm bg-[#3b82f6] block" /> <span className="text-base text-[#111827]">New</span> <span className="font-bold text-xl text-[#111827]">1</span></li>
+                <li className="grid grid-cols-[12px_1fr_auto] items-center gap-3"><span className="h-3 w-3 rounded-sm bg-[#10b981] block" /> <span className="text-base text-[#111827]">Preparing</span> <span className="font-bold text-xl text-[#111827]">1</span></li>
+                <li className="grid grid-cols-[12px_1fr_auto] items-center gap-3"><span className="h-3 w-3 rounded-sm bg-[#f59e0b] block" /> <span className="text-base text-[#111827]">Ready</span> <span className="font-bold text-xl text-[#111827]">1</span></li>
+                <li className="grid grid-cols-[12px_1fr_auto] items-center gap-3"><span className="h-3 w-3 rounded-sm bg-[#ef4444] block" /> <span className="text-base text-[#111827]">Delivered</span> <span className="font-bold text-xl text-[#111827]">0</span></li>
+                <li className="grid grid-cols-[12px_1fr_auto] items-center gap-3"><span className="h-3 w-3 rounded-sm bg-[#8b5cf6] block" /> <span className="text-base text-[#111827]">Complete</span> <span className="font-bold text-xl text-[#111827]">0</span></li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-2xl bg-white p-6 shadow-sm border border-red-200 border-l-4 border-l-red-500">
+            <div className="flex items-start justify-between">
+              <p className="text-sm text-gray-600">Total Orders</p>
+              <span className="grid h-11 w-11 place-items-center rounded-xl bg-red-50 text-red-500">
+                <ShoppingCart className="h-5 w-5" />
+              </span>
+            </div>
+            <h3 className="mt-4 text-2xl font-bold">3</h3>
+            <p className="text-sm text-gray-400">All time orders</p>
+          </div>
+
+          <div className="rounded-2xl bg-white p-6 shadow-sm border border-amber-200 border-l-4 border-l-amber-500">
+            <div className="flex items-start justify-between">
+              <p className="text-sm text-gray-600">Pending Invoices</p>
+              <span className="grid h-11 w-11 place-items-center rounded-xl bg-amber-50 text-amber-500">
+                <ReceiptText className="h-5 w-5" />
+              </span>
+            </div>
+            <h3 className="mt-4 text-2xl font-bold">0</h3>
+            <p className="text-sm text-gray-400">Awaiting payment</p>
+          </div>
+
+          <div className="rounded-2xl bg-white p-6 shadow-sm border border-emerald-200 border-l-4 border-l-emerald-500">
+            <div className="flex items-start justify-between">
+              <p className="text-sm text-gray-600">Completion Rate</p>
+              <span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-50 text-emerald-500">
+                <CheckCircle2 className="h-5 w-5" />
+              </span>
+            </div>
+            <h3 className="mt-4 text-2xl font-bold">66.7%</h3>
+            <p className="text-sm text-gray-400">Orders completed</p>
+          </div>
         </div>
 
-        <article className="overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
-          <div className="flex items-center gap-3 border-b border-[#edf2f7] bg-[#f2f4fb] px-4 py-3">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-[#6366f1] text-white"><BarChart3 className="h-3.5 w-3.5" /></span>
-            <div>
-              <h3 className="text-sm font-semibold text-[#0f172a]">Revenue Trend</h3>
-              <p className="text-xs text-[#64748b]">Last 7 days performance</p>
-            </div>
-          </div>
-          <div className="px-4 py-4">
-            <div className="relative h-56 rounded-xl border border-[#e5e7eb] bg-[#fcfcff]">
-              <div className="absolute inset-0 grid grid-cols-6">
-                {Array.from({ length: 6 }).map((_, idx) => (
-                  <div key={idx} className="border-r border-dashed border-[#e2e8f0]" />
-                ))}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+            <div className="flex items-center gap-4 pb-4 border-b px-6 pt-6 bg-emerald-50">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500 grid place-items-center text-white">
+                <Flame className="h-5 w-5" />
               </div>
-              <div className="absolute inset-0 grid grid-rows-4">
-                {Array.from({ length: 4 }).map((_, idx) => (
-                  <div key={idx} className="border-b border-dashed border-[#e2e8f0]" />
-                ))}
-              </div>
-              <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                <defs>
-                  <linearGradient id="revArea" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6366f1" stopOpacity="0.38" />
-                    <stop offset="100%" stopColor="#6366f1" stopOpacity="0.05" />
-                  </linearGradient>
-                </defs>
-                <path d="M 0 94 L 72 94 C 82 94, 86 93, 90 78 C 93 62, 96 40, 100 24 L 100 100 L 0 100 Z" fill="url(#revArea)" />
-                <path d="M 0 94 L 72 94 C 82 94, 86 93, 90 78 C 93 62, 96 40, 100 24" fill="none" stroke="#6366f1" strokeWidth="1.1" />
-              </svg>
-              <div className="absolute bottom-2 left-2 right-2 flex justify-between text-[11px] text-[#64748b]">
-                {['Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Mon'].map((d) => (
-                  <span key={d}>{d}</span>
-                ))}
+              <div>
+                <h4 className="font-semibold">Top Selling Products</h4>
+                <p className="text-sm text-gray-500">Best performers by revenue</p>
               </div>
             </div>
-          </div>
-        </article>
-
-        <article className="overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
-          <div className="flex items-center gap-3 border-b border-[#edf2f7] bg-[#f7f0ff] px-4 py-3">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-[#a855f7] text-white"><PieChart className="h-3.5 w-3.5" /></span>
-            <div>
-              <h3 className="text-sm font-semibold text-[#0f172a]">Order Status</h3>
-              <p className="text-xs text-[#64748b]">Current order distribution</p>
-            </div>
-          </div>
-          <div className="grid gap-3 px-4 py-4 sm:grid-cols-[180px_1fr] sm:items-center">
-            <div className="mx-auto h-32 w-32 rounded-full bg-[conic-gradient(#3b82f6_0_34%,#f59e0b_34%_67%,#8b5cf6_67%_100%)] p-4">
-              <div className="h-full w-full rounded-full bg-white" />
-            </div>
-            <ul className="space-y-2 text-sm">
-              {orderStatus.map((s) => (
-                <li key={s.label} className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-2 text-[#334155]"><span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />{s.label}</span>
-                  <span className="font-semibold text-[#111827]">{s.count}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </article>
-
-        <article className="overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
-          <div className="flex items-center gap-3 border-b border-[#edf2f7] bg-[#ecfdf3] px-4 py-3">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-[#16a34a] text-white"><Award className="h-3.5 w-3.5" /></span>
-            <div>
-              <h3 className="text-sm font-semibold text-[#0f172a]">Top Selling Products</h3>
-              <p className="text-xs text-[#64748b]">Best performers by revenue</p>
-            </div>
-          </div>
-          <div className="space-y-2 px-4 py-3">
-            {topSellingProducts.map((item) => (
-              <div key={item.rank} className="grid grid-cols-[auto_36px_1fr_auto] items-center gap-2 rounded-xl bg-[#f8fafc] p-2">
-                <span className="grid h-5 w-5 place-items-center rounded-full bg-[#f59e0b] text-[10px] font-semibold text-white">{item.rank}</span>
-                <div className="relative h-9 w-9 overflow-hidden rounded-lg border border-[#e2e8f0]">
-                  <Image src={item.image} alt={item.name} fill sizes="36px" className="object-cover" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-[#0f172a]">{item.name}</p>
-                  <p className="text-[11px] text-[#64748b]">{item.sold}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-[#16a34a]">{item.revenue}</p>
-                  <p className="text-[10px] text-[#94a3b8]">revenue</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
-          <div className="flex items-center gap-3 border-b border-[#edf2f7] bg-[#edf3ff] px-4 py-3">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-[#3b82f6] text-white"><Activity className="h-3.5 w-3.5" /></span>
-            <div>
-              <h3 className="text-sm font-semibold text-[#0f172a]">Recent Orders</h3>
-              <p className="text-xs text-[#64748b]">Latest order activity</p>
-            </div>
-          </div>
-          <div className="space-y-2 px-4 py-3">
-            {recentOrders.map((item, index) => (
-              <div key={`${item.table}-${item.time}-${index}`} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-xl bg-[#f8fafc] p-3">
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-[#60a5fa] text-[11px] font-semibold text-white">{item.table.split(" ")[1]}</span>
-                <div>
-                  <p className="text-sm font-medium text-[#0f172a]">{item.table}</p>
-                  <p className="text-[11px] text-[#64748b]">{item.time}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-[#111827]">{item.amount}</p>
-                  <p className="text-[10px] text-[#64748b]">{item.status}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="overflow-hidden rounded-2xl border border-[#fecaca] bg-white shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
-          <div className="border-b border-[#fde2e2] bg-[#fff7f5] px-4 py-3">
-            <h3 className="text-sm font-semibold text-[#b91c1c]">Low Stock Products - Action Required!</h3>
-            <p className="text-xs text-[#9f1239]">These items need immediate restocking</p>
-          </div>
-          <div className="grid gap-3 px-4 py-3 sm:grid-cols-2">
-            {lowStockItems.map((item, index) => (
-              <article key={`${item.name}-${index}`} className="rounded-xl border border-[#fed7aa] bg-[#fffaf5] p-2">
-                <div className="grid grid-cols-[40px_1fr] gap-2">
-                  <div className="relative h-10 w-10 overflow-hidden rounded-lg border border-[#fdba74]">
-                    <Image src={item.image} alt={item.name} fill sizes="40px" className="object-cover" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-[#111827]">{item.name}</p>
-                    <div className="mt-1 inline-flex items-center gap-2 text-[10px]">
-                      <span className="rounded-full bg-[#ef4444] px-2 py-0.5 font-semibold text-white">{item.left}</span>
-                      <span className="text-[#64748b]">{item.price}</span>
+            <div className="mt-4 space-y-3 px-6 pb-6">
+              {topSelling.map((p) => (
+                <div key={p.id} className="flex items-center justify-between rounded-lg border p-3 bg-white">
+                  <div className="flex items-center gap-3">
+                    <div className="h-14 w-14 overflow-hidden rounded-md bg-gray-100 relative">
+                      <Image src={p.img} alt={p.name} fill sizes="56px" className="object-cover" />
+                    </div>
+                    <div>
+                      <div className="font-semibold">{p.name}</div>
+                      <div className="text-sm text-gray-500">{p.stocks} stocks</div>
                     </div>
                   </div>
+                  <div className="text-emerald-600 font-semibold">{p.revenue}</div>
                 </div>
-              </article>
-            ))}
+              ))}
+            </div>
           </div>
-        </article>
 
-        <article className="rounded-2xl bg-linear-to-r from-[#4f46e5] via-[#7c3aed] to-[#9333ea] p-4 text-white shadow-[0_12px_24px_rgba(79,70,229,0.3)]">
-          <h3 className="text-sm font-semibold">Quick Overview</h3>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { label: "Total Products", value: loadingDashboard ? "..." : String(topSellingProducts.length) },
-              { label: "Total Stock Units", value: loadingDashboard ? "..." : String(totalStockUnits) },
-              { label: "Inventory Value", value: loadingDashboard ? "..." : formatCompactMoney(pendingInvoicesAmount) },
-              { label: "Avg. Order Value", value: loadingDashboard ? "..." : avgOrderValue.toFixed(2) },
-            ].map((metric) => (
-              <div key={metric.label} className="rounded-xl bg-white/12 p-3 text-center">
-                <p className="text-xl font-semibold">{metric.value}</p>
-                <p className="mt-1 text-[11px] text-white/85">{metric.label}</p>
+          <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+            <div className="flex items-center gap-4 pb-4 border-b px-6 pt-6 bg-[#edf3ff]">
+              <div className="h-10 w-10 rounded-xl bg-[#3b82f6] grid place-items-center text-white">
+                <Clock3 className="h-5 w-5" />
               </div>
-            ))}
+              <div>
+                <h4 className="font-semibold">Recent Orders</h4>
+                <p className="text-sm text-gray-500">Latest order activity</p>
+              </div>
+            </div>
+            <div className="mt-4 space-y-3 px-6 pb-6">
+              {recentOrders.map((o) => (
+                <div key={o.id} className="flex items-center justify-between rounded-lg border p-3 bg-[#f8fafc]">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-violet-100 grid place-items-center text-violet-700">{o.label}</div>
+                    <div>
+                      <div className="font-semibold break-words">{o.title}</div>
+                      <div className="text-sm text-gray-500">{o.ago}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm font-semibold text-[#0f172a]">{o.user}</div>
+                    <div className="px-3 py-1 rounded-md bg-emerald-50 text-emerald-600 text-sm">{o.status}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </article>
+        </div>
+
+        <button
+          type="button"
+          className="fixed bottom-6 right-6 inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-white shadow-lg hover:bg-amber-600"
+        >
+          <Printer className="h-5 w-5" />
+          <span className="text-lg font-semibold">Test Invoice Layout</span>
+        </button>
       </section>
     </AdminShell>
   );
@@ -448,7 +428,7 @@ function DashboardContent() {
 export default function BusinessAdminDashboard() {
   return (
     <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#4f46e5]" /></div>}>
-      <DashboardContent />
+      <DashboardStatic />
     </Suspense>
   );
 }
