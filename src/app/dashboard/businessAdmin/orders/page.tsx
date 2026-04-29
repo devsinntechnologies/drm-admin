@@ -942,7 +942,7 @@ function OrdersContent() {
       <main className="mx-auto max-w-7xl p-8 space-y-8 bg-[#f8fafc] min-h-[calc(100vh-80px)]">
         <button 
           onClick={() => setView("create")}
-          className="w-full bg-[#0B9D58] text-white py-5 rounded-3xl  text-xl flex items-center justify-center gap-3 shadow-xl transition hover:bg-[#0B9D58] hover:-translate-y-1 active:translate-y-0"
+          className="w-full bg-[#0B9D58] text-[#ffffff] py-5 rounded-3xl  text-xl flex items-center justify-center gap-3 shadow-xl transition hover:bg-[#0B9D58] hover:-translate-y-1 active:translate-y-0"
         >
           <Plus className="h-7 w-7" /> Create New Order
         </button>
