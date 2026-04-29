@@ -31,6 +31,15 @@ export interface CreateOrderPayload {
   packagingPrice: number;
 }
 
+export interface UpdateOrderPayload {
+  tableId?: string;
+  status?: string;
+  items?: Array<CreateOrderItemPayload & { id?: string; action?: "add" | "update" | "remove" }>;
+  totalPrice?: number;
+  deliveryCharges?: number;
+  packagingPrice?: number;
+}
+
 export interface OrderVariant {
   id: string;
   name: string;
@@ -253,6 +262,87 @@ export function useOrders(options: UseOrdersOptions = {}) {
     [fetchOrders, range, token, activeBusinessId],
   );
 
+  const getOrderById = useCallback(async (orderId: string) => {
+    const authToken = getAuthToken(token);
+    if (!authToken) {
+      throw new Error("No authentication token available");
+    }
+
+    const url = new URL(`${BASE_URL}/orders/${orderId}`);
+    if (activeBusinessId) {
+      url.searchParams.append("businessId", activeBusinessId);
+    }
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      let detail: any = text;
+      try {
+        const parsed = JSON.parse(text);
+        detail = parsed.message || parsed.error || text;
+        if (typeof detail === 'object' && detail.message) {
+          detail = detail.message;
+        }
+        if (Array.isArray(detail)) detail = detail.join(", ");
+      } catch (e) { /* not json */ }
+      throw new Error(detail);
+    }
+
+    const responseData = await response.json();
+    return (responseData.data ?? responseData) as OrderRecord;
+  }, [activeBusinessId, token]);
+
+  const updateOrderById = useCallback(async (orderId: string, payload: UpdateOrderPayload) => {
+    const authToken = getAuthToken(token);
+    if (!authToken) {
+      throw new Error("No authentication token available");
+    }
+
+    setActionLoading(true);
+    try {
+      const url = new URL(`${BASE_URL}/orders/${orderId}`);
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
+      }
+
+      const response = await fetch(url.toString(), {
+        method: "PATCH",
+        headers: {
+          accept: "application/json",
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        let detail: any = text;
+        try {
+          const parsed = JSON.parse(text);
+          detail = parsed.message || parsed.error || text;
+          if (typeof detail === 'object' && detail.message) {
+            detail = detail.message;
+          }
+          if (Array.isArray(detail)) detail = detail.join(", ");
+        } catch (e) { /* not json */ }
+        throw new Error(detail);
+      }
+
+      await fetchOrders(1, range);
+      return true;
+    } finally {
+      setActionLoading(false);
+    }
+  }, [activeBusinessId, fetchOrders, range, token]);
+
   return {
     orders,
     loading,
@@ -262,6 +352,8 @@ export function useOrders(options: UseOrdersOptions = {}) {
     refetch: fetchOrders,
     createOrder,
     updateOrderStatus,
+    updateOrderById,
+    getOrderById,
     actionLoading,
   };
 }

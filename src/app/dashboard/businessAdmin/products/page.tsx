@@ -27,16 +27,11 @@ import {
 import { toast } from "sonner";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
-<<<<<<< Updated upstream
-import { useProducts, type CreateProductVariantPayload, type Product } from "@/hooks/useProducts";
-import { useCategories } from "@/hooks/useCategories";
-import { normalizeErrorMessage } from "@/lib/utils";
-=======
 import { Product, useProducts, CreateProductVariantPayload } from "@/hooks/useProducts";
+import { BASE_URL } from "@/lib/constant";
 import { CategoryRecord, useCategories } from "@/hooks/useCategories";
 import { cn, normalizeErrorMessage } from "@/lib/utils";
 import { DeleteConfirmDialog } from "@/components/common/DeleteConfirmDialog";
->>>>>>> Stashed changes
 import {
   Dialog,
   DialogContent,
@@ -145,11 +140,7 @@ function MenuCard({
   deleting: boolean;
 }) {
   const imagePath = item.image?.trim();
-<<<<<<< Updated upstream
-  const imageUrl = imagePath ? (imagePath.startsWith("http") ? imagePath : `https://vendor.umazing.shop/${imagePath}`) : "/business/pic1.jpeg";
-=======
   const imageUrl = imagePath ? (imagePath.startsWith("http") ? imagePath : `${BASE_URL}/${imagePath}`) : null;
->>>>>>> Stashed changes
 
   return (
     <article className="overflow-hidden rounded-3xl bg-white border border-gray-100 shadow-sm flex flex-col">
@@ -216,12 +207,9 @@ function MenuItemsContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-<<<<<<< Updated upstream
-=======
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
->>>>>>> Stashed changes
   const [createForm, setCreateForm] = useState({
     name: "",
     price: 0,
@@ -391,30 +379,19 @@ function MenuItemsContent() {
   };
 
   const onDelete = async (id: string) => {
-<<<<<<< Updated upstream
-    const confirmed = typeof window !== "undefined" ? window.confirm("Delete this product?") : false;
-    if (!confirmed) {
-      return;
-    }
-
-=======
     setDeleteId(id);
     setDeleteOpen(true);
   };
 
   const confirmDelete = async () => {
     if (!deleteId) return;
->>>>>>> Stashed changes
     const toastId = toast.loading("Deleting product...");
     try {
       await deleteProduct(deleteId);
       toast.success("Product deleted successfully", { id: toastId });
-<<<<<<< Updated upstream
-=======
       setDeleteOpen(false);
       setDeleteId(null);
       refetch();
->>>>>>> Stashed changes
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete product", { id: toastId });
     }
@@ -424,396 +401,6 @@ function MenuItemsContent() {
 
   return (
     <AdminShell activeTab="products">
-<<<<<<< Updated upstream
-      <main className="min-h-screen ">
-        <div className="mx-auto max-w-7xl space-y-5">
-          <section className="rounded-[28px] border border-white bg-white/85 p-5 shadow-[0_14px_28px_rgba(15,23,42,0.08)] backdrop-blur">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="grid h-14 w-14 place-items-center rounded-2xl bg-[#4f46e5] text-white shadow-[0_10px_18px_rgba(79,70,229,0.25)]">
-                  <Box className="h-6 w-6" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-semibold text-[#111827]">Products</h1>
-                  <p className="text-sm text-[#6b7280]">Manage products & stock</p>
-                </div>
-              </div>
-
-              <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogTrigger asChild>
-                  <button type="button" className="inline-flex items-center gap-2 rounded-2xl bg-[#635bff] px-4 py-3 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(99,91,255,0.24)]">
-                    <Plus className="h-4 w-4" /> Add Product
-                  </button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Create Product</DialogTitle>
-                    <DialogDescription>Create a product using multipart form data. Image is optional.</DialogDescription>
-                  </DialogHeader>
-
-                  <form className="space-y-4" onSubmit={onCreateSubmit}>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="space-y-2 sm:col-span-2">
-                        <label className="text-sm font-medium text-[#111827]" htmlFor="productName">Name</label>
-                        <input
-                          id="productName"
-                          value={createForm.name}
-                          onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
-                          className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                          placeholder="e.g. Biryani"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-[#111827]" htmlFor="productPrice">Price</label>
-                        <input
-                          id="productPrice"
-                          type="number"
-                          min={0}
-                          value={createForm.price}
-                          onChange={(event) => setCreateForm((prev) => ({ ...prev, price: Number(event.target.value) }))}
-                          className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-[#111827]" htmlFor="productStock">In Stock</label>
-                        <input
-                          id="productStock"
-                          type="number"
-                          min={0}
-                          value={createForm.inStock}
-                          onChange={(event) => setCreateForm((prev) => ({ ...prev, inStock: Number(event.target.value) }))}
-                          className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-[#111827]" htmlFor="sortOrder">Sort Order</label>
-                        <input
-                          id="sortOrder"
-                          type="number"
-                          min={0}
-                          value={createForm.sortOrder}
-                          onChange={(event) => setCreateForm((prev) => ({ ...prev, sortOrder: Number(event.target.value) }))}
-                          className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-[#111827]" htmlFor="productStatus">Status</label>
-                        <select
-                          id="productStatus"
-                          value={createForm.status}
-                          onChange={(event) => setCreateForm((prev) => ({ ...prev, status: event.target.value as "ACTIVE" | "INACTIVE" }))}
-                          className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                        >
-                          <option value="ACTIVE">ACTIVE</option>
-                          <option value="INACTIVE">INACTIVE</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-2 sm:col-span-2">
-                        <label className="text-sm font-medium text-[#111827]" htmlFor="productCategory">Category</label>
-                        <select
-                          id="productCategory"
-                          value={createForm.categoryId}
-                          onChange={(event) => setCreateForm((prev) => ({ ...prev, categoryId: event.target.value }))}
-                          className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                        >
-                          <option value="">Select category</option>
-                          {categories.map((category) => (
-                            <option key={category.id} value={category.id}>
-                              {category.CategoryName}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <VariantsEditor variants={createVariants} setVariants={setCreateVariants} />
-
-                      <label className="sm:col-span-2 inline-flex items-center gap-2 text-sm font-medium text-[#111827]">
-                        <input
-                          type="checkbox"
-                          checked={createForm.isKitchen}
-                          onChange={(event) => setCreateForm((prev) => ({ ...prev, isKitchen: event.target.checked }))}
-                          className="h-4 w-4 rounded border-[#cbd5e1]"
-                        />
-                        Is Kitchen Item
-                      </label>
-
-                      <div className="space-y-2 sm:col-span-2">
-                        <label className="text-sm font-medium text-[#111827]" htmlFor="productImage">Image (optional)</label>
-                        <input
-                          id="productImage"
-                          type="file"
-                          accept="image/*"
-                          onChange={(event) => setCreateForm((prev) => ({ ...prev, image: event.target.files?.[0] ?? null }))}
-                          className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={actionLoading}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#635bff] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-                    >
-                      {actionLoading ? <Loader className="h-4 w-4 animate-spin" /> : null}
-                      Create Product
-                    </button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </section>
-
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-3xl border px-5 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.06)] border-[#c6d1ff] bg-[#eef1ff]">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/90 text-[#4f46e5]">
-                  <Box className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-[#5b6475]">Total Items</p>
-                  <strong className="text-2xl font-semibold text-[#0f172a]">{pagination.total}</strong>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-3xl border px-5 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.06)] border-[#ffc7c7] bg-[#fff1f1]">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/90 text-[#ef4444]">
-                  <span className="text-lg">⚠</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-[#5b6475]">Low Stock</p>
-                  <strong className="text-2xl font-semibold text-[#0f172a]">{stats.lowStockCount}</strong>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-3xl border px-5 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.06)] border-[#bcf0cb] bg-[#effdf2]">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/90 text-[#16a34a]">
-                  <span className="text-lg">Rs</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-[#5b6475]">Stock Value</p>
-                  <strong className="text-2xl font-semibold text-[#0f172a]">{formatPrice(stats.stockValue)}</strong>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-3xl border px-5 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.06)] border-[#ead3ff] bg-[#faf2ff]">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/90 text-[#4f46e5]">
-                  <Store className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-[#5b6475]">Categories</p>
-                  <strong className="text-2xl font-semibold text-[#0f172a]">{stats.uniqueCategories}</strong>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-white bg-white/85 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex h-12 flex-1 items-center gap-3 rounded-2xl bg-[#f5f7fb] px-4 text-[#94a3b8]">
-                <Search className="h-5 w-5" />
-                <input
-                  value={search}
-                  onChange={(event) => {
-                    setSearch(event.target.value);
-                    setCurrentPage(1);
-                  }}
-                  placeholder="Search products..."
-                  className="w-full bg-transparent text-sm outline-none placeholder:text-[#94a3b8]"
-                />
-              </div>
-            </div>
-          </section>
-
-          {error && <ErrorAlert message={error} />}
-
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader className="h-8 w-8 animate-spin text-[#4f46e5]" />
-            </div>
-          ) : (
-            <>
-              {displayedItems.length === 0 ? (
-                <div className="rounded-2xl border border-[#e3e7f0] bg-white p-8 text-center">
-                  <Box className="mx-auto h-12 w-12 text-[#94a3b8] mb-3" />
-                  <p className="text-[#667085]">No products found</p>
-                </div>
-              ) : (
-                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  {displayedItems.map((item) => (
-                    <MenuCard key={item.id} item={item} onEdit={onOpenEdit} onDelete={onDelete} deleting={actionLoading} />
-                  ))}
-                </section>
-              )}
-
-              {pagination.last_page > 1 && !search && (
-                <section className="flex items-center justify-between rounded-2xl border border-[#e3e7f0] bg-white p-4">
-                  <div className="text-sm text-[#667085]">
-                    Page <strong>{pagination.page}</strong> of <strong>{pagination.last_page}</strong> ({pagination.total} total items)
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        prevPage();
-                        setCurrentPage((p) => p - 1);
-                      }}
-                      disabled={pagination.page === 1}
-                      className="inline-flex items-center gap-2 rounded-xl border border-[#e3e7f0] bg-white px-3 py-2 text-sm font-medium text-[#222] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f8fbff]"
-                    >
-                      <ChevronLeft className="h-4 w-4" /> Previous
-                    </button>
-                    <button
-                      onClick={() => {
-                        nextPage();
-                        setCurrentPage((p) => p + 1);
-                      }}
-                      disabled={pagination.page === pagination.last_page}
-                      className="inline-flex items-center gap-2 rounded-xl border border-[#e3e7f0] bg-white px-3 py-2 text-sm font-medium text-[#222] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f8fbff]"
-                    >
-                      Next <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </section>
-              )}
-            </>
-          )}
-
-          <Dialog
-            open={editOpen}
-            onOpenChange={(open) => {
-              setEditOpen(open);
-              if (!open) {
-                resetEditForm();
-              }
-            }}
-          >
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Update Product</DialogTitle>
-                <DialogDescription>Update product details, variants, and optional image.</DialogDescription>
-              </DialogHeader>
-
-              <form className="space-y-4" onSubmit={onEditSubmit}>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2 sm:col-span-2">
-                    <label className="text-sm font-medium text-[#111827]" htmlFor="editProductName">Name</label>
-                    <input
-                      id="editProductName"
-                      value={editForm.name}
-                      onChange={(event) => setEditForm((prev) => ({ ...prev, name: event.target.value }))}
-                      className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-[#111827]" htmlFor="editProductPrice">Price</label>
-                    <input
-                      id="editProductPrice"
-                      type="number"
-                      min={0}
-                      value={editForm.price}
-                      onChange={(event) => setEditForm((prev) => ({ ...prev, price: Number(event.target.value) }))}
-                      className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-[#111827]" htmlFor="editProductStock">In Stock</label>
-                    <input
-                      id="editProductStock"
-                      type="number"
-                      min={0}
-                      value={editForm.inStock}
-                      onChange={(event) => setEditForm((prev) => ({ ...prev, inStock: Number(event.target.value) }))}
-                      className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-[#111827]" htmlFor="editSortOrder">Sort Order</label>
-                    <input
-                      id="editSortOrder"
-                      type="number"
-                      min={0}
-                      value={editForm.sortOrder}
-                      onChange={(event) => setEditForm((prev) => ({ ...prev, sortOrder: Number(event.target.value) }))}
-                      className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-[#111827]" htmlFor="editProductStatus">Status</label>
-                    <select
-                      id="editProductStatus"
-                      value={editForm.status}
-                      onChange={(event) => setEditForm((prev) => ({ ...prev, status: event.target.value as "ACTIVE" | "INACTIVE" }))}
-                      className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                    >
-                      <option value="ACTIVE">ACTIVE</option>
-                      <option value="INACTIVE">INACTIVE</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2 sm:col-span-2">
-                    <label className="text-sm font-medium text-[#111827]" htmlFor="editProductCategory">Category</label>
-                    <select
-                      id="editProductCategory"
-                      value={editForm.categoryId}
-                      onChange={(event) => setEditForm((prev) => ({ ...prev, categoryId: event.target.value }))}
-                      className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                    >
-                      <option value="">Select category</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.CategoryName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <VariantsEditor variants={editVariants} setVariants={setEditVariants} />
-
-                  <label className="sm:col-span-2 inline-flex items-center gap-2 text-sm font-medium text-[#111827]">
-                    <input
-                      type="checkbox"
-                      checked={editForm.isKitchen}
-                      onChange={(event) => setEditForm((prev) => ({ ...prev, isKitchen: event.target.checked }))}
-                      className="h-4 w-4 rounded border-[#cbd5e1]"
-                    />
-                    Is Kitchen Item
-                  </label>
-
-                  <div className="space-y-2 sm:col-span-2">
-                    <label className="text-sm font-medium text-[#111827]" htmlFor="editProductImage">Replace Image (optional)</label>
-                    <input
-                      id="editProductImage"
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) => setEditForm((prev) => ({ ...prev, image: event.target.files?.[0] ?? null }))}
-                      className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#635bff] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-                >
-                  {actionLoading ? <Loader className="h-4 w-4 animate-spin" /> : null}
-                  Update Product
-                </button>
-              </form>
-            </DialogContent>
-          </Dialog>
-=======
       <main className="mx-auto max-w-7xl space-y-6">
         {/* Header Section */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -824,7 +411,7 @@ function MenuItemsContent() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setCreateOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#ef4444] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#dc2626]"
+              className="rounded-lg border border-[#ef4444] px-4 py-2 text-sm font-bold text-[#ef4444] transition hover:bg-[#fff5f5] flex items-center gap-2"
             >
               <Plus className="h-4 w-4" /> Add
             </button>
@@ -841,7 +428,6 @@ function MenuItemsContent() {
               Ingredients
             </button>
           </div>
->>>>>>> Stashed changes
         </div>
 
         {/* Metric Section */}

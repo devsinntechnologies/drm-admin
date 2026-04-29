@@ -17,11 +17,8 @@ import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrders } from "@/hooks/useOrders";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
-<<<<<<< Updated upstream
-=======
 import { BASE_URL } from "@/lib/constant";
 import { cn } from "@/lib/utils";
->>>>>>> Stashed changes
 
 type KitchenLane = "new" | "cooking" | "ready";
 
@@ -50,7 +47,7 @@ function productImageUrl(imagePath?: string | null) {
   if (imagePath.startsWith("http")) {
     return imagePath;
   }
-  return `https://vendor.umazing.shop/${imagePath}`;
+  return `${BASE_URL}/${imagePath}`;
 }
 
 function KitchenPageContent() {
@@ -138,7 +135,7 @@ function KitchenPageContent() {
             <div className="flex flex-col gap-6">
               {/* Summary Card */}
               <div className="bg-[#fff7ed] rounded-[32px] p-6 flex items-center gap-4 shadow-sm border border-[#ffedd5]">
-                <div className="h-14 w-14 rounded-full bg-[#f97316] flex items-center justify-center shadow-lg shadow-orange-200">
+                <div className="h-14 w-14 rounded-full bg-[#0B9D58] flex items-center justify-center shadow-lg shadow-gree-200">
                   <Bell className="h-7 w-7 text-white" />
                 </div>
                 <div>

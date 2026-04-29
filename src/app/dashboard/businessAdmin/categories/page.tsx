@@ -44,14 +44,10 @@ function CategoryListItem({
 }) {
   const imageUrl = category.image
     ? (category.image.startsWith("http") ? category.image : `${BASE_URL}/${category.image}`)
-    : "/business/pic1.jpeg";
-=======
-    ? (category.image.startsWith("http") ? category.image : `${BASE_URL}/${category.image}`)
     : null;
->>>>>>> Stashed changes
 
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-[#f1f5f9] bg-white p-4 transition hover:border-[#4f46e5]/20 hover:shadow-sm">
+    <div className="flex items-center justify-between rounded-2xl border border-[#f1f5f9] bg-[#E5281A] p-4 transition hover:border-[#4f46e5]/20 hover:shadow-sm">
       <div className="flex items-center gap-4">
         <div className="relative h-12 w-12 overflow-hidden rounded-xl bg-[#f8fafc] flex items-center justify-center border border-[#f1f5f9]">
           {imageUrl ? (
@@ -310,7 +306,7 @@ function CategoriesContent() {
                     <button
                       type="submit"
                       disabled={actionLoading}
-                      className="flex items-center justify-center gap-2 rounded-2xl bg-[#f97316] py-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-[#ea580c] disabled:opacity-60"
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-[#E5281A] text-white py-3.5 text-sm font-bold  shadow-lg transition hover:bg-[#ea580c] disabled:opacity-60"
                     >
                       {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                       Save
@@ -339,170 +335,6 @@ function CategoriesContent() {
                 </div>
               </div>
             </div>
-<<<<<<< Updated upstream
-          </section>
-
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <article className="rounded-3xl border border-[#c6d1ff] bg-[#eef1ff] px-5 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/90 text-[#4f46e5]"><Layers className="h-5 w-5" /></div>
-                <div>
-                  <p className="text-sm font-medium text-[#5b6475]">Total Categories</p>
-                  <strong className="text-2xl font-semibold text-[#0f172a]">{pagination.total}</strong>
-                </div>
-              </div>
-            </article>
-            <article className="rounded-3xl border border-[#bcf0cb] bg-[#effdf2] px-5 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/90 text-[#16a34a]"><Box className="h-5 w-5" /></div>
-                <div>
-                  <p className="text-sm font-medium text-[#5b6475]">Total Products</p>
-                  <strong className="text-2xl font-semibold text-[#0f172a]">{metrics.totalProducts}</strong>
-                </div>
-              </div>
-            </article>
-            <article className="rounded-3xl border border-[#ead3ff] bg-[#faf2ff] px-5 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/90 text-[#8b5cf6]"><Store className="h-5 w-5" /></div>
-                <div>
-                  <p className="text-sm font-medium text-[#5b6475]">Businesses</p>
-                  <strong className="text-2xl font-semibold text-[#0f172a]">{metrics.businessCount}</strong>
-                </div>
-              </div>
-            </article>
-            <article className="rounded-3xl border border-[#ffd7b5] bg-[#fff7ed] px-5 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/90 text-[#ea580c]"><Search className="h-5 w-5" /></div>
-                <div>
-                  <p className="text-sm font-medium text-[#5b6475]">Active Products</p>
-                  <strong className="text-2xl font-semibold text-[#0f172a]">{metrics.activeProducts}</strong>
-                </div>
-              </div>
-            </article>
-          </section>
-
-          <section className="rounded-3xl border border-white bg-white/85 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-            <div className="flex h-12 items-center gap-3 rounded-2xl bg-[#f5f7fb] px-4 text-[#94a3b8]">
-              <Search className="h-5 w-5" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by category, business, or product"
-                className="w-full bg-transparent text-sm outline-none placeholder:text-[#94a3b8]"
-              />
-            </div>
-          </section>
-
-          {error ? <ErrorAlert message={error} /> : null}
-
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-[#4f46e5]" />
-            </div>
-          ) : filteredCategories.length === 0 ? (
-            <div className="rounded-2xl border border-[#e3e7f0] bg-white p-8 text-center">
-              <Layers className="mx-auto mb-3 h-12 w-12 text-[#94a3b8]" />
-              <p className="text-[#667085]">No categories found</p>
-            </div>
-          ) : (
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredCategories.map((category) => (
-                <CategoryCard
-                  key={category.id}
-                  category={category}
-                  onEdit={onOpenEdit}
-                  onDelete={onDelete}
-                  deleting={actionLoading}
-                />
-              ))}
-            </section>
-          )}
-
-          {pagination.last_page > 1 && !search ? (
-            <section className="flex items-center justify-between rounded-2xl border border-[#e3e7f0] bg-white p-4">
-              <div className="text-sm text-[#667085]">
-                Page <strong>{pagination.page}</strong> of <strong>{pagination.last_page}</strong> ({pagination.total} total categories)
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="inline-flex items-center gap-2 rounded-xl border border-[#e3e7f0] bg-white px-3 py-2 text-sm font-medium text-[#222] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <ChevronLeft className="h-4 w-4" /> Previous
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((prev) => Math.min(pagination.last_page, prev + 1))}
-                  disabled={currentPage === pagination.last_page}
-                  className="inline-flex items-center gap-2 rounded-xl border border-[#e3e7f0] bg-white px-3 py-2 text-sm font-medium text-[#222] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Next <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </section>
-          ) : null}
-
-          <Dialog
-            open={editOpen}
-            onOpenChange={(open) => {
-              setEditOpen(open);
-              if (!open) {
-                resetEdit();
-              }
-            }}
-          >
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Update Category</DialogTitle>
-                <DialogDescription>Edit category details or replace image.</DialogDescription>
-              </DialogHeader>
-              <form className="space-y-4" onSubmit={onEditSubmit}>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[#111827]" htmlFor="editCategoryName">Category Name</label>
-                  <input
-                    id="editCategoryName"
-                    value={editForm.categoryName}
-                    onChange={(event) => setEditForm((prev) => ({ ...prev, categoryName: event.target.value }))}
-                    className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[#111827]" htmlFor="editSortOrder">Sort Order</label>
-                  <input
-                    id="editSortOrder"
-                    type="number"
-                    value={editForm.sortOrder}
-                    onChange={(event) => setEditForm((prev) => ({ ...prev, sortOrder: Number(event.target.value) }))}
-                    className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[#111827]" htmlFor="editImage">Replace Image</label>
-                  <input
-                    id="editImage"
-                    type="file"
-                    accept="image/*"
-                    onChange={(event) => setEditForm((prev) => ({ ...prev, image: event.target.files?.[0] ?? null }))}
-                    className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#635bff] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-                >
-                  {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  Update Category
-                </button>
-              </form>
-            </DialogContent>
-          </Dialog>
-=======
           </div>
 
           <DeleteConfirmDialog
@@ -513,7 +345,6 @@ function CategoriesContent() {
             description="Are you sure you want to delete this category? This will also affect products in this category."
             loading={actionLoading}
           />
->>>>>>> Stashed changes
         </div>
       </main>
     </AdminShell>
