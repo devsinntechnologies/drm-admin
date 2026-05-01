@@ -302,7 +302,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
           </div>
         </header>
 
-        <main className="pb-8 pt-6 lg:pb-11">
+        <main className="px-10 pb-8 pt-6 lg:pb-11">
           {children}
         </main>
       </div>

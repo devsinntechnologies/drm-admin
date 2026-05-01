@@ -1098,9 +1098,9 @@ function OrdersContent() {
       <main className="w-full space-y-8 bg-[#f8fafc] min-h-[calc(100vh-80px)]">
         <button 
           onClick={() => setView("create")}
-          className="w-full bg-[#0B9D58] text-[#ffffff] py-5 rounded-3xl  text-xl flex items-center justify-center gap-3 shadow-xl transition hover:bg-[#0B9D58] hover:-translate-y-1 active:translate-y-0"
+          className="w-full bg-gradient-to-r from-[#00a341] to-[#007d53] text-[#ffffff] py-5 rounded-2xl  text-2xl font-bold flex items-center justify-center gap-3 shadow-xl transition hover:bg-[#0B9D58] hover:-translate-y-1 active:translate-y-0"
         >
-          <Plus className="h-7 w-7" /> Create New Order
+          <Plus className="h-6 w-6 text-[2px] border-3 boder-[#ffffff] rounded-full stroke-[4] " /> Create New Order
         </button>
 
         {ordersLoading && !orders.length ? (
@@ -1115,22 +1115,22 @@ function OrdersContent() {
               const priceChipText = "text-[#0f7d5f]";
 
               return (
-                <div key={order.id} className="relative rounded-[24px] overflow-visible transition-all duration-500">
-                  <div className={cn("absolute left-0 top-0 bottom-0 w-2 rounded-l-[24px]", isTakeAway ? "bg-[#ff9800]" : "bg-[#ff6f61]")} />
+                <div key={order.id} className="relative rounded-[20px]  transition-all duration-500">
+                  <div className={cn("absolute left-0 top-0 bottom-0 w-3 rounded-l-[60px]", isTakeAway ? "bg-[#ff9900]" : "bg-[#9e9e9e]")} />
 
-                  <div className={cn("p-5 sm:p-6 rounded-[24px] border shadow-sm", cardBg, cardBorder)}>
+                  <div className={cn("p-5 sm:p-6 rounded-[12px] border-2 shadow-md", cardBg, cardBorder)}>
                     <div className="flex items-start justify-between gap-4 mb-4 sm:mb-6">
                       <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                        <h2 className="text-[#ef2f1f] font-black text-2xl sm:text-3xl tracking-tight">{order.orderNumber}</h2>
-                        <span className={cn("px-4 py-1.5 rounded-2xl text-sm font-black border shadow-sm", priceChipBg, priceChipText, "border-[#9ed7ad]")}>Rs. {order.totalPrice}</span>
-                        <h3 className="text-[#ef2f1f] font-black text-4xl sm:text-5xl tracking-tight capitalize">{order.table || "Take Away"}</h3>
+                        <h2 className="text-[#e62719] font-black text-lg font-black sm:text-2xl tracking-tight">{order.orderNumber}</h2>
+                        <span className={cn("px-3 py-1 rounded-xl text-2xl font-black bg-[#a4efc2] border shadow-lg", priceChipText, "border-[#84d9ad]")}>Rs. {Number(order.totalPrice)}</span>
+                        <h3 className="text-[#ef4444] font-black text-7xl sm:text-6xl tracking-tight ">{order.table || "Take Away"}</h3>
                       </div>
-                      <button type="button" onClick={() => void openOrderDetails(order.id)} className="bg-[#ffd9cf] p-2.5 rounded-xl text-[#ef2f1f] shadow-sm hover:bg-[#ffd1c2] transition" aria-label="Open order details"><Eye className="h-5 w-5" /></button>
+                      <button type="button" onClick={() => void openOrderDetails(order.id)} className="bg-[#bee8be] p-2.5 rounded-xl text-[#ef2f1f] shadow-sm hover:bg-[#bee8be] transition" aria-label="Open order details"><Eye className="h-6 w-6" /></button>
                     </div>
 
-                    <div className="flex items-center gap-6 text-gray-600 text-sm font-bold mb-5 sm:mb-6">
+                    <div className="flex items-center gap-6 text-gray-600 text-lg font-bold mb-5 sm:mb-6">
                       <span className="flex items-center gap-2"><Store className="h-5 w-5 text-gray-400" /> {order.table || "test"}</span>
-                      <span className="flex items-center gap-2"><Clock3 className="h-5 w-5 text-gray-400" /> {formatElapsed(order.createdAt)}</span>
+                      <span className="flex text-[#9e9e9e] items-center gap-2"><Clock3 className="h-5 w-5 text-gray-400" /> {formatElapsed(order.createdAt)}</span>
                     </div>
 
                     {!expandedOrderId && (
