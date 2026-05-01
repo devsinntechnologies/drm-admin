@@ -56,21 +56,26 @@ async function fetchRoleUsers(endpoint: string, authToken: string, activeBusines
   if (activeBusinessId) {
     url.searchParams.append("businessId", activeBusinessId);
   }
+  try {
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        accept: "*/*",
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
 
-  const response = await fetch(url.toString(), {
-    method: "GET",
-    headers: {
-      accept: "*/*",
-      Authorization: `Bearer ${authToken}`,
-    },
-  });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      console.error(`[useUsers] fetch failed: ${url.toString()} status=${response.status} - ${response.statusText} body=`, text);
+      throw new Error(text || `Failed to fetch ${endpoint}: ${response.statusText}`);
+    }
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `Failed to fetch ${endpoint}: ${response.statusText}`);
+    return (await response.json()) as StaffListResponse;
+  } catch (err) {
+    console.error(`[useUsers] network error fetching ${url.toString()}:`, err);
+    throw err;
   }
-
-  return (await response.json()) as StaffListResponse;
 }
 
 export function useUsers() {
@@ -290,6 +295,78 @@ export function useUsers() {
     [fetchUsers, token, activeBusinessId],
   );
 
+  const updateUserStatus = useCallback(
+    async (user: { id: string; role: UserRole }, status: string) => {
+      const authToken = getAuthToken(token);
+      if (!authToken) throw new Error("No authentication token available");
+
+      const endpointRoot = user.role === "waiter" ? "waiters" : "kitchens";
+      const normalizedStatus = status.toLowerCase() === "active" ? "active" : "inactive";
+      const statusTitleCase = normalizedStatus === "active" ? "Active" : "Inactive";
+      const attempts = [
+        { method: "PATCH", endpoint: `${endpointRoot}/${user.id}` },
+        { method: "PUT", endpoint: `${endpointRoot}/${user.id}` },
+        { method: "PATCH", endpoint: `${endpointRoot}/${user.id}/status` },
+        { method: "PUT", endpoint: `${endpointRoot}/${user.id}/status` },
+      ] as const;
+
+      setActionLoading(true);
+      try {
+        let lastError = "Failed to update user status.";
+
+        for (const attempt of attempts) {
+          const url = new URL(`${BASE_URL}/${attempt.endpoint}`);
+          if (activeBusinessId) {
+            url.searchParams.append("businessId", activeBusinessId);
+          }
+
+          const response = await fetch(url.toString(), {
+            method: attempt.method,
+            headers: {
+              accept: "*/*",
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              status: normalizedStatus,
+              userStatus: normalizedStatus,
+              state: normalizedStatus,
+              businessId: activeBusinessId,
+              isActive: normalizedStatus === "active",
+              active: normalizedStatus === "active",
+              statusTitleCase,
+            }),
+          });
+
+          if (response.ok) {
+            await fetchUsers();
+            return true;
+          }
+
+          const text = await response.text();
+          lastError = text || `${attempt.method} ${attempt.endpoint} failed: ${response.statusText}`;
+        }
+
+        let detail: any = lastError;
+        try {
+          const parsed = JSON.parse(lastError);
+          detail = parsed.message || parsed.error || lastError;
+          if (typeof detail === "object" && detail.message) {
+            detail = detail.message;
+          }
+          if (Array.isArray(detail)) detail = detail.join(", ");
+        } catch (e) {
+          // noop: keep raw error text when response is not JSON
+        }
+
+        throw new Error(detail);
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [fetchUsers, token, activeBusinessId],
+  );
+
   return {
     users,
     waiters,
@@ -301,6 +378,7 @@ export function useUsers() {
     error,
     createUser,
     updatePassword,
+    updateUserStatus,
     deleteUser,
     refetch: fetchUsers,
   };

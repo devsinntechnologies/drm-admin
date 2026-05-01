@@ -243,12 +243,12 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                   className={cn(
                     "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition",
                     active
-                      ? "bg-[#1E365B] text-white shadow-[0_10px_20px_rgba(31,42,86,0.18)]"
+                      ? "bg-[#1E365B] text-[#ffffff] shadow-[0_10px_20px_rgba(31,42,86,0.18)]"
                       : "text-[#334155] hover:bg-[#f8fafc] hover:text-[#111827]",
                   )}
                 >
-                  <span className={cn("shrink-0", active ? "text-white" : "text-[#64748b]")}>{tab.icon}</span>
-                  <span className={cn("shrink-0", active ? "text-white" : "text-[#64748b]")}>{tab.label}</span>
+                  <span className={cn("shrink-0", active ? "text-[#ffffff]" : "text-[#64748b]")}>{tab.icon}</span>
+                  <span className={cn("shrink-0", active ? "text-[#ffffff]" : "text-[#64748b]")}>{tab.label}</span>
                 </Link>
               );
             })}
@@ -272,9 +272,9 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
       </aside>
 
       <div className="lg:pl-72">
-        <header className="relative overflow-hidden border-b border-[#dbe4ef] bg-[#f8fbff] px-4 py-4 md:px-8 lg:px-14">
+        <header className="relative overflow-hidden border-b border-[#dbe4ef] bg-[#f8fbff] py-4">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_0%,rgba(14,165,233,0.14),transparent_38%),radial-gradient(circle_at_0%_100%,rgba(15,118,110,0.12),transparent_42%)]" />
-          <div className="relative mx-auto flex w-full max-w-7xl items-center justify-between gap-3">
+          <div className="relative flex w-full items-center justify-between gap-3 px-4 lg:px-6">
             <div className="flex min-w-0 items-center gap-3 md:gap-4">
               <div >
                 <Image src="/logo.png" alt="Restaurant Manager logo" width={150} height={150} className="h-16 w-16 object-contain" priority />
@@ -302,7 +302,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
           </div>
         </header>
 
-        <main className="px-4 pb-8 pt-6 md:px-8 lg:px-14 lg:pb-11">
+        <main className="pb-8 pt-6 lg:pb-11">
           {children}
         </main>
       </div>
@@ -356,11 +356,11 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                       className={cn(
                         "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition",
                         active
-                          ? "bg-[#1f2a56] text-white shadow-[0_10px_20px_rgba(31,42,86,0.18)]"
+                          ? "bg-[#1f2a56] text-[#ffffff] shadow-[0_10px_20px_rgba(31,42,86,0.18)]"
                           : "text-[#334155] hover:bg-[#f8fafc] hover:text-[#111827]",
                       )}
                     >
-                      <span className={cn("shrink-0", active ? "text-white" : "text-[#64748b]")}>{tab.icon}</span>
+                      <span className={cn("shrink-0", active ? "text-[#ffffff]" : "text-[#64748b]")}>{tab.icon}</span>
                       <span>{tab.label}</span>
                     </Link>
                   );

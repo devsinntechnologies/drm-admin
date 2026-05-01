@@ -45,14 +45,14 @@ function TableCard({
 
   return (
     <article className="overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow">
-      <div className="relative h-48">
+      <div className="relative h-60">
         <Image src={imageUrl} alt={table.tableNumber} fill sizes="(max-width: 640px) 100vw, 25vw" className="object-cover" />
         
         {/* Badges */}
-        <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-[#00c853] px-3 py-1 text-[10px] font-black text-white uppercase tracking-wider">
+        <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-[#00c853] px-3 py-1 text-[10px] font-black text-[#ffffff] uppercase tracking-wider">
           <Users className="h-3 w-3" /> {table.capacity} Seats
         </div>
-        <div className="absolute top-3 right-3 flex items-center gap-2 rounded-full bg-[#6366f1] px-3 py-1 text-[10px] font-black text-white uppercase tracking-wider">
+        <div className="absolute top-3 right-3 flex items-center gap-2 rounded-full bg-[#6366f1] px-3 py-1 text-[10px] font-black text-[#ffffff] uppercase tracking-wider">
           <LayoutGrid className="h-3 w-3" /> Table
         </div>
         
@@ -178,14 +178,14 @@ function TablesContent() {
   return (
     <AdminShell activeTab="tables">
       <main className="h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc]">
-        <div className="h-full flex flex-col p-6 space-y-6">
+        <div className="h-full flex flex-col space-y-6 px-4 py-6 lg:px-6">
           
           {/* Header Section */}
           <section className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-4">
                 <div className="h-14 w-14 rounded-2xl bg-[#ef4444] flex items-center justify-center shadow-lg shadow-red-100">
-                  <Box className="h-7 w-7 text-white" />
+                  <Box className="h-7 w-7 text-[#ffffff]" />
                 </div>
                 <div>
                   <h1 className="text-xl font-black text-[#111827]">Restaurant Tables</h1>
@@ -194,11 +194,11 @@ function TablesContent() {
               </div>
 
               <div className="flex items-center gap-4 border-l border-slate-100 pl-8">
-                <div className="h-12 w-12 rounded-2xl bg-[#ef4444]/10 flex items-center justify-center">
-                  <Box className="h-6 w-6 text-[#ef4444]" />
+                <div className="h-14 w-14 rounded-2xl bg-[#ef4444] flex items-center justify-center">
+                  <Box className="h-7 w-7 text-[#ffffff]" />
                 </div>
                 <div>
-                  <p className="text-sm font-black text-[#111827]">Total Tables</p>
+                  <p className="text-lg font-black text-[#111827]">Total Tables</p>
                   <p className="text-xs font-bold text-slate-400">{pagination.total}</p>
                 </div>
               </div>
@@ -206,8 +206,8 @@ function TablesContent() {
 
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
-                <button type="button" className="flex items-center gap-2 bg-[#ef4444] text-white px-6 py-3 rounded-2xl font-black text-sm shadow-lg shadow-red-200 transition-all active:scale-95">
-                  <Plus className="h-5 w-5" /> Add
+                <button type="button" className="flex items-center gap-2 bg-[#ef4444] text-[#ffffff] px-6 py-3 rounded-2xl font-black text-lg shadow-lg shadow-red-200 transition-all active:scale-95">
+                  <Plus className="h-7 w-7" /> Add
                 </button>
               </DialogTrigger>
               <DialogContent className="max-w-xl rounded-[40px] p-0 overflow-hidden border-none shadow-2xl">
@@ -242,7 +242,7 @@ function TablesContent() {
             {/* Floating Refresh */}
             <button 
               onClick={() => fetchTables()}
-              className="fixed bottom-8 right-8 h-14 w-14 rounded-2xl bg-[#ef4444] text-white shadow-xl shadow-red-200 flex items-center justify-center hover:scale-110 transition-all z-50 group"
+              className="fixed bottom-8 right-8 h-14 w-14 rounded-2xl bg-[#ef4444] text-[#ffffff] shadow-xl shadow-red-200 flex items-center justify-center hover:scale-110 transition-all z-50 group"
             >
               <RotateCcw className={cn("h-6 w-6 transition-transform group-hover:rotate-180", loading && "animate-spin")} />
             </button>
@@ -311,7 +311,7 @@ function TableForm({ title, subtitle, form, setForm, onSubmit, onClose, loading 
             <button
               type="button"
               onClick={() => document.getElementById("image-input")?.click()}
-              className="flex items-center gap-3 bg-[#111827] text-white px-6 py-3 rounded-2xl text-xs font-black hover:bg-black transition-all shadow-lg shadow-slate-200"
+              className="flex items-center gap-3 bg-[#111827] text-[#ffffff] px-6 py-3 rounded-2xl text-xs font-black hover:bg-black transition-all shadow-lg shadow-slate-200"
             >
               <ImageIcon className="h-4 w-4" />
               Choose Image
@@ -331,7 +331,7 @@ function TableForm({ title, subtitle, form, setForm, onSubmit, onClose, loading 
           <button type="button" onClick={onClose} className="px-8 py-3 rounded-2xl border border-slate-200 font-black text-sm text-slate-500 hover:bg-slate-50 transition-all">
             Cancel
           </button>
-          <button type="submit" disabled={loading} className="flex items-center gap-2 px-10 py-3 rounded-2xl bg-[#111827] text-white font-black text-sm shadow-xl shadow-slate-200 transition-all active:scale-95 disabled:opacity-60">
+          <button type="submit" disabled={loading} className="flex items-center gap-2 px-10 py-3 rounded-2xl bg-[#111827] text-[#ffffff] font-black text-sm shadow-xl shadow-slate-200 transition-all active:scale-95 disabled:opacity-60">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save
           </button>

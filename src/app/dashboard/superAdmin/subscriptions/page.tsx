@@ -340,9 +340,9 @@ function SubscriptionsContent() {
 
   return (
     <AdminShell activeTab="subscriptions">
-      <section className="mx-auto mb-5 flex max-w-7xl flex-col gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.9),rgba(254,242,242,0.78))] px-6 py-5 shadow-[0_12px_28px_rgba(7,16,34,0.1)] lg:flex-row lg:items-center lg:justify-between">
+      <section className="mb-5 flex w-full flex-col gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.9),rgba(254,242,242,0.78))] px-6 py-5 shadow-[0_12px_28px_rgba(7,16,34,0.1)] lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-4">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#b45309] text-white shadow-[0_10px_18px_rgba(180,83,9,0.28)]">
+          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#b45309] text-[#ffffff] shadow-[0_10px_18px_rgba(180,83,9,0.28)]">
             <CreditCard className="h-6 w-6" strokeWidth={1.8} />
           </div>
           <div>
@@ -354,14 +354,14 @@ function SubscriptionsContent() {
         <button
           type="button"
           onClick={openCreatePlanDialog}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#111827] px-5 text-sm font-semibold text-white transition hover:bg-[#0f172a]"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#111827] px-5 text-sm font-semibold text-[#ffffff] transition hover:bg-[#0f172a]"
         >
           <Plus className="h-4 w-4" />
           Add Plan
         </button>
       </section>
 
-      <section className="mx-auto mb-6 max-w-7xl rounded-3xl border border-[#e4ebf4] bg-white/90 p-6 shadow-[0_10px_24px_rgba(10,17,31,0.08)]">
+      <section className="mb-6 w-full rounded-3xl border border-[#e4ebf4] bg-white/90 p-6 shadow-[0_10px_24px_rgba(10,17,31,0.08)]">
         <div className="mb-5 flex items-center justify-between gap-4">
           <div>
             <h3 className="text-lg font-semibold text-[#111827]">Available Plans</h3>
@@ -388,7 +388,7 @@ function SubscriptionsContent() {
         )}
       </section>
 
-      <div ref={menuRef} className="mx-auto max-w-7xl overflow-x-auto rounded-3xl border border-[#e4ebf4] bg-white/90 shadow-[0_10px_24px_rgba(10,17,31,0.1)]">
+      <div ref={menuRef} className="w-full overflow-x-auto rounded-3xl border border-[#e4ebf4] bg-white/90 shadow-[0_10px_24px_rgba(10,17,31,0.1)]">
         <table className="w-full min-w-275 border-collapse">
           <thead>
             <tr className="border-b border-[#e2e5ee] bg-[#f8fbff] text-left text-sm">
@@ -470,7 +470,7 @@ function SubscriptionsContent() {
                 </td>
 
                 <td className="px-4 py-4">
-                  <span className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-bold text-white ${row.expires === "Expired" ? "bg-[#ff3749]" : "bg-[#0bc35a]"}`}>
+                  <span className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-bold text-[#ffffff] ${row.expires === "Expired" ? "bg-[#ff3749]" : "bg-[#0bc35a]"}`}>
                     {row.expires}
                   </span>
                 </td>
@@ -616,7 +616,7 @@ function SubscriptionsContent() {
               <button
                 type="submit"
                 disabled={isSavingPlan}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#111827] px-5 text-sm font-semibold text-white transition hover:bg-[#0f172a] disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#111827] px-5 text-sm font-semibold text-[#ffffff] transition hover:bg-[#0f172a] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSavingPlan ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {isSavingPlan ? (editingPlanId ? "Updating..." : "Creating...") : editingPlanId ? "Update Plan" : "Create Plan"}
@@ -659,7 +659,7 @@ function SubscriptionsContent() {
                 if (!deleteTargetPlan) return;
                 void handleDeletePlan(deleteTargetPlan);
               }}
-              className="inline-flex h-10 items-center rounded-xl bg-[#f2202f] px-4 text-sm font-semibold text-white disabled:opacity-60"
+              className="inline-flex h-10 items-center rounded-xl bg-[#f2202f] px-4 text-sm font-semibold text-[#ffffff] disabled:opacity-60"
             >
               {isDeletingPlan ? "Deleting..." : "Delete"}
             </button>

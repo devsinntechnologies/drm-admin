@@ -316,7 +316,7 @@ export default function ActionLogsPage() {
   };
 
   return (
-    <section className="mx-auto max-w-7xl">
+    <section className="w-full">
       <div className="mb-4 rounded-3xl border border-white bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.95),rgba(220,252,231,0.72),rgba(224,242,254,0.72))] p-4 shadow-[0_18px_36px_rgba(8,18,38,0.12)]">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-[#0f172a]">
@@ -570,7 +570,7 @@ export default function ActionLogsPage() {
               key={n}
               onClick={() => setPage(n)}
               className={`grid h-8 w-8 place-items-center rounded-xl border border-[#e5e7eb] ${
-                n === page ? "bg-[#1E365B] text-white" : "bg-white"
+                n === page ? "bg-[#1E365B] text-[#ffffff]" : "bg-white"
               }`}
             >
               {n}

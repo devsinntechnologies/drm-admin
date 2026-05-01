@@ -118,6 +118,20 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     fetchInvoices(page);
   }, [page, fetchInvoices]);
 
+  // Listen for external signals to refetch invoices (e.g. after invoice creation)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handler = () => {
+      fetchInvoices(pagination.page ?? page);
+    };
+
+    window.addEventListener("invoices:refetch", handler as EventListener);
+    return () => {
+      window.removeEventListener("invoices:refetch", handler as EventListener);
+    };
+  }, [fetchInvoices, pagination.page, page]);
+
   const nextPage = useCallback(() => {
     if (pagination.page < pagination.last_page) {
       fetchInvoices(pagination.page + 1);

@@ -65,7 +65,7 @@ function SuperAdminDashboardContent() {
 
   return (
     <AdminShell activeTab="dashboard">
-      <section className="mx-auto mb-5 grid max-w-7xl grid-cols-1 gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.82),rgba(240,249,255,0.72))] p-5 shadow-[0_18px_30px_rgba(15,23,42,0.09)] lg:grid-cols-[1.2fr_0.8fr]">
+      <section className="mb-5 grid w-full grid-cols-1 gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.82),rgba(240,249,255,0.72))] p-5 shadow-[0_18px_30px_rgba(15,23,42,0.09)] lg:grid-cols-[1.2fr_0.8fr] mx-4 lg:mx-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1E365B]">Operational Snapshot</p>
           <h2 className="mt-2 text-2xl font-semibold text-[#0f172a] lg:text-3xl">Control Center Dashboard</h2>
@@ -87,22 +87,22 @@ function SuperAdminDashboardContent() {
         </div>
       </section>
 
-      <section className="mx-auto mb-4 grid max-w-7xl grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="mb-4 grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 mx-4 lg:mx-6">
         {summaryCards.map((item) => (
-          <article key={item.title} className={`relative overflow-hidden rounded-3xl bg-linear-to-br ${item.bg} p-4 text-white shadow-[0_12px_24px_rgba(15,23,42,0.22)] transition duration-300 hover:-translate-y-1`}>
-            <div className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-2xl border border-white/30 bg-white/20 text-white/95">{item.icon}</div>
-            <div className="absolute -right-4 -top-1 text-white/10">{item.ghost}</div>
+          <article key={item.title} className={`relative overflow-hidden rounded-3xl bg-linear-to-br ${item.bg} p-4 text-[#ffffff] shadow-[0_12px_24px_rgba(15,23,42,0.22)] transition duration-300 hover:-translate-y-1`}>
+            <div className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-2xl border border-white/30 bg-white/20 text-[#ffffff]/95">{item.icon}</div>
+            <div className="absolute -right-4 -top-1 text-[#ffffff]/10">{item.ghost}</div>
             <h4 className="relative z-1 text-sm font-medium lg:text-base">{item.title}</h4>
             <p className="relative z-1 mt-4 text-2xl font-semibold leading-none lg:mt-5 lg:text-3xl">{item.value}</p>
-            <p className="relative z-1 mt-1.5 text-xs text-white/90 lg:text-sm">{item.sub}</p>
+            <p className="relative z-1 mt-1.5 text-xs text-[#ffffff]/90 lg:text-sm">{item.sub}</p>
           </article>
         ))}
       </section>
 
-      <section className="mx-auto mb-4 grid max-w-7xl grid-cols-1 gap-4 xl:grid-cols-2">
+      <section className="mb-4 grid w-full grid-cols-1 gap-4 xl:grid-cols-2 mx-4 lg:mx-6">
         <article className="overflow-hidden rounded-3xl border border-white bg-white/85 shadow-[0_12px_24px_rgba(10,17,31,0.08)]">
           <div className="flex min-h-16 items-center gap-4 bg-[linear-gradient(120deg,#e0f2fe_0%,#f0fdfa_100%)] px-6 py-4 lg:px-7">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#155e75] text-white">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#155e75] text-[#ffffff]">
               <BarChart3 className="h-5 w-5" strokeWidth={1.8} />
             </div>
             <div>
@@ -143,7 +143,7 @@ function SuperAdminDashboardContent() {
 
         <article className="overflow-hidden rounded-3xl border border-white bg-white/85 shadow-[0_12px_24px_rgba(10,17,31,0.08)]">
           <div className="flex min-h-16 items-center gap-3 bg-[linear-gradient(120deg,#fff7ed_0%,#fefce8_100%)] px-5 py-3 lg:px-6">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#b45309] text-white shadow-sm">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#b45309] text-[#ffffff] shadow-sm">
               <PieChart className="h-5 w-5" strokeWidth={2} />
             </div>
             <div>
@@ -173,10 +173,10 @@ function SuperAdminDashboardContent() {
         </article>
       </section>
 
-      <section className="mx-auto mb-4 grid max-w-7xl grid-cols-1 gap-4 xl:grid-cols-2">
+      <section className="mb-4 grid w-full grid-cols-1 gap-4 xl:grid-cols-2">
         <article className="overflow-hidden rounded-3xl border border-white bg-white/85 shadow-[0_12px_24px_rgba(10,17,31,0.08)]">
           <div className="flex min-h-16 items-center gap-4 bg-[linear-gradient(120deg,#dcfce7_0%,#ecfeff_100%)] px-6 py-4 lg:px-7">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#1E365B] text-white">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#1E365B] text-[#ffffff]">
               <Award className="h-5 w-5" strokeWidth={1.8} />
             </div>
             <div>
@@ -189,7 +189,7 @@ function SuperAdminDashboardContent() {
               <article key={business.rank} className="grid grid-cols-[58px_1fr] gap-3 rounded-2xl border border-[#e4edf6] bg-[#f8fbff] p-3 lg:grid-cols-[64px_1fr_auto] lg:items-center">
                 <div className="relative h-14.5 w-14.5 overflow-hidden rounded-xl bg-[#d7dbe4] lg:h-16 lg:w-16">
                   <Image src={business.image} alt={business.name} fill sizes="82px" className="object-cover" />
-                  <span className="absolute -left-2 -top-2 grid h-7 w-7 place-items-center rounded-full bg-[#f9a602] text-xs font-bold text-white">{business.rank}</span>
+                  <span className="absolute -left-2 -top-2 grid h-7 w-7 place-items-center rounded-full bg-[#f9a602] text-xs font-bold text-[#ffffff]">{business.rank}</span>
                 </div>
                 <div>
                   <h4 className="text-base font-bold lg:text-lg">{business.name}</h4>
@@ -200,7 +200,7 @@ function SuperAdminDashboardContent() {
                 </div>
                 <div className="hidden text-right lg:block">
                   <strong className="block text-lg text-[#07a34d]">{business.revenue}</strong>
-                  <span className="inline-flex h-7 items-center rounded-full bg-[#02051f] px-3 text-xs font-bold text-white">{business.plan}</span>
+                  <span className="inline-flex h-7 items-center rounded-full bg-[#02051f] px-3 text-xs font-bold text-[#ffffff]">{business.plan}</span>
                 </div>
               </article>
             ))}
@@ -209,7 +209,7 @@ function SuperAdminDashboardContent() {
 
         <article className="overflow-hidden rounded-3xl border border-white bg-white/85 shadow-[0_12px_24px_rgba(10,17,31,0.08)]">
           <div className="flex min-h-16 items-center gap-3 bg-[linear-gradient(120deg,#e0e7ff_0%,#f0f9ff_100%)] px-5 py-3 lg:px-6">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#1d4ed8] text-white">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#1d4ed8] text-[#ffffff]">
               <Activity className="h-4.5 w-4.5" strokeWidth={1.8} />
             </div>
             <div>
@@ -236,7 +236,7 @@ function SuperAdminDashboardContent() {
         </article>
       </section>
 
-      <section className="mx-auto max-w-7xl rounded-3xl bg-linear-to-br from-[#0f172a] to-[#1E365B] p-4 shadow-[0_14px_26px_rgba(15,23,42,0.3)] lg:p-5">
+      <section className="w-full rounded-3xl bg-linear-to-br from-[#0f172a] to-[#1E365B] p-4 shadow-[0_14px_26px_rgba(15,23,42,0.3)] lg:p-5">
         <h3 className="flex items-center gap-2 text-base font-medium text-[#f4f7ff] lg:text-lg">
           <ShieldCheck className="h-4.5 w-4.5" strokeWidth={1.8} />
           System Overview

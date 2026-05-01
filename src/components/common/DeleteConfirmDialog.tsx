@@ -52,7 +52,7 @@ export function DeleteConfirmDialog({
               onConfirm()
             }}
             disabled={loading}
-            className="rounded-xl bg-red-600 font-semibold text-white hover:bg-red-700 shadow-[0_10px_20px_rgba(220,38,38,0.2)]"
+            className="rounded-xl bg-red-600 font-semibold text-[#ffffff] hover:bg-red-700 shadow-[0_10px_20px_rgba(220,38,38,0.2)]"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Delete Now

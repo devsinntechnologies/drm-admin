@@ -27,7 +27,7 @@ const xAxis = [
 export default function ActionLogsDashboardPage() {
   return (
     <>
-      <section className="mx-auto mb-4 grid max-w-[1280px] grid-cols-1 gap-4 xl:grid-cols-2">
+      <section className="mb-4 grid w-full grid-cols-1 gap-4 xl:grid-cols-2">
         <article className="rounded-2xl border border-[#ffb4b9] bg-[#fff2f3] px-4 py-3 text-[#ef2231]">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <AlertTriangle className="h-4 w-4" /> High failure rate
@@ -42,28 +42,28 @@ export default function ActionLogsDashboardPage() {
         </article>
       </section>
 
-      <section className="mx-auto mb-5 grid max-w-[1280px] grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="mb-5 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
           { title: "Total Requests", value: "200", sub: "All Businesses", bg: "from-[#9041f8] to-[#5052f8]", icon: "⚡" },
           { title: "Failure Rate", value: "13.5%", sub: "27 failed requests", bg: "from-[#ff2f5a] to-[#ec007c]", icon: "⚠" },
           { title: "Active Users", value: "6", sub: "Unique users", bg: "from-[#2f88f1] to-[#1490c7]", icon: "👥" },
           { title: "Avg Response", value: "600ms", sub: "Average execution time", bg: "from-[#06c364] to-[#05a765]", icon: "⏱" },
         ].map((item) => (
-          <article key={item.title} className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${item.bg} p-4 text-white shadow-[0_10px_22px_rgba(28,48,94,0.18)]`}>
+          <article key={item.title} className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${item.bg} p-4 text-[#ffffff] shadow-[0_10px_22px_rgba(28,48,94,0.18)]`}>
             <div className="absolute right-4 top-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 text-lg">
               {item.icon}
             </div>
             <h4 className="text-sm font-medium">{item.title}</h4>
             <p className="mt-4 text-3xl font-semibold leading-none">{item.value}</p>
-            <p className="mt-2 text-xs text-white/90">{item.sub}</p>
+            <p className="mt-2 text-xs text-[#ffffff]/90">{item.sub}</p>
           </article>
         ))}
       </section>
 
-      <section className="mx-auto mb-5 grid max-w-[1280px] grid-cols-1 gap-5 xl:grid-cols-[1.8fr_1fr]">
+      <section className="mb-5 grid w-full grid-cols-1 gap-5 xl:grid-cols-[1.8fr_1fr]">
         <article className="overflow-hidden rounded-[32px] bg-white shadow-[0_10px_30px_rgba(10,17,31,0.1)]">
           <div className="flex min-h-[86px] items-center gap-4 border-b border-[#dfe4ee] bg-gradient-to-r from-[#eef2ff] to-[#fff4f8] px-7 py-6">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-[#5b62f5] to-[#7a43f4] text-white shadow-[0_12px_24px_rgba(91,98,245,0.25)]">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-[#5b62f5] to-[#7a43f4] text-[#ffffff] shadow-[0_12px_24px_rgba(91,98,245,0.25)]">
               <LineChart className="h-6 w-6" strokeWidth={1.8} />
             </div>
             <div>
@@ -116,7 +116,7 @@ export default function ActionLogsDashboardPage() {
 
         <article className="overflow-hidden rounded-[32px] bg-white shadow-[0_10px_30px_rgba(10,17,31,0.1)]">
           <div className="flex min-h-[86px] items-center gap-4 border-b border-[#eadff0] bg-gradient-to-r from-[#f5ecff] to-[#fff0f5] px-7 py-6">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-[#8d3cf2] to-[#c13ef0] text-white shadow-[0_12px_24px_rgba(157,61,241,0.24)]">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-[#8d3cf2] to-[#c13ef0] text-[#ffffff] shadow-[0_12px_24px_rgba(157,61,241,0.24)]">
               <PieChart className="h-6 w-6" strokeWidth={1.8} />
             </div>
             <div>
@@ -142,9 +142,9 @@ export default function ActionLogsDashboardPage() {
         </article>
       </section>
 
-      <section className="mx-auto mb-5 max-w-[1280px] overflow-hidden rounded-3xl bg-white shadow-[0_7px_22px_rgba(10,17,31,0.08)]">
+      <section className="mb-5 w-full overflow-hidden rounded-3xl bg-white shadow-[0_7px_22px_rgba(10,17,31,0.08)]">
         <div className="flex min-h-16 items-center gap-3 bg-[#fff2f3] px-6 py-4">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#ff2f5a] text-white">
+          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#ff2f5a] text-[#ffffff]">
             <AlertTriangle className="h-5 w-5" strokeWidth={1.8} />
           </div>
           <div>
@@ -166,7 +166,7 @@ export default function ActionLogsDashboardPage() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-[1280px] grid-cols-1 gap-4 lg:grid-cols-3">
+      <section className="grid w-full grid-cols-1 gap-4 lg:grid-cols-3">
         {[
           { title: "Incoming Logs", value: "517", total: "1000", level: "Normal", levelClass: "bg-[#dfe4ff] text-[#4f5be7]", width: "52%", bar: "#5f66f4" },
           { title: "Active Workers", value: "16", total: "20", level: "High", levelClass: "bg-[#dff7e8] text-[#129d56]", width: "80%", bar: "#10b981" },

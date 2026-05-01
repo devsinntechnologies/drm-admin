@@ -23,7 +23,7 @@ const issues = [
 
 export default function ActionLogIssuesPage() {
   return (
-    <section className="mx-auto max-w-[1280px] space-y-5">
+    <section className="w-full space-y-5">
       <div className="grid gap-4 lg:grid-cols-2">
         <article className="rounded-3xl border border-[#ffb4b9] bg-[#fff2f3] px-5 py-4 text-[#ef2231]">
           <div className="flex items-center gap-3 text-base font-semibold">

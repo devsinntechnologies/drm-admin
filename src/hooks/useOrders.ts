@@ -253,6 +253,40 @@ export function useOrders(options: UseOrdersOptions = {}) {
           throw new Error(detail);
         }
 
+        // If the order was marked as served or completed, attempt to create an invoice.
+        // This is best-effort: failures shouldn't block the order status update.
+        try {
+          const statusLower = status && status.toLowerCase();
+          if (statusLower === "served" || statusLower === "completed") {
+            const invoiceUrl = new URL(`${BASE_URL}/invoice`);
+            if (activeBusinessId) invoiceUrl.searchParams.append("businessId", activeBusinessId);
+
+            await fetch(invoiceUrl.toString(), {
+              method: "POST",
+              headers: {
+                accept: "application/json",
+                Authorization: `Bearer ${authToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ orderId }),
+            });
+
+            // notify other parts of the app (best-effort) so invoices can refresh
+            // and pages can auto-remove completed orders
+            try {
+              if (typeof window !== "undefined" && window?.dispatchEvent) {
+                window.dispatchEvent(new CustomEvent("invoices:refetch", { detail: { orderId } }));
+                // Notify pages to remove order (works for both kitchen and orders pages)
+                window.dispatchEvent(new CustomEvent("order:served", { detail: { orderId } }));
+              }
+            } catch (e) {
+              console.error("Failed to dispatch events", e);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to create invoice for order", orderId, err);
+        }
+
         await fetchOrders(1, range);
         return true;
       } finally {

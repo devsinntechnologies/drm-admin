@@ -70,7 +70,7 @@ function IngredientsContent() {
 
   return (
     <AdminShell activeTab="products">
-      <main className="mx-auto max-w-7xl space-y-6">
+      <main className="w-full space-y-6 px-0">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -102,8 +102,8 @@ function IngredientsContent() {
               <Box className="h-6 w-6 text-[#f97316]" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Total Items</p>
-              <p className="text-2xl font-black text-[#111827]">{ingredients.length}</p>
+              <p className="text-xs  font-bold uppercase tracking-wider text-gray-500">Total Items</p>
+              <p className="text-2xl font-black text-[#f97316]">{ingredients.length}</p>
             </div>
           </div>
 
@@ -131,7 +131,7 @@ function IngredientsContent() {
             <p className="text-lg font-bold text-[#111827]">Your inventory is empty</p>
             <button
               onClick={() => refetch()}
-              className="mt-6 rounded-full bg-[#ef4444] px-8 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[#dc2626]"
+              className="mt-6 rounded-full bg-[#ef4444] px-8 py-3 text-sm font-bold text-[#ffffff] shadow-lg transition hover:bg-[#dc2626]"
             >
               Refresh Data
             </button>
@@ -161,7 +161,7 @@ function IngredientsContent() {
         <div className="fixed bottom-8 right-8 z-50">
           <button
             onClick={() => setIsAddOpen(true)}
-            className="flex items-center gap-2 rounded-2xl bg-[#ef4444] px-6 py-4 font-bold text-white shadow-2xl transition hover:scale-105 active:scale-95"
+            className="flex items-center gap-2 rounded-2xl bg-[#ef4444] px-6 py-4 font-bold text-[#ffffff] shadow-2xl transition hover:scale-105 active:scale-95"
           >
             <Plus className="h-5 w-5" /> Add Ingredient
           </button>
@@ -237,7 +237,7 @@ function IngredientsContent() {
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="rounded-[24px] bg-[#ef4444] py-4 font-bold text-white shadow-xl transition hover:bg-[#dc2626] disabled:opacity-50"
+                  className="rounded-[24px] bg-[#ef4444] py-4 font-bold text-[#ffffff] shadow-xl transition hover:bg-[#dc2626] disabled:opacity-50"
                 >
                   {actionLoading ? "Saving..." : "Save Item"}
                 </button>

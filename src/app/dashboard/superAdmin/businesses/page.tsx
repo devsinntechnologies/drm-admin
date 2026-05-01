@@ -249,9 +249,9 @@ function BusinessesContent() {
 
   return (
     <AdminShell activeTab="businesses">
-      <section className="mx-auto mb-5 flex max-w-7xl items-center justify-between gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.9),rgba(236,253,245,0.78))] px-6 py-5 shadow-[0_12px_28px_rgba(7,16,34,0.1)]">
+      <section className="mb-5 flex w-full items-center justify-between gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.9),rgba(236,253,245,0.78))] px-6 py-5 shadow-[0_12px_28px_rgba(7,16,34,0.1)]">
         <div className="flex items-center gap-4">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#1E365B] text-white shadow-[0_10px_18px_rgba(15,118,110,0.28)]">
+          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#1E365B] text-[#ffffff] shadow-[0_10px_18px_rgba(15,118,110,0.28)]">
             <Building2 className="h-6 w-6" strokeWidth={1.8} />
           </div>
           <div>
@@ -270,7 +270,7 @@ function BusinessesContent() {
           }}
         >
           <DialogTrigger asChild>
-            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl bg-linear-to-r from-[#0f172a] to-[#1E365B] px-5 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(15,23,42,0.22)]">
+            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl bg-linear-to-r from-[#0f172a] to-[#1E365B] px-5 text-sm font-semibold text-[#ffffff] shadow-[0_10px_20px_rgba(15,23,42,0.22)]">
               <Plus className="h-4 w-4" />
               Add Business
             </button>
@@ -399,7 +399,7 @@ function BusinessesContent() {
                 <button
                   type="submit"
                   disabled={isCreatingBusiness || isPatchingBusiness || isLoadingBusinessById}
-                  className="inline-flex h-10 items-center rounded-xl bg-linear-to-r from-[#5e5df2] to-[#8f20f5] px-4 text-sm font-semibold text-white disabled:opacity-60"
+                  className="inline-flex h-10 items-center rounded-xl bg-linear-to-r from-[#5e5df2] to-[#8f20f5] px-4 text-sm font-semibold text-[#ffffff] disabled:opacity-60"
                 >
                   {isLoadingBusinessById
                     ? "Loading..."
@@ -417,7 +417,7 @@ function BusinessesContent() {
         </Dialog>
       </section>
 
-      <section className="mx-auto mb-5 grid max-w-7xl grid-cols-1 gap-3 rounded-3xl border border-[#e5edf5] bg-white/85 p-4 shadow-[0_10px_26px_rgba(7,16,34,0.08)] lg:grid-cols-3">
+      <section className="mb-5 grid w-full grid-cols-1 gap-3 rounded-3xl border border-[#e5edf5] bg-white/85 p-4 shadow-[0_10px_26px_rgba(7,16,34,0.08)] lg:grid-cols-3">
         {showSkeleton ? (
           <>
             <div className="h-11 animate-pulse rounded-xl bg-[#edf2f7]" />
@@ -503,7 +503,7 @@ function BusinessesContent() {
         )}
       </section>
 
-      <section className="mx-auto grid max-w-7xl grid-cols-1 gap-5 lg:grid-cols-3">
+      <section className="grid w-full grid-cols-1 gap-5 lg:grid-cols-3">
         {showSkeleton
           ? Array.from({ length: 6 }, (_, index) => (
               <article
@@ -549,10 +549,10 @@ function BusinessesContent() {
               />
               <div className="absolute inset-0 bg-linear-to-b from-[rgba(15,23,42,0.35)] to-[rgba(15,118,110,0.75)]" />
               <div className="absolute right-4 top-3 z-2 flex gap-2">
-                <span className={`inline-flex h-7 items-center rounded-xl px-3 text-xs font-bold text-white ${business.status === "Active" ? "bg-[#07c357]" : business.status === "Inactive" ? "bg-[#7d8593]" : "bg-[#ff3649]"}`}>
+                <span className={`inline-flex h-7 items-center rounded-xl px-3 text-xs font-bold text-[#ffffff] ${business.status === "Active" ? "bg-[#07c357]" : business.status === "Inactive" ? "bg-[#7d8593]" : "bg-[#ff3649]"}`}>
                   {business.status}
                 </span>
-                <span className={`inline-flex h-7 items-center rounded-xl px-3 text-xs font-bold text-white ${planColor[business.plan]}`}>
+                <span className={`inline-flex h-7 items-center rounded-xl px-3 text-xs font-bold text-[#ffffff] ${planColor[business.plan]}`}>
                   {business.plan}
                 </span>
               </div>
@@ -652,7 +652,7 @@ function BusinessesContent() {
                 if (!deleteTargetBusiness) return;
                 void handleDeleteBusiness(deleteTargetBusiness.id);
               }}
-              className="inline-flex h-10 items-center rounded-xl bg-[#f2202f] px-4 text-sm font-semibold text-white disabled:opacity-60"
+              className="inline-flex h-10 items-center rounded-xl bg-[#f2202f] px-4 text-sm font-semibold text-[#ffffff] disabled:opacity-60"
             >
               {isDeletingBusiness ? "Deactivating..." : "Deactivate"}
             </button>

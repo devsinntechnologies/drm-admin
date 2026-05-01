@@ -72,10 +72,10 @@ function LoginContent() {
     <main className="min-h-screen px-4 py-8">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-305 items-center justify-center">
         <section className="grid w-full overflow-hidden rounded-[36px] bg-white shadow-[0_28px_70px_rgba(31,41,55,0.22)] lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="relative overflow-hidden bg-linear-to-br from-[#0b1220] via-[#0f2d5c] to-[#1E365B] p-8 text-white sm:p-10">
+          <div className="relative overflow-hidden bg-linear-to-br from-[#0b1220] via-[#0f2d5c] to-[#1E365B] p-8 text-[#ffffff] sm:p-10">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.2),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(56,189,248,0.2),transparent_36%)]" />
             <div className="relative z-1">
-              <Link href="/" className="inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-sm font-medium text-white/95 transition hover:bg-white/18">
+              <Link href="/" className="inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-sm font-medium text-[#ffffff]/95 transition hover:bg-white/18">
                 <ArrowLeft className="h-4 w-4" />
                 Back to roles
               </Link>
@@ -85,12 +85,12 @@ function LoginContent() {
                   <ChefHat className="h-9 w-9" strokeWidth={2.2} />
                 </div>
                 <div>
-                  <p className="text-sm uppercase tracking-[0.22em] text-white/70">Secure Access</p>
+                  <p className="text-sm uppercase tracking-[0.22em] text-[#ffffff]/70">Secure Access</p>
                   <h1 className="text-4xl font-semibold tracking-[-0.03em]">{selectedTitle} Login</h1>
                 </div>
               </div>
 
-              <p className="mt-8 max-w-120 text-lg leading-8 text-white/88">
+              <p className="mt-8 max-w-120 text-lg leading-8 text-[#ffffff]/88">
                 Access the control center for businesses, subscriptions, analytics, and operational logs.
               </p>
 
@@ -175,7 +175,7 @@ function LoginContent() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="inline-flex h-14 w-full items-center justify-center rounded-[18px] bg-[linear-gradient(120deg,#0f172a_0%,#155e75_100%)] text-lg font-semibold text-white! shadow-[0_14px_26px_rgba(15,23,42,0.3)] transition hover:scale-[1.01]"
+                  className="inline-flex h-14 w-full items-center justify-center rounded-[18px] bg-[linear-gradient(120deg,#0f172a_0%,#155e75_100%)] text-lg font-semibold text-[#ffffff]! shadow-[0_14px_26px_rgba(15,23,42,0.3)] transition hover:scale-[1.01]"
                 >
                   {isLoading ? "Signing in..." : "Login to Dashboard"}
                 </button>

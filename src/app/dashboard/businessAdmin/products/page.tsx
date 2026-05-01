@@ -22,6 +22,7 @@ import {
   Pencil,
   Save,
   Tag,
+  Shapes,
   Package,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -119,7 +120,7 @@ function VariantsEditor({
         <button
           type="button"
           onClick={onAddVariant}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ef4444] py-2.5 text-xs font-bold text-white"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ef4444] py-2.5 text-xs font-bold text-[#ffffff]"
         >
           <Plus className="h-4 w-4" /> Add Variant
         </button>
@@ -143,8 +144,8 @@ function MenuCard({
   const imageUrl = imagePath ? (imagePath.startsWith("http") ? imagePath : `${BASE_URL}/${imagePath}`) : null;
 
   return (
-    <article className="overflow-hidden rounded-3xl bg-white border border-gray-100 shadow-sm flex flex-col">
-      <div className="relative h-48 w-full bg-[#f8fafc] m-2 rounded-2xl overflow-hidden">
+    <article className="overflow-hidden rounded-[30px] bg-white border border-gray-100 shadow-sm flex flex-col">
+      <div className="relative h-80 w-full bg-[#f8fafc] m-2 rounded-2xl overflow-hidden">
         {imageUrl ? (
           <Image src={imageUrl} alt={item.name} fill className="object-cover" />
         ) : (
@@ -155,40 +156,40 @@ function MenuCard({
         )}
       </div>
 
-      <div className="p-4 pt-2">
-        <h3 className="mb-3 text-lg font-bold text-[#111827]">{item.name}</h3>
+      <div className="flex flex-col p-5 pt-3">
+        <h3 className="mb-3 text-[22px] font-extrabold leading-tight text-[#111827]">{item.name}</h3>
 
-        <div className="mb-4 space-y-2">
+        <div className="mb-4 space-y-3">
           {item.variants && item.variants.length > 0 ? (
             item.variants.map((variant) => (
               <div key={variant.id} className="flex items-center justify-between">
-                <span className="text-sm font-medium text-[#64748b]">{variant.name}</span>
-                <span className="text-sm font-bold text-[#16a34a]">Rs. {variant.price}</span>
+                <span className="text-base font-medium text-[#64748b]">{variant.name}</span>
+                <span className="text-base font-extrabold text-[#16a34a]">Rs. {variant.price}</span>
               </div>
             ))
           ) : (
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-[#64748b]">Price</span>
-              <span className="text-sm font-bold text-[#16a34a]">Rs. {item.price}</span>
+              <span className="text-base font-medium text-[#64748b]">Price</span>
+              <span className="text-base font-extrabold text-[#16a34a]">Rs. {item.price}</span>
             </div>
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="mt-4 flex gap-3">
           <button
             type="button"
             onClick={() => onEdit(item.id)}
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#eefdf5] py-2.5 text-xs font-bold text-[#16a34a] transition hover:bg-[#dcfce7]"
+            className="flex-1 inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#eefdf5] px-4 py-3 text-base font-bold text-[#16a34a] transition hover:bg-[#dcfce7]"
           >
-            <Pencil className="h-3.5 w-3.5" /> Edit
+            <Pencil className="h-4 w-4" /> Edit
           </button>
           <button
             type="button"
             onClick={() => onDelete(item.id)}
             disabled={deleting}
-            className="flex items-center justify-center rounded-xl bg-[#fff2f2] p-2.5 text-[#ef4444] transition hover:bg-[#fee2e2]"
+            className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[#fff2f2] text-[#ef4444] transition hover:bg-[#fee2e2]"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -401,43 +402,51 @@ function MenuItemsContent() {
 
   return (
     <AdminShell activeTab="products">
-      <main className="mx-auto max-w-7xl space-y-6">
+      <main className="w-full space-y-6">
         {/* Header Section */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-[#111827]">Menu Items</h1>
-            <p className="text-sm text-gray-500">Manage products & stocks</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="rounded-lg border border-[#ef4444] px-4 py-2 text-sm font-bold text-[#ef4444] transition hover:bg-[#fff5f5] flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" /> Add
-            </button>
-            <button
-              onClick={() => router.push(`/dashboard/businessAdmin/categories${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
-              className="rounded-lg border border-[#ef4444] px-4 py-2 text-sm font-bold text-[#ef4444] transition hover:bg-[#fff5f5]"
-            >
-              Categories
-            </button>
-            <button
-              onClick={() => router.push(`/dashboard/businessAdmin/ingredients${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
-              className="rounded-lg border border-[#ef4444] px-4 py-2 text-sm font-bold text-[#ef4444] transition hover:bg-[#fff5f5]"
-            >
-              Ingredients
-            </button>
+        <div className="w-full rounded-3xl border border-[#e5e7eb] bg-[#f3f4f6] px-6 py-5 shadow-sm">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#ef4444] text-[#ffffff] shadow-sm">
+                <Box className="h-7 w-7" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-black leading-none text-[#111827]">Menu Items</h1>
+                <p className="mt-2 text-base font-medium text-[#6b7280]">Manage products & stocks</p>
+              </div>
+            </div>
+
+            <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto xl:items-center">
+              <button
+                onClick={() => setCreateOpen(true)}
+                className="inline-flex w-full min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#ef4444] px-6 py-3 text-base font-extrabold text-[#ffffff] shadow-sm transition hover:bg-[#dc2626] sm:w-auto"
+              >
+                <Plus className="h-5 w-5" /> Add
+              </button>
+              <button
+                onClick={() => router.push(`/dashboard/businessAdmin/categories${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
+                className="inline-flex w-full min-h-14 items-center justify-center gap-2 rounded-2xl border border-[#fca5a5] bg-white px-6 py-3 text-base font-extrabold text-[#ef4444] transition hover:bg-[#fff5f5] sm:w-auto"
+              >
+                <Shapes className="h-5 w-5" /> Categories
+              </button>
+              <button
+                onClick={() => router.push(`/dashboard/businessAdmin/ingredients${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
+                className="inline-flex w-full min-h-14 items-center justify-center gap-2 rounded-2xl border border-[#fca5a5] bg-white px-6 py-3 text-base font-extrabold text-[#ef4444] transition hover:bg-[#fff5f5] sm:w-auto"
+              >
+                <Package className="h-5 w-5" /> Ingredients
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Metric Section */}
-        <div className="rounded-xl border border-blue-100 bg-[#f0f3ff] p-4 flex items-center gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#ef4444] text-white">
-            <Box className="h-5 w-5" />
+        <div className="w-full rounded-3xl border border-blue-100 bg-[#f0f3ff] p-6 flex items-center gap-5 shadow-sm">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#ef4444] text-[#ffffff]">
+            <Box className="h-7 w-7" />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Total Items</p>
-            <p className="text-xl font-bold text-[#111827]">{pagination.total}</p>
+            <p className="text-xs font-extrabold uppercase tracking-wider text-gray-500">Total Items</p>
+            <p className="text-3xl font-black text-[#111827]">{pagination.total}</p>
           </div>
         </div>
 
@@ -467,9 +476,9 @@ function MenuItemsContent() {
           <button
             onClick={() => refetch()}
             disabled={loading}
-            className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#ef4444] text-white shadow-lg transition hover:scale-105 active:scale-95 disabled:opacity-50"
+            className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#ef4444] text-[#ffffff] shadow-xl transition hover:scale-105 active:scale-95 disabled:opacity-50"
           >
-            <RotateCcw className={cn("h-6 w-6", loading && "animate-spin")} />
+            <RotateCcw className={cn("h-7 w-7", loading && "animate-spin")} />
           </button>
         </div>
 
@@ -530,7 +539,7 @@ function MenuItemsContent() {
                   <div className="space-y-2">
                     <label className="text-sm font-bold">Image</label>
                     <div className="flex items-center gap-3">
-                      <label className="cursor-pointer bg-black text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
+                      <label className="cursor-pointer bg-black text-[#ffffff] px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
                         <ImageIconLucide className="h-4 w-4" /> Choose Image
                         <input type="file" className="hidden" onChange={(e) => setCreateForm(p => ({ ...p, image: e.target.files?.[0] ?? null }))} />
                       </label>
@@ -539,7 +548,7 @@ function MenuItemsContent() {
                   </div>
                 </div>
                 <div className="p-6 pt-4 border-t bg-gray-50 flex flex-col gap-2">
-                  <button type="submit" disabled={actionLoading} className="w-full bg-[#ef4444] text-white py-3 rounded-xl font-bold shadow-lg transition hover:bg-[#dc2626]">
+                  <button type="submit" disabled={actionLoading} className="w-full bg-[#ef4444] text-[#ffffff] py-3 rounded-xl font-bold shadow-lg transition hover:bg-[#dc2626]">
                     Save Product
                   </button>
                   <button type="button" onClick={() => setCreateOpen(false)} className="w-full bg-white border py-3 rounded-xl font-bold transition hover:bg-gray-50">
@@ -605,7 +614,7 @@ function MenuItemsContent() {
                   <div className="space-y-2">
                     <label className="text-sm font-bold">Image</label>
                     <div className="flex items-center gap-3">
-                      <label className="cursor-pointer bg-black text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
+                      <label className="cursor-pointer bg-black text-[#ffffff] px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
                         <ImageIconLucide className="h-4 w-4" /> Choose Image
                         <input type="file" className="hidden" onChange={(e) => setEditForm(p => ({ ...p, image: e.target.files?.[0] ?? null }))} />
                       </label>
@@ -614,7 +623,7 @@ function MenuItemsContent() {
                   </div>
                 </div>
                 <div className="p-6 pt-4 border-t bg-gray-50 flex flex-col gap-2">
-                  <button type="submit" disabled={actionLoading} className="w-full bg-[#ef4444] text-white py-3 rounded-xl font-bold shadow-lg transition hover:bg-[#dc2626]">
+                  <button type="submit" disabled={actionLoading} className="w-full bg-[#ef4444] text-[#ffffff] py-3 rounded-xl font-bold shadow-lg transition hover:bg-[#dc2626]">
                     Save Changes
                   </button>
                   <button type="button" onClick={() => setEditOpen(false)} className="w-full bg-white border py-3 rounded-xl font-bold transition hover:bg-gray-50">

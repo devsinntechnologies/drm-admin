@@ -47,23 +47,23 @@ function CategoryListItem({
     : null;
 
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-[#f1f5f9] bg-[#E5281A] p-4 transition hover:border-[#4f46e5]/20 hover:shadow-sm">
+    <div className="flex items-center justify-between rounded-2xl border border-[#f1f5f9]  p-4 transition hover:border-[#4f46e5]/20 hover:shadow-sm">
       <div className="flex items-center gap-4">
         <div className="relative h-12 w-12 overflow-hidden rounded-xl bg-[#f8fafc] flex items-center justify-center border border-[#f1f5f9]">
           {imageUrl ? (
             <Image src={imageUrl} alt={category.CategoryName} fill className="object-cover" />
           ) : (
-            <ImageIcon className="h-6 w-6 text-[#94a3b8]" />
+            <ImageIcon className="h-6 w-6 text-[#111827]" />
           )}
         </div>
         <div>
           <h4 className="text-sm font-bold text-[#111827]">{category.CategoryName}</h4>
-          <p className="text-xs text-[#64748b]">Sort order: {category.sortOrder}</p>
+          <p className="text-xs text-[#111827]">Sort order: {category.sortOrder}</p>
         </div>
       </div>
       <button
         onClick={() => onEdit(category.id)}
-        className="text-sm font-semibold text-[#6366f1] transition hover:text-[#4f46e5]"
+        className="rounded-lg px-3 py-1.5 text-sm font-semibold text-[#6366f1] transition hover:bg-[#6366f1]/10 hover:text-[#6366f1]"
       >
         Edit
       </button>
@@ -234,7 +234,7 @@ function CategoriesContent() {
   return (
     <AdminShell activeTab="categories">
       <main className="h-[calc(100vh-80px)] overflow-hidden">
-        <div className="mx-auto max-w-7xl h-full p-6">
+        <div className="h-full w-full">
           <div className="h-full rounded-[32px] border border-white bg-white p-8 shadow-2xl flex flex-col">
             <div className="flex items-center justify-between mb-8 shrink-0">
               <div>
@@ -301,14 +301,14 @@ function CategoriesContent() {
                       onClick={editId ? resetEdit : resetCreate}
                       className="flex items-center justify-center gap-2 rounded-2xl border-2 border-[#e5e7eb] bg-white py-3.5 text-sm font-bold text-[#111827] transition hover:bg-[#f9fafb]"
                     >
-                      <RotateCcw className="h-4 w-4" /> Reset
+                       Reset
                     </button>
                     <button
                       type="submit"
                       disabled={actionLoading}
-                      className="flex items-center justify-center gap-2 rounded-2xl bg-[#E5281A] text-white py-3.5 text-sm font-bold  shadow-lg transition hover:bg-[#ea580c] disabled:opacity-60"
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-[#E5281A] text-[#ffffff] py-3.5 text-sm font-bold  shadow-lg transition hover:bg-[#ea580c] disabled:opacity-60"
                     >
-                      {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                      {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                       Save
                     </button>
                   </div>
@@ -316,7 +316,7 @@ function CategoriesContent() {
               </div>
 
               {/* Right Column: List */}
-              <div className="rounded-3xl border border-[#f1f5f9] bg-white p-6 shadow-sm flex flex-col min-h-0">
+              <div className="rounded-3xl border border-[#f1f5f9] bg-[#ffffff] p-6 shadow-sm flex flex-col min-h-0">
                 <div className="mb-6 shrink-0">
                   <h3 className="text-xl font-bold text-[#111827]">Category List</h3>
                   <p className="text-xs text-[#6b7280]">Sorted by sort order from the API</p>
@@ -324,7 +324,7 @@ function CategoriesContent() {
 
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
                   {loading ? (
-                    <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-[#f97316]" /></div>
+                    <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin Category List" /></div>
                   ) : filteredCategories.length === 0 ? (
                     <div className="text-center py-12 text-[#94a3b8] text-sm font-medium">No categories found</div>
                   ) : (

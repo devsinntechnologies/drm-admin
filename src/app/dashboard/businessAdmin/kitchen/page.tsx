@@ -57,6 +57,7 @@ function KitchenPageContent() {
   const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [removedOrderIds, setRemovedOrderIds] = useState<Record<string, boolean>>({});
 
   const {
     orders: activeOrders,
@@ -85,16 +86,48 @@ function KitchenPageContent() {
     setIsAuthorized(true);
   }, [role, router, impersonatedBusinessId]);
 
+  // Listen for orders completed from orders page
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { orderId } = customEvent.detail || {};
+      if (orderId) {
+        setRemovedOrderIds(prev => ({ ...prev, [orderId]: true }));
+      }
+    };
+
+    window.addEventListener("order:served", handler as EventListener);
+    return () => {
+      window.removeEventListener("order:served", handler as EventListener);
+    };
+  }, []);
+
   // Filter orders into Takeaway vs Dining
-  const takeawayOrders = useMemo(() => 
-    activeOrders.filter(o => !o.table || o.orderType?.toLowerCase() === 'takeaway'), 
-    [activeOrders]
-  );
-  
-  const diningOrders = useMemo(() => 
-    activeOrders.filter(o => !!o.table && o.orderType?.toLowerCase() !== 'takeaway'), 
-    [activeOrders]
-  );
+  const takeawayOrders = useMemo(() => {
+    return activeOrders.filter((o: any) => {
+      if (removedOrderIds[o.id]) return false;
+      const orderType = (o.orderType ?? "").toString().toLowerCase().replace(/\s/g, "");
+      const table = (o.table ?? "").toString().toLowerCase().replace(/\s/g, "");
+      // hide completed/served orders from kitchen
+      const status = (o.status ?? "").toString().toLowerCase();
+      if (status === "served" || status === "completed" || status === "delivered") return false;
+      // Treat missing table, explicit orderType 'takeaway', or table labelled 'take away' as takeaway
+      return !o.table || orderType === "takeaway" || table === "takeaway";
+    });
+  }, [activeOrders, removedOrderIds]);
+
+  const diningOrders = useMemo(() => {
+    return activeOrders.filter((o: any) => {
+      if (removedOrderIds[o.id]) return false;
+      const orderType = (o.orderType ?? "").toString().toLowerCase().replace(/\s/g, "");
+      const table = (o.table ?? "").toString().toLowerCase().replace(/\s/g, "");
+      const status = (o.status ?? "").toString().toLowerCase();
+      if (status === "served" || status === "completed" || status === "delivered") return false;
+      return !( !o.table || orderType === "takeaway" || table === "takeaway" );
+    });
+  }, [activeOrders, removedOrderIds]);
 
   async function moveKitchenOrder(orderId: string, currentStatus: string) {
     setUpdatingOrderId(orderId);
@@ -112,6 +145,10 @@ function KitchenPageContent() {
     const toastId = toast.loading("Updating order status...");
     try {
       await updateOrderStatus(orderId, nextStatus);
+      // Optimistically remove order from kitchen UI when marked served
+      if (nextStatus === "served") {
+        setRemovedOrderIds(prev => ({ ...prev, [orderId]: true }));
+      }
       toast.success(`Order moved to ${nextStatus}`, { id: toastId });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to update order status.";
@@ -126,26 +163,26 @@ function KitchenPageContent() {
   return (
     <AdminShell activeTab="kitchen">
       <main className="h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc]">
-        <div className="h-full flex flex-col p-6">
+        <div className="h-full flex flex-col p-6 pb-24 overflow-hidden">
           
           {/* Main Grid: Two Columns */}
           <div className="flex-1 grid grid-cols-2 gap-8 min-h-0">
             
             {/* Take Away / Packaging Column */}
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6 min-h-0">
               {/* Summary Card */}
               <div className="bg-[#fff7ed] rounded-[32px] p-6 flex items-center gap-4 shadow-sm border border-[#ffedd5]">
-                <div className="h-14 w-14 rounded-full bg-[#0B9D58] flex items-center justify-center shadow-lg shadow-gree-200">
-                  <Bell className="h-7 w-7 text-white" />
+                <div className="h-14 w-14 rounded-full bg-[#f74d0b] flex items-center justify-center shadow-lg shadow-gree-200">
+                  <Bell className="h-7 w-7 text-[#ffffff]" />
                 </div>
                 <div>
-                  <h2 className="text-[#9a3412] font-black text-sm uppercase tracking-wider">Take Away / Packaging</h2>
-                  <p className="text-4xl font-black text-[#7c2d12]">{takeawayOrders.length}</p>
+                  <h2 className="text-[#995239] font-black text-sm uppercase tracking-wider">Take Away / Packaging</h2>
+                  <p className="text-4xl font-black text-[#7e2a0c]">{takeawayOrders.length}</p>
                 </div>
               </div>
 
               {/* Lane Container */}
-              <div className="flex-1 bg-[#fff7ed]/50 rounded-[40px] border border-[#ffedd5] overflow-hidden flex flex-col p-6">
+              <div className="flex-1 bg-[#fff7ed]/50 rounded-[40px] border border-[#ffedd5] overflow-hidden flex flex-col p-6 min-h-0">
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {takeawayOrders.length > 0 ? (
                     <div className="grid gap-4">
@@ -167,11 +204,11 @@ function KitchenPageContent() {
             </div>
 
             {/* Dining Order Column */}
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6 min-h-0">
               {/* Summary Card */}
               <div className="bg-[#f0fdf4] rounded-[32px] p-6 flex items-center gap-4 shadow-sm border border-[#dcfce7]">
                 <div className="h-14 w-14 rounded-full bg-[#0f9d58] flex items-center justify-center shadow-lg shadow-green-200">
-                  <CheckCircle2 className="h-7 w-7 text-white" />
+                  <CheckCircle2 className="h-7 w-7 text-[#ffffff]" />
                 </div>
                 <div>
                   <h2 className="text-[#166534] font-black text-sm uppercase tracking-wider">Dining Order</h2>
@@ -180,7 +217,7 @@ function KitchenPageContent() {
               </div>
 
               {/* Lane Container */}
-              <div className="flex-1 bg-[#f0fdf4]/50 rounded-[40px] border border-[#dcfce7] overflow-hidden flex flex-col p-6">
+              <div className="flex-1 bg-[#f0fdf4]/50 rounded-[40px] border border-[#dcfce7] overflow-hidden flex flex-col p-6 min-h-0">
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {diningOrders.length > 0 ? (
                     <div className="grid gap-4">
@@ -206,7 +243,7 @@ function KitchenPageContent() {
           {/* Floating Refresh */}
           <button 
             onClick={() => refetch()}
-            className="fixed bottom-8 right-8 h-14 w-14 rounded-2xl bg-[#ef4444] text-white shadow-xl shadow-red-200 flex items-center justify-center hover:scale-110 transition-all z-50 group"
+            className="fixed bottom-8 right-8 h-14 w-14 rounded-2xl bg-[#ef4444] text-[#ffffff] shadow-xl shadow-red-200 flex items-center justify-center hover:scale-110 transition-all z-50 group"
           >
             <RotateCcw className={cn("h-6 w-6 transition-transform group-hover:rotate-180", ordersLoading && "animate-spin")} />
           </button>
@@ -222,6 +259,7 @@ function OrderCard({ order, onMove, updating }: { order: any, onMove: any, updat
   const isNew = ["pending", "new", "placed"].includes(status);
   const isCooking = ["preparing", "cooking", "in_progress", "in-progress"].includes(status);
   const isReady = status === "ready";
+  const isServed = status === "served" || status === "completed" || status === "delivered";
 
   return (
     <div className="bg-white rounded-[24px] p-5 shadow-sm border border-slate-100 flex flex-col gap-4">
@@ -264,17 +302,24 @@ function OrderCard({ order, onMove, updating }: { order: any, onMove: any, updat
         ))}
       </div>
 
-      <button
-        onClick={() => onMove(order.id, order.status)}
-        disabled={updating}
-        className={cn(
-          "w-full h-12 rounded-2xl text-sm font-black text-white transition-all shadow-md flex items-center justify-center gap-2",
-          isNew ? "bg-[#ef4444]" : isCooking ? "bg-[#f97316]" : "bg-[#0f9d58]"
-        )}
-      >
-        {updating && <Loader2 className="h-4 w-4 animate-spin" />}
-        {isNew ? "START COOKING" : isCooking ? "MARK AS READY" : "MARK AS SERVED"}
-      </button>
+      {isServed ? (
+        <div className="w-full h-12 rounded-2xl text-sm font-black text-[#0f9d58] transition-all shadow-md flex items-center justify-center gap-2 bg-[#ecfdf5] border border-[#dcfce7]">
+          <CheckCircle2 className="h-5 w-5" />
+          COMPLETED
+        </div>
+      ) : (
+        <button
+          onClick={() => onMove(order.id, order.status)}
+          disabled={updating}
+          className={cn(
+            "w-full h-12 rounded-2xl text-sm font-black text-[#ffffff] transition-all shadow-md flex items-center justify-center gap-2",
+            isNew ? "bg-[#ef4444]" : isCooking ? "bg-[#f97316]" : "bg-[#0f9d58]"
+          )}
+        >
+          {updating && <Loader2 className="h-4 w-4 animate-spin" />}
+          {isNew ? "START COOKING" : isCooking ? "MARK AS READY" : "MARK AS SERVED"}
+        </button>
+      )}
     </div>
   );
 }

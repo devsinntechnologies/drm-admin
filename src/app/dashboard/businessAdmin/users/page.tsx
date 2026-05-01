@@ -8,7 +8,7 @@ import { useUsers, type UserRole } from "@/hooks/useUsers";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Edit, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { Edit, Loader2, Plus, Search, Trash2, Users, User, UtensilsCrossed, X } from "lucide-react";
 import { normalizeErrorMessage } from "@/lib/utils";
 
 function formatJoinedDate(isoDate: string) {
@@ -22,24 +22,24 @@ function formatJoinedDate(isoDate: string) {
 
 const getRoleIcon = (
   role: UserRole
-): { bg: string; icon: string; color: string } => {
+): { bg: string; icon: React.ReactNode; color: string } => {
   switch (role) {
     case "waiter":
       return {
         bg: "bg-blue-100",
-        icon: "👨‍💼",
+        icon: <Users className="h-6 w-6 text-blue-600" />,
         color: "text-blue-600",
       };
     case "kitchen":
       return {
         bg: "bg-purple-100",
-        icon: "👨‍🍳",
+        icon: <Users className="h-6 w-6 text-purple-600" />,
         color: "text-purple-600",
       };
     default:
       return {
         bg: "bg-gray-100",
-        icon: "👤",
+        icon: <Users className="h-6 w-6 text-gray-600" />,
         color: "text-gray-600",
       };
   }
@@ -58,13 +58,14 @@ function UsersContent() {
     actionLoading,
     createUser,
     updatePassword,
+    updateUserStatus,
     deleteUser,
   } = useUsers();
   const activeBusinessId = useActiveBusinessId();
   const impersonatedBusinessId = searchParams.get("businessId");
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedRole, setSelectedRole] = useState<UserRole | "all">("all");
+  const [selectedRole, setSelectedRole] = useState<UserRole | "waiters">("waiter");
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: "",
@@ -78,6 +79,9 @@ function UsersContent() {
 
   // Delete confirm state
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; role: UserRole; name: string } | null>(null);
+
+  // Deactivate state
+  const [deactivateTarget, setDeactivateTarget] = useState<{ id: string; role: UserRole; name: string; status: string } | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -99,7 +103,7 @@ function UsersContent() {
   const filteredUsers = useMemo(() => {
     let filtered = users;
 
-    if (selectedRole !== "all") {
+    if (selectedRole !== "waiters") {
       filtered = filtered.filter((user) => user.role === selectedRole);
     }
 
@@ -178,132 +182,176 @@ function UsersContent() {
     }
   };
 
+  const onToggleStatusConfirm = async () => {
+    if (!deactivateTarget) return;
+
+    const isActive = deactivateTarget.status.toLowerCase() === "active";
+    const nextStatus = isActive ? "inactive" : "active";
+    const actionLabel = isActive ? "Deactivating" : "Activating";
+
+    const toastId = toast.loading(`${actionLabel} user...`);
+    try {
+      await updateUserStatus(deactivateTarget, nextStatus);
+      toast.success(`${deactivateTarget.name} is now ${nextStatus}.`, { id: toastId });
+      setDeactivateTarget(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update user status.", { id: toastId });
+    }
+  };
+
 
   const stats = [
     {
       label: "Waiters",
       value: waiters.length,
       bg: "bg-gradient-to-br from-blue-50 to-blue-100",
-      icon: "👨‍💼",
+      icon: "waiter",
     },
     {
       label: "Kitchen",
       value: kitchens.length,
       bg: "bg-gradient-to-br from-purple-50 to-purple-100",
-      icon: "👨‍🍳",
+      icon: "kitchen",
     },
     {
       label: "Active",
       value: users.filter((u) => u.status.toLowerCase() === "active").length,
       bg: "bg-gradient-to-br from-green-50 to-green-100",
-      icon: "✓",
+      icon: "active",
     },
     {
       label: "Total",
       value: users.length,
       bg: "bg-gradient-to-br from-indigo-50 to-indigo-100",
-      icon: "👥",
+      icon: "total",
     },
   ];
 
   return (
     <AdminShell activeTab="users">
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Team</h1>
-            <p className="text-sm text-slate-600">Manage staff</p>
+        {/* Header - card style like screenshot */}
+        <div className="rounded-2xl border border-[#f3f3f3] bg-white p-4 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-lg bg-[#ef4444] flex items-center justify-center text-white shadow text-lg">
+              <Users className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-extrabold text-[#111827]">Team</h1>
+              <p className="text-sm text-[#6b7280]">Manage Staff</p>
+            </div>
           </div>
 
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <button className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
-                <Plus className="h-4 w-4" />
-                Add
-              </button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Team Member</DialogTitle>
-                <DialogDescription>Create a waiter or kitchen account.</DialogDescription>
-              </DialogHeader>
-              <form className="space-y-4" onSubmit={onCreateSubmit}>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[#111827]" htmlFor="role">Role</label>
-                  <select
-                    id="role"
-                    value={createForm.role}
-                    onChange={(event) => setCreateForm((prev) => ({ ...prev, role: event.target.value as UserRole }))}
-                    className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                  >
-                    <option value="waiter">Waiter</option>
-                    <option value="kitchen">Kitchen</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[#111827]" htmlFor="name">Name</label>
-                  <input
-                    id="name"
-                    value={createForm.name}
-                    onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
-                    className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                    placeholder="Enter name"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[#111827]" htmlFor="password">Password</label>
-                  <input
-                    id="password"
-                    type="password"
-                    value={createForm.password}
-                    onChange={(event) => setCreateForm((prev) => ({ ...prev, password: event.target.value }))}
-                    className="w-full rounded-xl border border-[#dbe3ef] px-3 py-2 text-sm outline-none focus:border-[#635bff]"
-                    placeholder="Enter password"
-                  />
-                </div>
-
-                {createForm.role === "waiter" ? (
-                  <p className="rounded-lg border border-[#dbe3ef] bg-[#f8fafc] px-3 py-2 text-xs text-[#475569]">
-                    Active Business ID: {activeBusinessId || "None"}
-                  </p>
-                ) : null}
-
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#635bff] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-                >
-                  {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  {actionLoading ? "Creating..." : "Create User"}
+          <div className="flex items-center gap-3">
+            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+              <DialogTrigger asChild>
+                <button className="inline-flex rounded-lg bg-[#ef4444] px-4 py-2 gap-1 text-lg font-extrabold text-white shadow-sm hover:bg-[#dc2626] transition">
+                  <Plus className="h-6 w-6" />
+                  Add
                 </button>
-              </form>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New User</DialogTitle>
+                  <DialogDescription>Update user details and roles</DialogDescription>
+                </DialogHeader>
+                <form className="space-y-4" onSubmit={onCreateSubmit}>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-[#111827]" htmlFor="name">Name</label>
+                    <input
+                      id="name"
+                      value={createForm.name}
+                      onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
+                      className="w-full rounded-xl border border-[#e0e0e0] px-4 py-3 text-sm outline-none focus:border-[#ef4444] bg-[#f8f8f8]"
+                      placeholder="Enter name"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-[#111827]" htmlFor="password">Password</label>
+                    <input
+                      id="password"
+                      type="password"
+                      value={createForm.password}
+                      onChange={(event) => setCreateForm((prev) => ({ ...prev, password: event.target.value }))}
+                      className="w-full rounded-xl border border-[#e0e0e0] px-4 py-3 text-sm outline-none focus:border-[#ef4444] bg-[#f8f8f8]"
+                      placeholder="Enter password"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-[#111827]" htmlFor="category">Category</label>
+                    <select
+                      id="category"
+                      value={createForm.role}
+                      onChange={(event) => setCreateForm((prev) => ({ ...prev, role: event.target.value as UserRole }))}
+                      className="w-full rounded-xl border border-[#e0e0e0] px-4 py-3 text-sm outline-none focus:border-[#ef4444] bg-[#f8f8f8]"
+                    >
+                      <option value="waiter">Waiter</option>
+                      <option value="kitchen">Kitchen</option>
+                    </select>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setCreateOpen(false)}
+                      className="flex-1 rounded-xl border border-[#e0e0e0] bg-white px-4 py-3 text-sm font-medium text-[#111827] hover:bg-[#f8f8f8]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={actionLoading}
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-4 py-3 text-sm font-extrabold text-white hover:bg-[#dc2626] disabled:opacity-60"
+                    >
+                      {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      Save
+                    </button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className={`${stat.bg} rounded-lg border border-gray-200 p-4`}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    {stat.label}
-                  </p>
-                  <p className="mt-2 text-3xl font-bold text-gray-900">
-                    {stat.value}
-                  </p>
-                </div>
-                <span className="text-2xl">{stat.icon}</span>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-[#ef4444] p-4 bg-[#eff8ff]">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-lg bg-[#ef4444] flex items-center justify-center text-white text-lg">
+                <User className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-gray-500">Waiters</p>
+                <p className="mt-2 text-2xl font-extrabold text-[#111827]">{waiters.length}</p>
               </div>
             </div>
-          ))}
+          </div>
+
+          <div className="rounded-2xl border border-[#ef4444] p-4 bg-[#fff5fb]">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-lg bg-[#ef4444] flex items-center justify-center text-white text-lg">
+                <UtensilsCrossed className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-gray-500">Kitchen</p>
+                <p className="mt-2 text-2xl font-extrabold text-[#111827]">{kitchens.length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#ef4444] p-4 bg-[#fff6f6]">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-lg bg-[#ef4444] flex items-center justify-center text-white text-lg">
+                <Users className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-gray-500">Total</p>
+                <p className="mt-2 text-2xl font-extrabold text-[#111827]">{users.length}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Search and Filter */}
@@ -319,34 +367,19 @@ function UsersContent() {
             />
           </div>
 
-          {/* Role Tabs */}
-          <div className="flex items-center gap-2 border-b border-slate-200">
-            <button
-              onClick={() => setSelectedRole("all")}
-              className={`px-4 py-3 text-sm font-medium transition ${selectedRole === "all"
-                ? "border-b-2 border-indigo-600 text-indigo-600"
-                : "text-slate-600 hover:text-slate-900"
-                }`}
-            >
-              All
-            </button>
+          {/* Role Tabs (pills) */}
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setSelectedRole("waiter")}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition ${selectedRole === "waiter"
-                ? "border-b-2 border-indigo-600 text-indigo-600"
-                : "text-slate-600 hover:text-slate-900"
-                }`}
+              className={`px-4 py-2 text-sm font-extrabold rounded-md transition ${selectedRole === "waiter" ? "bg-[#ef4444] text-[#ffffff]" : "bg-white border border-[#e1e3e6] text-[#4a4a4a] "}`}
             >
-              👨‍💼 Waiters
+              Waiters
             </button>
             <button
               onClick={() => setSelectedRole("kitchen")}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition ${selectedRole === "kitchen"
-                ? "border-b-2 border-indigo-600 text-indigo-600"
-                : "text-slate-600 hover:text-slate-900"
-                }`}
+              className={`px-4 py-2 text-sm font-extrabold rounded-md transition ${selectedRole === "kitchen" ? "bg-[#ef4444] text-[#ffffff] border border-gray-200" : "bg-white border border-[#e1e3e6] text-[#4a4a4a] "}`}
             >
-              👨‍🍳 Kitchen
+              Kitchen
             </button>
           </div>
         </div>
@@ -404,24 +437,29 @@ function UsersContent() {
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-slate-600">
-                      ✉️ {user.email}
+                      {user.email}
                     </p>
-                    <p className="text-sm text-slate-600">
-                      🏢 {user.businessName}
+                    {/* <p className="text-sm text-slate-600">
+                      {user.businessName}
                     </p>
                     <p className="text-xs text-slate-500">
                       Joined: {formatJoinedDate(user.createdAt)}
-                    </p>
+                    </p> */}
                   </div>
                 </div>
 
                 <div className="mt-4 flex items-center gap-3 border-t border-slate-200 pt-4">
                   <button
+                    onClick={() => setDeactivateTarget({ id: user.id, role: user.role, name: user.name, status: user.status })}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-[#e6e6e6] bg-white px-4 py-3 text-sm font-extrabold text-[#111827] hover:bg-[#fafafa]"
+                  >
+                    {isActive ? "Deactivate" : "Activate"}
+                  </button>
+                  <button
                     onClick={() => { setEditUser({ id: user.id, role: user.role, name: user.name }); setNewPassword(""); }}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-50"
                   >
                     <Edit className="h-4 w-4" />
-                    Edit Password
                   </button>
                   <button
                     onClick={() => setDeleteTarget({ id: user.id, role: user.role, name: user.name })}
@@ -469,12 +507,54 @@ function UsersContent() {
             <button
               type="submit"
               disabled={actionLoading}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#635bff] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#f04343] px-4 py-2.5 text-sm font-semibold text-[#ffffff] disabled:opacity-60"
             >
               {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {actionLoading ? "Updating..." : "Update Password"}
             </button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deactivate Dialog */}
+      <Dialog open={!!deactivateTarget} onOpenChange={(open) => { if (!open) setDeactivateTarget(null); }}>
+        <DialogContent>
+          <button
+            type="button"
+            onClick={() => setDeactivateTarget(null)}
+            className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-[#ef4444] text-[#ffffff] shadow-sm transition hover:bg-[#dc2626]"
+          >
+            <X className="h-5 w-5" />
+            <span className="sr-only">Close</span>
+          </button>
+          <DialogHeader>
+            <DialogTitle>{deactivateTarget?.status?.toLowerCase() === "active" ? "Deactivate User" : "Activate User"}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to {deactivateTarget?.status?.toLowerCase() === "active" ? "deactivate" : "activate"} <strong>{deactivateTarget?.name}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setDeactivateTarget(null)}
+              className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onToggleStatusConfirm}
+              disabled={actionLoading}
+              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-[#ffffff] disabled:opacity-60 ${deactivateTarget?.status?.toLowerCase() === "active" ? "bg-[#ef4444] hover:bg-[#dc2626]" : "bg-[#16a34a] hover:bg-[#15803d]"}`}
+            >
+              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {actionLoading
+                ? deactivateTarget?.status?.toLowerCase() === "active"
+                  ? "Deactivating..."
+                  : "Activating..."
+                : deactivateTarget?.status?.toLowerCase() === "active"
+                  ? "Deactivate"
+                  : "Activate"}
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -497,7 +577,7 @@ function UsersContent() {
             <button
               onClick={onDeleteConfirm}
               disabled={actionLoading}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-[#ffffff] hover:bg-red-700 disabled:opacity-60"
             >
               {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {actionLoading ? "Deleting..." : "Delete"}
