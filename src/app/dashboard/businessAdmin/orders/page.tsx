@@ -34,6 +34,11 @@ import {
   Pencil,
   Armchair,
   ShoppingBag,
+  Clipboard,
+  CalendarDays,
+  QrCode,
+  Utensils,
+  Hash,
 } from "lucide-react";
 import {
   Dialog,
@@ -408,6 +413,24 @@ function OrdersContent() {
 
   const refetch = () => fetchOrders(1);
 
+  const invoiceDate = useMemo(() => {
+    const dateValue = orderDetails?.orderId ? new Date() : new Date();
+    return dateValue.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }, [orderDetails?.orderId]);
+
+  const invoiceSubTotal = useMemo(
+    () => orderDetails?.Items.reduce((acc, item) => acc + Number(item.total || item.price || 0), 0) || 0,
+    [orderDetails],
+  );
+
+  const invoiceDelivery = Number(orderDetails?.deliveryCharges || 0);
+  const invoicePackaging = Number(orderDetails?.packagingPrice || 0);
+  const invoiceNetAmount = Number(orderDetails?.totalPrice || 0);
+
   const orderDetailsDialog = (
     <Dialog
       open={showOrderDetailsDialog}
@@ -418,47 +441,122 @@ function OrdersContent() {
         }
       }}
     >
-      <DialogContent className="max-w-3xl p-0 rounded-[12px] border-none overflow-hidden bg-transparent shadow-2xl">
+      <DialogContent className="max-w-[920px] p-0 rounded-[16px] border border-[#dcdfe4] overflow-hidden bg-[#f5f5f5] shadow-[0_24px_56px_rgba(0,0,0,0.22)]">
         <DialogTitle className="sr-only">
           Order Details
         </DialogTitle>
-        <div className="bg-white rounded-[12px] overflow-hidden shadow-lg">
-          <div className="bg-white p-6">
-            <div className="flex items-center justify-end">
-              {/* <button onClick={() => setShowOrderDetailsDialog(false)} className="text-gray-400 bg-white p-2 rounded-full hover:bg-gray-50">
-                <X className="h-5 w-5" />
-              </button> */}
-            </div>
-          </div>
-
-          <div className="px-6 pb-6">
-            <button className="w-full bg-[#0f9d58] text-[#ffffff] py-4 rounded-xl font-black text-lg shadow-lg flex items-center justify-center gap-3">
-              <Printer className="h-5 w-5" />
-              Complete & Print
+        <div className="rounded-[16px] overflow-hidden bg-[#f7f7f7]">
+          <div className="p-5 pb-4">
+            <button className="w-full bg-[#049247] text-[#ffffff] py-4 rounded-[16px] font-black text-[38px] shadow-[0_10px_24px_rgba(4,146,71,0.38)] flex flex-col items-center justify-center leading-none">
+              <span className="flex items-center gap-3 text-[18px]">
+                <Printer className="h-5 w-5" />
+                Complete &amp; Print
+              </span>
+              <span className="mt-2 text-[12px] font-semibold opacity-90">Tap to Finalize Order &amp; Print Invoice</span>
             </button>
           </div>
 
-                    {orderDetails ? (
-                      <div className="p-6">
-                        <div className="mt-6 space-y-2 text-sm">
-                          <div className="flex justify-between text-gray-500"><span>Sub-Total</span><span>Rs {orderDetails.Items.reduce((a,b) => a + Number(b.total || 0), 0)}</span></div>
-                          <div className="flex justify-between text-gray-500"><span>Delivery Charges</span><span>Rs {orderDetails.deliveryCharges || 0}</span></div>
-                          <div className="flex justify-between text-gray-500"><span>Packaging Fee</span><span>Rs {orderDetails.packagingPrice || 0}</span></div>
-                        </div>
-
-                        <div className="mt-6 rounded-xl bg-[#ef4444] text-[#ffffff] p-4 flex items-center justify-between">
-                          <span className="font-black uppercase">Net Amount</span>
-                          <span className="font-black text-xl">Rs {orderDetails.totalPrice}</span>
-                        </div>
-
-                        <div className="mt-4 text-xs text-gray-400">
-                          <p>Contact Information:</p>
-                          <p className="font-black text-gray-700">0300-4153368</p>
-                          <p className="font-black text-gray-700">0335-4153368</p>
-                        </div>
+          {orderDetails ? (
+            <div className="bg-[#f7f7f7]">
+              <div className="px-5 pb-0">
+                <div className="rounded-t-[4px] bg-[#f0eced] p-5 sm:p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#999799]">Premium dining experience</p>
+                      <div className="mt-4 inline-flex items-center gap-1 rounded-full border border-[#dfdbdd] bg-white px-3 py-1 text-[11px] font-black text-[#616063]">
+                        <Hash className="h-3 w-3 text-[#ef4444]" />
+                        {orderDetails.orderNumber}
                       </div>
-                    ) : null}
+                    </div>
+
+                    <div className="flex flex-col items-end gap-8">
+                      <Utensils className="h-7 w-7 text-[#ef4444]" />
+                      <div className="inline-flex items-center gap-1.5 rounded-full border border-[#dfdbdd] bg-white px-3 py-1 text-[11px] font-bold text-[#616063]">
+                        <CalendarDays className="h-3.5 w-3.5 text-[#ef4444]" />
+                        {invoiceDate}
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
+                <div className="bg-[#f7f7f7] px-0 py-5 sm:py-6">
+                  <p className="text-xs font-black uppercase tracking-[0.06em] text-[#9d9ca0]">Invoice to:</p>
+                  <h3 className="mt-2 text-[42px] font-black leading-tight text-[#222126]">Order #{orderDetails.orderNumber}</h3>
+                </div>
+
+                <div className="border-t border-[#cdcad1]" />
+
+                <div className="pt-4">
+                  <div className="grid grid-cols-[1fr_80px_120px] border-b border-[#cdcad1] pb-3 text-[11px] font-black uppercase tracking-[0.06em] text-[#9f9ca1]">
+                    <span>Item Description</span>
+                    <span className="text-center">Qty</span>
+                    <span className="text-right">Total</span>
+                  </div>
+
+                  <div className="divide-y divide-[#d8d5db]">
+                    {orderDetails.Items.map((item) => {
+                      const itemTotal = Number(item.total || item.price) * Number(item.quantity || 1);
+                      return (
+                        <div key={item.id} className="grid grid-cols-[1fr_80px_120px] py-3 text-[#222126]">
+                          <div>
+                            <p className="text-[14px] font-black lowercase leading-tight">{item.productName}</p>
+                            <p className="mt-1 text-[12px] font-medium text-[#9f9ca1]">
+                              Rs. {Number(item.price)} ({item.variant?.name || "Default"})
+                            </p>
+                          </div>
+                          <p className="text-center text-[34px] font-black leading-none">x{item.quantity}</p>
+                          <p className="text-right text-[28px] font-black leading-tight">Rs. {itemTotal}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-4 border-t border-[#d8d5db] pt-4">
+                  <div className="space-y-1 text-[15px] font-semibold text-[#7f7d83]">
+                    <div className="flex items-center justify-between">
+                      <span>Sub-Total</span>
+                      <span className="text-[#2e2d30] font-black">Rs. {invoiceSubTotal}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Delivery Charges</span>
+                      <span className="text-[#2e2d30] font-black">Rs.{invoiceDelivery}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Packaging Fee</span>
+                      <span className="text-[#2e2d30] font-black">Rs. {invoicePackaging}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-[14px] bg-[#dc2f2f] px-3 py-3 text-[#ffffff] shadow-[0_8px_16px_rgba(220,47,47,0.28)]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[18px] font-black uppercase">Net Amount</span>
+                    <span className="text-[36px] font-black">Rs. {invoiceNetAmount.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <div className="mt-8 flex items-end justify-between pb-5">
+                  <div>
+                    <p className="text-[12px] font-black text-[#a6a3a9]">Contact Information:</p>
+                    <p className="text-[22px] leading-tight font-black text-[#37363a]">0300-4153368</p>
+                    <p className="text-[22px] leading-tight font-black text-[#37363a]">0335-4153368</p>
+                  </div>
+                  <QrCode className="h-12 w-12 text-[#2f2f33]" />
+                </div>
+              </div>
+
+              <div className="border-t border-[#e4e1e4] bg-[#f4f4f4] py-4 text-center">
+                <p className="text-[28px] italic text-[#adabae]">Thank you for dining with us!</p>
+              </div>
+
+              <div className="bg-[#ebeaec] py-3 text-center">
+                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-[#929095]">Powered by Devsinn Technologies</p>
+                <p className="mt-1 text-[10px] font-black text-[#ef4444]">www.devsinntechnologies.com</p>
+              </div>
+            </div>
+          ) : null}
+        </div>
               </DialogContent>
     </Dialog>
   );
@@ -689,7 +787,7 @@ function OrdersContent() {
   if (view === "create") {
     return (
       <AdminShell activeTab="orders">
-        <main className="min-h-[calc(100vh-80px)] overflow-visible bg-white flex flex-col">
+        <main className="min-h-[calc(100vh-80px)] overflow-visible bg-transparent p-6 flex flex-col">
           {/* Green Header */}
          
             <button onClick={() => setView("list")} 
@@ -1096,17 +1194,40 @@ function OrdersContent() {
   return (
     <AdminShell activeTab="orders">
       <main className="w-full space-y-8 bg-[#f8fafc] min-h-[calc(100vh-80px)]">
-        <button 
-          onClick={() => setView("create")}
-          className="w-full bg-gradient-to-r from-[#00a341] to-[#007d53] text-[#ffffff] py-5 rounded-2xl  text-2xl font-bold flex items-center justify-center gap-3 shadow-xl transition hover:bg-[#0B9D58] hover:-translate-y-1 active:translate-y-0"
-        >
-          <Plus className="h-6 w-6 text-[2px] border-3 boder-[#ffffff] rounded-full stroke-[4] " /> Create New Order
-        </button>
+        {displayedOrders.length > 0 && (
+          <button 
+            onClick={() => setView("create")}
+            className="w-full bg-gradient-to-r from-[#00a341] to-[#018152] text-[#ffffff] py-5 rounded-2xl  text-2xl font-bold flex items-center justify-center gap-3 shadow-xl transition hover:bg-[#0B9D58] hover:-translate-y-1 active:translate-y-0"
+          >
+            <Plus className="h-6 w-6 text-[2px] border-3 boder-[#ffffff] rounded-full stroke-[4] " /> Create New Order
+          </button>
+        )}
 
         {ordersLoading && !orders.length ? (
           <div className="flex justify-center py-32"><Loader2 className="h-12 w-12 animate-spin text-[#0f9d58]" /></div>
+        ) : displayedOrders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-[#f8fafc] to-[#f0f5f9] rounded-3xl border border-[#e5e9f0] py-20 px-4">
+            <div className="mb-8">
+              <div className="relative w-24 h-24 mx-auto">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#c5f7cf] to-[#a8f0bb] rounded-full opacity-20 blur-2xl"></div>
+                <div className="relative bg-white rounded-full w-full h-full flex items-center justify-center border-2 border-[#d8f4e0] shadow-lg">
+                  <Clipboard className="w-12 h-12 text-[#0f9d58]" strokeWidth={1.5} />
+                </div>
+              </div>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-[#1f2937] mb-3 text-center">No Active Orders</h2>
+            <p className="text-base text-[#6b7280] text-center mb-8 max-w-sm">
+              There are no active orders at the moment. Create a new order to get started.
+            </p>
+            <button 
+              onClick={() => setView("create")}
+              className="bg-[#0A795A]  text-[#ffffff] px-8 py-3 rounded-full font-black text-lg flex items-center gap-2 shadow-lg hover:shadow-xl transition hover:-translate-y-1 active:translate-y-0"
+            >
+              <Plus className="h-5 w-5" /> Create Your Order
+            </button>
+          </div>
         ) : (
-          <div className="space-y-8 pb-20">
+          <div className="space-y-8 pb-20  mx-20">
             {displayedOrders.map((order) => {
               const isTakeAway = String(order.table || "").toLowerCase().includes("take");
               const cardBg = isTakeAway ? "bg-[#f8f2e8]" : "bg-[#c5f7cf]";
