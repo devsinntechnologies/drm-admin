@@ -65,9 +65,10 @@ type PageView = "list" | "create";
 interface HeldOrder {
   id: string;
   items: any[];
-  delivery: number;
-  packaging: number;
+  delivery: string;
+  packaging: string;
   override: number;
+  productOverrides: Record<string, string>;
   timestamp: number;
 }
 
@@ -123,9 +124,10 @@ function OrdersContent() {
   
   // Create Order State
   const [cartItems, setCartItems] = useState<any[]>([]);
-  const [deliveryCharges, setDeliveryCharges] = useState(0);
-  const [packagingCharges, setPackagingCharges] = useState(0);
+  const [deliveryCharges, setDeliveryCharges] = useState<string>("");
+  const [packagingCharges, setPackagingCharges] = useState<string>("");
   const [overridePrice, setOverridePrice] = useState(0);
+  const [productOverrides, setProductOverrides] = useState<Record<string, string>>({});
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showOrderDetailsDialog, setShowOrderDetailsDialog] = useState(false);
   const [orderDetails, setOrderDetails] = useState<OrderDetailsState | null>(null);
@@ -143,7 +145,7 @@ function OrdersContent() {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [removedOrderIds, setRemovedOrderIds] = useState<Record<string, boolean>>({});
 
-  const { products, loading: productsLoading } = useProducts({ page: 1, limit: 100 });
+  const { products, loading: productsLoading, refetch: refetchProducts } = useProducts({ page: 1, limit: 100 });
   const { categories: allCategories } = useCategories({ page: 1, limit: 100 });
   const { orders, loading: ordersLoading, fetchOrders, updateOrderStatus, updateOrderById, createOrder, getOrderById, actionLoading } = useOrders({ range: "day" });
   const { tables, loading: tablesLoading } = useTables({ page: 1, limit: 100 });
@@ -199,7 +201,21 @@ function OrdersContent() {
 
   const subtotal = useMemo(() => cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [cartItems]);
   const cartQuantityTotal = useMemo(() => cartItems.reduce((acc, item) => acc + item.quantity, 0), [cartItems]);
-  const grandTotal = subtotal + deliveryCharges + packagingCharges + overridePrice;
+  const numericDelivery = parseFloat(deliveryCharges || "0") || 0;
+  const numericPackaging = parseFloat(packagingCharges || "0") || 0;
+  const productsTotal = useMemo(() => {
+    const productIds = Array.from(new Set(cartItems.map(i => i.productId)));
+    return productIds.reduce((sum, pid) => {
+      const baseTotal = cartItems
+        .filter(i => i.productId === pid)
+        .reduce((a, b) => a + (Number(b.price) * Number(b.quantity)), 0);
+      const overrideStr = productOverrides[pid];
+      const overrideNum = overrideStr !== undefined && overrideStr !== "" ? parseFloat(overrideStr as string) : NaN;
+      const productTotal = Number.isFinite(overrideNum) ? overrideNum : baseTotal;
+      return sum + productTotal;
+    }, 0);
+  }, [cartItems, productOverrides]);
+  const grandTotal = productsTotal + numericDelivery + numericPackaging + overridePrice;
 
   const editingSubtotal = useMemo(
     () => editingItems.reduce((acc, item) => acc + item.price * item.quantity, 0),
@@ -337,13 +353,15 @@ function OrdersContent() {
       delivery: deliveryCharges,
       packaging: packagingCharges,
       override: overridePrice,
+      productOverrides: { ...productOverrides },
       timestamp: Date.now(),
     };
     setHeldOrders(prev => [...prev, newHeld]);
     setCartItems([]);
-    setDeliveryCharges(0);
-    setPackagingCharges(0);
+    setDeliveryCharges("");
+    setPackagingCharges("");
     setOverridePrice(0);
+    setProductOverrides({});
     toast.success("Order moved to queue");
   };
 
@@ -352,6 +370,7 @@ function OrdersContent() {
     setDeliveryCharges(held.delivery);
     setPackagingCharges(held.packaging);
     setOverridePrice(held.override);
+    setProductOverrides(held.productOverrides);
     setHeldOrders(prev => prev.filter(o => o.id !== held.id));
     setIsQueueOpen(false);
   };
@@ -397,8 +416,8 @@ function OrdersContent() {
         tableId,
         items: cartItems.map(i => ({ productId: i.productId, variantId: i.variantId, quantity: i.quantity, price: i.price })),
         totalPrice: grandTotal,
-        deliveryCharges,
-        packagingPrice: packagingCharges,
+        deliveryCharges: numericDelivery,
+        packagingPrice: numericPackaging,
       };
       await createOrder(payload);
       toast.success("Order placed successfully", { id: toastId });
@@ -791,8 +810,8 @@ function OrdersContent() {
           {/* Green Header */}
          
             <button onClick={() => setView("list")} 
-            className="bg-[#0C9E58] flex items-center justify-center gap-4 h-16 text-[#ffffff] font-bold text-lg">
-              <ArrowLeft className="h-6 w-6" /> Active Orders
+            className="bg-gradient-to-r from-[#00a341] to-[#018152] rounded-xl flex items-center justify-center gap-4 h-18 text-[#ffffff] font-bold text-xl">
+              <ArrowLeft className="h-7 w-7 stroke-[2]" /> Active Orders
             </button>
         
 
@@ -829,17 +848,17 @@ function OrdersContent() {
                           : "bg-white border-gray-200 text-black hover:border-gray-300"
                       )}
                     >
-                      <div className="flex items-center gap-2">
-                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-[#f8fafc] border border-[#eef2f7]">
+                      <div className="flex items-center gap-1">
+                        <div className="relative h-13 w-13 shrink-0 overflow-hidden rounded-xl bg-[#f8fafc] border border-[#eef2f7]">
                           {category.image ? (
                             <Image src={productImageUrl(category.image)} alt={category.CategoryName} fill className="object-cover" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#fef3c7] to-[#fde68a] text-[#92400e] text-sm font-black">
-                              {category.CategoryName.slice(0, 1).toUpperCase()}
+                              {category.CategoryName.slice(0, 1)}
                             </div>
                           )}
                         </div>
-                        <span className="truncate text-sm max-w-[80px]">
+                        <span className="truncate text-sm max-w-[100px]">
                           {category.CategoryName}
                         </span>
                       </div>
@@ -859,30 +878,38 @@ function OrdersContent() {
                       <button
                         key={product.id}
                         onClick={() => {
-                          // When product is clicked, ensure it's "selectable" even if not added yet
-                          // or just rely on the summary showing all cart products
                           const existing = cartItems.find(i => i.productId === product.id);
-                          if (!existing && product.variants?.length > 0) {
-                            handleAddToCart(product, product.variants[0]);
+                          const variant = product.variants?.length > 0 ? product.variants[0] : { id: 'default', name: 'Qty', price: product.price || 0, inStock: 1, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+                          if (!existing) {
+                            handleAddToCart(product, variant as any);
                           }
                         }}
                         className={cn(
-                          "bg-white rounded-[40px] overflow-hidden border-2 transition text-left group shadow-sm flex flex-col",
+                          "bg-white rounded-[18px] overflow-hidden border-2 transition text-left group shadow-sm flex flex-col",
                           cartProductIds.includes(product.id) ? "border-[#0f9d58]" : "border-transparent hover:border-gray-100"
                         )}
                       >
-                        <div className="relative w-full h-72 lg:h-80">
+                        <div className="relative w-full h-78 lg:h-80">
                           <Image src={productImageUrl(product.image)} alt={product.name} fill className="object-cover" />
                         </div>
-                        <div className="p-5">
-                          <h3 className="font-black text-lg text-[#111827] mb-3 truncate">{product.name}</h3>
+                        <div className="p-3">
+                          <h3 className="font-semibold text-md text-[#111827] mb-3 truncate text-right">{product.name}</h3>
                           <div className="space-y-1.5">
-                            {product.variants?.map(v => (
-                              <div key={v.id} className="flex justify-between text-[10px] font-black">
-                                <span className="text-gray-400 uppercase tracking-wider">{v.name}</span>
-                                <span className="text-[#0f9d58]">Rs. {v.price}</span>
+                            {product.variants && product.variants.length > 0 ? (
+                              product.variants.map(v => (
+                                <div key={v.id} className="flex justify-between text-[10px] font-black">
+                                   <span className="text-[#007d53] bg-[#e6f2ef] rounded-sm p-2">Rs. {v.price}</span>
+                                  <span className="text-[#111827] uppercase tracking-wider">{v.name}</span>
+                                 
+                                </div>
+                              ))
+                            ) : (
+                              <div className="flex justify-between text-[10px] font-black">
+                                <span className="text-[#007d53]">Rs. {product.price}</span>
+                                <span className="text-[#111827] uppercase tracking-wider">Qty</span>
+                                
                               </div>
-                            ))}
+                            )}
                           </div>
                         </div>
                       </button>
@@ -893,8 +920,8 @@ function OrdersContent() {
             </div>
 
             {/* Right Column: Summary */}
-            <div className="w-[40%] flex flex-col bg-[#f0fdf4] p-4 rounded-[20px] border border-[#dff7e9] relative">
-              <div className="bg-[#0f9d58] rounded-t-[16px] p-5 flex-shrink-0 flex items-center justify-between text-[#ffffff] shadow-lg">
+            <div className="w-[40%] flex p-2 flex-col bg-[#f0fdf4] rounded-[20px] border-2 border-[#b9f8cf] relative">
+              <div className="bg-gradient-to-r from-[#00a341] to-[#018152] rounded-t-[16px] p-5 flex-shrink-0 flex items-center justify-between text-[#ffffff] shadow-lg">
                 <div className="flex items-center gap-3">
                   <ShoppingCart className="h-6 w-6" />
                   <span className="font-black text-lg">Order Summary</span>
@@ -921,45 +948,65 @@ function OrdersContent() {
                 ) : (
                   <div className="space-y-6">
                     {productsInCart.map(product => (
-                      <div key={product.id} className="bg-white rounded-2xl p-4 border border-[#dff7e9] shadow-sm animate-in fade-in zoom-in duration-300">
-                        <div className="flex gap-4 mb-4">
-                          <div className="relative h-20 w-20 rounded-2xl overflow-hidden border-2 border-white shadow-md">
-                            <Image src={productImageUrl(product.image)} alt="selected" fill className="object-cover" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-black text-xl truncate">{product.name}</h4>
-                              <button onClick={() => setCartItems(prev => prev.filter(i => i.productId !== product.id))} className="text-gray-300 hover:text-gray-500 p-1"><X className="h-6 w-6" /></button>
+                      <div key={product.id} className="bg-white rounded-2xl p-4 border-2 border-[#b9f8cf] shadow-sm animate-in fade-in zoom-in duration-300">
+                        
+                        <div className="flex gap-4">
+                          {/* Left: Image */}
+                          <div className="relative h-24 w-24 rounded-2xl overflow-hidden border-2 border-white shadow-md flex-shrink-0">
+                              <Image src={productImageUrl(product.image)} alt="selected" fill className="object-cover" />
                             </div>
-                            <p className="text-sm text-gray-500 font-semibold uppercase tracking-wider">Configure variants</p>
-                          </div>
-                        </div>
 
-                        <div className="space-y-3">
-                          {product.variants.map(v => {
+                          {/* Right: Product Info */}
+                          <div className="flex-1 flex flex-col min-w-0">
+                            {/* Product Name + Close Button */}
+                            <div className="flex items-center justify-end gap-2 mb-3">
+                              <h4 className="text-md font-black text-gray-700 truncate">{product.name}</h4>
+                              <button onClick={() => setCartItems(prev => prev.filter(i => i.productId !== product.id))} className="text-[#7d7d7d] hover:text-[#7d7d7d] border border-[#f5f5f5] bg-[#f5f5f5] rounded-full p-1"><X className="h-4 w-4" /></button>
+                            </div>
+
+                            {/* Variants */}
+                            <div className="space-y-3 mb-4">
+                          {(product.variants && product.variants.length > 0 ? product.variants : [{ id: 'default', name: 'Qty', price: product.price || 0, inStock: 1, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }]).map(v => {
                             const currentQty = cartItems.find(i => i.productId === product.id && i.variantId === v.id)?.quantity || 0;
                             return (
                               <div key={v.id} className="flex items-center justify-between">
-                                <span className="text-sm font-semibold text-gray-700">{v.name} <span className="text-[#ef4444] font-black">(Rs {v.price})</span></span>
+                                <span className="text-md font-semibold text-gray-700">{v.name} <span className="text-[#ef4444] font-black">(Rs {v.price})</span></span>
                                 <div className="flex items-center gap-3">
-                                  <button onClick={() => handleUpdateQty(product.id, v.id, -1)} className="h-9 w-9 rounded-xl border-2 border-[#ef4444] text-[#ef4444] flex items-center justify-center transition active:scale-90 shadow-sm"><Minus className="h-4 w-4" /></button>
-                                  <span className="font-black text-lg min-w-[20px] text-center">{currentQty}</span>
-                                  <button onClick={() => handleAddToCart(product, v)} className="h-9 w-9 rounded-xl bg-[#dcfce7] border-2 border-[#16a34a] text-[#16a34a] flex items-center justify-center transition active:scale-90 shadow-sm"><Plus className="h-4 w-4" /></button>
+                                  <button onClick={() => handleUpdateQty(product.id, v.id, -1)} className="h-11 w-11 rounded-xl border-2 border-[#ef4444] bg-[#ffebee] text-[#ef4444] flex items-center justify-center transition active:scale-90 shadow-sm"><Minus className="h-5 w-5" /></button>
+                                  <span className="font-black border-2 border-[#eeced1] bg-[#f0f7ff] text-[#e52819] rounded-xl text-2xl w-[55px] p-[8] text-center">{currentQty}</span>
+                                  <button onClick={() => handleAddToCart(product, v)} className="h-11 w-11 rounded-xl bg-[#dcfce7] border-2 border-[#16a34a] text-[#16a34a] flex items-center justify-center transition active:scale-90 shadow-sm"><Plus className="h-5 w-5" /></button>
                                 </div>
                               </div>
                             );
                           })}
+                           </div>
+
+                           {/* Override */}
+                           <div className="flex items-center justify-between">
+                             <label className="text-sm font-bold text-gray-500 tracking-wider">Override</label>
+                           <div className="flex items-center gap-2">
+                                 <span className="text-gray-400 font-bold">Rs</span>
+                                 <input
+                                   type="number"
+                                   step="1"
+                                   value={productOverrides[product.id] ?? String(Math.round(cartItems.filter(i => i.productId === product.id).reduce((a,b) => a + (Number(b.price) * Number(b.quantity)), 0)))}
+                                   onChange={(e) => setProductOverrides(prev => ({ ...prev, [product.id]: e.target.value }))}
+                                   className="w-20 bg-[#f5f5f5] rounded-lg p-1 text-md font-black outline-none text-left border-2 border-[#e0e0e0]"
+                                 />
+                           </div>
+                            </div>
+                          </div>
                         </div>
 
-                        <div className="mt-5 pt-5 border-t border-dashed border-[#e6f6ea] flex items-center justify-between">
-                           <label className="text-lg font-semibold text-gray-400 uppercase tracking-wider">Override</label>
-                           <div className="flex items-center gap-2">
-                             <span className="text-gray-400 font-bold text-lg">Rs</span>
-                             <input type="number" defaultValue={0} className="w-16 bg-gray-200 rounded-lg p-2 text-md font-black outline-none text-left border" />
-                           </div>
-                        </div>
-                        <div className="text-right mt-2">
-                           <span className="text-[#0f9d58] font-black text-lg">Rs {cartItems.filter(i => i.productId === product.id).reduce((a,b) => a + (b.price * b.quantity), 0)}</span>
+                        {/* Total Price */}
+                        <div className="text-right mt-3">
+                          {(() => {
+                            const baseTotal = cartItems.filter(i => i.productId === product.id).reduce((a,b) => a + (Number(b.price) * Number(b.quantity)), 0);
+                            const overrideStr = productOverrides[product.id];
+                            const overrideNum = overrideStr !== undefined && overrideStr !== "" ? parseFloat(overrideStr as string) : NaN;
+                            const productTotal = Number.isFinite(overrideNum) ? overrideNum : baseTotal;
+                            return <span className="text-[#007d53] font-black text-2xl">Rs {productTotal.toFixed(2)}</span>;
+                          })()}
                         </div>
                       </div>
                     ))}
@@ -971,60 +1018,92 @@ function OrdersContent() {
 
               {/* Extra Charges (separate card) */}
               {cartItems.length > 0 && (
-                <div className="p-4">
-                  <div className="bg-white rounded-2xl p-4 border border-[#eef6ee] shadow-sm">
+                <div className="px-8 py-2">
+                  <div className="bg-white rounded-2xl p-1 px-4 border-2 border-[#ededed] shadow-sm">
                     <details className="group">
-                      <summary className="flex items-center justify-between cursor-pointer py-2">
-                        <div className="flex items-center gap-3 font-black text-gray-400 uppercase tracking-widest text-[14px]"><Plus className="h-8 w-8 bg-gray-50 text-gray-600 p-1 rounded-full border border-gray-600" /> Extra Charges (optional)</div>
-                        <ChevronDown className="h-4 w-4 text-gray-300 transition group-open:rotate-180" />
+                      <summary className="flex items-center justify-between cursor-pointer p-1">
+                        <div className="flex items-center gap-3 font-black text-[#99a1b0] tracking-widest text-[14px]"><Plus className="h-7 w-7 bg-gray-50 text-[#99a1b0] stroke-[5] p-1 rounded-full border-2 border-[#99a1b0]" /> Extra Charges (optional)</div>
+                        <ChevronDown className="h-6 w-6 stroke-[2] text-[#49454f] transition group-open:rotate-180" />
                       </summary>
-                      <div className="pt-4 space-y-3 animate-in slide-in-from-top-2 duration-300">
-                        <div className="flex items-center justify-between bg-gray-50 p-3 rounded-2xl border border-gray-100">
-                          <div className="flex items-center gap-3">
-                            <div className="bg-white p-2 rounded-lg shadow-sm"><Store className="h-6 w-7 text-orange-400" /></div>
-                            <span className="text-lg font-black text-gray-700">Delivery Charge</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[14px] font-bold text-gray-400">Rs</span>
-                            <input type="number" value={deliveryCharges} onChange={(e) => setDeliveryCharges(Number(e.target.value))} className="w-16 bg-gray-200 rounded-lg p-2 text-md font-black outline-none text-left border" />
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between bg-gray-50 p-3 rounded-2xl border border-gray-100">
-                          <div className="flex items-center gap-3">
-                            <div className="bg-white p-2 rounded-lg shadow-sm"><Package className="h-5 w-5 text-gray-400" /></div>
-                            <span className="text-lg font-black text-gray-700">Packing / Box Charge</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[14px] font-bold text-gray-400">Rs</span>
-                            <input type="number" value={packagingCharges} onChange={(e) => setPackagingCharges(Number(e.target.value))} className="w-16 bg-gray-200 rounded-lg p-2 text-md font-black outline-none text-left border" />
-                          </div>
-                        </div>
-                      </div>
+                              <div className=" p-1  animate-in  duration-300">
+                                <div className="flex items-center justify-between  py-3 rounded-2xl">
+                                  <div className="flex items-center gap-3">
+                                    <div className="bg-[#fff3e5] p-2 rounded-lg shadow-sm"><Store className="h-6 w-7 text-orange-400" /></div>
+                                    <span className="text-md font-black text-gray-700">Delivery Charge</span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    <div className="bg-[#f5f5f5] border-2 border-[#e3e3e3] rounded-lg px-2 py-2 flex items-center gap-2">
+                                      <span className="text-[12px] font-bold text-[#707070]">Rs</span>
+                                      <input type="number" placeholder="0" value={deliveryCharges} onChange={(e) => setDeliveryCharges(e.target.value)} className="w-18 bg-transparent p-0 text-lg font-black outline-none text-left" />
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="border-t-2 border-[#cac4d0]" />
+                                <div className="flex items-center justify-between py-3 rounded-2xl ">
+                                  <div className="flex items-center gap-3">
+                                    <div className="bg-[#f2efed] p-2 rounded-lg shadow-sm"><Package className="h-6 w-7 text-[#795548]" /></div>
+                                    <span className="text-lg font-black text-gray-700">Packing / Box Charge</span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    <div className="bg-[#f5f5f5] border-2 border-[#e3e3e3] rounded-lg px-2 py-2 flex items-center gap-2">
+                                      <span className="text-[12px] font-bold text-[#707070] ">Rs</span>
+                                      <input type="number" placeholder="0" value={packagingCharges} onChange={(e) => setPackagingCharges(e.target.value)} className="w-18 bg-transparent p-0 text-lg font-black outline-none text-left" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
                     </details>
                   </div>
                 </div>
               )}
 
               {cartItems.length > 0 && (
-                 <div className="bg-[#f0fdf4] p-6 pt-0 rounded-b-[32px] flex-shrink-0">
-                   <div className="bg-[#fff6ed] rounded-3xl p-6 border border-[#ffa218] shadow-inner">
-                     <div className="flex justify-between text-xs font-bold text-gray-400 mb-2 border-b-3 border-[#ffa218] pb-2">
-                        <span className="uppercase tracking-widest">items ({cartItems.length} )</span>
-                        <span className="text-gray-400">Rs {subtotal}</span>
-                      </div>
-                      <div className="flex justify-between items-end">
-                        <span className="text-lg font-black text-[#dd3a0f] uppercase tracking-tighter">Grand Total</span>
-                        <span className="text-lg font-black text-[#dd3a0f] tracking-tight">Rs {grandTotal}</span>
-                      </div>
+                 <div className="bg-[#f0fdf4] px-8 pt-0 rounded-b-[32px] flex-shrink-0">
+                   <div className="bg-[#fff6ed] rounded-3xl p-6 border-2 border-[#ffd6a7] shadow-inner">
+                     <div className="flex justify-between items-center mb-3">
+                       <div className="text-sm text-gray-500">Items ({cartItems.length})</div>
+                       <div className="text-sm font-black text-[#99a1b0]">Rs {productsTotal.toFixed(0)}</div>
+                     </div>
+                     {numericDelivery > 0 && (
+                       <div className="flex justify-between items-center mb-2">
+                         <div className="flex items-center gap-2">
+                           <span className="text-[#ff9800] text-lg">🚚</span>
+                           <span className="text-[#ff9800] font-bold">Delivery Charge</span>
+                         </div>
+                         <span className="text-[#ff9800] font-black">Rs {numericDelivery}</span>
+                       </div>
+                     )}
+                     {numericPackaging > 0 && (
+                       <div className="flex justify-between items-center mb-3">
+                         <div className="flex items-center gap-2">
+                           <span className="text-[#795548] text-lg">📦</span>
+                           <span className="text-[#795548] font-bold">Packing Charge</span>
+                         </div>
+                         <span className="text-[#795548] font-black">Rs {numericPackaging}</span>
+                       </div>
+                     )}
+                     <div className="border-t-2 border-[#ffa218] my-3" />
+                     <div className="flex justify-between items-end">
+                       <span className="text-lg font-black text-[#f13403] uppercase tracking-tighter">Grand Total</span>
+                       <span className="text-[#f13403] font-black text-2xl">Rs {grandTotal.toFixed(2)}</span>
+                     </div>
                     </div>
 
                     <button
                       onClick={() => setShowConfirmDialog(true)}
                       disabled={actionLoading || cartQuantityTotal === 0}
-                      className={cartQuantityTotal > 0 ? "w-full py-5 mt-4 rounded-[32px] font-black text-lg shadow-2xl flex items-center justify-center gap-3 transition active:scale-95 bg-[#0f9d58] text-[#ffffff] hover:bg-[#0b8a4a]" : "w-full py-5 mt-4 rounded-[32px] font-black text-lg shadow-2xl flex items-center justify-center gap-3 transition active:scale-95 bg-[#e5e7eb] text-gray-400 cursor-not-allowed"}
+                      className={cartQuantityTotal > 0 ? "w-full py-5 mt-4 rounded-[16px] font-black text-xl shadow-2xl flex items-center justify-center gap-3 transition active:scale-95 bg-gradient-to-r from-[#00a341] to-[#018152] text-[#ffffff] hover:bg-[#0b8a4a]" : "w-full py-5 mt-4 rounded-[32px] font-black text-lg shadow-2xl flex items-center justify-center gap-3 transition active:scale-95 bg-[#e5e7eb] text-gray-400 cursor-not-allowed"}
                     >
-                      {actionLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-6 w-6" />}
+                      {actionLoading ? <Loader2 className="h-8 w-8 stroke-[2] animate-spin" /> : <CheckCircle2 className="h-8 w-8 stroke-[2]" />}
                       Place Order Now
+                    </button>
+                    <button
+                      onClick={() => refetchProducts()}
+                      disabled={productsLoading}
+                      className="w-full py-3 mt-2 rounded-[16px] font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition active:scale-95 bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    >
+                      {productsLoading ? <Loader2 className="h-4 w-4 stroke-[2] animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                      Refresh Products
                     </button>
                 </div>
               )}
@@ -1033,25 +1112,25 @@ function OrdersContent() {
 
           {/* Held Orders Dialog */}
           <Dialog open={isQueueOpen} onOpenChange={setIsQueueOpen}>
-            <DialogContent className="max-w-md p-0 rounded-[40px] border-none overflow-hidden bg-[#f8fafc] shadow-2xl">
-              <DialogHeader className="bg-[#0f9d58] p-8 text-[#ffffff] relative">
+            <DialogContent className="max-w-xl p-0 rounded-t-[20px] border-none overflow-hidden bg-[#f8fafc] shadow-2xl">
+              <DialogHeader className="bg-gradient-to-r from-[#00a341] to-[#018152] px-7 py-5 text-[#ffffff] relative">
                 <div className="flex items-center gap-4">
-                  <History className="h-8 w-8" />
-                  <DialogTitle className="text-3xl font-black">Held Orders Queue</DialogTitle>
+                  <History className="h-5 w-5" />
+                  <DialogTitle className="text-xl text-[#ffffff] font-black">Held Orders Queue</DialogTitle>
                 </div>
-                <button onClick={() => setIsQueueOpen(false)} className="absolute top-8 right-8 bg-white/20 p-2 rounded-full hover:bg-white/30 transition">
+                <button onClick={() => setIsQueueOpen(false)} className="absolute top-5 right-8 bg-white/20 p-2 rounded-full hover:bg-white/30 transition">
                   <X className="h-5 w-5" />
                 </button>
               </DialogHeader>
-              <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar">
+              <div className="p-3 max-h-[400px] overflow-y-auto custom-scrollbar">
                 {heldOrders.length === 0 ? (
                   <div className="py-12 text-center text-gray-400 font-bold">No orders in queue</div>
                 ) : (
                   heldOrders.map((held) => (
                     <div key={held.id} className="bg-white rounded-3xl p-6 shadow-sm border border-black/5 flex items-center justify-between group hover:border-[#0f9d58]/20 transition">
                       <div>
-                        <h4 className="font-black text-xl text-[#111827]">{held.id}</h4>
-                        <div className="flex items-center gap-4 mt-2 text-gray-400 font-bold text-sm">
+                        <h4 className="font-bold text-lg text-[#111827]">{held.id}</h4>
+                        <div className="flex items-center gap-4 mt-2 text-gray-400  text-md">
                            <span className="flex items-center gap-1"><ShoppingCart className="h-4 w-4 text-[#ef4444]" /> {held.items.length} Items</span>
                            <span className="flex items-center gap-1"><Table2 className="h-4 w-4 text-orange-400" /> Table: None</span>
                         </div>
@@ -1059,13 +1138,13 @@ function OrdersContent() {
                       <div className="flex items-center gap-3">
                         <button 
                           onClick={() => setHeldOrders(prev => prev.filter(o => o.id !== held.id))}
-                          className="bg-red-50 text-red-500 p-3 rounded-2xl hover:bg-red-100 transition opacity-0 group-hover:opacity-100"
+                          className="bg-red-100 text-red-500 p-3 rounded-2xl hover:bg-red-100 transition opacity-100 group-hover:opacity-100"
                         >
                           <Trash2 className="h-5 w-5" />
                         </button>
                         <button 
                           onClick={() => handleResumeOrder(held)}
-                          className="bg-[#0f9d58] text-[#ffffff] px-8 py-3 rounded-2xl font-black text-lg shadow-lg hover:bg-[#0b8a4a] transition"
+                          className="bg-[#0f9d58] text-[#ffffff] px-6 py-3 rounded-2xl font-black text-md shadow-lg hover:bg-[#0b8a4a] transition"
                         >
                           Resume
                         </button>
