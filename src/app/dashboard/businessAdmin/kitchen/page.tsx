@@ -10,7 +10,8 @@ import {
   Loader2,
   Store,
   CheckCircle2,
-  RotateCcw,
+  RotateCw,
+  UtensilsCrossed,
 } from "lucide-react";
 import { toast } from "sonner";
 import AdminShell from "@/components/admin/AdminShell";
@@ -21,6 +22,26 @@ import { BASE_URL } from "@/lib/constant";
 import { cn } from "@/lib/utils";
 
 type KitchenLane = "new" | "cooking" | "ready";
+
+const KitchenEmptyIcon = ({ className, color }: { className?: string; color: string }) => (
+  <svg viewBox="0 0 24 24" fill={color} className={className} xmlns="http://www.w3.org/2000/svg">
+    {/* Knife: rotated -45 */}
+    <g transform="translate(12, 12) rotate(-45) translate(-12, -12)">
+      {/* Handle */}
+      <rect x="11" y="11" width="2" height="10" rx="1" />
+      {/* Blade: straight on left, curved on right */}
+      <path d="M11 3h1c2 0 3 2.5 3 6v2h-4V3z" />
+    </g>
+
+    {/* Spoon: rotated 45 */}
+    <g transform="translate(12, 12) rotate(45) translate(-12, -12)">
+      {/* Handle */}
+      <rect x="11" y="9" width="2" height="12" rx="1" />
+      {/* Bowl */}
+      <ellipse cx="12" cy="5" rx="3" ry="4.5" />
+    </g>
+  </svg>
+);
 
 function formatElapsed(isoDate: string) {
   const createdAt = new Date(isoDate).getTime();
@@ -125,7 +146,7 @@ function KitchenPageContent() {
       const table = (o.table ?? "").toString().toLowerCase().replace(/\s/g, "");
       const status = (o.status ?? "").toString().toLowerCase();
       if (status === "served" || status === "completed" || status === "delivered") return false;
-      return !( !o.table || orderType === "takeaway" || table === "takeaway" );
+      return !(!o.table || orderType === "takeaway" || table === "takeaway");
     });
   }, [activeOrders, removedOrderIds]);
 
@@ -164,15 +185,15 @@ function KitchenPageContent() {
     <AdminShell activeTab="kitchen">
       <main className="h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc]">
         <div className="h-full flex flex-col p-6 pb-24 overflow-hidden">
-          
+
           {/* Main Grid: Two Columns */}
           <div className="flex-1 grid grid-cols-2 gap-8 min-h-0">
-            
+
             {/* Take Away / Packaging Column */}
             <div className="flex flex-col gap-6 min-h-0">
               {/* Summary Card */}
-              <div className="bg-[#fff7ed] rounded-[32px] p-6 flex items-center gap-4 shadow-sm border border-[#ffedd5]">
-                <div className="h-14 w-14 rounded-full bg-[#f74d0b] flex items-center justify-center shadow-lg shadow-gree-200">
+              <div className="bg-[#fff7ed] rounded-[20px] p-3  flex items-center gap-4 shadow-sm border border-[#ffedd5]">
+                <div className="h-14 w-14 rounded-[14px] bg-[#f74d0b] flex items-center justify-center shadow-lg">
                   <Bell className="h-7 w-7 text-[#ffffff]" />
                 </div>
                 <div>
@@ -182,7 +203,7 @@ function KitchenPageContent() {
               </div>
 
               {/* Lane Container */}
-              <div className="flex-1 bg-[#fff7ed]/50 rounded-[40px] border border-[#ffedd5] overflow-hidden flex flex-col p-6 min-h-0">
+              <div className="flex-1 bg-[#fff7ed]/50 rounded-[16px] border-2 border-[#ffedd5] overflow-hidden flex flex-col p-6 min-h-0">
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {takeawayOrders.length > 0 ? (
                     <div className="grid gap-4">
@@ -191,12 +212,10 @@ function KitchenPageContent() {
                       ))}
                     </div>
                   ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
-                      <div className="h-24 w-24 rounded-full bg-[#ffedd5] flex items-center justify-center mb-4">
-                        <CookingPot className="h-12 w-12 text-[#9a3412]" />
-                      </div>
-                      <h3 className="text-2xl font-black text-[#7c2d12]">No orders</h3>
-                      <p className="text-[#9a3412] font-medium">New orders will appear here</p>
+                    <div className="h-full flex flex-col items-center justify-center text-center py-20">
+                      <KitchenEmptyIcon className="h-16 w-16 mb-6" color="#9a3412" />
+                      <h3 className="text-2xl font-black text-[#7c2d12] mb-2">No orders</h3>
+                      <p className="text-[#9a3412] font-medium opacity-60">New orders will appear here</p>
                     </div>
                   )}
                 </div>
@@ -206,8 +225,8 @@ function KitchenPageContent() {
             {/* Dining Order Column */}
             <div className="flex flex-col gap-6 min-h-0">
               {/* Summary Card */}
-              <div className="bg-[#f0fdf4] rounded-[32px] p-6 flex items-center gap-4 shadow-sm border border-[#dcfce7]">
-                <div className="h-14 w-14 rounded-full bg-[#0f9d58] flex items-center justify-center shadow-lg shadow-green-200">
+              <div className="bg-[#f0fdf4] rounded-[20px] p-3 flex items-center gap-4 shadow-sm border border-[#dcfce7]">
+                <div className="h-14 w-14 rounded-[14px] bg-[#0f9d58] flex items-center justify-center shadow-lg">
                   <CheckCircle2 className="h-7 w-7 text-[#ffffff]" />
                 </div>
                 <div>
@@ -217,7 +236,7 @@ function KitchenPageContent() {
               </div>
 
               {/* Lane Container */}
-              <div className="flex-1 bg-[#f0fdf4]/50 rounded-[40px] border border-[#dcfce7] overflow-hidden flex flex-col p-6 min-h-0">
+              <div className="flex-1 bg-[#f0fdf4]/50 rounded-[16px] border-2 border-[#dcfce7] overflow-hidden flex flex-col p-6 min-h-0">
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {diningOrders.length > 0 ? (
                     <div className="grid gap-4">
@@ -226,12 +245,10 @@ function KitchenPageContent() {
                       ))}
                     </div>
                   ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
-                      <div className="h-24 w-24 rounded-full bg-[#dcfce7] flex items-center justify-center mb-4">
-                        <CookingPot className="h-12 w-12 text-[#166534]" />
-                      </div>
-                      <h3 className="text-2xl font-black text-[#14532d]">No orders</h3>
-                      <p className="text-[#166534] font-medium">New orders will appear here</p>
+                    <div className="h-full flex flex-col items-center justify-center text-center py-20">
+                      <KitchenEmptyIcon className="h-16 w-16 mb-6" color="#166534" />
+                      <h3 className="text-2xl font-black text-[#14532d] mb-2">No orders</h3>
+                      <p className="text-[#166534] font-medium opacity-60">New orders will appear here</p>
                     </div>
                   )}
                 </div>
@@ -241,11 +258,11 @@ function KitchenPageContent() {
           </div>
 
           {/* Floating Refresh */}
-          <button 
+          <button
             onClick={() => refetch()}
-            className="fixed bottom-8 right-8 h-14 w-14 rounded-2xl bg-[#ef4444] text-[#ffffff] shadow-xl shadow-red-200 flex items-center justify-center hover:scale-110 transition-all z-50 group"
+            className="fixed bottom-8 right-8 h-[50px] w-[50px] flex items-center justify-center !rounded-[14px] bg-[#ef4444] text-[#ffffff] shadow-[0_6px_14px_rgba(239,68,68,0.35)] transition hover:scale-110 active:scale-90 z-50"
           >
-            <RotateCcw className={cn("h-6 w-6 transition-transform group-hover:rotate-180", ordersLoading && "animate-spin")} />
+            <RotateCw className={cn("h-6 w-6 stroke-[3]", ordersLoading && "animate-spin")} />
           </button>
 
         </div>

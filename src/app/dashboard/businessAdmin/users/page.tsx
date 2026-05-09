@@ -23,26 +23,11 @@ function formatJoinedDate(isoDate: string) {
 const getRoleIcon = (
   role: UserRole
 ): { bg: string; icon: React.ReactNode; color: string } => {
-  switch (role) {
-    case "waiter":
-      return {
-        bg: "bg-blue-100",
-        icon: <Users className="h-6 w-6 text-blue-600" />,
-        color: "text-blue-600",
-      };
-    case "kitchen":
-      return {
-        bg: "bg-purple-100",
-        icon: <Users className="h-6 w-6 text-purple-600" />,
-        color: "text-purple-600",
-      };
-    default:
-      return {
-        bg: "bg-gray-100",
-        icon: <Users className="h-6 w-6 text-gray-600" />,
-        color: "text-gray-600",
-      };
-  }
+  return {
+    bg: "bg-[#ef4444]",
+    icon: role === "kitchen" ? <UtensilsCrossed className="h-6 w-6 text-[#ffffff]" /> : <Users className="h-6 w-6 text-[#ffffff]" />,
+    color: "text-[#ef4444]",
+  };
 };
 
 function UsersContent() {
@@ -231,7 +216,7 @@ function UsersContent() {
     <AdminShell activeTab="users">
       <div className="space-y-6">
         {/* Header - card style like screenshot */}
-        <div className="rounded-2xl border border-[#f3f3f3] bg-white p-4 shadow-sm flex items-center justify-between">
+        <div className="rounded-xl border border-[#f3f3f3] bg-white p-4 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-lg bg-[#ef4444] flex items-center justify-center text-white shadow text-lg">
               <Users className="h-6 w-6" />
@@ -396,7 +381,7 @@ function UsersContent() {
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{normalizeErrorMessage(error, "Error loading users")}</div>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {filteredUsers.map((user) => {
             const roleInfo = getRoleIcon(user.role);
             const isActive = user.status.toLowerCase() === "active";
@@ -404,39 +389,27 @@ function UsersContent() {
             return (
               <div
                 key={user.id}
-                className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md"
+                className="rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm transition hover:shadow-md"
               >
                 <div className="flex items-start gap-4">
                   <div
-                    className={`${roleInfo.bg} flex h-12 w-12 items-center justify-center rounded-lg text-lg`}
+                    className={`${roleInfo.bg} flex h-14 w-14 items-center justify-center rounded-2xl text-lg shadow-lg shadow-red-100 shrink-0`}
                   >
                     {roleInfo.icon}
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 flex flex-col justify-center">
+                    <h3 className="text-[20px] leading-tight font-black text-[#111827] mb-2">
+                      {user.name}
+                    </h3>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-slate-900">
-                        {user.name}
-                      </h3>
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${user.role === "waiter"
-                          ? "bg-blue-100 text-blue-800"
-                          : user.role === "kitchen"
-                            ? "bg-purple-100 text-purple-800"
-                            : "bg-gray-100 text-gray-800"
-                          }`}
-                      >
+                      <span className="inline-flex items-center rounded-xl px-3 py-1 text-[13px] font-bold lowercase bg-[#ef4444] text-[#ffffff]">
                         {user.role}
                       </span>
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${isActive
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                          }`}
-                      >
+                      <span className={`inline-flex items-center rounded-xl px-3 py-1 text-[13px] font-bold lowercase ${isActive ? "bg-[#00c853] text-[#ffffff]" : "bg-gray-200 text-gray-700"}`}>
                         {isActive ? "active" : user.status}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1.5 text-sm text-slate-500 font-medium truncate">
                       {user.email}
                     </p>
                     {/* <p className="text-sm text-slate-600">
@@ -448,7 +421,7 @@ function UsersContent() {
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center gap-3 border-t border-slate-200 pt-4">
+                <div className="mt-3 flex items-center gap-3 border-t border-slate-200 pt-3">
                   <button
                     onClick={() => setDeactivateTarget({ id: user.id, role: user.role, name: user.name, status: user.status })}
                     className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-[#e6e6e6] bg-white px-4 py-3 text-sm font-extrabold text-[#111827] hover:bg-[#fafafa]"

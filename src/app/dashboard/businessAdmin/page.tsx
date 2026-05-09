@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { Suspense, useMemo } from "react";
-import { ShoppingBag, TriangleAlert, PieChart, Loader2, ShoppingCart, ReceiptText, CheckCircle2, Flame, Clock3, Printer } from "lucide-react";
+import Link from "next/link";
+import { ShoppingBag, TriangleAlert, PieChart, Loader2, ShoppingCart, ReceiptText, CheckCircle2, Flame, Clock3, Printer, Utensils } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import { useOrders } from "@/hooks/useOrders";
 import { useProducts } from "@/hooks/useProducts";
@@ -80,8 +81,8 @@ function DonutChart({ slices }: { slices: { color: string; value: number }[] }) 
 }
 
 function DashboardStatic() {
-  const { orders } = useOrders({ range: "day" });
-  const { products } = useProducts({ page: 1, limit: 100 });
+  const { orders, loading: ordersLoading } = useOrders({ range: "day" });
+  const { products, loading: productsLoading } = useProducts({ page: 1, limit: 100 });
   const { invoices } = useInvoices({ page: 1, limit: 100 });
 
   // Calculate all dashboard metrics dynamically
@@ -159,7 +160,7 @@ function DashboardStatic() {
         name: p.name,
         stocks: p.inStock || 0,
         revenue: `PKR ${((p.variants?.[0]?.price || 0) * (p.inStock || 0)).toFixed(2)}`,
-        img: p.image && !p.image.startsWith("http") ? `https://drm.devsinntechnologies.com/${p.image}` : p.image || "/business/pic1.jpeg",
+        img: p.image && !p.image.startsWith("http") ? `https://drm.devsinntechnologies.com/${p.image}` : p.image || null,
       }));
 
     // Recent orders display
@@ -289,72 +290,117 @@ function DashboardStatic() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
-            <div className="flex items-center gap-4 pb-4  px-6 pt-6 bg-emerald-50">
-              <div className="h-10 w-10 rounded-xl bg-emerald-500 grid place-items-center text-[#ffffff]">
-                <Flame className="h-5 w-5" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
+          <div className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden h-fit">
+            <div className="flex items-center gap-4 px-6 py-5 bg-[#f0fdf4] border-b border-gray-200">
+              <div className="h-12 w-12 rounded-xl bg-[#10b981] grid place-items-center text-white">
+                <Flame className="h-6 w-6" />
               </div>
               <div>
-                <h4 className="font-semibold">Top Selling Products</h4>
-                <p className="text-sm text-gray-500">Best performers by revenue</p>
+                <h4 className="text-lg font-bold text-[#111827]">Top Selling Products</h4>
+                <p className="text-sm text-gray-500 font-medium">Best performers by revenue</p>
               </div>
             </div>
-            <div className="mt-4 space-y-3 px-6 pb-6">
-              {dashboardMetrics.topSellingProducts.map((p) => (
-                <div key={p.id} className="flex items-center justify-between rounded-lg  p-3 bg-[#f7f9fa]">
-                  <div className="flex items-center gap-3">
-                    <div className="h-14 w-14 overflow-hidden rounded-md bg-gray-100 relative">
-                      <Image src={p.img} alt={p.name} fill sizes="56px" className="object-cover" />
+            <div className="p-6">
+              {productsLoading ? (
+                <div className="space-y-3">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="flex items-center justify-between rounded-xl p-4 bg-[#fafafa] border border-gray-200 animate-pulse">
+                      <div className="flex items-center gap-4">
+                        <div className="h-14 w-14 rounded-xl bg-gray-200"></div>
+                        <div className="space-y-2">
+                          <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                          <div className="h-3 w-16 bg-gray-200 rounded"></div>
+                        </div>
+                      </div>
+                      <div className="h-4 w-16 bg-gray-200 rounded"></div>
                     </div>
-                    <div>
-                      <div className="font-semibold">{p.name}</div>
-                      <div className="text-sm text-gray-500">{p.stocks} stocks</div>
-                    </div>
-                  </div>
-                  <div className="text-emerald-600 font-semibold">{p.revenue}</div>
+                  ))}
                 </div>
-              ))}
+              ) : dashboardMetrics.topSellingProducts.length > 0 ? (
+                <div className="space-y-3">
+                  {dashboardMetrics.topSellingProducts.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between rounded-xl p-4 bg-[#fafafa] border border-gray-200">
+                      <div className="flex items-center gap-4">
+                        <div className="h-14 w-14 overflow-hidden rounded-xl bg-white border border-gray-200 relative flex items-center justify-center">
+                          {p.img ? (
+                            <Image src={p.img} alt={p.name} fill sizes="56px" className="object-cover" />
+                          ) : (
+                            <Utensils className="h-6 w-6 text-gray-400" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-bold text-[#111827] text-base">{p.name}</div>
+                          <div className="text-sm text-gray-500 font-medium">{p.stocks} stocks</div>
+                        </div>
+                      </div>
+                      <div className="text-[#10b981] font-bold text-base">{p.revenue}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
-            <div className="flex items-center gap-4 pb-4 px-6 pt-6 bg-[#edf3ff]">
-              <div className="h-10 w-10 rounded-xl bg-[#3b82f6] grid place-items-center text-[#ffffff]">
-                <Clock3 className="h-5 w-5" />
+          <div className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden h-fit">
+            <div className="flex items-center gap-4 px-6 py-5 bg-[#eff6ff] border-b border-blue-100">
+              <div className="h-12 w-12 rounded-2xl bg-[#3b82f6] grid place-items-center text-[#ffffff] shadow-sm">
+                <Clock3 className="h-6 w-6" />
               </div>
               <div>
-                <h4 className="font-semibold">Recent Orders</h4>
-                <p className="text-sm text-gray-500">Latest order activity</p>
+                <h4 className="text-lg font-bold text-[#111827]">Recent Orders</h4>
+                <p className="text-sm text-gray-500 font-medium">Latest order activity</p>
               </div>
             </div>
-            <div className="mt-4 space-y-3 px-6 pb-6">
-              {dashboardMetrics.recentOrdersDisplay.map((o: any) => (
-                <div key={o.id} className="flex items-center justify-between rounded-lg p-3 bg-[#f7f9fa]">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-violet-100 grid place-items-center text-violet-700">{o.label}</div>
-                    <div>
-                      <div className="font-semibold break-words">{o.title}</div>
-                      <div className="text-sm text-gray-500">{o.ago}</div>
+            <div className="p-6">
+              {ordersLoading ? (
+                <div className="space-y-3">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="flex items-center justify-between rounded-2xl p-4 bg-[#f8fafc] border border-gray-50 animate-pulse">
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-blue-50"></div>
+                        <div className="space-y-2">
+                          <div className="h-4 w-32 bg-gray-200 rounded"></div>
+                          <div className="h-3 w-20 bg-gray-200 rounded"></div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="h-4 w-16 bg-gray-200 rounded"></div>
+                        <div className="h-6 w-20 bg-gray-200 rounded-full"></div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-sm font-semibold text-[#0f172a]">{o.user}</div>
-                    <div className="px-3 py-1 rounded-md bg-emerald-50 text-emerald-600 text-sm">{o.status}</div>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              ) : dashboardMetrics.recentOrdersDisplay.length > 0 ? (
+                <div className="space-y-3">
+                  {dashboardMetrics.recentOrdersDisplay.map((o: any) => (
+                    <div key={o.id} className="flex items-center justify-between rounded-2xl p-4 bg-[#f8fafc] border border-gray-50 transition hover:border-blue-100">
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-blue-50 grid place-items-center text-blue-600 font-black text-lg shadow-sm border border-blue-100">{o.label}</div>
+                        <div>
+                          <div className="font-bold text-[#111827] break-words">{o.title}</div>
+                          <div className="text-sm text-gray-500 font-medium">{o.ago}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-sm font-black text-[#111827]">{o.user}</div>
+                        <div className="px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-600 text-xs font-black uppercase tracking-wider">{o.status.split('.').pop()}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
 
-        <button
-          type="button"
-          className="fixed bottom-6 right-6 inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-[#ffffff] shadow-lg hover:bg-amber-600"
+        <Link
+          href="/dashboard/businessAdmin/invoice-test"
+          className="fixed bottom-6 right-6 inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-white shadow-lg hover:bg-amber-600 transition"
         >
-          <Printer className="h-5 w-5" />
-          <span className="text-lg font-semibold">Test Invoice Layout</span>
-        </button>
+          <Printer className="h-5 w-5 text-white" />
+          <span className="text-lg font-semibold text-white">Test Invoice Layout</span>
+        </Link>
       </section>
     </AdminShell>
   );

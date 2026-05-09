@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileText, Search, Clock3, AlertCircle, ChevronLeft, ChevronRight, Loader2, Eye, Printer, CheckCircle2, RotateCcw, File, X } from "lucide-react";
+import { Download, FileText, Search, Clock3, AlertCircle, ChevronLeft, ChevronRight, Loader2, Eye, Printer, CheckCircle2, RotateCcw, File, X, Receipt } from "lucide-react";
 import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
@@ -56,6 +56,24 @@ function toStatus(raw: string): InvoiceRow["status"] {
 function toAmount(invoice: InvoiceRecord) {
   return parsePrice(invoice.totalPrice);
 }
+
+const CustomInvoiceIcon = ({ className }: { className?: string }) => (
+  <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} xmlns="http://www.w3.org/2000/svg">
+    {/* Main body and zigzag top */}
+    <path d="M17 17 V3 L15.33 4.5 L13.66 3 L12 4.5 L10.33 3 L8.66 4.5 L7 3 V17" />
+
+    {/* Bottom roll flap */}
+    <path d="M17 17 v1.5 a1.5 1.5 0 0 1 -1.5 1.5 H5.5 a1.5 1.5 0 0 1 -1.5 -1.5 V17 h3" />
+    <line x1="7" y1="17" x2="17" y2="17" />
+
+    {/* Inner Items */}
+    <rect x="8.5" y="7" width="4" height="2" fill="currentColor" stroke="none" />
+    <rect x="13.5" y="7" width="2" height="2" fill="currentColor" stroke="none" />
+
+    <rect x="8.5" y="11" width="4" height="2" fill="currentColor" stroke="none" />
+    <rect x="13.5" y="11" width="2" height="2" fill="currentColor" stroke="none" />
+  </svg>
+);
 
 function InvoicesContent() {
   const router = useRouter();
@@ -171,9 +189,9 @@ function InvoicesContent() {
     <AdminShell activeTab="invoices">
       <main className="h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc]">
         <div className="h-full flex flex-col p-6 space-y-6">
-          
+
           {/* Header Section */}
-          <section className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 flex items-center justify-between">
+          <section className="bg-white rounded-[10px] p-6 shadow-sm border border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="h-14 w-14 rounded-2xl bg-[#ef4444] flex items-center justify-center shadow-lg shadow-red-100">
                 <FileText className="h-7 w-7 text-[#ffffff]" />
@@ -196,15 +214,15 @@ function InvoicesContent() {
 
           {/* Table Card */}
           <section className="flex-1 bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 flex flex-col min-h-0 overflow-hidden relative">
-            
+
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
                 <FileText className="h-6 w-6 text-[#6366f1]" />
                 <h2 className="text-xl font-black text-[#111827]">All Invoices</h2>
               </div>
-              <button 
+              <button
                 onClick={handleExportPDF}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[#6366f1] text-[#6366f1] text-sm font-black hover:bg-[#6366f1]/5 transition-all"
+                className="flex items-center gap-2 px-4 py-3 rounded-lg border border-[#6366f1] text-[#6366f1] text-sm font-black hover:bg-[#6366f1]/5 transition-all"
               >
                 <Download className="h-4 w-4" />
                 Export
@@ -213,13 +231,11 @@ function InvoicesContent() {
 
             {/* Printer Disconnected Banner */}
             <div className="flex justify-center mb-8">
-              <button className="flex items-center gap-3 bg-[#ef4444] text-[#ffffff] px-6 py-4 rounded-2xl shadow-xl shadow-red-100 group active:scale-95 transition-all">
-                <div className="h-8 w-8 rounded-lg  flex items-center justify-center">
-                  <Printer className="h-5 w-5 text-black" />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-black leading-tight">Printer Disconnected</p>
-                  <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Click to connect</p>
+              <button className="flex items-center gap-3 bg-[#e02828] text-[#ffffff] px-6 py-2 rounded-[8px] active:scale-95 transition-all">
+                <span className="text-[26px] leading-none">🖨️</span>
+                <div className="flex flex-col items-center justify-center">
+                  <span className="text-[17px] font-medium leading-tight">Printer Disconnected</span>
+                  <span className="text-[12px] font-medium mt-0.5">Click to connect</span>
                 </div>
               </button>
             </div>
@@ -267,7 +283,7 @@ function InvoicesContent() {
                         </span>
                       </div>
                       <div className="flex justify-center">
-                        <button 
+                        <button
                           onClick={() => openInvoiceDetails(invoice.uuid)}
                           className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-[#6366f1] transition-colors"
                         >
@@ -282,7 +298,7 @@ function InvoicesContent() {
                       </div>
                       <div className="flex justify-end">
                         {invoice.status !== "Paid" && (
-                          <button 
+                          <button
                             onClick={() => handleMarkPaid(invoice.uuid)}
                             disabled={actionLoading && updatingInvoiceUuid === invoice.uuid}
                             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#00c853] text-[#ffffff] text-[10px] font-black hover:bg-[#00a844] transition-all"
@@ -296,18 +312,18 @@ function InvoicesContent() {
                   ))
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-center py-12">
-                    <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-[#f3f4f6]">
-                      <File className="h-10 w-10 text-slate-400" />
+                    <div className="h-24 w-24 text-[#64748b] mb-6 flex items-center justify-center">
+                      <CustomInvoiceIcon className="w-full h-full" />
                     </div>
-                    <p className="text-lg font-black text-[#111827] mb-1">No Unpaid Invoices</p>
-                    <p className="text-sm text-slate-500">All invoices have been paid for this date</p>
+                    <p className="text-[18px] font-bold text-[#111827] mb-1">No Unpaid Invoices</p>
+                    <p className="text-[14px] text-[#64748b] font-medium">All invoices have been paid for this date</p>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Table Footer / Pagination - Floating Red Refresh */}
-            <button 
+            <button
               onClick={() => refetch()}
               className="fixed bottom-8 right-8 h-14 w-14 rounded-2xl bg-[#ef4444] text-[#ffffff] shadow-xl shadow-red-200 flex items-center justify-center hover:scale-110 transition-all z-50 group"
             >

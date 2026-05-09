@@ -28,6 +28,7 @@ import {
   Package,
   Printer,
   Pause,
+  Trash,
   Trash2,
   History,
   Save,
@@ -39,6 +40,9 @@ import {
   QrCode,
   Utensils,
   Hash,
+  Ban,
+  ClipboardList,
+  RotateCw,
 } from "lucide-react";
 import {
   Dialog,
@@ -59,6 +63,14 @@ import { useTables } from "@/hooks/useTables";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { BASE_URL } from "@/lib/constant";
 import { cn } from "@/lib/utils";
+
+const CustomTrashIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <rect x="9.5" y="4" width="5" height="3" rx="1" />
+    <rect x="6" y="7" width="12" height="2.5" rx="1" />
+    <path d="M7 10.5h10v8.5a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-8.5z" />
+  </svg>
+);
 
 type PageView = "list" | "create";
 
@@ -114,14 +126,14 @@ function OrdersContent() {
   const activeBusinessId = useActiveBusinessId();
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
-  
+
   const [view, setView] = useState<PageView>("list");
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [showVariantDialog, setShowVariantDialog] = useState(false);
-  
+
   // Create Order State
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [deliveryCharges, setDeliveryCharges] = useState<string>("");
@@ -139,7 +151,7 @@ function OrdersContent() {
   const [editingDeliveryCharges, setEditingDeliveryCharges] = useState(0);
   const [editingPackagingCharges, setEditingPackagingCharges] = useState(0);
   const [editingOverridePrice, setEditingOverridePrice] = useState(0);
-  
+
   // Held Orders State
   const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([]);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
@@ -260,10 +272,10 @@ function OrdersContent() {
         return prev.map((item) =>
           item.productId === product.id && item.variantId === selectedVariant.id
             ? {
-                ...item,
-                quantity: item.quantity + 1,
-                action: (item.action === "add" ? "add" : "update") as EditableOrderItem["action"],
-              }
+              ...item,
+              quantity: item.quantity + 1,
+              action: (item.action === "add" ? "add" : "update") as EditableOrderItem["action"],
+            }
             : item,
         );
       }
@@ -304,10 +316,10 @@ function OrdersContent() {
         .map((item) =>
           item.productId === productId && item.variantId === variantId
             ? {
-                ...item,
-                quantity: Math.max(0, item.quantity + delta),
-                action: (item.action === "add" ? "add" : "update") as EditableOrderItem["action"],
-              }
+              ...item,
+              quantity: Math.max(0, item.quantity + delta),
+              action: (item.action === "add" ? "add" : "update") as EditableOrderItem["action"],
+            }
             : item,
         )
         .filter((item) => item.quantity > 0),
@@ -339,7 +351,7 @@ function OrdersContent() {
     setEditingItems((prev) => {
       const itemToRemove = prev.find((item) => item.productId === productId && item.variantId === variantId);
       if (itemToRemove?.orderItemId) {
-        setRemovedEditingItems((removedPrev) => Array.from(new Set([...removedPrev, itemToRemove.orderItemId!] )));
+        setRemovedEditingItems((removedPrev) => Array.from(new Set([...removedPrev, itemToRemove.orderItemId!])));
       }
       return prev.filter((item) => !(item.productId === productId && item.variantId === variantId));
     });
@@ -391,7 +403,7 @@ function OrdersContent() {
     setCartItems(prev => {
       const existing = prev.find(item => item.productId === product.id && item.variantId === variant.id);
       if (existing) {
-        return prev.map(item => item.productId === product.id && item.variantId === variant.id 
+        return prev.map(item => item.productId === product.id && item.variantId === variant.id
           ? { ...item, quantity: item.quantity + 1 } : item);
       }
       return [...prev, {
@@ -576,7 +588,7 @@ function OrdersContent() {
             </div>
           ) : null}
         </div>
-              </DialogContent>
+      </DialogContent>
     </Dialog>
   );
 
@@ -596,7 +608,7 @@ function OrdersContent() {
         {selectedEditingProduct ? (
           <div className="overflow-hidden rounded-[32px] bg-white shadow-2xl">
             <div className="relative bg-[#0f9d58] px-6 pb-16 pt-6">
-              
+
 
               <div className="mx-auto h-24 w-24 overflow-hidden rounded-full border-4 border-white shadow-lg">
                 <Image
@@ -808,22 +820,22 @@ function OrdersContent() {
       <AdminShell activeTab="orders">
         <main className="min-h-[calc(100vh-80px)] overflow-visible bg-transparent p-6 flex flex-col">
           {/* Green Header */}
-         
-            <button onClick={() => setView("list")} 
+
+          <button onClick={() => setView("list")}
             className="bg-gradient-to-r from-[#00a341] to-[#018152] rounded-xl flex items-center justify-center gap-4 h-18 text-[#ffffff] font-bold text-xl">
-              <ArrowLeft className="h-7 w-7 stroke-[2]" /> Active Orders
-            </button>
-        
+            <ArrowLeft className="h-7 w-7 stroke-[2]" /> Active Orders
+          </button>
+
 
           <div className="flex-1 flex items-start">
             {/* Left Column: Products */}
             <div className="w-[60%] flex flex-col bg-[#f8fafc] border-r border-gray-100">
               <div className="p-6 pb-0 flex-shrink-0">
-                <div className="flex flex-wrap gap-4 pb-4">
+                <div className="flex overflow-x-auto gap-4 pt-2 pb-4 custom-scrollbar no-scrollbar scroll-smooth">
                   <button
                     onClick={() => setSelectedCategory("All")}
                     className={cn(
-                      "rounded-2xl font-black transition whitespace-nowrap shadow-sm border-2 overflow-hidden text-left px-4 py-3",
+                      "rounded-2xl font-black transition whitespace-nowrap shadow-sm border-2 overflow-hidden text-left px-4 py-3 shrink-0",
                       selectedCategory === "All"
                         ? "bg-[#ef4444] border-[#ef4444] text-[#ffffff]"
                         : "bg-white border-gray-200 text-black hover:border-gray-300"
@@ -842,7 +854,7 @@ function OrdersContent() {
                       key={category.id}
                       onClick={() => setSelectedCategory(category.CategoryName)}
                       className={cn(
-                        "rounded-2xl font-black transition whitespace-nowrap shadow-sm border-2 overflow-hidden text-left px-3 py-3",
+                        "rounded-2xl font-black transition whitespace-nowrap shadow-sm border-2 overflow-hidden text-left px-3 py-3 shrink-0",
                         selectedCategory === category.CategoryName
                           ? "bg-[#ef4444] border-[#ef4444] text-[#ffffff]"
                           : "bg-white border-gray-200 text-black hover:border-gray-300"
@@ -898,16 +910,16 @@ function OrdersContent() {
                             {product.variants && product.variants.length > 0 ? (
                               product.variants.map(v => (
                                 <div key={v.id} className="flex justify-between text-[10px] font-black">
-                                   <span className="text-[#007d53] bg-[#e6f2ef] rounded-sm p-2">Rs. {v.price}</span>
+                                  <span className="text-[#007d53] bg-[#e6f2ef] rounded-sm p-2">Rs. {v.price}</span>
                                   <span className="text-[#111827] uppercase tracking-wider">{v.name}</span>
-                                 
+
                                 </div>
                               ))
                             ) : (
                               <div className="flex justify-between text-[10px] font-black">
                                 <span className="text-[#007d53]">Rs. {product.price}</span>
                                 <span className="text-[#111827] uppercase tracking-wider">Qty</span>
-                                
+
                               </div>
                             )}
                           </div>
@@ -927,34 +939,34 @@ function OrdersContent() {
                   <span className="font-black text-lg">Order Summary</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="bg-white text-[#0f9d58] px-3 py-0.5 rounded-full text-xs font-black">{cartItems.length} items</span>
+                  <span className="bg-white text-[#0f9d58] px-3 py-2 rounded-full text-xs font-black">{cartItems.length} items</span>
                   {cartItems.length > 0 && (
                     <button onClick={handleHoldOrder} className="bg-white p-1.5 text-[#448aff] font-bold rounded-xl hover:bg-white transition"><Pause className="h-4 w-4" /></button>
                   )}
                   {heldOrders.length > 0 && (
                     <button onClick={() => setIsQueueOpen(true)} className="bg-orange-400 text-[#ffffff] p-1.5 rounded-xl hover:bg-orange-500 transition shadow-sm relative"><History className="h-4 w-4" /><span className="absolute -top-1 -right-1 bg-white text-orange-500 text-[8px] font-black w-3 h-3 flex items-center justify-center rounded-full shadow-sm">{heldOrders.length}</span></button>
                   )}
-                  <button onClick={() => setCartItems([])} className="bg-white p-1.5 rounded-xl text-[#ef4444] hover:bg-white/30 transition"><Trash2 className="h-4 w-4" /></button>
+                  <button onClick={() => setCartItems([])} className="bg-white px-2 py-1 rounded-xl text-[#ef4444] hover:bg-white/30 transition shadow-sm"><CustomTrashIcon className="h-6 w-6" /></button>
                 </div>
               </div>
 
               <div className="flex-1 bg-transparent p-4 relative">
                 {cartItems.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center text-gray-200 py-8">
-                    <ShoppingCart className="h-16 w-16 mb-4 opacity-30" />
-                    <p className="font-black text-lg text-gray-400">Your Order is Empty</p>
-                    <p className="text-xs font-bold text-gray-400">Add items from the menu</p>
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <ShoppingCart className="h-16 w-16 mb-4 text-[#9ca3af]" />
+                    <p className="text-lg font-medium text-[#374151]">Your Order is Empty</p>
+                    <p className="mt-1 text-sm font-medium text-[#9ca3af]">Add items from the menu</p>
                   </div>
                 ) : (
                   <div className="space-y-6">
                     {productsInCart.map(product => (
                       <div key={product.id} className="bg-white rounded-2xl p-4 border-2 border-[#b9f8cf] shadow-sm animate-in fade-in zoom-in duration-300">
-                        
+
                         <div className="flex gap-4">
                           {/* Left: Image */}
                           <div className="relative h-24 w-24 rounded-2xl overflow-hidden border-2 border-white shadow-md flex-shrink-0">
-                              <Image src={productImageUrl(product.image)} alt="selected" fill className="object-cover" />
-                            </div>
+                            <Image src={productImageUrl(product.image)} alt="selected" fill className="object-cover" />
+                          </div>
 
                           {/* Right: Product Info */}
                           <div className="flex-1 flex flex-col min-w-0">
@@ -966,34 +978,34 @@ function OrdersContent() {
 
                             {/* Variants */}
                             <div className="space-y-3 mb-4">
-                          {(product.variants && product.variants.length > 0 ? product.variants : [{ id: 'default', name: 'Qty', price: product.price || 0, inStock: 1, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }]).map(v => {
-                            const currentQty = cartItems.find(i => i.productId === product.id && i.variantId === v.id)?.quantity || 0;
-                            return (
-                              <div key={v.id} className="flex items-center justify-between">
-                                <span className="text-md font-semibold text-gray-700">{v.name} <span className="text-[#ef4444] font-black">(Rs {v.price})</span></span>
-                                <div className="flex items-center gap-3">
-                                  <button onClick={() => handleUpdateQty(product.id, v.id, -1)} className="h-11 w-11 rounded-xl border-2 border-[#ef4444] bg-[#ffebee] text-[#ef4444] flex items-center justify-center transition active:scale-90 shadow-sm"><Minus className="h-5 w-5" /></button>
-                                  <span className="font-black border-2 border-[#eeced1] bg-[#f0f7ff] text-[#e52819] rounded-xl text-2xl w-[55px] p-[8] text-center">{currentQty}</span>
-                                  <button onClick={() => handleAddToCart(product, v)} className="h-11 w-11 rounded-xl bg-[#dcfce7] border-2 border-[#16a34a] text-[#16a34a] flex items-center justify-center transition active:scale-90 shadow-sm"><Plus className="h-5 w-5" /></button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                           </div>
+                              {(product.variants && product.variants.length > 0 ? product.variants : [{ id: 'default', name: 'Qty', price: product.price || 0, inStock: 1, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }]).map(v => {
+                                const currentQty = cartItems.find(i => i.productId === product.id && i.variantId === v.id)?.quantity || 0;
+                                return (
+                                  <div key={v.id} className="flex items-center justify-between">
+                                    <span className="text-md font-semibold text-gray-700">{v.name} <span className="text-[#ef4444] font-black">(Rs {v.price})</span></span>
+                                    <div className="flex items-center gap-3">
+                                      <button onClick={() => handleUpdateQty(product.id, v.id, -1)} className="h-11 w-11 rounded-xl border-2 border-[#ef4444] bg-[#ffebee] text-[#ef4444] flex items-center justify-center transition active:scale-90 shadow-sm"><Minus className="h-5 w-5" /></button>
+                                      <span className="font-black border-2 border-[#eeced1] bg-[#f0f7ff] text-[#e52819] rounded-xl text-2xl w-[55px] p-[8] text-center">{currentQty}</span>
+                                      <button onClick={() => handleAddToCart(product, v)} className="h-11 w-11 rounded-xl bg-[#dcfce7] border-2 border-[#16a34a] text-[#16a34a] flex items-center justify-center transition active:scale-90 shadow-sm"><Plus className="h-5 w-5" /></button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
 
-                           {/* Override */}
-                           <div className="flex items-center justify-between">
-                             <label className="text-sm font-bold text-gray-500 tracking-wider">Override</label>
-                           <div className="flex items-center gap-2">
-                                 <span className="text-gray-400 font-bold">Rs</span>
-                                 <input
-                                   type="number"
-                                   step="1"
-                                   value={productOverrides[product.id] ?? String(Math.round(cartItems.filter(i => i.productId === product.id).reduce((a,b) => a + (Number(b.price) * Number(b.quantity)), 0)))}
-                                   onChange={(e) => setProductOverrides(prev => ({ ...prev, [product.id]: e.target.value }))}
-                                   className="w-20 bg-[#f5f5f5] rounded-lg p-1 text-md font-black outline-none text-left border-2 border-[#e0e0e0]"
-                                 />
-                           </div>
+                            {/* Override */}
+                            <div className="flex items-center justify-between">
+                              <label className="text-sm font-bold text-gray-500 tracking-wider">Override</label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-400 font-bold">Rs</span>
+                                <input
+                                  type="number"
+                                  step="1"
+                                  value={productOverrides[product.id] ?? String(Math.round(cartItems.filter(i => i.productId === product.id).reduce((a, b) => a + (Number(b.price) * Number(b.quantity)), 0)))}
+                                  onChange={(e) => setProductOverrides(prev => ({ ...prev, [product.id]: e.target.value }))}
+                                  className="w-20 bg-[#f5f5f5] rounded-lg p-1 text-md font-black outline-none text-left border-2 border-[#e0e0e0]"
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1001,7 +1013,7 @@ function OrdersContent() {
                         {/* Total Price */}
                         <div className="text-right mt-3">
                           {(() => {
-                            const baseTotal = cartItems.filter(i => i.productId === product.id).reduce((a,b) => a + (Number(b.price) * Number(b.quantity)), 0);
+                            const baseTotal = cartItems.filter(i => i.productId === product.id).reduce((a, b) => a + (Number(b.price) * Number(b.quantity)), 0);
                             const overrideStr = productOverrides[product.id];
                             const overrideNum = overrideStr !== undefined && overrideStr !== "" ? parseFloat(overrideStr as string) : NaN;
                             const productTotal = Number.isFinite(overrideNum) ? overrideNum : baseTotal;
@@ -1025,86 +1037,87 @@ function OrdersContent() {
                         <div className="flex items-center gap-3 font-black text-[#99a1b0] tracking-widest text-[14px]"><Plus className="h-7 w-7 bg-gray-50 text-[#99a1b0] stroke-[5] p-1 rounded-full border-2 border-[#99a1b0]" /> Extra Charges (optional)</div>
                         <ChevronDown className="h-6 w-6 stroke-[2] text-[#49454f] transition group-open:rotate-180" />
                       </summary>
-                              <div className=" p-1  animate-in  duration-300">
-                                <div className="flex items-center justify-between  py-3 rounded-2xl">
-                                  <div className="flex items-center gap-3">
-                                    <div className="bg-[#fff3e5] p-2 rounded-lg shadow-sm"><Store className="h-6 w-7 text-orange-400" /></div>
-                                    <span className="text-md font-black text-gray-700">Delivery Charge</span>
-                                  </div>
-                                  <div className="flex items-center">
-                                    <div className="bg-[#f5f5f5] border-2 border-[#e3e3e3] rounded-lg px-2 py-2 flex items-center gap-2">
-                                      <span className="text-[12px] font-bold text-[#707070]">Rs</span>
-                                      <input type="number" placeholder="0" value={deliveryCharges} onChange={(e) => setDeliveryCharges(e.target.value)} className="w-18 bg-transparent p-0 text-lg font-black outline-none text-left" />
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="border-t-2 border-[#cac4d0]" />
-                                <div className="flex items-center justify-between py-3 rounded-2xl ">
-                                  <div className="flex items-center gap-3">
-                                    <div className="bg-[#f2efed] p-2 rounded-lg shadow-sm"><Package className="h-6 w-7 text-[#795548]" /></div>
-                                    <span className="text-lg font-black text-gray-700">Packing / Box Charge</span>
-                                  </div>
-                                  <div className="flex items-center">
-                                    <div className="bg-[#f5f5f5] border-2 border-[#e3e3e3] rounded-lg px-2 py-2 flex items-center gap-2">
-                                      <span className="text-[12px] font-bold text-[#707070] ">Rs</span>
-                                      <input type="number" placeholder="0" value={packagingCharges} onChange={(e) => setPackagingCharges(e.target.value)} className="w-18 bg-transparent p-0 text-lg font-black outline-none text-left" />
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
+                      <div className=" p-1  animate-in  duration-300">
+                        <div className="flex items-center justify-between  py-3 rounded-2xl">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-[#fff3e5] p-2 rounded-lg shadow-sm"><Store className="h-6 w-7 text-orange-400" /></div>
+                            <span className="text-md font-black text-gray-700">Delivery Charge</span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className="bg-[#f5f5f5] border-2 border-[#e3e3e3] rounded-lg px-2 py-2 flex items-center gap-2">
+                              <span className="text-[12px] font-bold text-[#707070]">Rs</span>
+                              <input type="number" placeholder="0" value={deliveryCharges} onChange={(e) => setDeliveryCharges(e.target.value)} className="w-18 bg-transparent p-0 text-lg font-black outline-none text-left" />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="border-t-2 border-[#cac4d0]" />
+                        <div className="flex items-center justify-between py-3 rounded-2xl ">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-[#f2efed] p-2 rounded-lg shadow-sm"><Package className="h-6 w-7 text-[#795548]" /></div>
+                            <span className="text-lg font-black text-gray-700">Packing / Box Charge</span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className="bg-[#f5f5f5] border-2 border-[#e3e3e3] rounded-lg px-2 py-2 flex items-center gap-2">
+                              <span className="text-[12px] font-bold text-[#707070] ">Rs</span>
+                              <input type="number" placeholder="0" value={packagingCharges} onChange={(e) => setPackagingCharges(e.target.value)} className="w-18 bg-transparent p-0 text-lg font-black outline-none text-left" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </details>
                   </div>
                 </div>
               )}
 
               {cartItems.length > 0 && (
-                 <div className="bg-[#f0fdf4] px-8 pt-0 rounded-b-[32px] flex-shrink-0">
-                   <div className="bg-[#fff6ed] rounded-3xl p-6 border-2 border-[#ffd6a7] shadow-inner">
-                     <div className="flex justify-between items-center mb-3">
-                       <div className="text-sm text-gray-500">Items ({cartItems.length})</div>
-                       <div className="text-sm font-black text-[#99a1b0]">Rs {productsTotal.toFixed(0)}</div>
-                     </div>
-                     {numericDelivery > 0 && (
-                       <div className="flex justify-between items-center mb-2">
-                         <div className="flex items-center gap-2">
-                           <span className="text-[#ff9800] text-lg">🚚</span>
-                           <span className="text-[#ff9800] font-bold">Delivery Charge</span>
-                         </div>
-                         <span className="text-[#ff9800] font-black">Rs {numericDelivery}</span>
-                       </div>
-                     )}
-                     {numericPackaging > 0 && (
-                       <div className="flex justify-between items-center mb-3">
-                         <div className="flex items-center gap-2">
-                           <span className="text-[#795548] text-lg">📦</span>
-                           <span className="text-[#795548] font-bold">Packing Charge</span>
-                         </div>
-                         <span className="text-[#795548] font-black">Rs {numericPackaging}</span>
-                       </div>
-                     )}
-                     <div className="border-t-2 border-[#ffa218] my-3" />
-                     <div className="flex justify-between items-end">
-                       <span className="text-lg font-black text-[#f13403] uppercase tracking-tighter">Grand Total</span>
-                       <span className="text-[#f13403] font-black text-2xl">Rs {grandTotal.toFixed(2)}</span>
-                     </div>
+                <div className="bg-[#f0fdf4] px-8 pt-0 rounded-b-[32px] flex-shrink-0">
+                  <div className="bg-[#fff6ed] rounded-3xl p-6 border-2 border-[#ffd6a7] shadow-inner">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="text-sm text-gray-500">Items ({cartItems.length})</div>
+                      <div className="text-sm font-black text-[#99a1b0]">Rs {productsTotal.toFixed(0)}</div>
                     </div>
+                    {numericDelivery > 0 && (
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#ff9800] text-lg">🚚</span>
+                          <span className="text-[#ff9800] font-bold">Delivery Charge</span>
+                        </div>
+                        <span className="text-[#ff9800] font-black">Rs {numericDelivery}</span>
+                      </div>
+                    )}
+                    {numericPackaging > 0 && (
+                      <div className="flex justify-between items-center mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#795548] text-lg">📦</span>
+                          <span className="text-[#795548] font-bold">Packing Charge</span>
+                        </div>
+                        <span className="text-[#795548] font-black">Rs {numericPackaging}</span>
+                      </div>
+                    )}
+                    <div className="border-t-2 border-[#ffa218] my-3" />
+                    <div className="flex justify-between items-end">
+                      <span className="text-lg font-black text-[#f13403] uppercase tracking-tighter">Grand Total</span>
+                      <span className="text-[#f13403] font-black text-2xl">Rs {grandTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
 
+                  {cartQuantityTotal > 0 ? (
                     <button
                       onClick={() => setShowConfirmDialog(true)}
-                      disabled={actionLoading || cartQuantityTotal === 0}
-                      className={cartQuantityTotal > 0 ? "w-full py-5 mt-4 rounded-[16px] font-black text-xl shadow-2xl flex items-center justify-center gap-3 transition active:scale-95 bg-gradient-to-r from-[#00a341] to-[#018152] text-[#ffffff] hover:bg-[#0b8a4a]" : "w-full py-5 mt-4 rounded-[32px] font-black text-lg shadow-2xl flex items-center justify-center gap-3 transition active:scale-95 bg-[#e5e7eb] text-gray-400 cursor-not-allowed"}
+                      disabled={actionLoading}
+                      className="w-full py-5 mt-4 rounded-[16px] font-black text-xl shadow-2xl flex items-center justify-center gap-3 transition active:scale-95 bg-gradient-to-r from-[#00a341] to-[#018152] text-[#ffffff] hover:bg-[#0b8a4a]"
                     >
                       {actionLoading ? <Loader2 className="h-8 w-8 stroke-[2] animate-spin" /> : <CheckCircle2 className="h-8 w-8 stroke-[2]" />}
                       Place Order Now
                     </button>
+                  ) : (
                     <button
-                      onClick={() => refetchProducts()}
-                      disabled={productsLoading}
-                      className="w-full py-3 mt-2 rounded-[16px] font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition active:scale-95 bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      disabled
+                      className="w-full py-5 mt-4 rounded-[16px] font-black text-xl flex items-center justify-center gap-3 bg-[#d1d5db] text-[#ffffff] cursor-not-allowed"
                     >
-                      {productsLoading ? <Loader2 className="h-4 w-4 stroke-[2] animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                      Refresh Products
+                      <Ban className="h-7 w-7 stroke-[2.5]" /> Select items to order
                     </button>
+                  )}
                 </div>
               )}
             </div>
@@ -1131,18 +1144,18 @@ function OrdersContent() {
                       <div>
                         <h4 className="font-bold text-lg text-[#111827]">{held.id}</h4>
                         <div className="flex items-center gap-4 mt-2 text-gray-400  text-md">
-                           <span className="flex items-center gap-1"><ShoppingCart className="h-4 w-4 text-[#ef4444]" /> {held.items.length} Items</span>
-                           <span className="flex items-center gap-1"><Table2 className="h-4 w-4 text-orange-400" /> Table: None</span>
+                          <span className="flex items-center gap-1"><ShoppingCart className="h-4 w-4 text-[#ef4444]" /> {held.items.length} Items</span>
+                          <span className="flex items-center gap-1"><Table2 className="h-4 w-4 text-orange-400" /> Table: None</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <button 
+                        <button
                           onClick={() => setHeldOrders(prev => prev.filter(o => o.id !== held.id))}
                           className="bg-red-100 text-red-500 p-3 rounded-2xl hover:bg-red-100 transition opacity-100 group-hover:opacity-100"
                         >
                           <Trash2 className="h-5 w-5" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleResumeOrder(held)}
                           className="bg-[#0f9d58] text-[#ffffff] px-6 py-3 rounded-2xl font-black text-md shadow-lg hover:bg-[#0b8a4a] transition"
                         >
@@ -1261,8 +1274,8 @@ function OrdersContent() {
           {variantPickerDialog}
 
           <div className="fixed bottom-6 right-6 z-50">
-            <button onClick={() => refetch()} className="bg-[#ef4444] text-[#ffffff] p-4 rounded-[20px] shadow-2xl transition hover:scale-110 active:scale-90">
-              <RotateCcw className={cn("h-6 w-6", ordersLoading && "animate-spin")} />
+            <button onClick={() => refetch()} className="bg-[#ef4444] text-[#ffffff] h-[50px] w-[50px] flex items-center justify-center !rounded-[14px] shadow-[0_6px_14px_rgba(239,68,68,0.35)] transition hover:scale-110 active:scale-90">
+              <RotateCw className={cn("h-6 w-6 stroke-[3]", ordersLoading && "animate-spin")} />
             </button>
           </div>
         </main>
@@ -1274,7 +1287,7 @@ function OrdersContent() {
     <AdminShell activeTab="orders">
       <main className="w-full space-y-8 bg-[#f8fafc] min-h-[calc(100vh-80px)]">
         {displayedOrders.length > 0 && (
-          <button 
+          <button
             onClick={() => setView("create")}
             className="w-full bg-gradient-to-r from-[#00a341] to-[#018152] text-[#ffffff] py-5 rounded-2xl  text-2xl font-bold flex items-center justify-center gap-3 shadow-xl transition hover:bg-[#0B9D58] hover:-translate-y-1 active:translate-y-0"
           >
@@ -1285,24 +1298,18 @@ function OrdersContent() {
         {ordersLoading && !orders.length ? (
           <div className="flex justify-center py-32"><Loader2 className="h-12 w-12 animate-spin text-[#0f9d58]" /></div>
         ) : displayedOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-[#f8fafc] to-[#f0f5f9] rounded-3xl border border-[#e5e9f0] py-20 px-4">
-            <div className="mb-8">
-              <div className="relative w-24 h-24 mx-auto">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#c5f7cf] to-[#a8f0bb] rounded-full opacity-20 blur-2xl"></div>
-                <div className="relative bg-white rounded-full w-full h-full flex items-center justify-center border-2 border-[#d8f4e0] shadow-lg">
-                  <Clipboard className="w-12 h-12 text-[#0f9d58]" strokeWidth={1.5} />
-                </div>
-              </div>
+          <div className="flex flex-col items-center justify-center min-h-[500px] bg-transparent py-20 px-4">
+            <div className="mb-4 text-[#a1a1aa]">
+              <ClipboardList className="w-24 h-24 stroke-[2]" />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#1f2937] mb-3 text-center">No Active Orders</h2>
-            <p className="text-base text-[#6b7280] text-center mb-8 max-w-sm">
-              There are no active orders at the moment. Create a new order to get started.
+            <p className="text-[20px] text-[#9ca3af] font-medium mb-5">
+              No active orders found
             </p>
-            <button 
+            <button
               onClick={() => setView("create")}
-              className="bg-[#0A795A]  text-[#ffffff] px-8 py-3 rounded-full font-black text-lg flex items-center gap-2 shadow-lg hover:shadow-xl transition hover:-translate-y-1 active:translate-y-0"
+              className="bg-[#008257] text-[#ffffff] px-6 py-2.5 rounded-xl font-semibold text-[17px] flex items-center gap-2 shadow-[0_4px_12px_rgba(0,130,87,0.3)] hover:bg-[#007048] transition active:scale-95"
             >
-              <Plus className="h-5 w-5" /> Create Your Order
+              <Plus className="h-5 w-5 stroke-[2.5]" /> Create Your Order
             </button>
           </div>
         ) : (
@@ -1374,11 +1381,11 @@ function OrdersContent() {
                           {expandedOrderId === order.id ? "Order Details" : "Edit Order"}
                         </button>
                         <button
-                            onClick={() => updateOrderStatus(order.id, "COMPLETED")}
-                            className="bg-[#0a9954] text-[#ffffff] px-8 py-4 rounded-full font-black text-lg flex items-center gap-3 shadow-lg hover:bg-[#0a874a] transition"
-                          >
-                            <CheckCircle2 className="h-6 w-6" /> Complete
-                          </button>
+                          onClick={() => updateOrderStatus(order.id, "COMPLETED")}
+                          className="bg-[#0a9954] text-[#ffffff] px-8 py-4 rounded-full font-black text-lg flex items-center gap-3 shadow-lg hover:bg-[#0a874a] transition"
+                        >
+                          <CheckCircle2 className="h-6 w-6" /> Complete
+                        </button>
                         {/* {!expandedOrderId && (
                           <button
                             onClick={() => updateOrderStatus(order.id, "COMPLETED")}
@@ -1405,7 +1412,7 @@ function OrdersContent() {
                               {actionLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
                               Save Changes
                             </button>
-                            
+
                           </div>
                         </div>
 
@@ -1553,9 +1560,9 @@ function OrdersContent() {
           </div>
         )}
 
-        <div className="fixed bottom-12 right-12">
-          <button onClick={() => refetch()} className="bg-[#ef4444] text-[#ffffff] p-6 rounded-[32px] shadow-[0_20px_50px_rgba(239,68,68,0.5)] transition hover:scale-110 active:scale-90">
-            <RotateCcw className={cn("h-8 w-8", ordersLoading && "animate-spin")} />
+        <div className="fixed bottom-8 right-12 z-50">
+          <button onClick={() => refetch()} className="bg-[#ef4444] text-[#ffffff] h-[50px] w-[50px] flex items-center justify-center !rounded-[14px] shadow-[0_6px_14px_rgba(239,68,68,0.35)] transition hover:scale-110 active:scale-90">
+            <RotateCw className={cn("h-6 w-6 stroke-[3]", ordersLoading && "animate-spin")} />
           </button>
         </div>
       </main>

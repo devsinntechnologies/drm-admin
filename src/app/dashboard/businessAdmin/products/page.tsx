@@ -24,6 +24,7 @@ import {
   Tag,
   Shapes,
   Package,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import AdminShell from "@/components/admin/AdminShell";
@@ -73,7 +74,7 @@ function VariantsEditor({
   return (
     <div className="space-y-3">
       <label className="text-sm font-bold text-[#111827]">Variants</label>
-      
+
       {variants.length > 0 && (
         <div className="space-y-2">
           {variants.map((v, i) => (
@@ -120,9 +121,9 @@ function VariantsEditor({
         <button
           type="button"
           onClick={onAddVariant}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ef4444] py-2.5 text-xs font-bold text-[#ffffff]"
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-[#111827] py-3.5 text-sm font-bold text-[#ffffff] transition hover:bg-black"
         >
-          <Plus className="h-4 w-4" /> Add Variant
+          <Plus className="h-5 w-5" /> Add Variant
         </button>
       </div>
     </div>
@@ -144,8 +145,8 @@ function MenuCard({
   const imageUrl = imagePath ? (imagePath.startsWith("http") ? imagePath : `${BASE_URL}/${imagePath}`) : null;
 
   return (
-    <article className="overflow-hidden rounded-[30px] bg-white border border-gray-100 shadow-sm flex flex-col">
-      <div className="relative h-80 w-full bg-[#f8fafc] m-2 rounded-2xl overflow-hidden">
+    <article className="overflow-hidden rounded-3xl bg-white border border-gray-100 shadow-sm flex flex-col">
+      <div className="relative h-80 w-full bg-[#f8fafc]">
         {imageUrl ? (
           <Image src={imageUrl} alt={item.name} fill className="object-cover" />
         ) : (
@@ -169,17 +170,17 @@ function MenuCard({
             ))
           ) : (
             <div className="flex items-center justify-between">
-              <span className="text-base font-medium text-[#64748b]">Price</span>
-              <span className="text-base font-extrabold text-[#16a34a]">Rs. {item.price}</span>
+              <span className="text-base font-bold text-[#64748b]">Price</span>
+              <span className="text-base font-black text-[#16a34a]">Rs. {item.price}</span>
             </div>
           )}
         </div>
 
-        <div className="mt-4 flex gap-3">
+        <div className="mt-4 flex items-center gap-3">
           <button
             type="button"
             onClick={() => onEdit(item.id)}
-            className="flex-1 inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#eefdf5] px-4 py-3 text-base font-bold text-[#16a34a] transition hover:bg-[#dcfce7]"
+            className="flex-1 inline-flex min-h-8 items-center justify-center gap-2 rounded-full bg-[#f0fdf4] border border-[#bbf7d0] px-4 py-0.5 text-sm font-black text-[#16a34a] transition hover:bg-[#dcfce7]"
           >
             <Pencil className="h-4 w-4" /> Edit
           </button>
@@ -187,9 +188,9 @@ function MenuCard({
             type="button"
             onClick={() => onDelete(item.id)}
             disabled={deleting}
-            className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[#fff2f2] text-[#ef4444] transition hover:bg-[#fee2e2]"
+            className="inline-flex h-12 w-16 items-center justify-center rounded-xl bg-[#fef2f2] border border-[#fecaca] text-[#ef4444] transition hover:bg-[#fee2e2]"
           >
-            <Trash2 className="h-5 w-5" />
+            <Trash2 className="h-6 w-6" />
           </button>
         </div>
       </div>
@@ -404,7 +405,7 @@ function MenuItemsContent() {
     <AdminShell activeTab="products">
       <main className="w-full space-y-6">
         {/* Header Section */}
-        <div className="w-full rounded-3xl border border-[#e5e7eb] bg-[#f3f4f6] px-6 py-5 shadow-sm">
+        <div className="w-full rounded-xl border border-[#e5e7eb] bg-[#f3f4f6] px-6 py-5 shadow-sm">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#ef4444] text-[#ffffff] shadow-sm">
@@ -419,19 +420,19 @@ function MenuItemsContent() {
             <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto xl:items-center">
               <button
                 onClick={() => setCreateOpen(true)}
-                className="inline-flex w-full min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#ef4444] px-6 py-3 text-base font-extrabold text-[#ffffff] shadow-sm transition hover:bg-[#dc2626] sm:w-auto"
+                className="inline-flex w-full min-h-14 items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-6 py-3 text-base font-extrabold text-[#ffffff] shadow-sm transition hover:bg-[#dc2626] sm:w-auto"
               >
                 <Plus className="h-5 w-5" /> Add
               </button>
               <button
                 onClick={() => router.push(`/dashboard/businessAdmin/categories${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
-                className="inline-flex w-full min-h-14 items-center justify-center gap-2 rounded-2xl border border-[#fca5a5] bg-white px-6 py-3 text-base font-extrabold text-[#ef4444] transition hover:bg-[#fff5f5] sm:w-auto"
+                className="inline-flex w-full min-h-14 items-center justify-center gap-2 rounded-xl border border-[#fca5a5] bg-white px-6 py-3 text-base font-extrabold text-[#ef4444] transition hover:bg-[#fff5f5] sm:w-auto"
               >
                 <Shapes className="h-5 w-5" /> Categories
               </button>
               <button
                 onClick={() => router.push(`/dashboard/businessAdmin/ingredients${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
-                className="inline-flex w-full min-h-14 items-center justify-center gap-2 rounded-2xl border border-[#fca5a5] bg-white px-6 py-3 text-base font-extrabold text-[#ef4444] transition hover:bg-[#fff5f5] sm:w-auto"
+                className="inline-flex w-full min-h-14 items-center justify-center gap-2 rounded-xl border border-[#fca5a5] bg-white px-6 py-3 text-base font-extrabold text-[#ef4444] transition hover:bg-[#fff5f5] sm:w-auto"
               >
                 <Package className="h-5 w-5" /> Ingredients
               </button>
@@ -440,7 +441,7 @@ function MenuItemsContent() {
         </div>
 
         {/* Metric Section */}
-        <div className="w-full rounded-3xl border border-blue-100 bg-[#f0f3ff] p-6 flex items-center gap-5 shadow-sm">
+        <div className="w-full rounded-xl border border-[#e5e7eb] bg-[#f3f4f6] p-6 flex items-center gap-5 shadow-sm">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#ef4444] text-[#ffffff]">
             <Box className="h-7 w-7" />
           </div>
@@ -539,8 +540,8 @@ function MenuItemsContent() {
                   <div className="space-y-2">
                     <label className="text-sm font-bold">Image</label>
                     <div className="flex items-center gap-3">
-                      <label className="cursor-pointer bg-black text-[#ffffff] px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
-                        <ImageIconLucide className="h-4 w-4" /> Choose Image
+                      <label className="cursor-pointer bg-[#111827] text-[#ffffff] px-6 py-3.5 rounded-xl text-sm font-bold flex items-center gap-2 transition hover:bg-black shadow-md">
+                        <ImageIconLucide className="h-5 w-5" /> Choose Image
                         <input type="file" className="hidden" onChange={(e) => setCreateForm(p => ({ ...p, image: e.target.files?.[0] ?? null }))} />
                       </label>
                       {createForm.image && <span className="text-xs text-green-600 font-medium">{createForm.image.name}</span>}
@@ -548,10 +549,10 @@ function MenuItemsContent() {
                   </div>
                 </div>
                 <div className="p-6 pt-4 border-t bg-gray-50 flex flex-col gap-2">
-                  <button type="submit" disabled={actionLoading} className="w-full bg-[#ef4444] text-[#ffffff] py-3 rounded-xl font-bold shadow-lg transition hover:bg-[#dc2626]">
-                    Save Product
+                  <button type="submit" disabled={actionLoading} className="w-full bg-[#111827] text-[#ffffff] py-3.5 rounded-xl font-bold shadow-lg transition hover:bg-black flex items-center justify-center gap-2">
+                    <Plus className="h-5 w-5" /> Save Product
                   </button>
-                  <button type="button" onClick={() => setCreateOpen(false)} className="w-full bg-white border py-3 rounded-xl font-bold transition hover:bg-gray-50">
+                  <button type="button" onClick={() => setCreateOpen(false)} className="w-full bg-white border border-gray-200 py-3 rounded-xl font-bold text-[#111827] transition hover:bg-gray-50">
                     Cancel
                   </button>
                 </div>
@@ -614,21 +615,33 @@ function MenuItemsContent() {
                   <div className="space-y-2">
                     <label className="text-sm font-bold">Image</label>
                     <div className="flex items-center gap-3">
-                      <label className="cursor-pointer bg-black text-[#ffffff] px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
-                        <ImageIconLucide className="h-4 w-4" /> Choose Image
+                      <label className="cursor-pointer bg-[#111827] text-[#ffffff] px-6 py-3.5 rounded-xl text-sm font-bold flex items-center gap-2 transition hover:bg-black shadow-md">
+                        <ImageIconLucide className="h-5 w-5" /> Choose Image
                         <input type="file" className="hidden" onChange={(e) => setEditForm(p => ({ ...p, image: e.target.files?.[0] ?? null }))} />
                       </label>
                       {editForm.image && <span className="text-xs text-green-600 font-medium">{editForm.image.name}</span>}
                     </div>
                   </div>
                 </div>
-                <div className="p-6 pt-4 border-t bg-gray-50 flex flex-col gap-2">
-                  <button type="submit" disabled={actionLoading} className="w-full bg-[#ef4444] text-[#ffffff] py-3 rounded-xl font-bold shadow-lg transition hover:bg-[#dc2626]">
-                    Save Changes
+                <div className="p-6 pt-4 border-t bg-gray-50 space-y-3">
+                  <button type="submit" disabled={actionLoading} className="w-full bg-[#111827] text-[#ffffff] py-3.5 rounded-xl font-bold shadow-lg transition hover:bg-black flex items-center justify-center gap-2">
+                    <CheckCircle2 className="h-5 w-5" /> Update Product
                   </button>
-                  <button type="button" onClick={() => setEditOpen(false)} className="w-full bg-white border py-3 rounded-xl font-bold transition hover:bg-gray-50">
-                    Cancel
-                  </button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button type="button" onClick={() => setEditOpen(false)} className="w-full bg-white border border-gray-200 py-3 rounded-xl font-bold text-[#111827] transition hover:bg-gray-50">
+                      Cancel
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setEditOpen(false);
+                        if (editId) onDelete(editId);
+                      }} 
+                      className="w-full bg-[#4f46e5] text-white py-3 rounded-xl font-bold transition hover:bg-[#4338ca] flex items-center justify-center gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" /> Delete
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>
