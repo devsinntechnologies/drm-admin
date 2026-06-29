@@ -2,7 +2,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { Activity, Building2, Crown, CreditCard, LayoutGrid, LogOut, Menu, ReceiptText, Shapes, Store, Users, UtensilsCrossed, X } from "lucide-react";
+import { Activity, Building2, Crown, CreditCard, LayoutGrid, LogOut, Menu, ReceiptText, Shapes, SlidersHorizontal, Store, Users, UtensilsCrossed, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,7 +11,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { toast } from "sonner";
 
-type TabKey = "dashboard" | "businesses" | "subscriptions" | "action-logs" | "orders" | "kitchen" | "products" | "categories" | "tables" | "invoices" | "users";
+type TabKey = "dashboard" | "businesses" | "subscriptions" | "features" | "action-logs" | "orders" | "kitchen" | "products" | "categories" | "tables" | "invoices" | "users";
 
 type AdminShellProps = {
   activeTab: TabKey;
@@ -36,6 +36,12 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
     label: "Subscriptions",
     href: "/dashboard/superAdmin/subscriptions",
     icon: <CreditCard className="h-5 w-5" />,
+  },
+  {
+    key: "features",
+    label: "Feature Management",
+    href: "/dashboard/superAdmin/features",
+    icon: <SlidersHorizontal className="h-5 w-5" />,
   },
   {
     key: "action-logs",
@@ -101,7 +107,7 @@ function getVisibleTabs(role: string | null, isImpersonating: boolean = false) {
     return tabs.filter((tab) => tab.key === "orders");
   }
 
-  return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "action-logs");
+  return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "features" || tab.key === "action-logs");
 }
 
 export default function AdminShell({ activeTab, children }: AdminShellProps) {
@@ -166,7 +172,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
   const visibleTabs = useMemo(() => {
     // During SSR and first paint, we MUST return a static set of tabs that match the server
     if (!isMounted) {
-      return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "action-logs");
+      return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "features" || tab.key === "action-logs");
     }
 
     const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
@@ -182,7 +188,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
     } else if (shouldShowBusinessTabs) {
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
     } else {
-      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "action-logs");
+      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "features" || tab.key === "action-logs");
       // Force Super Admin dashboard link to the superAdmin route
       baseTabs = baseTabs.map(tab =>
         tab.key === "dashboard" ? { ...tab, href: "/dashboard/superAdmin" } : tab
@@ -210,7 +216,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
 
   return (
     <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-[#e5edf5] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-[#e5edf5] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] xl:flex">
         <div className="border-b border-[#edf2f7] px-5 py-4">
           <div className="flex items-center gap-3">
             <div >
@@ -241,14 +247,14 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                   key={tab.key}
                   href={isMounted ? tab.href : tab.href.split("?")[0]}
                   className={cn(
-                    "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition",
+                    "flex min-w-0 items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition",
                     active
                       ? "bg-[#1E365B] text-[#ffffff] shadow-[0_10px_20px_rgba(31,42,86,0.18)]"
                       : "text-[#334155] hover:bg-[#f8fafc] hover:text-[#111827]",
                   )}
                 >
                   <span className={cn("shrink-0", active ? "text-[#ffffff]" : "text-[#64748b]")}>{tab.icon}</span>
-                  <span className={cn("shrink-0", active ? "text-[#ffffff]" : "text-[#64748b]")}>{tab.label}</span>
+                  <span className={cn("min-w-0 truncate", active ? "text-[#ffffff]" : "text-[#334155]")}>{tab.label}</span>
                 </Link>
               );
             })}
@@ -271,7 +277,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
         </div>
       </aside>
 
-      <div className="lg:pl-72">
+      <div className="xl:pl-72">
         <header className="relative overflow-hidden border-b border-[#dbe4ef] bg-[#f8fbff] py-4">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_0%,rgba(14,165,233,0.14),transparent_38%),radial-gradient(circle_at_0%_100%,rgba(15,118,110,0.12),transparent_42%)]" />
           <div className="relative flex w-full items-center justify-between gap-3 px-4 lg:px-6">
@@ -294,7 +300,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#d7e1ed] bg-white text-[#334155] shadow-[0_8px_16px_rgba(15,23,42,0.06)] transition hover:bg-[#f4f8fc] lg:hidden"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#d7e1ed] bg-white text-[#334155] shadow-[0_8px_16px_rgba(15,23,42,0.06)] transition hover:bg-[#f4f8fc] xl:hidden"
               aria-label="Open navigation menu"
             >
               <Menu className="h-5 w-5" />
@@ -302,13 +308,13 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
           </div>
         </header>
 
-        <main className="px-10 pb-8 pt-6 lg:pb-11">
+        <main className="px-4 pb-8 pt-6 sm:px-6 lg:px-10 lg:pb-11">
           {children}
         </main>
       </div>
 
       {mobileNavOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 xl:hidden">
           <button
             type="button"
             aria-label="Close navigation menu"
@@ -316,7 +322,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
             onClick={closeMobileNav}
           />
 
-          <aside className="absolute left-0 top-0 flex h-full w-[82vw] max-w-xs flex-col border-r border-[#e5edf5] bg-white shadow-[0_20px_40px_rgba(15,23,42,0.18)]">
+          <aside className="absolute left-0 top-0 flex h-full w-[88vw] max-w-sm flex-col border-r border-[#e5edf5] bg-white shadow-[0_20px_40px_rgba(15,23,42,0.18)]">
             <div className="flex items-center justify-between border-b border-[#edf2f7] px-5 py-4">
               <div className="flex items-center gap-3">
                 <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[linear-gradient(145deg,#0f172a,#155e75)] text-cyan-50 shadow-[0_12px_24px_rgba(15,23,42,0.18)]">
@@ -354,14 +360,14 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                       href={isMounted ? tab.href : tab.href.split("?")[0]}
                       onClick={closeMobileNav}
                       className={cn(
-                        "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition",
+                        "flex min-w-0 items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition",
                         active
                           ? "bg-[#1f2a56] text-[#ffffff] shadow-[0_10px_20px_rgba(31,42,86,0.18)]"
                           : "text-[#334155] hover:bg-[#f8fafc] hover:text-[#111827]",
                       )}
                     >
                       <span className={cn("shrink-0", active ? "text-[#ffffff]" : "text-[#64748b]")}>{tab.icon}</span>
-                      <span>{tab.label}</span>
+                      <span className={cn("min-w-0 truncate", active ? "text-[#ffffff]" : "text-[#334155]")}>{tab.label}</span>
                     </Link>
                   );
                 })}
