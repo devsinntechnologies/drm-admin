@@ -187,7 +187,7 @@ function TablesContent() {
           <section className="bg-white rounded-[10px] p-6 shadow-sm border border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-4">
-                <div className="h-14 w-14 rounded-2xl bg-[#ef4444] flex items-center justify-center shadow-lg shadow-red-100">
+                <div className="h-14 w-14 rounded-2xl bg-[#001840] flex items-center justify-center shadow-lg shadow-red-100">
                   <Box className="h-7 w-7 text-[#ffffff]" />
                 </div>
                 <div>
@@ -197,7 +197,7 @@ function TablesContent() {
               </div>
 
               <div className="flex items-center gap-4 border-l border-slate-100 pl-8">
-                <div className="h-14 w-14 rounded-2xl bg-[#ef4444] flex items-center justify-center">
+                <div className="h-14 w-14 rounded-2xl bg-[#001840] flex items-center justify-center">
                   <Box className="h-7 w-7 text-[#ffffff]" />
                 </div>
                 <div>
@@ -209,7 +209,7 @@ function TablesContent() {
 
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
-                <button type="button" className="flex items-center gap-2 bg-[#ef4444] text-[#ffffff] px-3 py-3 rounded-xl font-black text-lg shadow-lg shadow-red-200 transition-all active:scale-95">
+                <button type="button" className="flex items-center gap-2 bg-[#001840] text-[#ffffff] px-3 py-3 rounded-xl font-black text-lg shadow-lg shadow-[0_10px_20px_rgba(0,24,64,0.18)] transition-all active:scale-95">
                   <Plus className="h-7 w-7" /> Add
                 </button>
               </DialogTrigger>
@@ -232,7 +232,7 @@ function TablesContent() {
             {error && <ErrorAlert message={error} />}
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-20">
               {loading ? (
-                <div className="h-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#ef4444]" /></div>
+                <div className="h-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#001840]" /></div>
               ) : (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                   {tables.map(table => (
@@ -245,7 +245,7 @@ function TablesContent() {
             {/* Floating Refresh */}
             <button
               onClick={() => fetchTables()}
-              className="fixed bottom-8 right-8 h-14 w-14 rounded-2xl bg-[#ef4444] text-[#ffffff] shadow-xl shadow-red-200 flex items-center justify-center hover:scale-110 transition-all z-50 group"
+              className="fixed bottom-8 right-8 h-14 w-14 rounded-2xl bg-[#001840] text-[#ffffff] shadow-[0_10px_20px_rgba(0,24,64,0.22)] flex items-center justify-center hover:scale-110 transition-all z-50 group"
             >
               <RotateCcw className={cn("h-6 w-6 transition-transform group-hover:rotate-180", loading && "animate-spin")} />
             </button>
@@ -336,7 +336,7 @@ function TableForm({ title, subtitle, form, setForm, onSubmit, onClose, loading,
               <button
                 type="button"
                 onClick={() => document.getElementById("image-input")?.click()}
-                className="flex items-center gap-3 bg-[#111827] text-[#ffffff] px-6 py-3 rounded-2xl text-xs font-black hover:bg-black transition-all shadow-lg shadow-slate-200"
+                className="flex items-center gap-3 bg-[#001840] text-[#ffffff] px-6 py-3 rounded-2xl text-xs font-black hover:bg-[#00122E] transition-all shadow-lg shadow-slate-200"
               >
                 <ImageIcon className="h-4 w-4" />
                 Choose Image
@@ -373,7 +373,7 @@ function TableForm({ title, subtitle, form, setForm, onSubmit, onClose, loading,
           <button type="button" onClick={onClose} className="px-8 py-3 rounded-2xl border border-slate-200 font-black text-sm text-slate-500 hover:bg-slate-50 transition-all">
             Cancel
           </button>
-          <button type="submit" disabled={loading} className="flex items-center gap-2 px-10 py-3 rounded-2xl bg-[#111827] text-[#ffffff] font-black text-sm shadow-xl shadow-slate-200 transition-all active:scale-95 disabled:opacity-60">
+          <button type="submit" disabled={loading} className="flex items-center gap-2 px-10 py-3 rounded-2xl bg-[#001840] text-[#ffffff] font-black text-sm shadow-xl shadow-slate-200 transition-all active:scale-95 disabled:opacity-60">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save
           </button>
@@ -385,7 +385,7 @@ function TableForm({ title, subtitle, form, setForm, onSubmit, onClose, loading,
 
 export default function TablesPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#ef4444]" /></div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#001840]" /></div>}>
       <TablesContent />
     </Suspense>
   );

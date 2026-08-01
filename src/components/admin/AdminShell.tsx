@@ -2,7 +2,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { Activity, Building2, Crown, CreditCard, LayoutGrid, LogOut, Menu, ReceiptText, Shapes, SlidersHorizontal, Store, Users, UtensilsCrossed, X } from "lucide-react";
+import { Activity, Building2, Crown, CreditCard, Globe2, LayoutGrid, LogOut, Menu, ReceiptText, Shapes, SlidersHorizontal, Store, Users, UtensilsCrossed, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,7 +11,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { toast } from "sonner";
 
-type TabKey = "dashboard" | "businesses" | "subscriptions" | "features" | "action-logs" | "orders" | "kitchen" | "products" | "categories" | "tables" | "invoices" | "users";
+type TabKey = "dashboard" | "businesses" | "subscriptions" | "features" | "action-logs" | "orders" | "kitchen" | "products" | "categories" | "public-data" | "tables" | "invoices" | "users";
 
 type AdminShellProps = {
   activeTab: TabKey;
@@ -62,6 +62,12 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
     icon: <Shapes className="h-5 w-5" />,
   },
   {
+    key: "public-data",
+    label: "Public Catalog",
+    href: "/dashboard/businessAdmin/public-data",
+    icon: <Globe2 className="h-5 w-5" />,
+  },
+  {
     key: "tables",
     label: "Restaurant Tables",
     href: "/dashboard/businessAdmin/tables",
@@ -96,7 +102,7 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
 function getVisibleTabs(role: string | null, isImpersonating: boolean = false) {
   // If we are impersonating, we always want the business admin view
   if (isImpersonating || role === "business_admin") {
-    return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
+    return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "public-data" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
   }
 
   if (role === "kitchen") {
@@ -186,7 +192,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
     if (resolvedRole === "waiter" || resolvedRole === "kitchen") {
       baseTabs = tabs.filter((tab) => tab.key === "orders");
     } else if (shouldShowBusinessTabs) {
-      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
+      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "public-data" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
     } else {
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "features" || tab.key === "action-logs");
       // Force Super Admin dashboard link to the superAdmin route
@@ -219,12 +225,17 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-[#e5edf5] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] xl:flex">
         <div className="border-b border-[#edf2f7] px-5 py-4">
           <div className="flex items-center gap-3">
-            <div >
-              <Image src="/logo.png" alt="Restaurant Manager logo" width={150} height={150} className="h-20 w-20 object-contain" priority />
-            </div>
+            <Image
+              src="/logo-mark.png"
+              alt="DigiNizam"
+              width={48}
+              height={40}
+              className="h-10 w-auto shrink-0 object-contain"
+              priority
+            />
             <div className="min-w-0">
               <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">
-                {activeBusiness?.name || "Restaurant Manager"}
+                {activeBusiness?.businessName || "Restaurant Manager"}
               </h1>
               <p className="truncate text-xs font-medium leading-tight text-[#667085]">
                 {!isMounted ? "..." :
@@ -247,14 +258,14 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                   key={tab.key}
                   href={isMounted ? tab.href : tab.href.split("?")[0]}
                   className={cn(
-                    "flex min-w-0 items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition",
+                    "flex min-w-0 items-center gap-3 px-4 py-3 text-sm font-medium transition",
                     active
-                      ? "bg-[#1E365B] text-[#ffffff] shadow-[0_10px_20px_rgba(31,42,86,0.18)]"
-                      : "text-[#334155] hover:bg-[#f8fafc] hover:text-[#111827]",
+                      ? "rounded-full bg-[#001840] text-[#ffffff]! shadow-[0_10px_20px_rgba(0,24,64,0.18)]"
+                      : "rounded-xl text-[#334155] hover:bg-[#f8fafc] hover:text-[#111827]",
                   )}
                 >
-                  <span className={cn("shrink-0", active ? "text-[#ffffff]" : "text-[#64748b]")}>{tab.icon}</span>
-                  <span className={cn("min-w-0 truncate", active ? "text-[#ffffff]" : "text-[#334155]")}>{tab.label}</span>
+                  <span className={cn("shrink-0", active ? "text-[#ffffff]!" : "text-[#64748b]")}>{tab.icon}</span>
+                  <span className={cn("min-w-0 truncate", active ? "text-[#ffffff]!" : "text-[#334155]")}>{tab.label}</span>
                 </Link>
               );
             })}
@@ -268,7 +279,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                 toast.success("Successfully logged out. See you soon!");
                 router.push("/");
               }}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#d7e1ed] bg-white px-4 py-3 text-sm font-semibold text-[#0f172a] shadow-[0_8px_16px_rgba(15,23,42,0.06)] transition hover:bg-[#f4f8fc]"
+              className="dn-btn dn-btn-outline w-full"
             >
               <LogOut className="h-4.5 w-4.5" strokeWidth={2} />
               Logout
@@ -279,12 +290,17 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
 
       <div className="xl:pl-72">
         <header className="relative overflow-hidden border-b border-[#dbe4ef] bg-[#f8fbff] py-4">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_0%,rgba(14,165,233,0.14),transparent_38%),radial-gradient(circle_at_0%_100%,rgba(15,118,110,0.12),transparent_42%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_0%,rgba(0,80,248,0.12),transparent_38%),radial-gradient(circle_at_0%_100%,rgba(0,24,64,0.08),transparent_42%)]" />
           <div className="relative flex w-full items-center justify-between gap-3 px-4 lg:px-6">
             <div className="flex min-w-0 items-center gap-3 md:gap-4">
-              <div >
-                <Image src="/logo.png" alt="Restaurant Manager logo" width={150} height={150} className="h-16 w-16 object-contain" priority />
-              </div>
+              <Image
+                src="/logo-mark.png"
+                alt="DigiNizam"
+                width={52}
+                height={44}
+                className="h-11 w-auto shrink-0 object-contain"
+                priority
+              />
               <div className="min-w-0">
                 <h1 className="truncate text-lg font-semibold leading-tight text-[#0f172a] md:text-xl lg:text-2xl">Restaurant Manager</h1>
                 <p className="truncate text-xs font-medium leading-tight text-[#58657a] md:text-sm">
@@ -325,9 +341,14 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
           <aside className="absolute left-0 top-0 flex h-full w-[88vw] max-w-sm flex-col border-r border-[#e5edf5] bg-white shadow-[0_20px_40px_rgba(15,23,42,0.18)]">
             <div className="flex items-center justify-between border-b border-[#edf2f7] px-5 py-4">
               <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[linear-gradient(145deg,#0f172a,#155e75)] text-cyan-50 shadow-[0_12px_24px_rgba(15,23,42,0.18)]">
-                  <Image src="/logo.png" alt="Restaurant Manager logo" width={20} height={20} className="h-5 w-5 object-contain" priority />
-                </div>
+                <Image
+                  src="/logo-mark.png"
+                  alt="DigiNizam"
+                  width={44}
+                  height={36}
+                  className="h-9 w-auto shrink-0 object-contain"
+                  priority
+                />
                 <div className="min-w-0">
                   <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">Restaurant Manager</h1>
                   <p className="truncate text-xs font-medium leading-tight text-[#667085]">
@@ -360,14 +381,14 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                       href={isMounted ? tab.href : tab.href.split("?")[0]}
                       onClick={closeMobileNav}
                       className={cn(
-                        "flex min-w-0 items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition",
+                        "flex min-w-0 items-center gap-3 px-4 py-3 text-sm font-medium transition",
                         active
-                          ? "bg-[#1f2a56] text-[#ffffff] shadow-[0_10px_20px_rgba(31,42,86,0.18)]"
-                          : "text-[#334155] hover:bg-[#f8fafc] hover:text-[#111827]",
+                          ? "rounded-full bg-[#001840] text-[#ffffff]! shadow-[0_10px_20px_rgba(0,24,64,0.18)]"
+                          : "rounded-xl text-[#334155] hover:bg-[#f8fafc] hover:text-[#111827]",
                       )}
                     >
-                      <span className={cn("shrink-0", active ? "text-[#ffffff]" : "text-[#64748b]")}>{tab.icon}</span>
-                      <span className={cn("min-w-0 truncate", active ? "text-[#ffffff]" : "text-[#334155]")}>{tab.label}</span>
+                      <span className={cn("shrink-0", active ? "text-[#ffffff]!" : "text-[#64748b]")}>{tab.icon}</span>
+                      <span className={cn("min-w-0 truncate", active ? "text-[#ffffff]!" : "text-[#334155]")}>{tab.label}</span>
                     </Link>
                   );
                 })}
@@ -382,7 +403,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                     toast.success("Successfully logged out. See you soon!");
                     router.push("/");
                   }}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#d7e1ed] bg-white px-4 py-3 text-sm font-semibold text-[#0f172a] shadow-[0_8px_16px_rgba(15,23,42,0.06)] transition hover:bg-[#f4f8fc]"
+                  className="dn-btn dn-btn-outline w-full"
                 >
                   <LogOut className="h-4.5 w-4.5" strokeWidth={2} />
                   Logout

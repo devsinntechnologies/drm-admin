@@ -24,9 +24,9 @@ const getRoleIcon = (
   role: UserRole
 ): { bg: string; icon: React.ReactNode; color: string } => {
   return {
-    bg: "bg-[#ef4444]",
+    bg: "bg-[#001840]",
     icon: role === "kitchen" ? <UtensilsCrossed className="h-6 w-6 text-[#ffffff]" /> : <Users className="h-6 w-6 text-[#ffffff]" />,
-    color: "text-[#ef4444]",
+    color: "text-[#0050F8]",
   };
 };
 
@@ -218,7 +218,7 @@ function UsersContent() {
         {/* Header - card style like screenshot */}
         <div className="rounded-xl border border-[#f3f3f3] bg-white p-4 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-[#ef4444] flex items-center justify-center text-white shadow text-lg">
+            <div className="h-12 w-12 rounded-lg bg-[#001840] flex items-center justify-center text-white shadow text-lg">
               <Users className="h-6 w-6" />
             </div>
             <div>
@@ -230,7 +230,7 @@ function UsersContent() {
           <div className="flex items-center gap-3">
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
-                <button className="inline-flex rounded-lg bg-[#ef4444] px-4 py-2 gap-1 text-lg font-extrabold text-white shadow-sm hover:bg-[#dc2626] transition">
+                <button className="dn-btn dn-btn-primary !h-10 !rounded-lg gap-1 text-lg font-extrabold">
                   <Plus className="h-6 w-6" />
                   Add
                 </button>
@@ -247,7 +247,7 @@ function UsersContent() {
                       id="name"
                       value={createForm.name}
                       onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
-                      className="w-full rounded-xl border border-[#e0e0e0] px-4 py-3 text-sm outline-none focus:border-[#ef4444] bg-[#f8f8f8]"
+                      className="w-full rounded-xl border border-[#e0e0e0] px-4 py-3 text-sm outline-none focus:border-[#001840] bg-[#f8f8f8]"
                       placeholder="Enter name"
                     />
                   </div>
@@ -259,7 +259,7 @@ function UsersContent() {
                       type="password"
                       value={createForm.password}
                       onChange={(event) => setCreateForm((prev) => ({ ...prev, password: event.target.value }))}
-                      className="w-full rounded-xl border border-[#e0e0e0] px-4 py-3 text-sm outline-none focus:border-[#ef4444] bg-[#f8f8f8]"
+                      className="w-full rounded-xl border border-[#e0e0e0] px-4 py-3 text-sm outline-none focus:border-[#001840] bg-[#f8f8f8]"
                       placeholder="Enter password"
                     />
                   </div>
@@ -270,7 +270,7 @@ function UsersContent() {
                       id="category"
                       value={createForm.role}
                       onChange={(event) => setCreateForm((prev) => ({ ...prev, role: event.target.value as UserRole }))}
-                      className="w-full rounded-xl border border-[#e0e0e0] px-4 py-3 text-sm outline-none focus:border-[#ef4444] bg-[#f8f8f8]"
+                      className="w-full rounded-xl border border-[#e0e0e0] px-4 py-3 text-sm outline-none focus:border-[#001840] bg-[#f8f8f8]"
                     >
                       <option value="waiter">Waiter</option>
                       <option value="kitchen">Kitchen</option>
@@ -288,7 +288,7 @@ function UsersContent() {
                     <button
                       type="submit"
                       disabled={actionLoading}
-                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-4 py-3 text-sm font-extrabold text-white hover:bg-[#dc2626] disabled:opacity-60"
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#001840] px-4 py-3 text-sm font-extrabold text-white hover:bg-[#00122E] disabled:opacity-60"
                     >
                       {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                       Save
@@ -302,9 +302,9 @@ function UsersContent() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-[#ef4444] p-4 bg-[#eff8ff]">
+          <div className="rounded-2xl border border-[#001840] p-4 bg-[#eff8ff]">
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-[#ef4444] flex items-center justify-center text-white text-lg">
+              <div className="h-12 w-12 rounded-lg bg-[#001840] flex items-center justify-center text-white text-lg">
                 <User className="h-6 w-6" />
               </div>
               <div>
@@ -314,9 +314,9 @@ function UsersContent() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#ef4444] p-4 bg-[#fff5fb]">
+          <div className="rounded-2xl border border-[#001840] p-4 bg-[#fff5fb]">
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-[#ef4444] flex items-center justify-center text-white text-lg">
+              <div className="h-12 w-12 rounded-lg bg-[#001840] flex items-center justify-center text-white text-lg">
                 <UtensilsCrossed className="h-6 w-6" />
               </div>
               <div>
@@ -326,9 +326,9 @@ function UsersContent() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#ef4444] p-4 bg-[#fff6f6]">
+          <div className="rounded-2xl border border-[#001840] p-4 bg-[#fff6f6]">
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-[#ef4444] flex items-center justify-center text-white text-lg">
+              <div className="h-12 w-12 rounded-lg bg-[#001840] flex items-center justify-center text-white text-lg">
                 <Users className="h-6 w-6" />
               </div>
               <div>
@@ -348,21 +348,25 @@ function UsersContent() {
               placeholder="Search by name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-500 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-500 shadow-sm transition focus:border-[#0050F8] focus:outline-none focus:ring-1 focus:ring-[#0050F8]"
             />
           </div>
 
           {/* Role Tabs (pills) */}
-          <div className="flex items-center gap-3">
+          <div className="dn-tab-bar !w-auto">
             <button
+              type="button"
               onClick={() => setSelectedRole("waiter")}
-              className={`px-4 py-2 text-sm font-extrabold rounded-md transition ${selectedRole === "waiter" ? "bg-[#ef4444] text-[#ffffff]" : "bg-white border border-[#e1e3e6] text-[#4a4a4a] "}`}
+              data-active={selectedRole === "waiter" ? "true" : "false"}
+              className="dn-tab"
             >
               Waiters
             </button>
             <button
+              type="button"
               onClick={() => setSelectedRole("kitchen")}
-              className={`px-4 py-2 text-sm font-extrabold rounded-md transition ${selectedRole === "kitchen" ? "bg-[#ef4444] text-[#ffffff] border border-gray-200" : "bg-white border border-[#e1e3e6] text-[#4a4a4a] "}`}
+              data-active={selectedRole === "kitchen" ? "true" : "false"}
+              className="dn-tab"
             >
               Kitchen
             </button>
@@ -402,7 +406,7 @@ function UsersContent() {
                       {user.name}
                     </h3>
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center rounded-xl px-3 py-1 text-[13px] font-bold lowercase bg-[#ef4444] text-[#ffffff]">
+                      <span className="inline-flex items-center rounded-xl px-3 py-1 text-[13px] font-bold lowercase bg-[#001840] text-[#ffffff]">
                         {user.role}
                       </span>
                       <span className={`inline-flex items-center rounded-xl px-3 py-1 text-[13px] font-bold lowercase ${isActive ? "bg-[#00c853] text-[#ffffff]" : "bg-gray-200 text-gray-700"}`}>

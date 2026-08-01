@@ -33,7 +33,7 @@ function SuperAdminDashboardContent() {
       title: "Total Plans",
       value: isLoading ? "..." : String(stats?.totalPlans ?? 0),
       sub: "Available subscription plans",
-      bg: "from-[#0f172a] to-[#155e75]",
+      bg: "from-[#001840] to-[#0050F8]",
       icon: <Building2 className="h-5 w-5" strokeWidth={1.8} />,
       ghost: <Building2 className="h-20 w-20 opacity-30" strokeWidth={1.2} />,
     },
@@ -67,7 +67,7 @@ function SuperAdminDashboardContent() {
     <AdminShell activeTab="dashboard">
       <section className="mb-5 grid w-full grid-cols-1 gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.82),rgba(240,249,255,0.72))] p-5 shadow-[0_18px_30px_rgba(15,23,42,0.09)] lg:grid-cols-[1.2fr_0.8fr] mx-4 lg:mx-6">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1E365B]">Operational Snapshot</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#001840]">Operational Snapshot</p>
           <h2 className="mt-2 text-2xl font-semibold text-[#0f172a] lg:text-3xl">Control Center Dashboard</h2>
           <p className="mt-2 max-w-2xl text-sm text-[#5b657a] lg:text-base">
             Monitor plan performance, track subscription health, and identify top-performing businesses at a glance.
@@ -102,7 +102,7 @@ function SuperAdminDashboardContent() {
       <section className="mb-4 grid w-full grid-cols-1 gap-4 xl:grid-cols-2 mx-4 lg:mx-6">
         <article className="overflow-hidden rounded-3xl border border-white bg-white/85 shadow-[0_12px_24px_rgba(10,17,31,0.08)]">
           <div className="flex min-h-16 items-center gap-4 bg-[linear-gradient(120deg,#e0f2fe_0%,#f0fdfa_100%)] px-6 py-4 lg:px-7">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#155e75] text-[#ffffff]">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#0050F8] text-[#ffffff]">
               <BarChart3 className="h-5 w-5" strokeWidth={1.8} />
             </div>
             <div>
@@ -176,7 +176,7 @@ function SuperAdminDashboardContent() {
       <section className="mb-4 grid w-full grid-cols-1 gap-4 xl:grid-cols-2">
         <article className="overflow-hidden rounded-3xl border border-white bg-white/85 shadow-[0_12px_24px_rgba(10,17,31,0.08)]">
           <div className="flex min-h-16 items-center gap-4 bg-[linear-gradient(120deg,#dcfce7_0%,#ecfeff_100%)] px-6 py-4 lg:px-7">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#1E365B] text-[#ffffff]">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#001840] text-[#ffffff]">
               <Award className="h-5 w-5" strokeWidth={1.8} />
             </div>
             <div>
@@ -236,7 +236,7 @@ function SuperAdminDashboardContent() {
         </article>
       </section>
 
-      <section className="w-full rounded-3xl bg-linear-to-br from-[#0f172a] to-[#1E365B] p-4 shadow-[0_14px_26px_rgba(15,23,42,0.3)] lg:p-5">
+      <section className="w-full rounded-3xl bg-linear-to-br from-[#001840] to-[#0050F8] p-4 shadow-[0_14px_26px_rgba(0,24,64,0.3)] lg:p-5">
         <h3 className="flex items-center gap-2 text-base font-medium text-[#f4f7ff] lg:text-lg">
           <ShieldCheck className="h-4.5 w-4.5" strokeWidth={1.8} />
           System Overview

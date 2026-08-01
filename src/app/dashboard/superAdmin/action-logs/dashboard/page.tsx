@@ -63,7 +63,7 @@ export default function ActionLogsDashboardPage() {
       <section className="mb-5 grid w-full grid-cols-1 gap-5 xl:grid-cols-[1.8fr_1fr]">
         <article className="overflow-hidden rounded-[32px] bg-white shadow-[0_10px_30px_rgba(10,17,31,0.1)]">
           <div className="flex min-h-[86px] items-center gap-4 border-b border-[#dfe4ee] bg-gradient-to-r from-[#eef2ff] to-[#fff4f8] px-7 py-6">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-[#5b62f5] to-[#7a43f4] text-[#ffffff] shadow-[0_12px_24px_rgba(91,98,245,0.25)]">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-[#001840] to-[#0050F8] text-[#ffffff] shadow-[0_12px_24px_rgba(91,98,245,0.25)]">
               <LineChart className="h-6 w-6" strokeWidth={1.8} />
             </div>
             <div>
@@ -116,7 +116,7 @@ export default function ActionLogsDashboardPage() {
 
         <article className="overflow-hidden rounded-[32px] bg-white shadow-[0_10px_30px_rgba(10,17,31,0.1)]">
           <div className="flex min-h-[86px] items-center gap-4 border-b border-[#eadff0] bg-gradient-to-r from-[#f5ecff] to-[#fff0f5] px-7 py-6">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-[#8d3cf2] to-[#c13ef0] text-[#ffffff] shadow-[0_12px_24px_rgba(157,61,241,0.24)]">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-[#001840] to-[#0050F8] text-[#ffffff] shadow-[0_12px_24px_rgba(157,61,241,0.24)]">
               <PieChart className="h-6 w-6" strokeWidth={1.8} />
             </div>
             <div>

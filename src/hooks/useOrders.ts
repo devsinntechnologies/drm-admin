@@ -18,9 +18,9 @@ function getAuthToken(reduxToken: string | null) {
 
 export interface CreateOrderItemPayload {
   productId: string;
-  variantId: string;
+  variantId?: string;
   quantity: number;
-  price: number;
+  price?: number;
 }
 
 export interface CreateOrderPayload {

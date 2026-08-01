@@ -69,7 +69,7 @@ const countryOptions = [
 
 const planColor: Record<BusinessItem["plan"], string> = {
   Enterprise: "bg-[#ff8a00]",
-  Premium: "bg-[#9c47f5]",
+  Premium: "bg-[#0050F8]",
   Basic: "bg-[#3788f8]",
 };
 
@@ -251,7 +251,7 @@ function BusinessesContent() {
     <AdminShell activeTab="businesses">
       <section className="mb-5 flex w-full items-center justify-between gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.9),rgba(236,253,245,0.78))] px-6 py-5 shadow-[0_12px_28px_rgba(7,16,34,0.1)]">
         <div className="flex items-center gap-4">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#1E365B] text-[#ffffff] shadow-[0_10px_18px_rgba(15,118,110,0.28)]">
+          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#001840] text-[#ffffff] shadow-[0_10px_18px_rgba(0,24,64,0.28)]">
             <Building2 className="h-6 w-6" strokeWidth={1.8} />
           </div>
           <div>
@@ -270,7 +270,7 @@ function BusinessesContent() {
           }}
         >
           <DialogTrigger asChild>
-            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl bg-linear-to-r from-[#0f172a] to-[#1E365B] px-5 text-sm font-semibold text-[#ffffff] shadow-[0_10px_20px_rgba(15,23,42,0.22)]">
+            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl bg-linear-to-r from-[#001840] to-[#0050F8] px-5 text-sm font-semibold text-[#ffffff] shadow-[0_10px_20px_rgba(0,24,64,0.22)]">
               <Plus className="h-4 w-4" />
               Add Business
             </button>
@@ -399,7 +399,7 @@ function BusinessesContent() {
                 <button
                   type="submit"
                   disabled={isCreatingBusiness || isPatchingBusiness || isLoadingBusinessById}
-                  className="inline-flex h-10 items-center rounded-xl bg-linear-to-r from-[#5e5df2] to-[#8f20f5] px-4 text-sm font-semibold text-[#ffffff] disabled:opacity-60"
+                  className="inline-flex h-10 items-center rounded-xl bg-[#001840] px-4 text-sm font-semibold text-[#ffffff] disabled:opacity-60"
                 >
                   {isLoadingBusinessById
                     ? "Loading..."
@@ -431,7 +431,7 @@ function BusinessesContent() {
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search businesses..."
-              className="h-11 rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-4 text-sm text-[#677084] outline-none focus:ring-2 focus:ring-[#1E365B]/25"
+              className="h-11 rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-4 text-sm text-[#677084] outline-none focus:ring-2 focus:ring-[#001840]/25"
             />
             <div className="relative">
               <button
@@ -581,7 +581,7 @@ function BusinessesContent() {
                   <p className="text-xs text-[#616b80]">Orders</p>
                 </div>
                 <div>
-                  <strong className="text-lg text-[#8925f8]">{business.users}</strong>
+                  <strong className="text-lg text-[#0050F8]">{business.users}</strong>
                   <p className="text-xs text-[#616b80]">Users</p>
                 </div>
               </div>

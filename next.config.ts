@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "drm.devsinntechnologies.com",
       },
+      {
+        protocol: "https",
+        hostname: "vendor.umazing.shop",
+      },
     ],
   },
 };

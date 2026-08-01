@@ -72,8 +72,8 @@ function LoginContent() {
     <main className="min-h-screen px-4 py-8">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-305 items-center justify-center">
         <section className="grid w-full overflow-hidden rounded-[36px] bg-white shadow-[0_28px_70px_rgba(31,41,55,0.22)] lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="relative overflow-hidden bg-linear-to-br from-[#0b1220] via-[#0f2d5c] to-[#1E365B] p-8 text-[#ffffff] sm:p-10">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.2),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(56,189,248,0.2),transparent_36%)]" />
+          <div className="relative overflow-hidden bg-linear-to-br from-[#001840] via-[#002a6e] to-[#0050F8] p-8 text-[#ffffff] sm:p-10">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,80,248,0.35),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(0,24,64,0.45),transparent_36%)]" />
             <div className="relative z-1">
               <Link href="/" className="inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-sm font-medium text-[#ffffff]/95 transition hover:bg-white/18">
                 <ArrowLeft className="h-4 w-4" />
@@ -166,7 +166,7 @@ function LoginContent() {
                   <button
                     type="button"
                     onClick={handleForgotPassword}
-                    className="font-semibold text-[#6a4df5] hover:text-[#5e4ff2] transition-colors"
+                    className="font-semibold text-[#0050F8] hover:text-[#5e4ff2] transition-colors"
                   >
                     Forgot password?
                   </button>
@@ -175,7 +175,7 @@ function LoginContent() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="inline-flex h-14 w-full items-center justify-center rounded-[18px] bg-[linear-gradient(120deg,#0f172a_0%,#155e75_100%)] text-lg font-semibold text-[#ffffff]! shadow-[0_14px_26px_rgba(15,23,42,0.3)] transition hover:scale-[1.01]"
+                  className="inline-flex h-14 w-full items-center justify-center rounded-[18px] bg-[linear-gradient(120deg,#001840_0%,#0050F8_100%)] text-lg font-semibold text-[#ffffff]! shadow-[0_14px_26px_rgba(0,24,64,0.3)] transition hover:scale-[1.01]"
                 >
                   {isLoading ? "Signing in..." : "Login to Dashboard"}
                 </button>

@@ -162,7 +162,7 @@ function PlanCard({ plan, onEdit, onDelete }: { plan: Plan; onEdit: (plan: Plan)
           {plan.isActive ? "Active" : "Inactive"}
         </span>
         {plan.mostPopular ? <span className="inline-flex rounded-full bg-[#fff4df] px-3 py-1 text-[#b45309]">Most popular</span> : null}
-        <span className="inline-flex rounded-full bg-[#eff6ff] px-3 py-1 text-[#1d4ed8]">{plan.subscribedBusinesses?.length ?? 0} businesses</span>
+        <span className="inline-flex rounded-full bg-[#EEF3FF] px-3 py-1 text-[#1d4ed8]">{plan.subscribedBusinesses?.length ?? 0} businesses</span>
       </div>
 
       {features.length > 0 ? (
@@ -354,7 +354,7 @@ function SubscriptionsContent() {
         <button
           type="button"
           onClick={openCreatePlanDialog}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#111827] px-5 text-sm font-semibold text-[#ffffff] transition hover:bg-[#0f172a]"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#001840] px-5 text-sm font-semibold text-[#ffffff] transition hover:bg-[#00122E]"
         >
           <Plus className="h-4 w-4" />
           Add Plan
@@ -616,7 +616,7 @@ function SubscriptionsContent() {
               <button
                 type="submit"
                 disabled={isSavingPlan}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#111827] px-5 text-sm font-semibold text-[#ffffff] transition hover:bg-[#0f172a] disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#001840] px-5 text-sm font-semibold text-[#ffffff] transition hover:bg-[#00122E] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSavingPlan ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {isSavingPlan ? (editingPlanId ? "Updating..." : "Creating...") : editingPlanId ? "Update Plan" : "Create Plan"}

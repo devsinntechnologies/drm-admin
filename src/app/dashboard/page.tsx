@@ -38,8 +38,8 @@ export default function DashboardPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#f5f5f5]">
       <div className="text-center">
-        <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-[#1E365B] border-t-transparent mx-auto"></div>
-        <p className="text-lg font-medium text-[#1E365B]">Loading your dashboard...</p>
+        <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-[#001840] border-t-transparent mx-auto"></div>
+        <p className="text-lg font-medium text-[#001840]">Loading your dashboard...</p>
       </div>
     </div>
   );

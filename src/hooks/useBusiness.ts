@@ -116,6 +116,8 @@ export const businessApi = createApi({
     }),
     getBusinessById: builder.query<BusinessRecord, string>({
       query: (id) => `/business/${id}`,
+      transformResponse: (response: BusinessRecord | { data: BusinessRecord }) =>
+        "data" in response && response.data ? response.data : (response as BusinessRecord),
     }),
     patchBusinessById: builder.mutation<BusinessRecord, PatchBusinessPayload>({
       query: ({ id, body }) => ({
@@ -123,6 +125,8 @@ export const businessApi = createApi({
         method: "PATCH",
         body,
       }),
+      transformResponse: (response: BusinessRecord | { data: BusinessRecord }) =>
+        "data" in response && response.data ? response.data : (response as BusinessRecord),
     }),
     deleteBusinessById: builder.mutation<{ success?: boolean } | void, string>({
       query: (id) => ({

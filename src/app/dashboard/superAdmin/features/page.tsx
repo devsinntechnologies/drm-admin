@@ -185,7 +185,7 @@ function BusinessSelector({
           value={selectedBusinessId}
           onChange={(event) => onChange(event.target.value)}
           disabled={disabled || businesses.length === 0}
-          className="h-12 w-full appearance-none rounded-2xl border border-[#d8e3ef] bg-white px-4 pr-11 text-sm font-medium text-[#0f172a] outline-none shadow-[0_8px_18px_rgba(15,23,42,0.06)] focus:border-[#1E365B] focus:ring-4 focus:ring-[#1E365B]/10 disabled:bg-[#f1f5f9] disabled:text-[#94a3b8]"
+          className="h-12 w-full appearance-none rounded-2xl border border-[#d8e3ef] bg-white px-4 pr-11 text-sm font-medium text-[#0f172a] outline-none shadow-[0_8px_18px_rgba(15,23,42,0.06)] focus:border-[#001840] focus:ring-4 focus:ring-[#001840]/10 disabled:bg-[#f1f5f9] disabled:text-[#94a3b8]"
         >
           {businesses.length > 0 ? (
             businesses.map((business) => (
@@ -220,7 +220,7 @@ function FeatureToggle({
       aria-label={`${enabled ? "Disable" : "Enable"} ${label}`}
       onClick={onToggle}
       className={cn(
-        "relative h-7 w-12 shrink-0 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E365B] focus-visible:ring-offset-2",
+        "relative h-7 w-12 shrink-0 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#001840] focus-visible:ring-offset-2",
         enabled ? "bg-[#059669]" : "bg-[#cbd5e1]",
       )}
     >
@@ -333,7 +333,7 @@ function EmptyState({
   return (
     <div className="grid min-h-80 place-items-center px-5 py-12 text-center">
       <div className="mx-auto max-w-md">
-        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#eef4fb] text-[#1E365B]">
+        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#EEF3FF] text-[#001840]">
           {icon}
         </div>
         <h3 className="mt-4 text-lg font-semibold text-[#0f172a]">{title}</h3>
@@ -342,7 +342,7 @@ function EmptyState({
           <button
             type="button"
             onClick={onAction}
-            className="mt-5 inline-flex h-10 items-center justify-center rounded-xl bg-[#1E365B] px-4 text-sm font-semibold text-[#ffffff] shadow-[0_10px_20px_rgba(30,54,91,0.18)]"
+            className="mt-5 inline-flex h-10 items-center justify-center rounded-xl bg-[#001840] px-4 text-sm font-semibold text-[#ffffff] shadow-[0_10px_20px_rgba(0,24,64,0.18)]"
           >
             {actionLabel}
           </button>
@@ -364,7 +364,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         <button
           type="button"
           onClick={onRetry}
-          className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#1E365B] px-4 text-sm font-semibold text-[#ffffff] shadow-[0_10px_20px_rgba(30,54,91,0.18)]"
+          className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#001840] px-4 text-sm font-semibold text-[#ffffff] shadow-[0_10px_20px_rgba(0,24,64,0.18)]"
         >
           <RefreshCcw className="h-4 w-4" strokeWidth={1.8} />
           Retry
@@ -396,18 +396,14 @@ function MockStateControls({
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7a8699]">Development Mock State</p>
           <p className="mt-1 text-sm text-[#657084]">Temporary controls for verifying frontend states before API integration.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="dn-tab-bar !w-auto">
           {controls.map((control) => (
             <button
               key={control.mode}
               type="button"
               onClick={() => onModeChange(control.mode)}
-              className={cn(
-                "h-9 rounded-xl border px-3 text-xs font-semibold transition",
-                mode === control.mode
-                  ? "border-[#1E365B] bg-[#1E365B] text-[#ffffff]"
-                  : "border-[#d9e4ef] bg-[#f8fbff] text-[#40516a] hover:bg-white",
-              )}
+              data-active={mode === control.mode ? "true" : "false"}
+              className="dn-tab !h-9 !text-xs"
             >
               {control.label}
             </button>
@@ -527,7 +523,7 @@ function FeatureManagementContent() {
                     </td>
                     <td className="max-w-xl px-5 py-4 text-[#657084]">{feature.description}</td>
                     <td className="px-5 py-4">
-                      <span className="inline-flex rounded-full bg-[#eef4fb] px-3 py-1 text-xs font-semibold text-[#40516a]">{feature.category}</span>
+                      <span className="inline-flex rounded-full bg-[#EEF3FF] px-3 py-1 text-xs font-semibold text-[#40516a]">{feature.category}</span>
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-3">
@@ -580,11 +576,11 @@ function FeatureManagementContent() {
     <AdminShell activeTab="features">
       <section className="mb-5 grid w-full grid-cols-1 gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.92),rgba(240,249,255,0.78))] p-5 shadow-[0_12px_28px_rgba(7,16,34,0.1)] xl:grid-cols-[1fr_360px]">
         <div className="flex items-start gap-4">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#1E365B] text-[#ffffff] shadow-[0_10px_18px_rgba(30,54,91,0.25)]">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#001840] text-[#ffffff] shadow-[0_10px_18px_rgba(0,24,64,0.25)]">
             <SlidersHorizontal className="h-6 w-6" strokeWidth={1.8} />
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1E365B]">Super Admin</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#001840]">Super Admin</p>
             <h2 className="mt-1 text-xl font-semibold text-[#0f172a] lg:text-2xl">Feature Management Dashboard</h2>
             <p className="mt-2 max-w-3xl text-sm text-[#657084] lg:text-base">
               Select a business and manage which system features are available to its administrators and staff.
@@ -605,7 +601,7 @@ function FeatureManagementContent() {
 
       <section className="mb-5 grid w-full grid-cols-1 gap-3 md:grid-cols-3">
         {[
-          { label: "Selected Business", value: selectedBusiness?.name ?? "No business", sub: selectedBusiness ? `${selectedBusiness.plan} plan` : "Select a business", tone: "bg-[#1E365B]" },
+          { label: "Selected Business", value: selectedBusiness?.name ?? "No business", sub: selectedBusiness ? `${selectedBusiness.plan} plan` : "Select a business", tone: "bg-[#001840]" },
           { label: "Enabled Features", value: String(enabledCount), sub: `${visibleFeatures.length} total features`, tone: "bg-[#059669]" },
           { label: "Disabled Features", value: String(disabledCount), sub: "Can be enabled anytime", tone: "bg-[#b45309]" },
         ].map((stat) => (

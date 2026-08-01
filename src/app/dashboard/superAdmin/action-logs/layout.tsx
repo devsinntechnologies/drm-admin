@@ -49,13 +49,13 @@ export default function ActionLogsLayout({ children }: { children: React.ReactNo
   return (
     <Suspense fallback={
       <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#1E365B] border-t-transparent"></div>
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#001840] border-t-transparent"></div>
       </div>
     }>
       <AdminShell activeTab="action-logs">
         <section className="mb-6 flex w-full flex-col gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.9),rgba(236,253,245,0.76))] px-5 py-5 shadow-[0_12px_28px_rgba(15,23,42,0.1)] lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="grid h-14.5 w-14.5 shrink-0 place-items-center rounded-2xl bg-linear-to-br from-[#0f172a] to-[#1E365B] text-[#ffffff] shadow-[0_10px_20px_rgba(15,23,42,0.24)]">
+            <div className="grid h-14.5 w-14.5 shrink-0 place-items-center rounded-2xl bg-linear-to-br from-[#001840] to-[#0050F8] text-[#ffffff] shadow-[0_10px_20px_rgba(0,24,64,0.24)]">
               <Activity className="h-7 w-7" strokeWidth={1.9} />
             </div>
             <div className="min-w-0">
@@ -110,8 +110,8 @@ export default function ActionLogsLayout({ children }: { children: React.ReactNo
           </div>
         </section>
 
-        <section className="mb-5 flex w-full flex-col gap-4 rounded-3xl border border-[#e2e8f0] bg-white/85 px-3 py-3 shadow-[0_10px_24px_rgba(10,17,31,0.09)] lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-3">
+        <section className="dn-tab-bar mb-5 lg:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const active = pathname === tab.href;
@@ -120,14 +120,11 @@ export default function ActionLogsLayout({ children }: { children: React.ReactNo
                 <Link
                   key={tab.href}
                   href={tab.href}
-                  className={`inline-flex h-13 items-center gap-3 rounded-[18px] px-5 text-[0.98rem] font-semibold transition ${
-                    active
-                      ? "bg-linear-to-r from-[#0f172a] to-[#1E365B] text-[#ffffff] shadow-[inset_0_2px_0_rgba(255,255,255,0.18),0_10px_20px_rgba(15,23,42,0.24)]"
-                      : "text-[#202635]"
-                  }`}
+                  data-active={active ? "true" : "false"}
+                  className="dn-tab"
                 >
-                  <Icon className={`h-5 w-5 ${active ? "text-[#ffffff]" : "text-[#4d5a6f]"}`} strokeWidth={2.1} />
-                  <span className={active ? "text-[#ffffff]" : ""}>{tab.label}</span>
+                  <Icon className="h-5 w-5" strokeWidth={2.1} />
+                  <span>{tab.label}</span>
                 </Link>
               );
             })}

@@ -7,28 +7,28 @@ const roles = [
     title: "Super Admin",
     subtitle: "Super-Admin",
     role: "super_admin",
-    gradient: "from-[#f59e0b] to-[#ea580c]",
+    gradient: "from-[#001840] to-[#0050F8]",
     icon: Crown,
   },
   {
     title: "Business Admin",
     subtitle: "Admin",
     role: "business_admin",
-    gradient: "from-[#1E365B] to-[#0ea5a4]",
+    gradient: "from-[#002a6e] to-[#0050F8]",
     icon: LayoutDashboard,
   },
   {
     title: "John Waiter",
     subtitle: "Waiter",
     role: "waiter",
-    gradient: "from-[#3b82f6] to-[#2563eb]",
+    gradient: "from-[#0050F8] to-[#3b82f6]",
     icon: ClipboardList,
   },
   {
     title: "Chef Mike",
     subtitle: "Kitchen",
     role: "kitchen",
-    gradient: "from-[#1d4ed8] to-[#0ea5e9]",
+    gradient: "from-[#001840] to-[#3b82f6]",
     icon: ChefHat,
   },
 ];
@@ -37,8 +37,15 @@ export default function HomePage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <section className="portal-surface w-full max-w-115 rounded-4xl px-6 pb-10 pt-10 sm:px-10">
-        <div className="mx-auto grid place-items-center">
-          <Image src="/logo2.png" alt="Restaurant Manager logo" width={250} height={250} className="  object-contain" priority />
+        <div className="mx-auto grid w-full max-w-[280px] place-items-center">
+          <Image
+            src="/logo-full.png"
+            alt="DigiNizam"
+            width={280}
+            height={62}
+            className="h-auto w-full object-contain"
+            priority
+          />
         </div>
 
         <div className="mt-6 text-center">

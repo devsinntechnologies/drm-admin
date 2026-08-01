@@ -260,7 +260,7 @@ function KitchenPageContent() {
           {/* Floating Refresh */}
           <button
             onClick={() => refetch()}
-            className="fixed bottom-8 right-8 h-[50px] w-[50px] flex items-center justify-center !rounded-[14px] bg-[#ef4444] text-[#ffffff] shadow-[0_6px_14px_rgba(239,68,68,0.35)] transition hover:scale-110 active:scale-90 z-50"
+            className="fixed bottom-8 right-8 h-[50px] w-[50px] flex items-center justify-center !rounded-[14px] bg-[#001840] text-[#ffffff] shadow-[0_6px_14px_rgba(0,24,64,0.28)] transition hover:scale-110 active:scale-90 z-50"
           >
             <RotateCw className={cn("h-6 w-6 stroke-[3]", ordersLoading && "animate-spin")} />
           </button>
@@ -284,7 +284,7 @@ function OrderCard({ order, onMove, updating }: { order: any, onMove: any, updat
         <div className="flex items-center gap-2">
           <span className={cn(
             "h-2.5 w-2.5 rounded-full",
-            isNew ? "bg-[#ef4444]" : isCooking ? "bg-[#f97316]" : "bg-[#0f9d58]"
+            isNew ? "bg-[#001840]" : isCooking ? "bg-[#f97316]" : "bg-[#0f9d58]"
           )} />
           <h4 className="text-sm font-black text-slate-400 uppercase tracking-tighter">{order.orderNumber}</h4>
         </div>
@@ -330,7 +330,7 @@ function OrderCard({ order, onMove, updating }: { order: any, onMove: any, updat
           disabled={updating}
           className={cn(
             "w-full h-12 rounded-2xl text-sm font-black text-[#ffffff] transition-all shadow-md flex items-center justify-center gap-2",
-            isNew ? "bg-[#ef4444]" : isCooking ? "bg-[#f97316]" : "bg-[#0f9d58]"
+            isNew ? "bg-[#001840]" : isCooking ? "bg-[#f97316]" : "bg-[#0f9d58]"
           )}
         >
           {updating && <Loader2 className="h-4 w-4 animate-spin" />}

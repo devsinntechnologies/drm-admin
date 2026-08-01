@@ -248,7 +248,7 @@ function DashboardStatic() {
                 <li className="grid grid-cols-[12px_1fr] items-center gap-3"><span className="h-3 w-3 rounded-sm bg-[#3b82f6] block" /> <span className="text-base text-[#111827]">New</span></li>
                 <li className="grid grid-cols-[12px_1fr] items-center gap-3"><span className="h-3 w-3 rounded-sm bg-[#10b981] block" /> <span className="text-base text-[#111827]">Preparing</span></li>
                 <li className="grid grid-cols-[12px_1fr] items-center gap-3"><span className="h-3 w-3 rounded-sm bg-[#f59e0b] block" /> <span className="text-base text-[#111827]">Ready</span></li>
-                <li className="grid grid-cols-[12px_1fr] items-center gap-3"><span className="h-3 w-3 rounded-sm bg-[#ef4444] block" /> <span className="text-base text-[#111827]">Delivered</span></li>
+                <li className="grid grid-cols-[12px_1fr] items-center gap-3"><span className="h-3 w-3 rounded-sm bg-[#001840] block" /> <span className="text-base text-[#111827]">Delivered</span></li>
                 <li className="grid grid-cols-[12px_1fr] items-center gap-3"><span className="h-3 w-3 rounded-sm bg-[#8b5cf6] block" /> <span className="text-base text-[#111827]">Complete</span></li>
               </ul>
             </div>
@@ -343,7 +343,7 @@ function DashboardStatic() {
           </div>
 
           <div className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden h-fit">
-            <div className="flex items-center gap-4 px-6 py-5 bg-[#eff6ff] border-b border-blue-100">
+            <div className="flex items-center gap-4 px-6 py-5 bg-[#EEF3FF] border-b border-blue-100">
               <div className="h-12 w-12 rounded-2xl bg-[#3b82f6] grid place-items-center text-[#ffffff] shadow-sm">
                 <Clock3 className="h-6 w-6" />
               </div>

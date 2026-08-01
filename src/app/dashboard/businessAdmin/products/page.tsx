@@ -121,7 +121,7 @@ function VariantsEditor({
         <button
           type="button"
           onClick={onAddVariant}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-[#111827] py-3.5 text-sm font-bold text-[#ffffff] transition hover:bg-black"
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-[#001840] py-3.5 text-sm font-bold text-[#ffffff] transition hover:bg-[#00122E]"
         >
           <Plus className="h-5 w-5" /> Add Variant
         </button>
@@ -408,7 +408,7 @@ function MenuItemsContent() {
         <div className="w-full rounded-xl border border-[#e5e7eb] bg-[#f3f4f6] px-6 py-5 shadow-sm">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#ef4444] text-[#ffffff] shadow-sm">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#001840] text-[#ffffff] shadow-sm">
                 <Box className="h-7 w-7" />
               </div>
               <div>
@@ -420,7 +420,7 @@ function MenuItemsContent() {
             <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto xl:items-center">
               <button
                 onClick={() => setCreateOpen(true)}
-                className="inline-flex w-full min-h-14 items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-6 py-3 text-base font-extrabold text-[#ffffff] shadow-sm transition hover:bg-[#dc2626] sm:w-auto"
+                className="inline-flex w-full min-h-14 items-center justify-center gap-2 rounded-xl bg-[#001840] px-6 py-3 text-base font-extrabold text-[#ffffff] shadow-sm transition hover:bg-[#00122E] sm:w-auto"
               >
                 <Plus className="h-5 w-5" /> Add
               </button>
@@ -442,7 +442,7 @@ function MenuItemsContent() {
 
         {/* Metric Section */}
         <div className="w-full rounded-xl border border-[#e5e7eb] bg-[#f3f4f6] p-6 flex items-center gap-5 shadow-sm">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#ef4444] text-[#ffffff]">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#001840] text-[#ffffff]">
             <Box className="h-7 w-7" />
           </div>
           <div>
@@ -456,7 +456,7 @@ function MenuItemsContent() {
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <Loader2 className="h-10 w-10 animate-spin text-[#ef4444]" />
+            <Loader2 className="h-10 w-10 animate-spin text-[#001840]" />
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white py-24 text-center">
@@ -477,7 +477,7 @@ function MenuItemsContent() {
           <button
             onClick={() => refetch()}
             disabled={loading}
-            className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#ef4444] text-[#ffffff] shadow-xl transition hover:scale-105 active:scale-95 disabled:opacity-50"
+            className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#001840] text-[#ffffff] shadow-xl transition hover:scale-105 active:scale-95 disabled:opacity-50"
           >
             <RotateCcw className={cn("h-7 w-7", loading && "animate-spin")} />
           </button>
@@ -540,7 +540,7 @@ function MenuItemsContent() {
                   <div className="space-y-2">
                     <label className="text-sm font-bold">Image</label>
                     <div className="flex items-center gap-3">
-                      <label className="cursor-pointer bg-[#111827] text-[#ffffff] px-6 py-3.5 rounded-xl text-sm font-bold flex items-center gap-2 transition hover:bg-black shadow-md">
+                      <label className="cursor-pointer bg-[#001840] text-[#ffffff] px-6 py-3.5 rounded-xl text-sm font-bold flex items-center gap-2 transition hover:bg-[#00122E] shadow-md">
                         <ImageIconLucide className="h-5 w-5" /> Choose Image
                         <input type="file" className="hidden" onChange={(e) => setCreateForm(p => ({ ...p, image: e.target.files?.[0] ?? null }))} />
                       </label>
@@ -549,7 +549,7 @@ function MenuItemsContent() {
                   </div>
                 </div>
                 <div className="p-6 pt-4 border-t bg-gray-50 flex flex-col gap-2">
-                  <button type="submit" disabled={actionLoading} className="w-full bg-[#111827] text-[#ffffff] py-3.5 rounded-xl font-bold shadow-lg transition hover:bg-black flex items-center justify-center gap-2">
+                  <button type="submit" disabled={actionLoading} className="w-full bg-[#001840] text-[#ffffff] py-3.5 rounded-xl font-bold shadow-lg transition hover:bg-[#00122E] flex items-center justify-center gap-2">
                     <Plus className="h-5 w-5" /> Save Product
                   </button>
                   <button type="button" onClick={() => setCreateOpen(false)} className="w-full bg-white border border-gray-200 py-3 rounded-xl font-bold text-[#111827] transition hover:bg-gray-50">
@@ -615,7 +615,7 @@ function MenuItemsContent() {
                   <div className="space-y-2">
                     <label className="text-sm font-bold">Image</label>
                     <div className="flex items-center gap-3">
-                      <label className="cursor-pointer bg-[#111827] text-[#ffffff] px-6 py-3.5 rounded-xl text-sm font-bold flex items-center gap-2 transition hover:bg-black shadow-md">
+                      <label className="cursor-pointer bg-[#001840] text-[#ffffff] px-6 py-3.5 rounded-xl text-sm font-bold flex items-center gap-2 transition hover:bg-[#00122E] shadow-md">
                         <ImageIconLucide className="h-5 w-5" /> Choose Image
                         <input type="file" className="hidden" onChange={(e) => setEditForm(p => ({ ...p, image: e.target.files?.[0] ?? null }))} />
                       </label>
@@ -624,7 +624,7 @@ function MenuItemsContent() {
                   </div>
                 </div>
                 <div className="p-6 pt-4 border-t bg-gray-50 space-y-3">
-                  <button type="submit" disabled={actionLoading} className="w-full bg-[#111827] text-[#ffffff] py-3.5 rounded-xl font-bold shadow-lg transition hover:bg-black flex items-center justify-center gap-2">
+                  <button type="submit" disabled={actionLoading} className="w-full bg-[#001840] text-[#ffffff] py-3.5 rounded-xl font-bold shadow-lg transition hover:bg-[#00122E] flex items-center justify-center gap-2">
                     <CheckCircle2 className="h-5 w-5" /> Update Product
                   </button>
                   <div className="grid grid-cols-2 gap-3">
@@ -666,7 +666,7 @@ export default function MenuItemsPage() {
     <Suspense
       fallback={
         <div className="flex h-screen items-center justify-center">
-          <Loader2 className="h-10 w-10 animate-spin text-[#ef4444]" />
+          <Loader2 className="h-10 w-10 animate-spin text-[#001840]" />
         </div>
       }
     >

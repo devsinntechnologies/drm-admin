@@ -15,9 +15,9 @@ export const metadata: Metadata = {
   title: "Restaurant Manager Admin",
   description: "Restaurant manager super admin dashboard",
   icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    icon: "/logo-mark.png",
+    shortcut: "/logo-mark.png",
+    apple: "/logo-mark.png",
   },
 };
 

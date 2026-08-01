@@ -306,7 +306,7 @@ function CategoriesContent() {
                     <button
                       type="submit"
                       disabled={actionLoading}
-                      className="flex items-center justify-center gap-2 rounded-2xl bg-[#E5281A] text-[#ffffff] py-3.5 text-sm font-bold  shadow-lg transition hover:bg-[#ea580c] disabled:opacity-60"
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-[#001840] text-[#ffffff] py-3.5 text-sm font-bold  shadow-lg transition hover:bg-[#00122E] disabled:opacity-60"
                     >
                       {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                       Save

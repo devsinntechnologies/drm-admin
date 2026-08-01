@@ -1,10 +1,157 @@
 @import "tailwindcss";
 
 :root {
+  /* DigiNizam logo palette */
+  --brand-primary: #001840;
+  --brand-primary-hover: #00122e;
+  --brand-secondary: #0050f8;
+  --brand-secondary-hover: #0046e0;
+  --brand-primary-soft: #eef3ff;
+  --brand-secondary-soft: #e8effe;
+
   --app-bg: #f5f5f5;
   --text-primary: #0f172a;
   --text-muted: #5b657a;
   --surface: rgba(255, 255, 255, 0.82);
+}
+
+@theme inline {
+  --color-brand: var(--brand-primary);
+  --color-brand-hover: var(--brand-primary-hover);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-secondary-hover: var(--brand-secondary-hover);
+  --color-brand-soft: var(--brand-primary-soft);
+}
+
+/* ── Shared portal button + tab utilities ── */
+.dn-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.75rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.dn-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.dn-btn-primary {
+  background-color: var(--brand-primary);
+  color: #ffffff;
+  border: 1px solid var(--brand-primary);
+  box-shadow: 0 10px 20px rgba(0, 24, 64, 0.18);
+}
+
+.dn-btn-primary:hover:not(:disabled) {
+  background-color: var(--brand-primary-hover);
+  border-color: var(--brand-primary-hover);
+}
+
+.dn-btn-secondary {
+  background-color: var(--brand-secondary);
+  color: #ffffff;
+  border: 1px solid var(--brand-secondary);
+  box-shadow: 0 10px 20px rgba(0, 80, 248, 0.22);
+}
+
+.dn-btn-secondary:hover:not(:disabled) {
+  background-color: var(--brand-secondary-hover);
+  border-color: var(--brand-secondary-hover);
+}
+
+.dn-btn-outline {
+  background-color: #ffffff;
+  color: #0f172a;
+  border: 1px solid #d7e1ed;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.06);
+}
+
+.dn-btn-outline:hover:not(:disabled) {
+  background-color: #f4f8fc;
+}
+
+.dn-btn-soft {
+  background-color: var(--brand-primary-soft);
+  color: var(--brand-primary);
+  border: 1px solid transparent;
+}
+
+.dn-btn-soft:hover:not(:disabled) {
+  background-color: var(--brand-secondary-soft);
+}
+
+.dn-btn-destructive {
+  background-color: #dc2626;
+  color: #ffffff;
+  border: 1px solid #dc2626;
+}
+
+.dn-btn-destructive:hover:not(:disabled) {
+  background-color: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.dn-tab-bar {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 1.5rem;
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.75rem;
+  box-shadow: 0 10px 24px rgba(10, 17, 31, 0.06);
+}
+
+@media (min-width: 1024px) {
+  .dn-tab-bar.lg\:justify-between {
+    justify-content: space-between;
+  }
+}
+
+.dn-tab {
+  display: inline-flex;
+  height: 2.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.dn-tab:hover {
+  background-color: #f8fafc;
+}
+
+.dn-tab[data-active="true"],
+.dn-tab-active {
+  background-color: var(--brand-primary);
+  color: #ffffff !important;
+  box-shadow: 0 10px 20px rgba(0, 24, 64, 0.22);
+}
+
+.dn-tab[data-active="true"] svg,
+.dn-tab-active svg {
+  color: #ffffff !important;
+}
+
+.dn-tab:not([data-active="true"]):not(.dn-tab-active) svg {
+  color: #64748b;
 }
 
 html,
@@ -70,7 +217,7 @@ a {
 }
 
 ::selection {
-  background: rgba(14, 165, 233, 0.25);
+  background: rgba(0, 80, 248, 0.2);
 }
 
 .portal-surface {
@@ -91,7 +238,7 @@ button:focus-visible,
 input[type="button"]:focus-visible,
 input[type="submit"]:focus-visible,
 input[type="reset"]:focus-visible {
-  outline: 2px solid #f7822d;
+  outline: 2px solid var(--brand-secondary);
   outline-offset: 2px;
 }
 
@@ -106,16 +253,17 @@ input[type="reset"]:disabled {
 input[type="button"][class*="text-[#ffffff]"],
 input[type="submit"][class*="text-[#ffffff]"],
 input[type="reset"][class*="text-[#ffffff]"] {
-  background-color: #f7822d ;
-  border-color: #f7822d ;
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #ffffff;
 }
 
 /* button[class*="text-[#ffffff]"]:not(:has(.lucide-chevron-down)):hover, */
 input[type="button"][class*="text-[#ffffff]"]:hover,
 input[type="submit"][class*="text-[#ffffff]"]:hover,
 input[type="reset"][class*="text-[#ffffff]"]:hover {
-  background-color: #e6721f ;
-  border-color: #e6721f ;
+  background-color: var(--brand-primary-hover);
+  border-color: var(--brand-primary-hover);
 }
 
 .premium-toast {
@@ -145,6 +293,18 @@ input[type="reset"]:hover,
 [role="button"]:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+}
+
+/* Tab pills should not float on hover */
+.dn-tab:hover,
+.dn-tab-bar button:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.dn-tab[data-active="true"]:hover,
+.dn-tab-active:hover {
+  box-shadow: 0 10px 20px rgba(0, 24, 64, 0.22);
 }
 
 /* Keep disabled state unchanged */

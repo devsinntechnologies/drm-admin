@@ -121,7 +121,7 @@ function IngredientsContent() {
         {/* List Section */}
         {loading ? (
           <div className="flex items-center justify-center py-32">
-            <Loader2 className="h-10 w-10 animate-spin text-[#ef4444]" />
+            <Loader2 className="h-10 w-10 animate-spin text-[#001840]" />
           </div>
         ) : ingredients.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center">
@@ -131,7 +131,7 @@ function IngredientsContent() {
             <p className="text-lg font-bold text-[#111827]">Your inventory is empty</p>
             <button
               onClick={() => refetch()}
-              className="mt-6 rounded-full bg-[#ef4444] px-8 py-3 text-sm font-bold text-[#ffffff] shadow-lg transition hover:bg-[#dc2626]"
+              className="mt-6 rounded-full bg-[#001840] px-8 py-3 text-sm font-bold text-[#ffffff] shadow-lg transition hover:bg-[#00122E]"
             >
               Refresh Data
             </button>
@@ -161,7 +161,7 @@ function IngredientsContent() {
         <div className="fixed bottom-8 right-8 z-50">
           <button
             onClick={() => setIsAddOpen(true)}
-            className="flex items-center gap-2 rounded-2xl bg-[#ef4444] px-6 py-4 font-bold text-[#ffffff] shadow-2xl transition hover:scale-105 active:scale-95"
+            className="flex items-center gap-2 rounded-2xl bg-[#001840] px-6 py-4 font-bold text-[#ffffff] shadow-2xl transition hover:scale-105 active:scale-95"
           >
             <Plus className="h-5 w-5" /> Add Ingredient
           </button>
@@ -186,7 +186,7 @@ function IngredientsContent() {
                   />
                 </div>
                 <div className="flex flex-col items-center gap-1">
-                  <button type="button" className="rounded-full border-2 border-[#ef4444] p-3 text-[#ef4444] transition hover:bg-[#fff5f5]">
+                  <button type="button" className="rounded-full border-2 border-[#001840] p-3 text-[#ef4444] transition hover:bg-[#fff5f5]">
                     <Mic className="h-6 w-6" />
                   </button>
                   <span className="text-[10px] font-bold text-gray-400">Hold</span>
@@ -237,7 +237,7 @@ function IngredientsContent() {
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="rounded-[24px] bg-[#ef4444] py-4 font-bold text-[#ffffff] shadow-xl transition hover:bg-[#dc2626] disabled:opacity-50"
+                  className="rounded-[24px] bg-[#001840] py-4 font-bold text-[#ffffff] shadow-xl transition hover:bg-[#00122E] disabled:opacity-50"
                 >
                   {actionLoading ? "Saving..." : "Save Item"}
                 </button>
@@ -252,7 +252,7 @@ function IngredientsContent() {
 
 export default function IngredientsPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-[#ef4444]" /></div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-[#001840]" /></div>}>
       <IngredientsContent />
     </Suspense>
   );

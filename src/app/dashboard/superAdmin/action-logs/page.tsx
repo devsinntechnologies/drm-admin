@@ -542,7 +542,7 @@ export default function ActionLogsPage() {
                     {row.duration}
                   </TableCell>
                   <TableCell className="px-4 py-3.5 text-right">
-                    <span className="inline-flex items-center rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#155e75] transition group-hover:border-[#7dd3fc] group-hover:bg-[#e0f2fe]">
+                    <span className="inline-flex items-center rounded-full border border-[#bfdbfe] bg-[#EEF3FF] px-2.5 py-1 text-xs font-semibold text-[#0050F8] transition group-hover:border-[#7dd3fc] group-hover:bg-[#e0f2fe]">
                       View
                     </span>
                   </TableCell>
@@ -570,7 +570,7 @@ export default function ActionLogsPage() {
               key={n}
               onClick={() => setPage(n)}
               className={`grid h-8 w-8 place-items-center rounded-xl border border-[#e5e7eb] ${
-                n === page ? "bg-[#1E365B] text-[#ffffff]" : "bg-white"
+                n === page ? "bg-[#001840] text-[#ffffff]" : "bg-white"
               }`}
             >
               {n}
