@@ -68,8 +68,8 @@ function parseApiError(payload: unknown, fallback: string) {
   }
   if (!payload || typeof payload !== "object") return fallback;
   const parsed = payload as { message?: unknown; error?: unknown };
-  let detail = parsed.message || parsed.error || fallback;
-  if (typeof detail === "object" && detail && "message" in detail) {
+  let detail: unknown = parsed.message || parsed.error || fallback;
+  if (typeof detail === "object" && detail !== null && "message" in detail) {
     detail = (detail as { message?: unknown }).message;
   }
   if (Array.isArray(detail)) detail = detail.join(", ");
