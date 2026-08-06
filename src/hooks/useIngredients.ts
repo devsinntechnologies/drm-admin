@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
-import { BASE_URL } from "@/lib/constant";
+import { buildApiUrl } from "@/lib/api";
 
 export interface Ingredient {
   id: string;
@@ -37,7 +37,7 @@ export function useIngredients() {
     setError(null);
 
     try {
-      const url = new URL(`${BASE_URL}/ingredients`);
+      const url = new URL(buildApiUrl("/ingredients"));
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
@@ -77,7 +77,7 @@ export function useIngredients() {
 
     setActionLoading(true);
     try {
-      const url = new URL(`${BASE_URL}/ingredients`);
+      const url = new URL(buildApiUrl("/ingredients"));
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }

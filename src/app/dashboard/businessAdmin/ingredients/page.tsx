@@ -19,6 +19,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
+import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { useIngredients, Ingredient } from "@/hooks/useIngredients";
 import { cn } from "@/lib/utils";
@@ -120,9 +121,7 @@ function IngredientsContent() {
 
         {/* List Section */}
         {loading ? (
-          <div className="flex items-center justify-center py-32">
-            <Loader2 className="h-10 w-10 animate-spin text-[#001840]" />
-          </div>
+          <Loading />
         ) : ingredients.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center">
             <div className="mb-6 rounded-full bg-gray-50 p-10">
@@ -230,7 +229,7 @@ function IngredientsContent() {
                 <button
                   type="button"
                   onClick={() => setIsAddOpen(false)}
-                  className="rounded-[24px] border-2 border-[#e5e7eb] bg-white py-4 font-bold text-[#6366f1] transition hover:bg-gray-50"
+                  className="rounded-2xl border-2 border-[#e5e7eb] bg-white py-4 font-bold text-[#0050F8] transition hover:bg-[#f8fbff]"
                 >
                   Discard
                 </button>
@@ -252,7 +251,7 @@ function IngredientsContent() {
 
 export default function IngredientsPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-[#001840]" /></div>}>
+    <Suspense fallback={<Loading fullScreen />}>
       <IngredientsContent />
     </Suspense>
   );

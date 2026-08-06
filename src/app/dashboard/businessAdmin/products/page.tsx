@@ -27,7 +27,17 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
+import {
+  PortalPage,
+  PortalPageHeader,
+  PortalMetricRow,
+  PortalErrorAlert,
+  PortalEmptyState,
+  PortalRefreshFab,
+  portalInputClass,
+} from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
 import { Product, useProducts, CreateProductVariantPayload } from "@/hooks/useProducts";
 import { BASE_URL } from "@/lib/constant";
@@ -45,15 +55,7 @@ import {
 
 function ErrorAlert({ message }: { message: unknown }) {
   const errorMessage = normalizeErrorMessage(message, "Error loading items");
-  return (
-    <div className="rounded-2xl border border-[#fecaca] bg-[#fff1f1] p-4 flex items-start gap-3">
-      <AlertCircle className="h-5 w-5 text-[#ef4444] shrink-0 mt-0.5" />
-      <div>
-        <p className="font-semibold text-[#ef4444]">Error loading items</p>
-        <p className="text-sm text-[#dc2626]">{errorMessage}</p>
-      </div>
-    </div>
-  );
+  return <PortalErrorAlert title="Error loading items" message={errorMessage} />;
 }
 
 function VariantsEditor({
@@ -403,67 +405,42 @@ function MenuItemsContent() {
 
   return (
     <AdminShell activeTab="products">
-      <main className="w-full space-y-6">
-        {/* Header Section */}
-        <div className="w-full rounded-xl border border-[#e5e7eb] bg-[#f3f4f6] px-6 py-5 shadow-sm">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#001840] text-[#ffffff] shadow-sm">
-                <Box className="h-7 w-7" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-black leading-none text-[#111827]">Menu Items</h1>
-                <p className="mt-2 text-base font-medium text-[#6b7280]">Manage products & stocks</p>
-              </div>
-            </div>
-
-            <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto xl:items-center">
-              <button
-                onClick={() => setCreateOpen(true)}
-                className="inline-flex w-full min-h-14 items-center justify-center gap-2 rounded-xl bg-[#001840] px-6 py-3 text-base font-extrabold text-[#ffffff] shadow-sm transition hover:bg-[#00122E] sm:w-auto"
-              >
-                <Plus className="h-5 w-5" /> Add
+      <PortalPage>
+        <PortalPageHeader
+          icon={Box}
+          title="Menu Items"
+          subtitle="Manage products & stock levels"
+          actions={
+            <>
+              <button type="button" onClick={() => setCreateOpen(true)} className="dn-btn dn-btn-primary">
+                <Plus className="h-5 w-5" /> Add Product
               </button>
               <button
+                type="button"
                 onClick={() => router.push(`/dashboard/businessAdmin/categories${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
-                className="inline-flex w-full min-h-14 items-center justify-center gap-2 rounded-xl border border-[#fca5a5] bg-white px-6 py-3 text-base font-extrabold text-[#ef4444] transition hover:bg-[#fff5f5] sm:w-auto"
+                className="dn-btn dn-btn-outline"
               >
                 <Shapes className="h-5 w-5" /> Categories
               </button>
               <button
+                type="button"
                 onClick={() => router.push(`/dashboard/businessAdmin/ingredients${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
-                className="inline-flex w-full min-h-14 items-center justify-center gap-2 rounded-xl border border-[#fca5a5] bg-white px-6 py-3 text-base font-extrabold text-[#ef4444] transition hover:bg-[#fff5f5] sm:w-auto"
+                className="dn-btn dn-btn-soft"
               >
                 <Package className="h-5 w-5" /> Ingredients
               </button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
 
-        {/* Metric Section */}
-        <div className="w-full rounded-xl border border-[#e5e7eb] bg-[#f3f4f6] p-6 flex items-center gap-5 shadow-sm">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#001840] text-[#ffffff]">
-            <Box className="h-7 w-7" />
-          </div>
-          <div>
-            <p className="text-xs font-extrabold uppercase tracking-wider text-gray-500">Total Items</p>
-            <p className="text-3xl font-black text-[#111827]">{pagination.total}</p>
-          </div>
-        </div>
+        <PortalMetricRow label="Total Items" value={pagination.total} icon={Box} />
 
-        {/* Content Section */}
         {error ? <ErrorAlert message={error} /> : null}
 
         {loading ? (
-          <div className="flex items-center justify-center py-24">
-            <Loader2 className="h-10 w-10 animate-spin text-[#001840]" />
-          </div>
+          <Loading />
         ) : filteredProducts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white py-24 text-center">
-            <Box className="h-12 w-12 text-gray-300 mb-4" />
-            <p className="text-lg font-bold text-[#111827]">No products found</p>
-            <p className="text-sm text-gray-500">Add a new product to get started.</p>
-          </div>
+          <PortalEmptyState icon={Box} title="No products found" description="Add a new product to get started." />
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredProducts.map((item) => (
@@ -472,16 +449,7 @@ function MenuItemsContent() {
           </div>
         )}
 
-        {/* Refresh Button */}
-        <div className="fixed bottom-8 right-8 z-50">
-          <button
-            onClick={() => refetch()}
-            disabled={loading}
-            className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#001840] text-[#ffffff] shadow-xl transition hover:scale-105 active:scale-95 disabled:opacity-50"
-          >
-            <RotateCcw className={cn("h-7 w-7", loading && "animate-spin")} />
-          </button>
-        </div>
+        <PortalRefreshFab onClick={() => refetch()} loading={loading} />
 
         {/* Dialogs */}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -656,20 +624,14 @@ function MenuItemsContent() {
           description="Are you sure you want to delete this product? This action cannot be undone."
           loading={actionLoading}
         />
-      </main>
+      </PortalPage>
     </AdminShell>
   );
 }
 
 export default function MenuItemsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-screen items-center justify-center">
-          <Loader2 className="h-10 w-10 animate-spin text-[#001840]" />
-        </div>
-      }
-    >
+    <Suspense fallback={<Loading fullScreen />}>
       <MenuItemsContent />
     </Suspense>
   );

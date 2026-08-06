@@ -18,6 +18,7 @@ import {
   Users,
   UtensilsCrossed,
 } from "lucide-react";
+import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { cn } from "@/lib/utils";
 
@@ -639,7 +640,7 @@ function FeatureManagementContent() {
 
 export default function FeatureManagementPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading Feature Management...</div>}>
+    <Suspense fallback={<Loading fullScreen label="Loading feature management..." />}>
       <FeatureManagementContent />
     </Suspense>
   );

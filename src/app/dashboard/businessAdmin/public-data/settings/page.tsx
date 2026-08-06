@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Loading from "@/components/common/Loading";
 import { AlertCircle, Loader2, RefreshCw, Save } from "lucide-react";
 import { toast } from "sonner";
 import { usePublicDataSettings, CatalogSyncStatusResponse } from "@/hooks/usePublicData";
@@ -109,11 +110,7 @@ export default function PublicDataSettingsPage() {
   };
 
   if (loading && !settings) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#001840]" />
-      </div>
-    );
+    return <Loading className="min-h-[40vh]" />;
   }
 
   return (

@@ -3,6 +3,23 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { BASE_URL } from "@/lib/constant";
 
+function parseApiError(text: string, fallback: string) {
+  try {
+    const parsed = JSON.parse(text);
+    let detail: unknown = parsed.message ?? parsed.error ?? text;
+    if (detail && typeof detail === "object" && "message" in (detail as object)) {
+      detail = (detail as { message?: unknown }).message ?? detail;
+    }
+    if (typeof detail === "object" && detail !== null && "message" in detail) {
+      detail = (detail as { message?: unknown }).message;
+    }
+    if (Array.isArray(detail)) return detail.join(", ");
+    if (typeof detail === "string" && detail.trim()) return detail;
+    return fallback;
+  } catch {
+    return text || fallback;
+  }
+}
 function getAuthToken(reduxToken: string | null) {
   if (reduxToken) {
     return reduxToken.trim();
@@ -32,10 +49,7 @@ export interface CreateOrderPayload {
 }
 
 export interface UpdateOrderPayload {
-  tableId?: string;
-  status?: string;
-  items?: Array<CreateOrderItemPayload & { id?: string; action?: "add" | "update" | "remove" }>;
-  totalPrice?: number;
+  items?: Array<Record<string, unknown>>;
   deliveryCharges?: number;
   packagingPrice?: number;
 }
@@ -358,16 +372,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
 
       if (!response.ok) {
         const text = await response.text();
-        let detail: any = text;
-        try {
-          const parsed = JSON.parse(text);
-          detail = parsed.message || parsed.error || text;
-          if (typeof detail === 'object' && detail.message) {
-            detail = detail.message;
-          }
-          if (Array.isArray(detail)) detail = detail.join(", ");
-        } catch (e) { /* not json */ }
-        throw new Error(detail);
+        throw new Error(parseApiError(text, `Failed to update order: ${response.statusText}`));
       }
 
       await fetchOrders(1, range);

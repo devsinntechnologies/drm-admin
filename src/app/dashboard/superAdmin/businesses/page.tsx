@@ -12,6 +12,7 @@ import {
   Trash2,
   ExternalLink,
 } from "lucide-react";
+import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { toast } from "sonner";
 import { Suspense, useMemo, useState } from "react";
@@ -665,7 +666,7 @@ function BusinessesContent() {
 
 export default function BusinessesPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading Businesses...</div>}>
+    <Suspense fallback={<Loading fullScreen label="Loading businesses..." />}>
       <BusinessesContent />
     </Suspense>
   );

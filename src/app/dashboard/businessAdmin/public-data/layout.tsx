@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Eye, FolderTree, Globe2, Loader2, Package, Settings2 } from "lucide-react";
+import Loading from "@/components/common/Loading";
+import { Eye, FolderTree, Globe2, Package, Settings2 } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
@@ -83,11 +84,7 @@ function PublicDataLayoutContent({ children }: { children: React.ReactNode }) {
   }, [businessId]);
 
   if (!isAuthorized) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#001840]" />
-      </div>
-    );
+    return <Loading fullScreen />;
   }
 
   return (
@@ -133,13 +130,7 @@ function PublicDataLayoutContent({ children }: { children: React.ReactNode }) {
 
 export default function PublicDataLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-screen items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#001840]" />
-        </div>
-      }
-    >
+    <Suspense fallback={<Loading fullScreen />}>
       <PublicDataLayoutContent>{children}</PublicDataLayoutContent>
     </Suspense>
   );

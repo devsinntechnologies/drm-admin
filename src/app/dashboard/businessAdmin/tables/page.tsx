@@ -3,9 +3,11 @@
 import Image from "next/image";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, Box, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Edit, Loader2, Plus, Search, Trash2, Users, LayoutGrid, RotateCcw, Image as ImageIcon, Save, X } from "lucide-react";
+import { AlertCircle, Box, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Edit, Loader2, Plus, Search, Store, Trash2, Users, LayoutGrid, RotateCcw, Image as ImageIcon, Save, X } from "lucide-react";
 import { toast } from "sonner";
+import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
+import { PortalPage, PortalPageHeader, PortalMetricRow, PortalErrorAlert, PortalRefreshFab } from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
 import { TableRecord, TableStatus, useTables } from "@/hooks/useTables";
 import { cn, normalizeErrorMessage } from "@/lib/utils";
@@ -52,7 +54,7 @@ function TableCard({
         <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-[#00c853] px-3 py-1 text-[10px] font-black text-[#ffffff] uppercase tracking-wider">
           <Users className="h-3 w-3" /> {table.capacity} Seats
         </div>
-        <div className="absolute top-3 right-3 flex items-center gap-2 rounded-full bg-[#6366f1] px-3 py-1 text-[10px] font-black text-[#ffffff] uppercase tracking-wider">
+        <div className="absolute top-3 right-3 flex items-center gap-2 rounded-full bg-[#001840] px-3 py-1 text-[10px] font-black text-[#ffffff] uppercase tracking-wider">
           <LayoutGrid className="h-3 w-3" /> Table
         </div>
 
@@ -68,7 +70,7 @@ function TableCard({
         <div>
           <h3 className="text-lg font-black text-[#111827]">{table.tableNumber}</h3>
           <p className="text-sm font-medium text-[#64748b]">
-            <span className="text-[#6366f1] font-bold">{table.capacity}</span> people
+            <span className="text-[#0050F8] font-bold">{table.capacity}</span> people
           </p>
         </div>
 
@@ -180,40 +182,19 @@ function TablesContent() {
 
   return (
     <AdminShell activeTab="tables">
-      <main className="h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc]">
-        <div className="h-full flex flex-col space-y-6 px-4 py-6 lg:px-6">
-
-          {/* Header Section */}
-          <section className="bg-white rounded-[10px] p-6 shadow-sm border border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-8">
-              <div className="flex items-center gap-4">
-                <div className="h-14 w-14 rounded-2xl bg-[#001840] flex items-center justify-center shadow-lg shadow-red-100">
-                  <Box className="h-7 w-7 text-[#ffffff]" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-black text-[#111827]">Restaurant Tables</h1>
-                  <p className="text-sm font-medium text-[#64748b]">Manage seating arrangements</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 border-l border-slate-100 pl-8">
-                <div className="h-14 w-14 rounded-2xl bg-[#001840] flex items-center justify-center">
-                  <Box className="h-7 w-7 text-[#ffffff]" />
-                </div>
-                <div>
-                  <p className="text-lg font-black text-[#111827]">Total Tables</p>
-                  <p className="text-sm font-medium text-[#64748b]">{pagination.total}</p>
-                </div>
-              </div>
-            </div>
-
+      <PortalPage>
+        <PortalPageHeader
+          icon={Store}
+          title="Restaurant Tables"
+          subtitle="Manage seating arrangements and table capacity"
+          actions={
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
-                <button type="button" className="flex items-center gap-2 bg-[#001840] text-[#ffffff] px-3 py-3 rounded-xl font-black text-lg shadow-lg shadow-[0_10px_20px_rgba(0,24,64,0.18)] transition-all active:scale-95">
-                  <Plus className="h-7 w-7" /> Add
+                <button type="button" className="dn-btn dn-btn-primary">
+                  <Plus className="h-5 w-5" /> Add Table
                 </button>
               </DialogTrigger>
-              <DialogContent className="max-w-xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+              <DialogContent className="max-w-xl rounded-2xl p-0 overflow-hidden border-none shadow-2xl">
                 <TableForm
                   title="Add New Table"
                   subtitle="Create a new table entry"
@@ -225,32 +206,24 @@ function TablesContent() {
                 />
               </DialogContent>
             </Dialog>
-          </section>
+          }
+        />
 
-          {/* Tables Grid */}
-          <section className="flex-1 overflow-hidden flex flex-col min-h-0">
-            {error && <ErrorAlert message={error} />}
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-20">
-              {loading ? (
-                <div className="h-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#001840]" /></div>
-              ) : (
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                  {tables.map(table => (
-                    <TableCard key={table.id} table={table} onEdit={onOpenEdit} />
-                  ))}
-                </div>
-              )}
-            </div>
+        <PortalMetricRow label="Total Tables" value={pagination.total} icon={Store} />
 
-            {/* Floating Refresh */}
-            <button
-              onClick={() => fetchTables()}
-              className="fixed bottom-8 right-8 h-14 w-14 rounded-2xl bg-[#001840] text-[#ffffff] shadow-[0_10px_20px_rgba(0,24,64,0.22)] flex items-center justify-center hover:scale-110 transition-all z-50 group"
-            >
-              <RotateCcw className={cn("h-6 w-6 transition-transform group-hover:rotate-180", loading && "animate-spin")} />
-            </button>
-          </section>
-        </div>
+        {error ? <PortalErrorAlert message={String(error)} /> : null}
+
+        {loading ? (
+          <Loading />
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {tables.map((table) => (
+              <TableCard key={table.id} table={table} onEdit={onOpenEdit} />
+            ))}
+          </div>
+        )}
+
+        <PortalRefreshFab onClick={() => fetchTables()} loading={loading} />
 
         {/* Edit Dialog */}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -267,7 +240,7 @@ function TablesContent() {
             />
           </DialogContent>
         </Dialog>
-      </main>
+      </PortalPage>
     </AdminShell>
   );
 }
@@ -385,7 +358,7 @@ function TableForm({ title, subtitle, form, setForm, onSubmit, onClose, loading,
 
 export default function TablesPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#001840]" /></div>}>
+    <Suspense fallback={<Loading fullScreen />}>
       <TablesContent />
     </Suspense>
   );

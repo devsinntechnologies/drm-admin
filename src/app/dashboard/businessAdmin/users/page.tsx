@@ -2,7 +2,9 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
+import { PortalPage, PortalPageHeader, PortalStatCard } from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
 import { useUsers, type UserRole } from "@/hooks/useUsers";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
@@ -186,53 +188,24 @@ function UsersContent() {
 
 
   const stats = [
-    {
-      label: "Waiters",
-      value: waiters.length,
-      bg: "bg-gradient-to-br from-blue-50 to-blue-100",
-      icon: "waiter",
-    },
-    {
-      label: "Kitchen",
-      value: kitchens.length,
-      bg: "bg-gradient-to-br from-purple-50 to-purple-100",
-      icon: "kitchen",
-    },
-    {
-      label: "Active",
-      value: users.filter((u) => u.status.toLowerCase() === "active").length,
-      bg: "bg-gradient-to-br from-green-50 to-green-100",
-      icon: "active",
-    },
-    {
-      label: "Total",
-      value: users.length,
-      bg: "bg-gradient-to-br from-indigo-50 to-indigo-100",
-      icon: "total",
-    },
+    { label: "Waiters", value: waiters.length, icon: Users, tone: "primary" as const },
+    { label: "Kitchen Staff", value: kitchens.length, icon: UtensilsCrossed, tone: "secondary" as const },
+    { label: "Active", value: users.filter((u) => u.status.toLowerCase() === "active").length, icon: Users, tone: "accent" as const },
+    { label: "Total", value: users.length, icon: Users, tone: "neutral" as const },
   ];
 
   return (
     <AdminShell activeTab="users">
-      <div className="space-y-6">
-        {/* Header - card style like screenshot */}
-        <div className="rounded-xl border border-[#f3f3f3] bg-white p-4 shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-[#001840] flex items-center justify-center text-white shadow text-lg">
-              <Users className="h-6 w-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-extrabold text-[#111827]">Team</h1>
-              <p className="text-sm text-[#6b7280]">Manage Staff</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
+      <PortalPage>
+        <PortalPageHeader
+          icon={Users}
+          title="Team"
+          subtitle="Manage waiters and kitchen staff"
+          actions={
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
-                <button className="dn-btn dn-btn-primary !h-10 !rounded-lg gap-1 text-lg font-extrabold">
-                  <Plus className="h-6 w-6" />
-                  Add
+                <button type="button" className="dn-btn dn-btn-primary">
+                  <Plus className="h-5 w-5" /> Add Member
                 </button>
               </DialogTrigger>
               <DialogContent>
@@ -297,46 +270,13 @@ function UsersContent() {
                 </form>
               </DialogContent>
             </Dialog>
-          </div>
-        </div>
+          }
+        />
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-[#001840] p-4 bg-[#eff8ff]">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-[#001840] flex items-center justify-center text-white text-lg">
-                <User className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-sm font-black text-gray-500">Waiters</p>
-                <p className="mt-2 text-2xl font-extrabold text-[#111827]">{waiters.length}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[#001840] p-4 bg-[#fff5fb]">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-[#001840] flex items-center justify-center text-white text-lg">
-                <UtensilsCrossed className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-sm font-black text-gray-500">Kitchen</p>
-                <p className="mt-2 text-2xl font-extrabold text-[#111827]">{kitchens.length}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[#001840] p-4 bg-[#fff6f6]">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-[#001840] flex items-center justify-center text-white text-lg">
-                <Users className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-sm font-black text-gray-500">Total</p>
-                <p className="mt-2 text-2xl font-extrabold text-[#111827]">{users.length}</p>
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {stats.map((stat) => (
+            <PortalStatCard key={stat.label} label={stat.label} value={stat.value} icon={stat.icon} tone={stat.tone} />
+          ))}
         </div>
 
         {/* Search and Filter */}
@@ -375,10 +315,7 @@ function UsersContent() {
 
         {/* Users Grid */}
         {loading ? (
-          <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading team members...
-          </div>
+          <Loading size="sm" label="Loading team members..." />
         ) : null}
 
         {!loading && error ? (
@@ -455,7 +392,7 @@ function UsersContent() {
             <p className="text-slate-600">No team members found</p>
           </div>
         )}
-      </div>
+      </PortalPage>
 
       {/* Edit Password Dialog */}
       <Dialog open={!!editUser} onOpenChange={(open) => { if (!open) setEditUser(null); }}>
@@ -570,11 +507,7 @@ function UsersContent() {
 export default function UsersPage() {
   return (
     <Suspense
-      fallback={
-        <div className="flex h-screen items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#4f46e5]" />
-        </div>
-      }
+      fallback={<Loading fullScreen />}
     >
       <UsersContent />
     </Suspense>

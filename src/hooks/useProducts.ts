@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
-import { BASE_URL } from "@/lib/constant";
+import { buildApiUrl } from "@/lib/api";
 
 export interface ProductVariant {
   id: string;
@@ -108,7 +108,7 @@ export function useProducts(options: UseProductsOptions = {}) {
     setError(null);
 
     try {
-      const url = new URL(`${BASE_URL}/products`);
+      const url = new URL(buildApiUrl("/products"));
       url.searchParams.append("page", pageNum.toString());
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
@@ -117,7 +117,6 @@ export function useProducts(options: UseProductsOptions = {}) {
         url.searchParams.append("limit", limit.toString());
       }
 
-      console.log(`[useProducts] Fetching products from: ${url.toString()}`);
 
       const response = await fetch(url.toString(), {
         method: "GET",
@@ -161,7 +160,7 @@ export function useProducts(options: UseProductsOptions = {}) {
       console.error("[useProducts] Fetch error:", {
         message: errorMessage,
         error: err,
-        url: `${BASE_URL}/products`,
+        url: buildApiUrl("/products"),
         activeBusinessId
       });
     } finally {
@@ -213,7 +212,7 @@ export function useProducts(options: UseProductsOptions = {}) {
         formData.append("image", payload.image);
       }
 
-      const url = new URL(`${BASE_URL}/products`);
+      const url = new URL(buildApiUrl("/products"));
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
@@ -254,7 +253,7 @@ export function useProducts(options: UseProductsOptions = {}) {
       throw new Error("No authentication token available");
     }
 
-    const url = new URL(`${BASE_URL}/products/${id}`);
+    const url = new URL(buildApiUrl(`/products/${id}`));
     if (activeBusinessId) {
       url.searchParams.append("businessId", activeBusinessId);
     }
@@ -306,7 +305,7 @@ export function useProducts(options: UseProductsOptions = {}) {
         formData.append("image", payload.image);
       }
 
-      const url = new URL(`${BASE_URL}/products/${id}`);
+      const url = new URL(buildApiUrl(`/products/${id}`));
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
@@ -349,7 +348,7 @@ export function useProducts(options: UseProductsOptions = {}) {
 
     setActionLoading(true);
     try {
-      const url = new URL(`${BASE_URL}/products/${id}`);
+      const url = new URL(buildApiUrl(`/products/${id}`));
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }

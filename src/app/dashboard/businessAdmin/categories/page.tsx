@@ -5,7 +5,9 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Box, ChevronLeft, ChevronRight, Edit, Layers, Loader2, Plus, Search, Store, Trash2, X, Image as ImageIconLucide, RotateCcw, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
+import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
+import { PortalPage, PortalPageHeader, PortalErrorAlert } from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
 import { CategoryRecord, useCategories } from "@/hooks/useCategories";
 import { normalizeErrorMessage } from "@/lib/utils";
@@ -23,16 +25,7 @@ import { BASE_URL } from "@/lib/constant";
 
 function ErrorAlert({ message }: { message: unknown }) {
   const errorMessage = normalizeErrorMessage(message, "Error loading categories");
-
-  return (
-    <div className="rounded-2xl border border-[#fecaca] bg-[#fff1f1] p-4 flex items-start gap-3">
-      <AlertCircle className="h-5 w-5 text-[#ef4444] shrink-0 mt-0.5" />
-      <div>
-        <p className="font-semibold text-[#ef4444]">Error loading categories</p>
-        <p className="text-sm text-[#dc2626]">{errorMessage}</p>
-      </div>
-    </div>
-  );
+  return <PortalErrorAlert title="Error loading categories" message={errorMessage} />;
 }
 
 function CategoryListItem({
@@ -47,7 +40,7 @@ function CategoryListItem({
     : null;
 
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-[#f1f5f9]  p-4 transition hover:border-[#4f46e5]/20 hover:shadow-sm">
+    <div className="flex items-center justify-between rounded-2xl border border-[#e2e8f0] bg-white p-4 transition hover:border-[#c7d7f5] hover:shadow-sm">
       <div className="flex items-center gap-4">
         <div className="relative h-12 w-12 overflow-hidden rounded-xl bg-[#f8fafc] flex items-center justify-center border border-[#f1f5f9]">
           {imageUrl ? (
@@ -63,7 +56,7 @@ function CategoryListItem({
       </div>
       <button
         onClick={() => onEdit(category.id)}
-        className="rounded-lg px-3 py-1.5 text-sm font-semibold text-[#6366f1] transition hover:bg-[#6366f1]/10 hover:text-[#6366f1]"
+        className="rounded-lg px-3 py-1.5 text-sm font-semibold text-[#0050F8] transition hover:bg-[#eef3ff] hover:text-[#001840]"
       >
         Edit
       </button>
@@ -233,20 +226,12 @@ function CategoriesContent() {
 
   return (
     <AdminShell activeTab="categories">
-      <main className="h-[calc(100vh-80px)] overflow-hidden">
-        <div className="h-full w-full">
-          <div className="h-full rounded-[32px] border border-white bg-white p-8 shadow-2xl flex flex-col">
-            <div className="flex items-center justify-between mb-8 shrink-0">
-              <div>
-                <h1 className="text-3xl font-extrabold text-[#111827]">Manage Categories</h1>
-                <p className="text-base text-[#6b7280]">Add, update, and sort categories from one place</p>
-              </div>
-              <button onClick={() => router.back()} className="rounded-full p-2 hover:bg-[#f3f4f6] text-[#94a3b8] transition">
-                <X className="h-6 w-6" />
-              </button>
-            </div>
+      <PortalPage>
+        <PortalPageHeader icon={Layers} title="Manage Categories" subtitle="Add, update, and sort categories from one place" />
 
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-8 flex-1 min-h-0">
+        <div className="portal-card">
+          <div className="portal-card-body">
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.2fr]">
               {/* Left Column: Form */}
               <div className="rounded-3xl border border-[#f1f5f9] bg-[#f8fafc]/50 p-6 flex flex-col min-h-0">
                 <h3 className="text-xl font-bold text-[#111827] mb-6 shrink-0">{editId ? "Update Category" : "Add Category"}</h3>
@@ -258,7 +243,7 @@ function CategoriesContent() {
                       value={editId ? editForm.categoryName : createForm.categoryName}
                       onChange={(e) => editId ? setEditForm(p => ({ ...p, categoryName: e.target.value })) : setCreateForm(p => ({ ...p, categoryName: e.target.value }))}
                       placeholder="Enter category name"
-                      className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-sm font-medium outline-none transition focus:border-[#f97316]/50"
+                      className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm font-medium outline-none transition focus:border-[#0050F8] focus:ring-2 focus:ring-[#0050F8]/20"
                     />
                   </div>
 
@@ -268,14 +253,14 @@ function CategoriesContent() {
                       type="number"
                       value={editId ? editForm.sortOrder : createForm.sortOrder}
                       onChange={(e) => editId ? setEditForm(p => ({ ...p, sortOrder: Number(e.target.value) })) : setCreateForm(p => ({ ...p, sortOrder: Number(e.target.value) }))}
-                      className="w-full rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-sm font-medium outline-none transition focus:border-[#f97316]/50"
+                      className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm font-medium outline-none transition focus:border-[#0050F8] focus:ring-2 focus:ring-[#0050F8]/20"
                     />
                   </div>
 
                   <div className="space-y-4">
                     <label className="text-sm font-bold text-[#64748b]">Image</label>
                     <div>
-                      <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-[#d1d5db] bg-white px-6 py-2.5 text-sm font-bold text-[#6366f1] transition hover:bg-[#f9fafb]">
+                      <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#dbe4ef] bg-white px-6 py-2.5 text-sm font-bold text-[#0050F8] transition hover:bg-[#f8fbff]">
                         Choose Image
                         <input
                           type="file"
@@ -324,7 +309,7 @@ function CategoriesContent() {
 
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
                   {loading ? (
-                    <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin Category List" /></div>
+                    <Loading size="sm" />
                   ) : filteredCategories.length === 0 ? (
                     <div className="text-center py-12 text-[#94a3b8] text-sm font-medium">No categories found</div>
                   ) : (
@@ -336,17 +321,17 @@ function CategoriesContent() {
               </div>
             </div>
           </div>
-
-          <DeleteConfirmDialog
-            open={deleteOpen}
-            onOpenChange={setDeleteOpen}
-            onConfirm={confirmDelete}
-            title="Delete Category?"
-            description="Are you sure you want to delete this category? This will also affect products in this category."
-            loading={actionLoading}
-          />
         </div>
-      </main>
+
+        <DeleteConfirmDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          onConfirm={confirmDelete}
+          title="Delete Category?"
+          description="Are you sure you want to delete this category? This will also affect products in this category."
+          loading={actionLoading}
+        />
+      </PortalPage>
     </AdminShell>
   );
 }
@@ -354,11 +339,7 @@ function CategoriesContent() {
 export default function CategoriesPage() {
   return (
     <Suspense
-      fallback={
-        <div className="flex h-screen items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#f97316]" />
-        </div>
-      }
+      fallback={<Loading fullScreen />}
     >
       <CategoriesContent />
     </Suspense>

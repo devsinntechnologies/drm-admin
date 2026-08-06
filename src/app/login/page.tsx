@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ChefHat, Lock, Mail, ShieldCheck } from "lucide-react";
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
+import Loading from "@/components/common/Loading";
 import { useAuth } from "@/hooks/useAuth";
 import { normalizeErrorMessage } from "@/lib/utils";
 
@@ -190,7 +191,7 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<main className="min-h-screen px-4 py-8" />}>
+    <Suspense fallback={<Loading fullScreen />}>
       <LoginContent />
     </Suspense>
   );

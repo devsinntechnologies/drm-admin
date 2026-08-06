@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
+import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -47,11 +48,7 @@ export default function ActionLogsLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <Suspense fallback={
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#001840] border-t-transparent"></div>
-      </div>
-    }>
+    <Suspense fallback={<Loading fullScreen />}>
       <AdminShell activeTab="action-logs">
         <section className="mb-6 flex w-full flex-col gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.9),rgba(236,253,245,0.76))] px-5 py-5 shadow-[0_12px_28px_rgba(15,23,42,0.1)] lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-4">

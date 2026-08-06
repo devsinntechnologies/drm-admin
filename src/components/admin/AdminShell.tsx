@@ -1,8 +1,7 @@
-// @ts-nocheck
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { Activity, Building2, Crown, CreditCard, Globe2, LayoutGrid, LogOut, Menu, ReceiptText, Shapes, SlidersHorizontal, Store, Users, UtensilsCrossed, X } from "lucide-react";
+import { Activity, Building2, Crown, CreditCard, Globe2, LayoutGrid, LayoutTemplate, LogOut, Menu, Receipt, ReceiptText, Shapes, ShoppingCart, SlidersHorizontal, Store, Users, UtensilsCrossed, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,7 +10,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { toast } from "sonner";
 
-type TabKey = "dashboard" | "businesses" | "subscriptions" | "features" | "action-logs" | "orders" | "kitchen" | "products" | "categories" | "public-data" | "tables" | "invoices" | "users";
+type TabKey = "dashboard" | "businesses" | "subscriptions" | "features" | "industry-templates" | "action-logs" | "orders" | "kitchen" | "products" | "categories" | "public-data" | "tables" | "invoices" | "users";
 
 type AdminShellProps = {
   activeTab: TabKey;
@@ -42,6 +41,12 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
     label: "Feature Management",
     href: "/dashboard/superAdmin/features",
     icon: <SlidersHorizontal className="h-5 w-5" />,
+  },
+  {
+    key: "industry-templates",
+    label: "Industry Templates",
+    href: "/dashboard/superAdmin/industry-templates",
+    icon: <LayoutTemplate className="h-5 w-5" />,
   },
   {
     key: "action-logs",
@@ -77,13 +82,13 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
     key: "invoices",
     label: "Invoices",
     href: "/dashboard/businessAdmin/invoices",
-    icon: <ReceiptText className="h-5 w-5" />,
+    icon: <Receipt className="h-5 w-5" />,
   },
   {
     key: "orders",
     label: "Orders",
     href: "/dashboard/businessAdmin/orders",
-    icon: <ReceiptText className="h-5 w-5" />,
+    icon: <ShoppingCart className="h-5 w-5" />,
   },
   {
     key: "kitchen",
@@ -113,7 +118,7 @@ function getVisibleTabs(role: string | null, isImpersonating: boolean = false) {
     return tabs.filter((tab) => tab.key === "orders");
   }
 
-  return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "features" || tab.key === "action-logs");
+  return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "features" || tab.key === "industry-templates" || tab.key === "action-logs");
 }
 
 export default function AdminShell({ activeTab, children }: AdminShellProps) {
@@ -178,7 +183,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
   const visibleTabs = useMemo(() => {
     // During SSR and first paint, we MUST return a static set of tabs that match the server
     if (!isMounted) {
-      return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "features" || tab.key === "action-logs");
+      return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "features" || tab.key === "industry-templates" || tab.key === "action-logs");
     }
 
     const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
@@ -194,7 +199,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
     } else if (shouldShowBusinessTabs) {
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "public-data" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
     } else {
-      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "features" || tab.key === "action-logs");
+      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "features" || tab.key === "industry-templates" || tab.key === "action-logs");
       // Force Super Admin dashboard link to the superAdmin route
       baseTabs = baseTabs.map(tab =>
         tab.key === "dashboard" ? { ...tab, href: "/dashboard/superAdmin" } : tab
@@ -222,7 +227,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
 
   return (
     <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-[#e5edf5] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] xl:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-[#dbe4ef] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] shadow-[0_10px_30px_rgba(15,23,42,0.06)] xl:flex">
         <div className="border-b border-[#edf2f7] px-5 py-4">
           <div className="flex items-center gap-3">
             <Image
@@ -258,14 +263,17 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                   key={tab.key}
                   href={isMounted ? tab.href : tab.href.split("?")[0]}
                   className={cn(
-                    "flex min-w-0 items-center gap-3 px-4 py-3 text-sm font-medium transition",
+                    "group flex min-w-0 items-center gap-3 px-4 py-3 text-sm font-semibold transition-all duration-200",
                     active
-                      ? "rounded-full bg-[#001840] text-[#ffffff]! shadow-[0_10px_20px_rgba(0,24,64,0.18)]"
-                      : "rounded-xl text-[#334155] hover:bg-[#f8fafc] hover:text-[#111827]",
+                      ? "rounded-xl bg-[linear-gradient(135deg,#001840_0%,#0050F8_100%)] text-white shadow-[0_10px_20px_rgba(0,24,64,0.22)]"
+                      : "rounded-xl text-[#475569] hover:bg-[#eef3ff] hover:text-[#001840]",
                   )}
                 >
-                  <span className={cn("shrink-0", active ? "text-[#ffffff]!" : "text-[#64748b]")}>{tab.icon}</span>
-                  <span className={cn("min-w-0 truncate", active ? "text-[#ffffff]!" : "text-[#334155]")}>{tab.label}</span>
+                  <span className={cn(
+                    "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors",
+                    active ? "bg-white/15 text-white" : "bg-[#f1f5f9] text-[#64748b] group-hover:bg-white group-hover:text-[#0050F8]",
+                  )}>{tab.icon}</span>
+                  <span className={cn("min-w-0 truncate", active ? "text-white" : "text-[#334155]")}>{tab.label}</span>
                 </Link>
               );
             })}
@@ -293,14 +301,6 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_0%,rgba(0,80,248,0.12),transparent_38%),radial-gradient(circle_at_0%_100%,rgba(0,24,64,0.08),transparent_42%)]" />
           <div className="relative flex w-full items-center justify-between gap-3 px-4 lg:px-6">
             <div className="flex min-w-0 items-center gap-3 md:gap-4">
-              <Image
-                src="/logo-mark.png"
-                alt="DigiNizam"
-                width={52}
-                height={44}
-                className="h-11 w-auto shrink-0 object-contain"
-                priority
-              />
               <div className="min-w-0">
                 <h1 className="truncate text-lg font-semibold leading-tight text-[#0f172a] md:text-xl lg:text-2xl">Restaurant Manager</h1>
                 <p className="truncate text-xs font-medium leading-tight text-[#58657a] md:text-sm">
@@ -340,24 +340,14 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
 
           <aside className="absolute left-0 top-0 flex h-full w-[88vw] max-w-sm flex-col border-r border-[#e5edf5] bg-white shadow-[0_20px_40px_rgba(15,23,42,0.18)]">
             <div className="flex items-center justify-between border-b border-[#edf2f7] px-5 py-4">
-              <div className="flex items-center gap-3">
-                <Image
-                  src="/logo-mark.png"
-                  alt="DigiNizam"
-                  width={44}
-                  height={36}
-                  className="h-9 w-auto shrink-0 object-contain"
-                  priority
-                />
-                <div className="min-w-0">
-                  <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">Restaurant Manager</h1>
-                  <p className="truncate text-xs font-medium leading-tight text-[#667085]">
+              <div className="min-w-0">
+                <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">Restaurant Manager</h1>
+                <p className="truncate text-xs font-medium leading-tight text-[#667085]">
                     {!isMounted ? "..." :
                       resolvedRole === "business_admin" ? "Business Admin Portal" :
                         resolvedRole === "kitchen" || resolvedRole === "waiter" ? "Staff Portal" :
                           "Super Admin Portal"}
                   </p>
-                </div>
               </div>
 
               <button
@@ -381,14 +371,17 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                       href={isMounted ? tab.href : tab.href.split("?")[0]}
                       onClick={closeMobileNav}
                       className={cn(
-                        "flex min-w-0 items-center gap-3 px-4 py-3 text-sm font-medium transition",
+                        "group flex min-w-0 items-center gap-3 px-4 py-3 text-sm font-semibold transition-all duration-200",
                         active
-                          ? "rounded-full bg-[#001840] text-[#ffffff]! shadow-[0_10px_20px_rgba(0,24,64,0.18)]"
-                          : "rounded-xl text-[#334155] hover:bg-[#f8fafc] hover:text-[#111827]",
+                          ? "rounded-xl bg-[linear-gradient(135deg,#001840_0%,#0050F8_100%)] text-white shadow-[0_10px_20px_rgba(0,24,64,0.22)]"
+                          : "rounded-xl text-[#475569] hover:bg-[#eef3ff] hover:text-[#001840]",
                       )}
                     >
-                      <span className={cn("shrink-0", active ? "text-[#ffffff]!" : "text-[#64748b]")}>{tab.icon}</span>
-                      <span className={cn("min-w-0 truncate", active ? "text-[#ffffff]!" : "text-[#334155]")}>{tab.label}</span>
+                      <span className={cn(
+                        "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors",
+                        active ? "bg-white/15 text-white" : "bg-[#f1f5f9] text-[#64748b] group-hover:bg-white group-hover:text-[#0050F8]",
+                      )}>{tab.icon}</span>
+                      <span className={cn("min-w-0 truncate", active ? "text-white" : "text-[#334155]")}>{tab.label}</span>
                     </Link>
                   );
                 })}

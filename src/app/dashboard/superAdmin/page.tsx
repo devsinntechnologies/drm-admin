@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Image from "next/image";
+import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { useGetPlansQuery } from "@/hooks/usePlan";
 
@@ -57,7 +58,7 @@ function SuperAdminDashboardContent() {
       title: "Total Revenue",
       value: "358.0K",
       sub: "Across all businesses",
-      bg: "from-[#b45309] to-[#ef4444]",
+      bg: "from-[#001840] to-[#0050F8]",
       icon: <DollarSign className="h-5 w-5" strokeWidth={1.8} />,
       ghost: <DollarSign className="h-20 w-20 opacity-30" strokeWidth={1.2} />,
     },
@@ -261,7 +262,7 @@ function SuperAdminDashboardContent() {
 
 export default function SuperAdminDashboard() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading Dashboard...</div>}>
+    <Suspense fallback={<Loading fullScreen />}>
       <SuperAdminDashboardContent />
     </Suspense>
   );

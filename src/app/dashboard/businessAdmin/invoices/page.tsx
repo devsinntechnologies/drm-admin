@@ -1,17 +1,24 @@
 "use client";
 
-import { Download, FileText, Search, Clock3, AlertCircle, ChevronLeft, ChevronRight, Loader2, Eye, Printer, CheckCircle2, RotateCcw, File, X, Receipt } from "lucide-react";
-import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
+import { Download, FileText, Search, Clock3, Loader2, Eye, Printer, CheckCircle2, RotateCcw, File, X, Receipt, Filter } from "lucide-react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  PortalPage,
+  PortalPageHeader,
+} from "@/components/admin/PortalPage";
+import InvoiceReceipt, { InvoicePrintButton } from "@/components/common/InvoiceReceipt";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useInvoices, type InvoiceRecord } from "@/hooks/useInvoices";
-import { cn, normalizeErrorMessage } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import Image from "next/image";
+
+type StatusFilter = "all" | "pending" | "paid";
 
 type InvoiceRow = {
   id: string;
@@ -19,13 +26,13 @@ type InvoiceRow = {
   orderNumber: string;
   businessName: string;
   date: string;
-  amount: string;
+  amount: number;
   status: "Paid" | "Pending" | "Overdue";
   itemCount: number;
 };
 
 function formatCurrency(value: number) {
-  return `PKR ${value.toFixed(2)}`;
+  return `PKR ${value.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function parsePrice(value?: string | null) {
@@ -42,7 +49,7 @@ function formatDate(value: string) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: true
+    hour12: true,
   });
 }
 
@@ -53,28 +60,6 @@ function toStatus(raw: string): InvoiceRow["status"] {
   return "Overdue";
 }
 
-function toAmount(invoice: InvoiceRecord) {
-  return parsePrice(invoice.totalPrice);
-}
-
-const CustomInvoiceIcon = ({ className }: { className?: string }) => (
-  <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} xmlns="http://www.w3.org/2000/svg">
-    {/* Main body and zigzag top */}
-    <path d="M17 17 V3 L15.33 4.5 L13.66 3 L12 4.5 L10.33 3 L8.66 4.5 L7 3 V17" />
-
-    {/* Bottom roll flap */}
-    <path d="M17 17 v1.5 a1.5 1.5 0 0 1 -1.5 1.5 H5.5 a1.5 1.5 0 0 1 -1.5 -1.5 V17 h3" />
-    <line x1="7" y1="17" x2="17" y2="17" />
-
-    {/* Inner Items */}
-    <rect x="8.5" y="7" width="4" height="2" fill="currentColor" stroke="none" />
-    <rect x="13.5" y="7" width="2" height="2" fill="currentColor" stroke="none" />
-
-    <rect x="8.5" y="11" width="4" height="2" fill="currentColor" stroke="none" />
-    <rect x="13.5" y="11" width="2" height="2" fill="currentColor" stroke="none" />
-  </svg>
-);
-
 function InvoicesContent() {
   const router = useRouter();
   const { role } = useAuth();
@@ -83,11 +68,15 @@ function InvoicesContent() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRecord | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [updatingInvoiceUuid, setUpdatingInvoiceUuid] = useState<string | null>(null);
 
-  const { invoices, loading, actionLoading, error, pagination, refetch, nextPage, prevPage, updateInvoiceStatus } = useInvoices({ page: currentPage, limit: 100 });
+  const { invoices, loading, actionLoading, error, pagination, refetch, updateInvoiceStatus } = useInvoices({
+    page: currentPage,
+    limit: 100,
+  });
 
   useEffect(() => {
     const storedRole = typeof window !== "undefined" ? localStorage.getItem("roleName") : null;
@@ -114,7 +103,7 @@ function InvoicesContent() {
       orderNumber: invoice.orderNumber,
       businessName: invoice.businessName,
       date: formatDate(invoice.createdAt),
-      amount: formatCurrency(toAmount(invoice)),
+      amount: parsePrice(invoice.totalPrice),
       status: toStatus(invoice.status),
       itemCount: invoice.Items?.length ?? 0,
     }));
@@ -122,12 +111,25 @@ function InvoicesContent() {
 
   const filteredInvoices = useMemo(() => {
     return rows.filter((invoice) => {
-      const text = `${invoice.id} ${invoice.orderNumber} ${invoice.businessName} ${invoice.amount} ${invoice.status}`.toLowerCase();
-      return text.includes(search.toLowerCase());
-    });
-  }, [rows, search]);
+      const matchesSearch = `${invoice.id} ${invoice.orderNumber} ${invoice.businessName} ${invoice.status}`
+        .toLowerCase()
+        .includes(search.toLowerCase());
 
-  const unpaidCount = useMemo(() => invoices.filter(i => i.status.toLowerCase() === 'pending').length, [invoices]);
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "pending" && invoice.status !== "Paid") ||
+        (statusFilter === "paid" && invoice.status === "Paid");
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [rows, search, statusFilter]);
+
+  const stats = useMemo(() => {
+    const pending = rows.filter((r) => r.status !== "Paid").length;
+    const paid = rows.filter((r) => r.status === "Paid").length;
+    const revenue = rows.filter((r) => r.status === "Paid").reduce((sum, r) => sum + r.amount, 0);
+    return { pending, paid, revenue, total: rows.length };
+  }, [rows]);
 
   const handleMarkPaid = async (invoiceUuid: string) => {
     const toastId = toast.loading("Updating status...");
@@ -144,7 +146,7 @@ function InvoicesContent() {
   };
 
   const handleExportPDF = () => {
-    if (rows.length === 0) {
+    if (filteredInvoices.length === 0) {
       toast.error("No data to export");
       return;
     }
@@ -153,22 +155,29 @@ function InvoicesContent() {
     try {
       const doc = new jsPDF();
       doc.setFontSize(20);
+      doc.setTextColor(0, 24, 64);
       doc.text("Invoices Report", 14, 22);
       doc.setFontSize(10);
       doc.setTextColor(100);
       doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
 
-      const tableData = rows.map(r => [r.id, r.orderNumber, r.date, r.amount, r.status]);
+      const tableData = filteredInvoices.map((r) => [
+        r.id,
+        r.orderNumber,
+        r.date,
+        formatCurrency(r.amount),
+        r.status,
+      ]);
 
       autoTable(doc, {
         startY: 35,
         head: [["Invoice ID", "Order #", "Date", "Amount", "Status"]],
         body: tableData,
-        headStyles: { fillColor: [99, 102, 241] },
-        alternateRowStyles: { fillColor: [248, 250, 252] }
+        headStyles: { fillColor: [0, 24, 64] },
+        alternateRowStyles: { fillColor: [238, 243, 255] },
       });
 
-      doc.save(`invoices-report-${new Date().getTime()}.pdf`);
+      doc.save(`invoices-report-${Date.now()}.pdf`);
       toast.success("PDF exported successfully", { id: toastId });
     } catch (err) {
       console.error(err);
@@ -176,257 +185,284 @@ function InvoicesContent() {
     }
   };
 
+  const handlePrint = () => {
+    if (typeof window !== "undefined") {
+      window.print();
+    }
+  };
+
   const openInvoiceDetails = (invoiceUuid: string) => {
-    const invoice = invoices.find(i => i.uuid === invoiceUuid);
+    const invoice = invoices.find((i) => i.uuid === invoiceUuid);
     if (!invoice) return;
     setSelectedInvoice(invoice);
     setIsDetailsOpen(true);
   };
 
+  const selectedSubtotal = selectedInvoice
+    ? parsePrice(selectedInvoice.totalPrice) -
+      parsePrice(selectedInvoice.deliveryCharges) -
+      parsePrice(selectedInvoice.packagingPrice)
+    : 0;
+
   if (!isAuthorized) return null;
 
   return (
     <AdminShell activeTab="invoices">
-      <main className="h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc]">
-        <div className="h-full flex flex-col p-6 space-y-6">
+      <PortalPage>
+        <PortalPageHeader
+          icon={Receipt}
+          title="Invoices"
+          subtitle="Track billing, payments, and receipts"
+          actions={
+            <button type="button" onClick={handleExportPDF} className="dn-btn dn-btn-outline shrink-0">
+              <Download className="h-4 w-4" />
+              Export PDF
+            </button>
+          }
+        />
 
-          {/* Header Section */}
-          <section className="bg-white rounded-[10px] p-6 shadow-sm border border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 rounded-2xl bg-[#001840] flex items-center justify-center shadow-lg shadow-red-100">
-                <FileText className="h-7 w-7 text-[#ffffff]" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-black text-[#111827]">Invoices</h1>
-                <p className="text-sm font-bold text-slate-400">Track revenue</p>
-              </div>
-            </div>
-          </section>
+        {/* Stats */}
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[
+            { label: "Total Invoices", value: stats.total, tone: "text-[#001840]" },
+            { label: "Pending Payment", value: stats.pending, tone: "text-[#ea580c]" },
+            { label: "Collected Revenue", value: formatCurrency(stats.revenue), tone: "text-[#0050F8]" },
+          ].map((card) => (
+            <article key={card.label} className="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#94a3b8]">{card.label}</p>
+              <p className={cn("mt-2 text-2xl font-bold", card.tone)}>{card.value}</p>
+            </article>
+          ))}
+        </section>
 
-          {/* Unpaid Badge Row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 rounded-full bg-[#fff7ed] px-4 py-2 border border-[#ffedd5]">
-              <Printer className="h-4 w-4 text-[#f97316]" />
-              <span className="text-xs font-black text-[#f97316] uppercase tracking-wider">{unpaidCount} Unpaid Invoice</span>
+        {/* Filters */}
+        <section className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="dn-tab-bar !rounded-2xl !py-2 lg:w-auto">
+              {(
+                [
+                  { key: "all" as const, label: "All" },
+                  { key: "pending" as const, label: "Pending" },
+                  { key: "paid" as const, label: "Paid" },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  data-active={statusFilter === tab.key ? "true" : "false"}
+                  className="dn-tab !h-10"
+                  onClick={() => setStatusFilter(tab.key)}
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                  {tab.label}
+                </button>
+              ))}
             </div>
-            <span className="text-xs font-bold text-slate-400 italic">Showing unpaid only</span>
+            <div className="relative w-full lg:max-w-sm">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search invoice, order, or business..."
+                className="h-11 w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] pl-10 pr-4 text-sm outline-none focus:border-[#0050F8] focus:ring-2 focus:ring-[#0050F8]/20"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Table */}
+        <section className="rounded-2xl border border-[#e2e8f0] bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-[#edf2f7] px-6 py-4">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-[#0050F8]" />
+              <h2 className="text-lg font-bold text-[#0f172a]">Invoice List</h2>
+              <span className="rounded-full bg-[#eef3ff] px-2.5 py-0.5 text-xs font-semibold text-[#001840]">
+                {filteredInvoices.length}
+              </span>
+            </div>
+            <button type="button" onClick={() => refetch()} className="dn-btn dn-btn-soft !h-9 !px-3">
+              <RotateCcw className={cn("h-4 w-4", loading && "animate-spin")} />
+              Refresh
+            </button>
           </div>
 
-          {/* Table Card */}
-          <section className="flex-1 bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 flex flex-col min-h-0 overflow-hidden relative">
+          {error ? (
+            <div className="mx-6 my-4 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm text-[#dc2626]">
+              {error}
+            </div>
+          ) : null}
 
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <FileText className="h-6 w-6 text-[#6366f1]" />
-                <h2 className="text-xl font-black text-[#111827]">All Invoices</h2>
+          {loading ? (
+            <Loading />
+          ) : filteredInvoices.length === 0 ? (
+            <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+              <div className="mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-[#eef3ff] text-[#0050F8]">
+                <FileText className="h-8 w-8" />
               </div>
-              <button
-                onClick={handleExportPDF}
-                className="flex items-center gap-2 px-4 py-3 rounded-lg border border-[#6366f1] text-[#6366f1] text-sm font-black hover:bg-[#6366f1]/5 transition-all"
-              >
-                <Download className="h-4 w-4" />
-                Export
-              </button>
+              <p className="text-lg font-semibold text-[#0f172a]">No invoices found</p>
+              <p className="mt-1 text-sm text-[#64748b]">
+                {statusFilter === "pending"
+                  ? "All invoices are paid — great work!"
+                  : "Complete an order to generate your first invoice."}
+              </p>
             </div>
-
-            {/* Printer Disconnected Banner */}
-            <div className="flex justify-center mb-8">
-              <button className="flex items-center gap-3 bg-[#e02828] text-[#ffffff] px-6 py-2 rounded-[8px] active:scale-95 transition-all">
-                <span className="text-[26px] leading-none">🖨️</span>
-                <div className="flex flex-col items-center justify-center">
-                  <span className="text-[17px] font-medium leading-tight">Printer Disconnected</span>
-                  <span className="text-[12px] font-medium mt-0.5">Click to connect</span>
-                </div>
-              </button>
-            </div>
-
-            {/* Invoices Table */}
-            <div className="flex-1 flex flex-col min-h-0">
-              {/* Table Header - Only Show When Invoices Exist */}
-              {filteredInvoices.length > 0 && (
-                <div className="grid grid-cols-[1.5fr_1.5fr_1.5fr_1.2fr_.8fr_.8fr_1.2fr_1fr] gap-4 bg-[#f8fafc] px-6 py-4 rounded-2xl text-[11px] font-black text-slate-500 uppercase tracking-widest mb-4">
-                  <span>Invoice ID</span>
-                  <span>Order Number</span>
-                  <span>Date & Time</span>
-                  <span>Amount</span>
-                  <span className="text-center">Status</span>
-                  <span className="text-center">Preview</span>
-                  <span className="text-center">Print</span>
-                  <span className="text-right">Mark Paid</span>
-                </div>
-              )}
-
-              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
-                {loading ? (
-                  <div className="h-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#6366f1]" /></div>
-                ) : filteredInvoices.length > 0 ? (
-                  filteredInvoices.map((invoice) => (
-                    <div key={invoice.id} className="grid grid-cols-[1.5fr_1.5fr_1.5fr_1.2fr_.8fr_.8fr_1.2fr_1fr] gap-4 items-center px-6 py-4 bg-white hover:bg-slate-50/50 rounded-3xl transition-all border border-transparent hover:border-slate-100">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-8 w-8 rounded-lg bg-[#6366f1]/10 flex items-center justify-center flex-shrink-0">
-                          <File className="h-4 w-4 text-[#6366f1]" />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px] text-left">
+                <thead>
+                  <tr className="border-b border-[#edf2f7] bg-[#f8fbff] text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
+                    <th className="px-6 py-3">Invoice</th>
+                    <th className="px-4 py-3">Order</th>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Amount</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f1f5f9]">
+                  {filteredInvoices.map((invoice) => (
+                    <tr key={invoice.uuid} className="transition hover:bg-[#f8fbff]/60">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#eef3ff] text-[#0050F8]">
+                            <File className="h-4 w-4" />
+                          </div>
+                          <span className="text-sm font-semibold text-[#0f172a]">{invoice.id}</span>
                         </div>
-                        <span className="text-xs font-black text-[#1e293b] truncate">{invoice.id}</span>
-                      </div>
-                      <span className="text-xs font-bold text-slate-500">{invoice.orderNumber}</span>
-                      <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-                        <Clock3 className="h-3.5 w-3.5 opacity-40" />
-                        {invoice.date}
-                      </div>
-                      <span className="text-xs font-black text-[#2563eb]">{invoice.amount}</span>
-                      <div className="flex justify-center">
-                        <span className={cn(
-                          "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
-                          invoice.status === "Paid" ? "bg-[#f0fdf4] text-[#16a34a]" : "bg-[#fff7ed] text-[#f97316]"
-                        )}>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-[#64748b]">{invoice.orderNumber}</td>
+                      <td className="px-4 py-4">
+                        <span className="inline-flex items-center gap-1.5 text-sm text-[#64748b]">
+                          <Clock3 className="h-3.5 w-3.5" />
+                          {invoice.date}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-sm font-bold text-[#0050F8]">{formatCurrency(invoice.amount)}</td>
+                      <td className="px-4 py-4">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider",
+                            invoice.status === "Paid"
+                              ? "bg-[#ecfdf5] text-[#059669]"
+                              : "bg-[#fff7ed] text-[#ea580c]",
+                          )}
+                        >
                           {invoice.status}
                         </span>
-                      </div>
-                      <div className="flex justify-center">
-                        <button
-                          onClick={() => openInvoiceDetails(invoice.uuid)}
-                          className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-[#6366f1] transition-colors"
-                        >
-                          <Eye className="h-5 w-5" />
-                        </button>
-                      </div>
-                      <div className="flex justify-center">
-                        <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#64748b] text-[#ffffff] text-[10px] font-black hover:bg-[#475569] transition-all">
-                          <Printer className="h-3.5 w-3.5" />
-                          Print Invoice
-                        </button>
-                      </div>
-                      <div className="flex justify-end">
-                        {invoice.status !== "Paid" && (
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center justify-center gap-2">
                           <button
-                            onClick={() => handleMarkPaid(invoice.uuid)}
-                            disabled={actionLoading && updatingInvoiceUuid === invoice.uuid}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#00c853] text-[#ffffff] text-[10px] font-black hover:bg-[#00a844] transition-all"
+                            type="button"
+                            onClick={() => openInvoiceDetails(invoice.uuid)}
+                            className="dn-btn dn-btn-soft !h-9 !px-3"
+                            title="View details"
                           >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            Paid
+                            <Eye className="h-4 w-4" />
                           </button>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-center py-12">
-                    <div className="h-24 w-24 text-[#64748b] mb-6 flex items-center justify-center">
-                      <CustomInvoiceIcon className="w-full h-full" />
-                    </div>
-                    <p className="text-[18px] font-bold text-[#111827] mb-1">No Unpaid Invoices</p>
-                    <p className="text-[14px] text-[#64748b] font-medium">All invoices have been paid for this date</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Table Footer / Pagination - Floating Red Refresh */}
-            <button
-              onClick={() => refetch()}
-              className="fixed bottom-8 right-8 h-14 w-14 rounded-2xl bg-[#001840] text-[#ffffff] shadow-[0_10px_20px_rgba(0,24,64,0.22)] flex items-center justify-center hover:scale-110 transition-all z-50 group"
-            >
-              <RotateCcw className={cn("h-6 w-6 transition-transform group-hover:rotate-180", loading && "animate-spin")} />
-            </button>
-          </section>
-
-        </div>
-
-        {/* Details Dialog */}
-        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-          <DialogContent className="max-w-3xl rounded-[32px] p-0 overflow-hidden border-none shadow-2xl">
-            <DialogTitle className="sr-only">
-              Invoice Details
-            </DialogTitle>
-            <div className="bg-white">
-              <div className="p-8 pb-4 flex items-center justify-between bg-slate-50/50">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-2xl bg-[#6366f1] flex items-center justify-center text-[#ffffff]">
-                    <FileText className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-[#111827]">Invoice Details</h3>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedInvoice?.invoiceNumber}</p>
-                  </div>
-                </div>
-                <button onClick={() => setIsDetailsOpen(false)} className="h-10 w-10 rounded-xl hover:bg-slate-200 flex items-center justify-center transition-colors">
-                  <X className="h-5 w-5 text-slate-500" />
-                </button>
-              </div>
-
-              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="bg-[#f8fafc] p-5 rounded-3xl border border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Order Info</p>
-                    <p className="text-sm font-bold text-[#111827]"># {selectedInvoice?.orderNumber}</p>
-                    <p className="text-xs text-slate-500 mt-2">Date: {selectedInvoice && formatDate(selectedInvoice.createdAt)}</p>
-                  </div>
-                  <div className="bg-[#f8fafc] p-5 rounded-3xl border border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                    <span className={cn(
-                      "inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
-                      selectedInvoice?.status.toLowerCase() === 'paid' ? "bg-green-100 text-green-600" : "bg-orange-100 text-orange-600"
-                    )}>
-                      {selectedInvoice?.status}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <p className="text-sm font-black text-[#111827] uppercase tracking-tighter">Items Summary</p>
-                  <div className="rounded-3xl border border-slate-100 overflow-hidden">
-                    <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 bg-slate-50 px-6 py-3 text-[10px] font-black text-slate-400 uppercase">
-                      <span>Item</span>
-                      <span className="text-center">Qty</span>
-                      <span className="text-right">Price</span>
-                    </div>
-                    <div className="divide-y divide-slate-50">
-                      {selectedInvoice?.Items.map((item, i) => (
-                        <div key={i} className="grid grid-cols-[2fr_1fr_1fr] gap-4 px-6 py-4 items-center">
-                          <span className="text-sm font-bold text-[#1e293b]">{item.productname}</span>
-                          <span className="text-sm font-bold text-center text-slate-500">{item.quantity}x</span>
-                          <span className="text-sm font-black text-right text-[#111827]">{formatCurrency(parsePrice(item.price))}</span>
+                          <button
+                            type="button"
+                            onClick={() => openInvoiceDetails(invoice.uuid)}
+                            className="dn-btn dn-btn-outline !h-9 !px-3"
+                            title="Print"
+                          >
+                            <Printer className="h-4 w-4" />
+                          </button>
+                          {invoice.status !== "Paid" ? (
+                            <button
+                              type="button"
+                              onClick={() => handleMarkPaid(invoice.uuid)}
+                              disabled={actionLoading && updatingInvoiceUuid === invoice.uuid}
+                              className="dn-btn dn-btn-secondary !h-9 !px-3"
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                              Paid
+                            </button>
+                          ) : null}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-                <div className="bg-[#f8fafc] rounded-3xl p-6 space-y-3">
-                  <div className="flex justify-between text-sm font-bold text-slate-500">
-                    <span>Subtotal</span>
-                    <span>{selectedInvoice && formatCurrency(parsePrice(selectedInvoice.totalPrice) - parsePrice(selectedInvoice.deliveryCharges) - parsePrice(selectedInvoice.packagingPrice))}</span>
-                  </div>
-                  <div className="flex justify-between text-sm font-bold text-slate-500">
-                    <span>Delivery</span>
-                    <span>{selectedInvoice && formatCurrency(parsePrice(selectedInvoice.deliveryCharges))}</span>
-                  </div>
-                  <div className="flex justify-between text-base font-black text-[#111827] border-t border-slate-200 pt-3">
-                    <span>Total Amount</span>
-                    <span className="text-[#2563eb]">{selectedInvoice && formatCurrency(parsePrice(selectedInvoice.totalPrice))}</span>
-                  </div>
-                </div>
-              </div>
+          {pagination.last_page > 1 ? (
+            <div className="flex items-center justify-between border-t border-[#edf2f7] px-6 py-4 text-sm text-[#64748b]">
+              <span>
+                Page {pagination.page} of {pagination.last_page}
+              </span>
+            </div>
+          ) : null}
+        </section>
+      </PortalPage>
 
-              <div className="p-8 bg-slate-50/50 flex justify-end gap-3">
-                <button onClick={() => setIsDetailsOpen(false)} className="px-6 py-3 rounded-2xl font-black text-sm text-slate-500 hover:bg-slate-200 transition-colors">Close</button>
-                <button className="flex items-center gap-2 px-8 py-3 rounded-2xl bg-[#001840] text-[#ffffff] font-black text-sm shadow-lg shadow-[0_10px_20px_rgba(0,24,64,0.18)] transition-all active:scale-95">
-                  <Printer className="h-4 w-4" />
-                  Print Receipt
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="max-w-2xl gap-0 overflow-hidden rounded-2xl border-none p-0 shadow-2xl print:shadow-none">
+          <DialogTitle className="sr-only">Invoice Details</DialogTitle>
+          {selectedInvoice ? (
+            <div className="print:p-0">
+              <div className="flex items-center justify-between border-b border-[#edf2f7] bg-[#f8fbff] px-6 py-4 print:hidden">
+                <h3 className="text-lg font-bold text-[#0f172a]">Invoice Preview</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsDetailsOpen(false)}
+                  className="grid h-9 w-9 place-items-center rounded-xl border border-[#dbe4ef] bg-white text-[#64748b] hover:bg-[#f8fafc]"
+                >
+                  <X className="h-4 w-4" />
                 </button>
               </div>
+
+              <div className="p-6" id="invoice-print-area">
+                <InvoiceReceipt
+                  orderNumber={selectedInvoice.orderNumber}
+                  businessName={selectedInvoice.businessName}
+                  date={formatDate(selectedInvoice.createdAt)}
+                  status={selectedInvoice.status}
+                  items={(selectedInvoice.Items ?? []).map((item, i) => ({
+                    id: String(i),
+                    productName: item.productname,
+                    quantity: item.quantity,
+                    price: item.price,
+                  }))}
+                  subtotal={selectedSubtotal}
+                  deliveryCharges={parsePrice(selectedInvoice.deliveryCharges)}
+                  packagingPrice={parsePrice(selectedInvoice.packagingPrice)}
+                  total={parsePrice(selectedInvoice.totalPrice)}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-[#edf2f7] bg-[#f8fbff] px-6 py-4 print:hidden">
+                <button type="button" onClick={() => setIsDetailsOpen(false)} className="dn-btn dn-btn-outline">
+                  Close
+                </button>
+                {selectedInvoice.status.toLowerCase() !== "paid" ? (
+                  <button
+                    type="button"
+                    onClick={() => handleMarkPaid(selectedInvoice.uuid)}
+                    disabled={actionLoading}
+                    className="dn-btn dn-btn-secondary"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Mark Paid
+                  </button>
+                ) : null}
+                <InvoicePrintButton onClick={handlePrint} label="Print Receipt" />
+              </div>
             </div>
-          </DialogContent>
-        </Dialog>
-      </main>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 }
 
 export default function InvoicesPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#6366f1]" /></div>}>
+    <Suspense
+      fallback={<Loading fullScreen />}
+    >
       <InvoicesContent />
     </Suspense>
   );

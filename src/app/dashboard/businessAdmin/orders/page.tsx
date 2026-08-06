@@ -35,12 +35,6 @@ import {
   Pencil,
   Armchair,
   ShoppingBag,
-  Clipboard,
-  CalendarDays,
-  QrCode,
-  Utensils,
-  Hash,
-  Ban,
   ClipboardList,
   RotateCw,
 } from "lucide-react";
@@ -54,7 +48,9 @@ import {
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
+import InvoiceReceipt, { InvoicePrintButton } from "@/components/common/InvoiceReceipt";
 import { useAuth } from "@/hooks/useAuth";
 import { useCategories, type CategoryRecord } from "@/hooks/useCategories";
 import { useOrders, type OrderRecord } from "@/hooks/useOrders";
@@ -62,7 +58,7 @@ import { useProducts, type Product, type ProductVariant } from "@/hooks/useProdu
 import { useTables } from "@/hooks/useTables";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { BASE_URL } from "@/lib/constant";
-import { cn } from "@/lib/utils";
+import { cn, buildOrderPatchItem, buildOrderRemoveItem, isUuid } from "@/lib/utils";
 
 const CustomTrashIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -264,7 +260,41 @@ function OrdersContent() {
     [tables, takeAwayTable],
   );
 
-  const getProductDefaultVariant = (product: Product) => product.variants?.[0] ?? null;
+  const getProductDefaultVariant = (product: Product) =>
+    product.variants?.find((variant) => isUuid(variant.id)) ?? null;
+
+  const getProductVariantsForUi = (product: Product): ProductVariant[] => {
+    const realVariants = (product.variants ?? []).filter((variant) => isUuid(variant.id));
+    if (realVariants.length > 0) return realVariants;
+    return [{
+      id: "",
+      name: "Regular",
+      price: product.price || 0,
+      inStock: product.inStock ?? 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }];
+  };
+
+  const buildPatchItemsFromEditingState = () => {
+    const updatedItems = editingItems.map((item) => {
+      const product = activeProducts.find((p) => p.id === item.productId);
+      return buildOrderPatchItem(
+        {
+          orderItemId: item.orderItemId,
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.quantity,
+          price: item.price,
+          action: item.action ?? (item.orderItemId ? "update" : "add"),
+        },
+        product?.variants,
+      );
+    });
+
+    const removedItems = removedEditingItems.map((orderItemId) => buildOrderRemoveItem(orderItemId));
+    return [...updatedItems, ...removedItems];
+  };
 
   const selectedEditingProduct = useMemo(
     () => activeProducts.find((product) => product.id === selectedProductId) ?? null,
@@ -272,17 +302,22 @@ function OrdersContent() {
   );
 
   const addProductToEditingOrder = (product: Product, variant?: ProductVariant | null) => {
-    const selectedVariant = variant ?? getProductDefaultVariant(product);
+    const realVariants = getProductVariantsForUi(product);
+    const selectedVariant = variant ?? realVariants[0];
     if (!selectedVariant) {
-      toast.error("This product has no variants");
+      toast.error("Unable to add this product");
       return;
     }
 
+    const lineVariantId = isUuid(selectedVariant.id) ? selectedVariant.id : "";
+
     setEditingItems((prev) => {
-      const existing = prev.find((item) => item.productId === product.id && item.variantId === selectedVariant.id);
+      const existing = prev.find(
+        (item) => item.productId === product.id && item.variantId === lineVariantId,
+      );
       if (existing) {
         return prev.map((item) =>
-          item.productId === product.id && item.variantId === selectedVariant.id
+          item.productId === product.id && item.variantId === lineVariantId
             ? {
               ...item,
               quantity: item.quantity + 1,
@@ -296,10 +331,10 @@ function OrdersContent() {
         ...prev,
         {
           productId: product.id,
-          variantId: selectedVariant.id,
+          variantId: lineVariantId,
           productName: product.name,
           variantName: selectedVariant.name,
-          price: selectedVariant.price,
+          price: selectedVariant.price ?? product.price ?? 0,
           quantity: 1,
           image: product.image,
           action: "add" as const,
@@ -309,8 +344,13 @@ function OrdersContent() {
   };
 
   const openVariantDialogForProduct = (product: Product) => {
-    if (!product.variants?.length) {
-      toast.error("This product has no variants");
+    const realVariants = (product.variants ?? []).filter((variant) => isUuid(variant.id));
+    if (realVariants.length === 0) {
+      addProductToEditingOrder(product);
+      return;
+    }
+    if (realVariants.length === 1) {
+      addProductToEditingOrder(product, realVariants[0]);
       return;
     }
     setSelectedProductId(product.id);
@@ -349,7 +389,7 @@ function OrdersContent() {
       (order.Items || []).map((item) => ({
         orderItemId: item.id,
         productId: item.productId,
-        variantId: item.variant?.id || item.id,
+        variantId: isUuid(item.variant?.id) ? item.variant!.id : "",
         productName: item.productName,
         variantName: item.variant?.name || "Default",
         price: Number(item.price),
@@ -482,15 +522,6 @@ function OrdersContent() {
 
   const refetch = () => fetchOrders(1);
 
-  const invoiceDate = useMemo(() => {
-    const dateValue = orderDetails?.orderId ? new Date() : new Date();
-    return dateValue.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  }, [orderDetails?.orderId]);
-
   const invoiceSubTotal = useMemo(
     () => orderDetails?.Items.reduce((acc, item) => acc + Number(item.total || item.price || 0), 0) || 0,
     [orderDetails],
@@ -499,6 +530,24 @@ function OrdersContent() {
   const invoiceDelivery = Number(orderDetails?.deliveryCharges || 0);
   const invoicePackaging = Number(orderDetails?.packagingPrice || 0);
   const invoiceNetAmount = Number(orderDetails?.totalPrice || 0);
+
+  const handleCompleteAndPrint = async () => {
+    if (!orderDetails?.orderId) return;
+
+    const toastId = toast.loading("Completing order...");
+    try {
+      await updateOrderStatus(orderDetails.orderId, "COMPLETED");
+      toast.success("Order completed", { id: toastId });
+      if (typeof window !== "undefined") {
+        window.print();
+      }
+      setShowOrderDetailsDialog(false);
+      setOrderDetails(null);
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to complete order", { id: toastId });
+    }
+  };
 
   const orderDetailsDialog = (
     <Dialog
@@ -510,122 +559,57 @@ function OrdersContent() {
         }
       }}
     >
-      <DialogContent className="max-w-[920px] p-0 rounded-[16px] border border-[#dcdfe4] overflow-hidden bg-[#f5f5f5] shadow-[0_24px_56px_rgba(0,0,0,0.22)]">
-        <DialogTitle className="sr-only">
-          Order Details
-        </DialogTitle>
-        <div className="rounded-[16px] overflow-hidden bg-[#f7f7f7]">
-          <div className="p-5 pb-4">
-            <button className="w-full bg-[#001840] text-[#ffffff] py-4 rounded-[16px] font-black text-[38px] shadow-[0_10px_24px_rgba(0,24,64,0.28)] flex flex-col items-center justify-center leading-none">
-              <span className="flex items-center gap-3 text-[18px]">
-                <Printer className="h-5 w-5" />
-                Complete &amp; Print
-              </span>
-              <span className="mt-2 text-[12px] font-semibold opacity-90">Tap to Finalize Order &amp; Print Invoice</span>
-            </button>
-          </div>
-
-          {orderDetails ? (
-            <div className="bg-[#f7f7f7]">
-              <div className="px-5 pb-0">
-                <div className="rounded-t-[4px] bg-[#f0eced] p-5 sm:p-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#999799]">Premium dining experience</p>
-                      <div className="mt-4 inline-flex items-center gap-1 rounded-full border border-[#dfdbdd] bg-white px-3 py-1 text-[11px] font-black text-[#616063]">
-                        <Hash className="h-3 w-3 text-[#ef4444]" />
-                        {orderDetails.orderNumber}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-8">
-                      <Utensils className="h-7 w-7 text-[#ef4444]" />
-                      <div className="inline-flex items-center gap-1.5 rounded-full border border-[#dfdbdd] bg-white px-3 py-1 text-[11px] font-bold text-[#616063]">
-                        <CalendarDays className="h-3.5 w-3.5 text-[#ef4444]" />
-                        {invoiceDate}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-[#f7f7f7] px-0 py-5 sm:py-6">
-                  <p className="text-xs font-black uppercase tracking-[0.06em] text-[#9d9ca0]">Invoice to:</p>
-                  <h3 className="mt-2 text-[42px] font-black leading-tight text-[#222126]">Order #{orderDetails.orderNumber}</h3>
-                </div>
-
-                <div className="border-t border-[#cdcad1]" />
-
-                <div className="pt-4">
-                  <div className="grid grid-cols-[1fr_80px_120px] border-b border-[#cdcad1] pb-3 text-[11px] font-black uppercase tracking-[0.06em] text-[#9f9ca1]">
-                    <span>Item Description</span>
-                    <span className="text-center">Qty</span>
-                    <span className="text-right">Total</span>
-                  </div>
-
-                  <div className="divide-y divide-[#d8d5db]">
-                    {orderDetails.Items.map((item) => {
-                      const itemTotal = Number(item.total || item.price) * Number(item.quantity || 1);
-                      return (
-                        <div key={item.id} className="grid grid-cols-[1fr_80px_120px] py-3 text-[#222126]">
-                          <div>
-                            <p className="text-[14px] font-black lowercase leading-tight">{item.productName}</p>
-                            <p className="mt-1 text-[12px] font-medium text-[#9f9ca1]">
-                              Rs. {Number(item.price)} ({item.variant?.name || "Default"})
-                            </p>
-                          </div>
-                          <p className="text-center text-[34px] font-black leading-none">x{item.quantity}</p>
-                          <p className="text-right text-[28px] font-black leading-tight">Rs. {itemTotal}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="mt-4 border-t border-[#d8d5db] pt-4">
-                  <div className="space-y-1 text-[15px] font-semibold text-[#7f7d83]">
-                    <div className="flex items-center justify-between">
-                      <span>Sub-Total</span>
-                      <span className="text-[#2e2d30] font-black">Rs. {invoiceSubTotal}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Delivery Charges</span>
-                      <span className="text-[#2e2d30] font-black">Rs.{invoiceDelivery}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Packaging Fee</span>
-                      <span className="text-[#2e2d30] font-black">Rs. {invoicePackaging}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-[14px] bg-[#dc2f2f] px-3 py-3 text-[#ffffff] shadow-[0_8px_16px_rgba(220,47,47,0.28)]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[18px] font-black uppercase">Net Amount</span>
-                    <span className="text-[36px] font-black">Rs. {invoiceNetAmount.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <div className="mt-8 flex items-end justify-between pb-5">
-                  <div>
-                    <p className="text-[12px] font-black text-[#a6a3a9]">Contact Information:</p>
-                    <p className="text-[22px] leading-tight font-black text-[#37363a]">0300-4153368</p>
-                    <p className="text-[22px] leading-tight font-black text-[#37363a]">0335-4153368</p>
-                  </div>
-                  <QrCode className="h-12 w-12 text-[#2f2f33]" />
-                </div>
-              </div>
-
-              <div className="border-t border-[#e4e1e4] bg-[#f4f4f4] py-4 text-center">
-                <p className="text-[28px] italic text-[#adabae]">Thank you for dining with us!</p>
-              </div>
-
-              <div className="bg-[#ebeaec] py-3 text-center">
-                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-[#929095]">Powered by Devsinn Technologies</p>
-                <p className="mt-1 text-[10px] font-black text-[#ef4444]">www.devsinntechnologies.com</p>
-              </div>
+      <DialogContent className="max-w-2xl gap-0 overflow-hidden rounded-2xl border border-[#dbe4ef] bg-[#f8fbff] p-0 shadow-[0_24px_56px_rgba(15,23,42,0.18)] print:shadow-none">
+        <DialogTitle className="sr-only">Order Invoice</DialogTitle>
+        {orderDetails ? (
+          <div>
+            <div className="border-b border-[#dbe4ef] bg-white px-6 py-4 print:hidden">
+              <button
+                type="button"
+                onClick={() => void handleCompleteAndPrint()}
+                disabled={actionLoading}
+                className="dn-btn dn-btn-primary w-full !h-auto !flex-col !gap-1 !py-4"
+              >
+                <span className="inline-flex items-center gap-2 text-base">
+                  {actionLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Printer className="h-5 w-5" />}
+                  Complete &amp; Print
+                </span>
+                <span className="text-xs font-medium opacity-90">Finalize order and print receipt</span>
+              </button>
             </div>
-          ) : null}
-        </div>
+
+            <div className="p-6" id="order-invoice-print-area">
+              <InvoiceReceipt
+                orderNumber={orderDetails.orderNumber}
+                tableLabel={orderDetails.table || "Take Away"}
+                items={orderDetails.Items.map((item) => ({
+                  id: item.id,
+                  productName: item.productName,
+                  quantity: item.quantity,
+                  price: item.price,
+                  total: item.total,
+                  variantName: item.variant?.name,
+                }))}
+                subtotal={invoiceSubTotal}
+                deliveryCharges={invoiceDelivery}
+                packagingPrice={invoicePackaging}
+                total={invoiceNetAmount}
+                status={orderDetails.status}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-[#dbe4ef] bg-white px-6 py-4 print:hidden">
+              <button
+                type="button"
+                onClick={() => setShowOrderDetailsDialog(false)}
+                className="dn-btn dn-btn-outline"
+              >
+                Close
+              </button>
+              <InvoicePrintButton onClick={() => window.print()} label="Print Only" />
+            </div>
+          </div>
+        ) : null}
       </DialogContent>
     </Dialog>
   );
@@ -760,28 +744,8 @@ function OrdersContent() {
 
     const toastId = toast.loading("Saving order changes...");
     try {
-      const updatedItems = editingItems.map((item) => ({
-        id: item.orderItemId,
-        action: item.action ?? (item.orderItemId ? "update" : "add"),
-        productId: item.productId,
-        variantId: item.variantId,
-        quantity: item.quantity,
-        price: item.price,
-      }));
-
-      const removedItems = removedEditingItems.map((orderItemId) => ({
-        id: orderItemId,
-        action: "remove" as const,
-        productId: "",
-        variantId: "",
-        quantity: 0,
-        price: 0,
-      }));
-
       await updateOrderById(editingOrderId, {
-        status: editingStatus || editingOrder?.status || "PENDING",
-        items: [...updatedItems, ...removedItems],
-        totalPrice: editingGrandTotal,
+        items: buildPatchItemsFromEditingState(),
         deliveryCharges: editingDeliveryCharges,
         packagingPrice: editingPackagingCharges,
       });
@@ -806,31 +770,13 @@ function OrdersContent() {
 
     const toastId = toast.loading("Completing order...");
     try {
-      const updatedItems = editingItems.map((item) => ({
-        id: item.orderItemId,
-        action: item.action ?? (item.orderItemId ? "update" : "add"),
-        productId: item.productId,
-        variantId: item.variantId,
-        quantity: item.quantity,
-        price: item.price,
-      }));
-
-      const removedItems = removedEditingItems.map((orderItemId) => ({
-        id: orderItemId,
-        action: "remove" as const,
-        productId: "",
-        variantId: "",
-        quantity: 0,
-        price: 0,
-      }));
-
       await updateOrderById(editingOrderId, {
-        status: "COMPLETED",
-        items: [...updatedItems, ...removedItems],
-        totalPrice: editingGrandTotal,
+        items: buildPatchItemsFromEditingState(),
         deliveryCharges: editingDeliveryCharges,
         packagingPrice: editingPackagingCharges,
       });
+
+      await updateOrderStatus(editingOrderId, "COMPLETED");
 
       const completedOrder = await getOrderById(editingOrderId);
       setOrderDetails({
@@ -1437,9 +1383,7 @@ function OrdersContent() {
                 </div>
 
                 {tablesLoading ? (
-                  <div className="flex justify-center py-16">
-                    <Loader2 className="h-10 w-10 animate-spin text-[#001840]" />
-                  </div>
+                  <Loading />
                 ) : diningTables.length === 0 ? (
                   <div className="rounded-[20px] border border-dashed border-gray-300 bg-white p-12 text-center text-gray-500 font-bold">
                     No tables found
@@ -1474,9 +1418,9 @@ function OrdersContent() {
 
           {variantPickerDialog}
 
-          <div className="fixed bottom-6 right-6 z-50">
-            <button onClick={() => refetch()} className="bg-[#001840] text-[#ffffff] h-[50px] w-[50px] flex items-center justify-center !rounded-[14px] shadow-[0_6px_14px_rgba(0,24,64,0.28)] transition hover:scale-110 active:scale-90">
-              <RotateCw className={cn("h-6 w-6 stroke-[3]", ordersLoading && "animate-spin")} />
+          <div className="fixed bottom-6 right-6 z-50 print:hidden">
+            <button type="button" onClick={() => refetch()} className="dn-btn dn-btn-primary !h-[50px] !w-[50px] !rounded-xl !p-0">
+              <RotateCw className={cn("h-6 w-6", ordersLoading && "animate-spin")} />
             </button>
           </div>
         </main>
@@ -1497,7 +1441,7 @@ function OrdersContent() {
         )}
 
         {ordersLoading && !orders.length ? (
-          <div className="flex justify-center py-32"><Loader2 className="h-12 w-12 animate-spin text-[#001840]" /></div>
+          <Loading size="lg" />
         ) : displayedOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[500px] bg-transparent py-20 px-4">
             <div className="mb-4 text-[#a1a1aa]">
@@ -1529,11 +1473,11 @@ function OrdersContent() {
                   <div className={cn("p-5 sm:p-6 rounded-[12px] border-2 shadow-md", cardBg, cardBorder)}>
                     <div className="flex items-start justify-between gap-4 mb-4 sm:mb-6">
                       <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                        <h2 className="text-[#e62719] font-black text-lg font-black sm:text-2xl tracking-tight">{order.orderNumber}</h2>
+                        <h2 className="text-[#001840] font-black text-lg sm:text-2xl tracking-tight">{order.orderNumber}</h2>
                         <span className={cn("px-3 py-1 rounded-xl text-2xl font-black bg-[#EEF3FF] border shadow-lg", priceChipText, "border-[#c7d7f5]")}>Rs. {Number(order.totalPrice)}</span>
-                        <h3 className="text-[#ef4444] font-black text-7xl sm:text-6xl tracking-tight ">{order.table || "Take Away"}</h3>
+                        <h3 className="text-[#0050F8] font-black text-5xl sm:text-4xl tracking-tight">{order.table || "Take Away"}</h3>
                       </div>
-                      <button type="button" onClick={() => void openOrderDetails(order.id)} className="bg-[#EEF3FF] p-2.5 rounded-xl text-[#ef2f1f] shadow-sm hover:bg-[#EEF3FF] transition" aria-label="Open order details"><Eye className="h-6 w-6" /></button>
+                      <button type="button" onClick={() => void openOrderDetails(order.id)} className="bg-[#EEF3FF] p-2.5 rounded-xl text-[#0050F8] shadow-sm hover:bg-[#e8effe] transition" aria-label="Open order details"><Eye className="h-6 w-6" /></button>
                     </div>
 
                     <div className="flex items-center gap-6 text-gray-600 text-lg font-bold mb-5 sm:mb-6">
@@ -1544,7 +1488,7 @@ function OrdersContent() {
                     {!expandedOrderId && (
                       <div className="flex flex-wrap gap-4 mb-5 sm:mb-6">
                         {order.Items.slice(0, 3).map((item) => (
-                          <div key={item.id} className="bg-white rounded-[26px] border-2 border-[#ff5f57] p-3.5 flex items-center gap-4 pr-6 relative shadow-sm transition hover:scale-[1.02] min-w-[270px]">
+                          <div key={item.id} className="bg-white rounded-2xl border-2 border-[#c7d7f5] p-3.5 flex items-center gap-4 pr-6 relative shadow-sm transition hover:scale-[1.02] min-w-[270px]">
                             <div className="relative h-18 w-18 rounded-[18px] overflow-hidden shadow-md border-2 border-white shrink-0">
                               <Image src={productImageUrl(item.image)} alt={item.productName} fill className="object-cover" />
                             </div>
@@ -1552,7 +1496,7 @@ function OrdersContent() {
                               <h4 className="font-black text-base text-[#111827] truncate">{item.productName}</h4>
                               <p className="text-[#001840] font-black text-base mt-2">Rs. {item.total}</p>
                             </div>
-                            <span className="absolute top-3 right-3 bg-[#ffe7e4] text-[#ef4444] px-3 py-1 rounded-full text-xs font-black shadow-sm">x{item.quantity}</span>
+                            <span className="absolute top-3 right-3 bg-[#eef3ff] text-[#0050F8] px-3 py-1 rounded-full text-xs font-black shadow-sm">x{item.quantity}</span>
                           </div>
                         ))}
                         {order.Items.length > 3 && (
@@ -1576,14 +1520,14 @@ function OrdersContent() {
                             }
                             void openEditOrder(order.id);
                           }}
-                          className="flex items-center gap-2 text-[#ef2f1f] font-normal text-xl px-4 py-2 transition hover:bg-white/35 rounded-2xl"
+                          className="flex items-center gap-2 text-[#0050F8] font-semibold text-xl px-4 py-2 transition hover:bg-white/35 rounded-2xl"
                         >
                           {expandedOrderId === order.id ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                           {expandedOrderId === order.id ? "Order Details" : "Edit Order"}
                         </button>
                         <button
                           onClick={() => updateOrderStatus(order.id, "COMPLETED")}
-                          className="bg-[#0a9954] text-[#ffffff] px-8 py-4 rounded-full font-black text-lg flex items-center gap-3 shadow-lg hover:bg-[#0a874a] transition"
+                          className="dn-btn dn-btn-secondary !rounded-full !px-8 !py-4 !text-lg"
                         >
                           <CheckCircle2 className="h-6 w-6" /> Complete
                         </button>
@@ -1657,7 +1601,7 @@ function OrdersContent() {
 
                           <div className="flex-1">
                             {productsLoading ? (
-                              <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#001840]" /></div>
+                              <Loading />
                             ) : (
                               <div className="rounded-[20px] border border-[#e2e8f0] bg-[#EEF3FF] p-4">
                                 <h4 className="flex items-center gap-3 font-medium text-gray-700 mb-4 text-base">
@@ -1761,9 +1705,9 @@ function OrdersContent() {
           </div>
         )}
 
-        <div className="fixed bottom-8 right-12 z-50">
-          <button onClick={() => refetch()} className="bg-[#001840] text-[#ffffff] h-[50px] w-[50px] flex items-center justify-center !rounded-[14px] shadow-[0_6px_14px_rgba(0,24,64,0.28)] transition hover:scale-110 active:scale-90">
-            <RotateCw className={cn("h-6 w-6 stroke-[3]", ordersLoading && "animate-spin")} />
+        <div className="fixed bottom-8 right-12 z-50 print:hidden">
+          <button type="button" onClick={() => refetch()} className="dn-btn dn-btn-primary !h-[50px] !w-[50px] !rounded-xl !p-0">
+            <RotateCw className={cn("h-6 w-6", ordersLoading && "animate-spin")} />
           </button>
         </div>
       </main>
@@ -1777,7 +1721,7 @@ function OrdersContent() {
 
 export default function OrdersPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-[#001840]" /></div>}>
+    <Suspense fallback={<Loading fullScreen />}>
       <OrdersContent />
     </Suspense>
   );

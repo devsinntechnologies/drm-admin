@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
-import { BASE_URL } from "@/lib/constant";
+import { buildApiUrl } from "@/lib/api";
 
 export interface CategoryProduct {
   id: string;
@@ -78,7 +78,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     setError(null);
 
     try {
-      const url = new URL(`${BASE_URL}/category`);
+      const url = new URL(buildApiUrl("/category"));
       url.searchParams.append("page", pageNum.toString());
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
@@ -130,7 +130,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
       throw new Error("No authentication token available");
     }
 
-    const url = new URL(`${BASE_URL}/category/${id}`);
+    const url = new URL(buildApiUrl(`/category/${id}`));
     if (activeBusinessId) {
       url.searchParams.append("businessId", activeBusinessId);
     }
@@ -176,7 +176,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
         formData.append("image", payload.image);
       }
 
-      const url = new URL(`${BASE_URL}/category`);
+      const url = new URL(buildApiUrl("/category"));
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
@@ -226,7 +226,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
         formData.append("image", payload.image);
       }
 
-      const url = new URL(`${BASE_URL}/category/${id}`);
+      const url = new URL(buildApiUrl(`/category/${id}`));
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
@@ -269,7 +269,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
 
     setActionLoading(true);
     try {
-      const url = new URL(`${BASE_URL}/category/${id}`);
+      const url = new URL(buildApiUrl(`/category/${id}`));
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }

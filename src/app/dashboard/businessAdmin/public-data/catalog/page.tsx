@@ -14,6 +14,7 @@ import {
   Settings2,
 } from "lucide-react";
 import { toast } from "sonner";
+import Loading from "@/components/common/Loading";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { usePublicCatalog } from "@/hooks/usePublicCatalog";
@@ -216,9 +217,7 @@ export default function PublicCatalogPreviewPage() {
             A business ID is required to preview the public catalog.
           </div>
         ) : showBootLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-[#001840]" />
-          </div>
+          <Loading />
         ) : showDisabledState ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
             <p className="font-semibold text-amber-900">Storefront is disabled</p>
@@ -352,9 +351,7 @@ export default function PublicCatalogPreviewPage() {
           </div>
 
           {loading && products.length === 0 ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-[#001840]" />
-            </div>
+            <Loading />
           ) : products.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#dbe4ef] bg-[#f8fafc] px-6 py-16 text-center">
               <p className="text-sm font-semibold text-[#475569]">No published products</p>

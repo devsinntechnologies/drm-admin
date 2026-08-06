@@ -92,7 +92,7 @@ export default function ActionLogsDashboardPage() {
                   <div className="absolute bottom-0 left-0 right-0 h-px bg-[#aab5c9]" />
 
                   <svg viewBox="0 0 1000 320" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-                    <path d="M0 131 C30 55, 60 0, 90 55 S150 160, 180 119 S240 0, 270 119 S330 85, 360 177 S420 37, 450 68 S510 293, 540 174 S600 169, 630 161 S690 90, 720 119 S780 0, 810 66 S870 170, 900 128 S960 34, 1000 238" fill="none" stroke="#6366f1" strokeWidth="4" strokeLinecap="round" />
+                    <path d="M0 131 C30 55, 60 0, 90 55 S150 160, 180 119 S240 0, 270 119 S330 85, 360 177 S420 37, 450 68 S510 293, 540 174 S600 169, 630 161 S690 90, 720 119 S780 0, 810 66 S870 170, 900 128 S960 34, 1000 238" fill="none" stroke="#0050F8" strokeWidth="4" strokeLinecap="round" />
                     <path d="M0 157 C30 85, 60 34, 90 85 S150 174, 180 96 S240 187, 270 140 S330 110, 360 221 S420 94, 450 89 S510 310, 540 191 S600 204, 630 191 S690 123, 720 132 S780 47, 810 93 S870 196, 900 149 S960 110, 1000 251" fill="none" stroke="#10b981" strokeWidth="4" strokeLinecap="round" />
                     <path d="M0 304 C30 272, 60 272, 90 289 S150 323, 180 289 S240 300, 270 289 S330 326, 360 289 S420 308, 450 315 S510 321, 540 308 S600 293, 630 300 S690 332, 720 289 S780 308, 810 306 S870 310, 900 319 S960 291, 1000 311" fill="none" stroke="#ef4444" strokeWidth="4" strokeLinecap="round" />
                   </svg>
@@ -105,7 +105,7 @@ export default function ActionLogsDashboardPage() {
                 </div>
 
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-[0.95rem] font-medium">
-                  <span className="text-[#6366f1]">◦ All</span>
+                  <span className="text-[#0050F8]">◦ All</span>
                   <span className="text-[#10b981]">◦ Success</span>
                   <span className="text-[#ef4444]">◦ Failed</span>
                 </div>

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Check, ChevronDown, CreditCard, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -183,7 +184,7 @@ function PlanCard({ plan, onEdit, onDelete }: { plan: Plan; onEdit: (plan: Plan)
 
 export default function SubscriptionsPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading Subscriptions...</div>}>
+    <Suspense fallback={<Loading fullScreen label="Loading subscriptions..." />}>
       <SubscriptionsContent />
     </Suspense>
   );

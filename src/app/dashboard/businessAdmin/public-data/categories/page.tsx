@@ -14,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import Loading from "@/components/common/Loading";
 import { DeleteConfirmDialog } from "@/components/common/DeleteConfirmDialog";
 import {
   Dialog,
@@ -249,9 +250,7 @@ export default function PublicDataCategoriesPage() {
       ) : null}
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-[#001840]" />
-        </div>
+        <Loading />
       ) : activeCategories.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#dbe4ef] bg-[#f8fafc] px-6 py-16 text-center">
           <p className="text-sm font-semibold text-[#475569]">No public categories found</p>

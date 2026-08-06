@@ -14,7 +14,9 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { toast } from "sonner";
+import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
+import { PortalPage, PortalPageHeader, PortalRefreshFab } from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrders } from "@/hooks/useOrders";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
@@ -183,27 +185,25 @@ function KitchenPageContent() {
 
   return (
     <AdminShell activeTab="kitchen">
-      <main className="h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc]">
-        <div className="h-full flex flex-col p-6 pb-24 overflow-hidden">
+      <PortalPage>
+        <PortalPageHeader icon={UtensilsCrossed} title="Kitchen Display" subtitle="Track and advance orders in real time" />
 
-          {/* Main Grid: Two Columns */}
-          <div className="flex-1 grid grid-cols-2 gap-8 min-h-0">
-
-            {/* Take Away / Packaging Column */}
-            <div className="flex flex-col gap-6 min-h-0">
-              {/* Summary Card */}
-              <div className="bg-[#fff7ed] rounded-[20px] p-3  flex items-center gap-4 shadow-sm border border-[#ffedd5]">
-                <div className="h-14 w-14 rounded-[14px] bg-[#f74d0b] flex items-center justify-center shadow-lg">
-                  <Bell className="h-7 w-7 text-[#ffffff]" />
-                </div>
-                <div>
-                  <h2 className="text-[#995239] font-black text-sm uppercase tracking-wider">Take Away / Packaging</h2>
-                  <p className="text-4xl font-black text-[#7e2a0c]">{takeawayOrders.length}</p>
+        <div className="grid min-h-[calc(100vh-16rem)] grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* Take Away Column */}
+            <div className="flex flex-col gap-4 min-h-0">
+              <div className="portal-stat-card !bg-gradient-to-r !from-[#fff7ed] !to-white border-[#fed7aa]">
+                <div className="flex items-center gap-4">
+                  <div className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-[#ea580c] to-[#f97316] text-white shadow-md">
+                    <Bell className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#9a3412]">Take Away / Packaging</h2>
+                    <p className="text-3xl font-bold text-[#7c2d12]">{takeawayOrders.length}</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Lane Container */}
-              <div className="flex-1 bg-[#fff7ed]/50 rounded-[16px] border-2 border-[#ffedd5] overflow-hidden flex flex-col p-6 min-h-0">
+              <div className="flex-1 rounded-2xl border border-[#fed7aa] bg-[#fffbf5] p-4 min-h-[400px]">
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {takeawayOrders.length > 0 ? (
                     <div className="grid gap-4">
@@ -222,21 +222,21 @@ function KitchenPageContent() {
               </div>
             </div>
 
-            {/* Dining Order Column */}
-            <div className="flex flex-col gap-6 min-h-0">
-              {/* Summary Card */}
-              <div className="bg-[#f0fdf4] rounded-[20px] p-3 flex items-center gap-4 shadow-sm border border-[#dcfce7]">
-                <div className="h-14 w-14 rounded-[14px] bg-[#0f9d58] flex items-center justify-center shadow-lg">
-                  <CheckCircle2 className="h-7 w-7 text-[#ffffff]" />
-                </div>
-                <div>
-                  <h2 className="text-[#166534] font-black text-sm uppercase tracking-wider">Dining Order</h2>
-                  <p className="text-4xl font-black text-[#14532d]">{diningOrders.length}</p>
+            {/* Dining Column */}
+            <div className="flex flex-col gap-4 min-h-0">
+              <div className="portal-stat-card !bg-gradient-to-r !from-[#eef3ff] !to-white border-[#c7d7f5]">
+                <div className="flex items-center gap-4">
+                  <div className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-[#001840] to-[#0050F8] text-white shadow-md">
+                    <CheckCircle2 className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#001840]">Dining Orders</h2>
+                    <p className="text-3xl font-bold text-[#0050F8]">{diningOrders.length}</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Lane Container */}
-              <div className="flex-1 bg-[#f0fdf4]/50 rounded-[16px] border-2 border-[#dcfce7] overflow-hidden flex flex-col p-6 min-h-0">
+              <div className="flex-1 rounded-2xl border border-[#c7d7f5] bg-[#f8fbff] p-4 min-h-[400px]">
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {diningOrders.length > 0 ? (
                     <div className="grid gap-4">
@@ -255,18 +255,10 @@ function KitchenPageContent() {
               </div>
             </div>
 
-          </div>
-
-          {/* Floating Refresh */}
-          <button
-            onClick={() => refetch()}
-            className="fixed bottom-8 right-8 h-[50px] w-[50px] flex items-center justify-center !rounded-[14px] bg-[#001840] text-[#ffffff] shadow-[0_6px_14px_rgba(0,24,64,0.28)] transition hover:scale-110 active:scale-90 z-50"
-          >
-            <RotateCw className={cn("h-6 w-6 stroke-[3]", ordersLoading && "animate-spin")} />
-          </button>
-
         </div>
-      </main>
+
+        <PortalRefreshFab onClick={() => refetch()} loading={ordersLoading} />
+      </PortalPage>
     </AdminShell>
   );
 }
@@ -296,7 +288,7 @@ function OrderCard({ order, onMove, updating }: { order: any, onMove: any, updat
 
       {order.table && (
         <div className="flex items-center gap-2">
-          <Store className="h-4 w-4 text-[#ef4444]" />
+          <Store className="h-4 w-4 text-[#0050F8]" />
           <span className="text-lg font-black text-[#111827]">{order.table}</span>
         </div>
       )}
@@ -309,7 +301,7 @@ function OrderCard({ order, onMove, updating }: { order: any, onMove: any, updat
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-black text-[#1e293b] truncate">
-                <span className="text-[#ef4444]">{item.quantity}x</span> {item.productName}
+                <span className="font-bold text-[#0050F8]">{item.quantity}x</span> {item.productName}
               </p>
               {item.variant?.name && (
                 <p className="text-[10px] font-bold text-slate-400 uppercase">{item.variant.name}</p>
@@ -343,7 +335,7 @@ function OrderCard({ order, onMove, updating }: { order: any, onMove: any, updat
 
 export default function KitchenPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#4f46e5]" /></div>}>
+    <Suspense fallback={<Loading fullScreen />}>
       <KitchenPageContent />
     </Suspense>
   );
