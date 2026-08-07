@@ -417,6 +417,20 @@ a {
   box-shadow: 0 0 0 1px rgba(0, 80, 248, 0.06);
 }
 
+.business-workspace .portal-accent-card {
+  background: var(--biz-primary, var(--brand-primary));
+  border-color: color-mix(in srgb, var(--biz-secondary, var(--brand-secondary)) 40%, transparent);
+}
+
+.business-workspace .dn-btn-primary {
+  background-color: var(--biz-primary, var(--brand-primary));
+  border-color: var(--biz-primary, var(--brand-primary));
+}
+
+.business-workspace .dn-btn-primary:hover {
+  filter: brightness(1.08);
+}
+
 .portal-accent-card::after {
   content: "";
   position: absolute;

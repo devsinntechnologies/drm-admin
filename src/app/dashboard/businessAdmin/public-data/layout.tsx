@@ -89,22 +89,6 @@ function PublicDataLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <AdminShell activeTab="public-data">
-      <section className="portal-header mb-6 flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 items-center gap-4">
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[#001840] text-white shadow-[0_10px_20px_rgba(0,24,64,0.28)]">
-            <Globe2 className="h-7 w-7" strokeWidth={1.9} />
-          </div>
-          <div className="min-w-0">
-            <h2 className="truncate text-[1.65rem] font-semibold leading-tight text-[#181d2c] sm:text-[1.85rem]">
-              Public Catalog
-            </h2>
-            <p className="truncate text-[0.92rem] text-[#6c7890] sm:text-[0.98rem]">
-              Manage storefront settings, synced catalog data, and published website content
-            </p>
-          </div>
-        </div>
-      </section>
-
       <section className="dn-tab-bar mb-5">
         {tabLinks.map((tab) => {
           const Icon = tab.icon;

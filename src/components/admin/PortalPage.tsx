@@ -56,8 +56,8 @@ export function PortalStatCard({
   className?: string;
 }) {
   const tones = {
-    primary: "bg-[#001840]",
-    secondary: "bg-[#0050F8]",
+    primary: "bg-[var(--brand-primary,#001840)]",
+    secondary: "bg-[var(--brand-secondary,#0050F8)]",
     accent: "bg-[#0f766e]",
     neutral: "bg-[#334155]",
   };

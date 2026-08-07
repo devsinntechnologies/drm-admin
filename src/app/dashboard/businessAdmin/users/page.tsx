@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
-import { PortalPage, PortalPageHeader, PortalStatCard } from "@/components/admin/PortalPage";
+import { PortalPage, PortalStatCard } from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
 import { useUsers, type UserRole } from "@/hooks/useUsers";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
@@ -197,12 +197,8 @@ function UsersContent() {
   return (
     <AdminShell activeTab="users">
       <PortalPage>
-        <PortalPageHeader
-          icon={Users}
-          title="Team"
-          subtitle="Manage waiters and kitchen staff"
-          actions={
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <div className="mb-6 flex justify-end">
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
                 <button type="button" className="dn-btn dn-btn-primary">
                   <Plus className="h-5 w-5" /> Add Member
@@ -270,8 +266,7 @@ function UsersContent() {
                 </form>
               </DialogContent>
             </Dialog>
-          }
-        />
+        </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (

@@ -1,6 +1,6 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { BASE_URL } from "@/lib/constant";
-import { getStoredAuthToken } from "@/lib/utils";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { authenticatedBaseQueryWithReauth } from "@/lib/authenticated-base-query";
+import type { ApiTemplateConfig } from "@/hooks/useIndustryTemplate";
 
 export type BusinessStatus = "active" | "inactive" | "expired";
 
@@ -11,6 +11,7 @@ export type BusinessRecord = {
   phone: string;
   status: BusinessStatus;
   email: string;
+  logo?: string;
   ownerId: string;
   ownerName: string;
   ownerEmail: string;
@@ -18,6 +19,7 @@ export type BusinessRecord = {
   ownerRole: string;
   planId: string;
   planName: string;
+  templateConfig?: ApiTemplateConfig | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -132,22 +134,22 @@ export function normalizeBusinessesResponse(response: unknown): GetBusinessesRes
   return { data: [], pagination: defaultPagination(0) };
 }
 
+function normalizeBusinessRecord(response: unknown): BusinessRecord {
+  if (!response || typeof response !== "object") {
+    throw new Error("Invalid business response");
+  }
+
+  const root = response as Record<string, unknown>;
+  if (root.data && typeof root.data === "object") {
+    return root.data as BusinessRecord;
+  }
+
+  return response as BusinessRecord;
+}
+
 export const businessApi = createApi({
   reducerPath: "businessApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: BASE_URL,
-    prepareHeaders: (headers, { getState }) => {
-      const token = (getState() as any).auth?.token || getStoredAuthToken();
-      
-      if (token) {
-        headers.set("Authorization", `Bearer ${token.trim()}`);
-      }
-      
-      headers.set("accept", "*/*");
-
-      return headers;
-    },
-  }),
+  baseQuery: authenticatedBaseQueryWithReauth,
   endpoints: (builder) => ({
     getBusinesses: builder.query<GetBusinessesResponse, GetBusinessesQueryParams | void>({
       query: (params) => {
@@ -178,11 +180,11 @@ export const businessApi = createApi({
         method: "POST",
         body,
       }),
+      transformResponse: (response: unknown) => normalizeBusinessRecord(response),
     }),
     getBusinessById: builder.query<BusinessRecord, string>({
       query: (id) => `/business/${id}`,
-      transformResponse: (response: BusinessRecord | { data: BusinessRecord }) =>
-        "data" in response && response.data ? response.data : (response as BusinessRecord),
+      transformResponse: (response: unknown) => normalizeBusinessRecord(response),
     }),
     patchBusinessById: builder.mutation<BusinessRecord, PatchBusinessPayload>({
       query: ({ id, body }) => ({
@@ -190,8 +192,7 @@ export const businessApi = createApi({
         method: "PATCH",
         body,
       }),
-      transformResponse: (response: BusinessRecord | { data: BusinessRecord }) =>
-        "data" in response && response.data ? response.data : (response as BusinessRecord),
+      transformResponse: (response: unknown) => normalizeBusinessRecord(response),
     }),
     deleteBusinessById: builder.mutation<{ success?: boolean } | void, string>({
       query: (id) => ({

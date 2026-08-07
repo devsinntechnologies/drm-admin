@@ -7,10 +7,8 @@ import {
   ArrowRight,
   Check,
   Eye,
-  GripVertical,
   Layers3,
   LayoutTemplate,
-  Lock,
   Trash2,
   Copy,
   ExternalLink,
@@ -21,11 +19,17 @@ import {
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
-import { PortalPage, PortalPageHeader } from "@/components/admin/PortalPage";
+import { PortalPage } from "@/components/admin/PortalPage";
 import { IndustryIcon } from "@/components/templates/IndustryIcon";
-import { TemplatePreviewFrame } from "@/components/templates/TemplatePreviewFrame";
+import { GptPreviewDrawer } from "@/components/wizard/GptPreviewDrawer";
+import { GptPreviewButton } from "@/components/wizard/GptPreviewButton";
+import { WizardStepper } from "@/components/wizard/WizardStepper";
+import { DashboardCardChip, ModuleChip } from "@/components/wizard/TemplateConfigChips";
+import { TemplateThemeFields } from "@/components/wizard/TemplateThemeFields";
 import { createCustomizedConfig, buildDefaultNavigation } from "@/template-engine/builder";
-import { deleteTemplateConfig, loadSavedTemplates, saveTemplateConfig } from "@/template-engine/storage";
+import { persistTemplateConfig } from "@/template-engine/persist-template-config";
+import { createDefaultExtensions } from "@/template-engine/template-extensions-storage";
+import { deleteTemplateConfig, loadSavedTemplates } from "@/template-engine/storage";
 import { FAMILY_LABELS, INDUSTRY_TEMPLATES, getIndustryById } from "@/templates/industries";
 import {
   canDisableModule,
@@ -41,31 +45,34 @@ import {
   ACCENT_COLORS,
   colorsFromAccent,
   DASHBOARD_CARD_CATALOG,
-  MODULE_CATALOG,
 } from "@/templates/modules";
 import type {
-  AccentColor,
   CustomizedTemplateConfig,
   DashboardCardId,
   IndustryTemplate,
   ModuleId,
+  TemplateBuilderStepId,
+  TemplateConfigExtensions,
   ThemeMode,
 } from "@/templates/types";
 import { cn } from "@/lib/utils";
 
-type WizardStep = "select" | "customize" | "generate";
-
-const STEPS: Array<{ id: WizardStep; label: string }> = [
-  { id: "select", label: "Select Industry" },
-  { id: "customize", label: "Customize Template" },
-  { id: "generate", label: "Generate" },
+const STEPS: Array<{ id: TemplateBuilderStepId; label: string; description: string }> = [
+  { id: "industry", label: "Industry", description: "Pick a blueprint" },
+  { id: "business-profile", label: "Profile", description: "Business info" },
+  { id: "theme", label: "Theme", description: "Colors & style" },
+  { id: "modules", label: "Modules", description: "Features & menu" },
+  { id: "dashboard-cards", label: "KPIs", description: "Dashboard cards" },
+  { id: "dashboard-widgets", label: "Widgets", description: "Charts & feeds" },
+  { id: "forms", label: "Forms", description: "Custom fields" },
+  { id: "permissions", label: "Roles", description: "Access control" },
+  { id: "preview", label: "Save", description: "Finish template" },
 ];
 
 function IndustryTemplatesContent() {
-  const [step, setStep] = useState<WizardStep>("select");
+  const [step, setStep] = useState<TemplateBuilderStepId>("industry");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saved, setSaved] = useState<CustomizedTemplateConfig[]>([]);
-  const [previewDevice, setPreviewDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
 
   const [businessName, setBusinessName] = useState("");
   const [currency, setCurrency] = useState("PKR");
@@ -84,6 +91,8 @@ function IndustryTemplatesContent() {
   const [dashboardCardOrder, setDashboardCardOrder] = useState<DashboardCardId[]>([]);
   const [dragDashboardCardId, setDragDashboardCardId] = useState<DashboardCardId | null>(null);
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+  const [extensions, setExtensions] = useState<TemplateConfigExtensions>({});
+  const [gptOpen, setGptOpen] = useState(false);
 
   useEffect(() => {
     setSaved(loadSavedTemplates());
@@ -134,6 +143,7 @@ function IndustryTemplatesContent() {
     setProductLabel(tpl.labels.product);
     setProductsLabel(tpl.labels.products);
     setLogoDataUrl(null);
+    setExtensions(createDefaultExtensions(tpl.name));
     setNavItems(
       buildDefaultNavigation(available, labels).map((item) => ({
         ...item,
@@ -147,7 +157,7 @@ function IndustryTemplatesContent() {
     if (!tpl) return;
     setSelectedId(id);
     hydrateFromIndustry(tpl);
-    setStep("customize");
+    setStep("business-profile");
   }
 
   function applyModuleSelection(nextEnabled: ModuleId[]) {
@@ -255,7 +265,7 @@ function IndustryTemplatesContent() {
     });
   }
 
-  function handleGenerate() {
+  async function handleGenerate() {
     if (!industry) return;
     if (!businessName.trim()) {
       toast.error("Business name is required");
@@ -282,11 +292,12 @@ function IndustryTemplatesContent() {
       navigation: orderedNavForPreview,
     });
 
-    const next = saveTemplateConfig(config);
-    setSaved(next);
-    setLastSavedId(config.id);
-    setStep("generate");
-    toast.success("Industry template saved locally");
+    const withExtensions = { ...config, extensions };
+    const result = await persistTemplateConfig(withExtensions);
+    setSaved(loadSavedTemplates());
+    setLastSavedId(result.config.id);
+    setStep("preview");
+    toast.success(result.persistedToApi ? "Industry template saved to platform" : result.warning ?? "Industry template saved");
   }
 
   function handleLogoUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -320,52 +331,72 @@ function IndustryTemplatesContent() {
   const stepIndex = STEPS.findIndex((s) => s.id === step);
   const softSecondary = `${secondaryColor}22`;
 
+  const gptPreviewConfig = useMemo(
+    () => ({
+      businessName,
+      industryId: industry?.id ?? selectedId ?? "",
+      industryIcon: industry?.theme.icon,
+      logoDataUrl,
+      themeMode,
+      primaryColor,
+      secondaryColor,
+      currency,
+      labels: {
+        ...(industry?.labels ?? { product: productLabel, products: productsLabel }),
+        product: productLabel,
+        products: productsLabel,
+      },
+      navItems: orderedNavForPreview,
+      dashboardCards: orderedEnabledDashboardCards,
+      productsLabel: productsLabel,
+    }),
+    [
+      businessName,
+      industry,
+      selectedId,
+      logoDataUrl,
+      themeMode,
+      primaryColor,
+      secondaryColor,
+      currency,
+      productLabel,
+      productsLabel,
+      orderedNavForPreview,
+      orderedEnabledDashboardCards,
+    ],
+  );
+
+  function goToStep(next: TemplateBuilderStepId) {
+    setStep(next);
+  }
+
+  function goNextStep() {
+    const next = STEPS[stepIndex + 1];
+    if (next) setStep(next.id);
+  }
+
+  function goPrevStep() {
+    const prev = STEPS[stepIndex - 1];
+    if (prev) setStep(prev.id);
+  }
+
   return (
     <AdminShell activeTab="industry-templates">
       <PortalPage>
-      <PortalPageHeader
-        icon={LayoutTemplate}
-        title="Industry Templates"
-        subtitle="One DigiNizam UI — fifteen industry configurations with shared modules"
-      />
+      <div className="mb-5 rounded-xl border border-[#e2e8f0] bg-[#fafbfc] px-4 py-4 sm:px-5">
+        <WizardStepper
+          steps={STEPS}
+          currentStepId={step}
+          completedStepIds={STEPS.slice(0, stepIndex).map((s) => s.id)}
+          allowJumpToCompleted={!!selectedId}
+          onStepClick={(id) => {
+            if (id === "industry") goToStep("industry");
+            else if (selectedId) goToStep(id as TemplateBuilderStepId);
+          }}
+        />
+      </div>
 
-      <nav aria-label="Template wizard" className="portal-step-pipeline mb-6">
-        {STEPS.map((item, index) => {
-          const active = item.id === step;
-          const done = index < stepIndex;
-          return (
-            <div key={item.id} className="contents">
-              {index > 0 ? <span className="portal-step-divider" aria-hidden /> : null}
-              <button
-                type="button"
-                onClick={() => {
-                  if (item.id === "select") setStep("select");
-                  else if (item.id === "customize" && selectedId) setStep("customize");
-                  else if (item.id === "generate" && lastSavedId) setStep("generate");
-                }}
-                className="portal-step-item"
-                data-active={active ? "true" : undefined}
-                data-done={done ? "true" : undefined}
-              >
-                <span
-                  className={cn(
-                    "grid h-6 w-6 shrink-0 place-items-center rounded-md text-[11px] font-bold",
-                    active && "bg-white/15 text-white",
-                    done && !active && "bg-[#0050F8]/12 text-[#0050F8]",
-                    !active && !done && "border border-[#e2e8f0] bg-[#f8fafc] text-[#64748b]",
-                  )}
-                >
-                  {done ? <Check className="h-3.5 w-3.5" /> : index + 1}
-                </span>
-                <span className="hidden sm:inline">{item.label}</span>
-                <span className="sm:hidden">{item.label.split(" ")[0]}</span>
-              </button>
-            </div>
-          );
-        })}
-      </nav>
-
-      {step === "select" && (
+      {step === "industry" && (
         <div className="space-y-8">
           {saved.length > 0 && (
             <section className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
@@ -464,55 +495,46 @@ function IndustryTemplatesContent() {
         </div>
       )}
 
-      {step === "customize" && industry && (
+      {step !== "industry" && step !== "preview" && industry && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e2e8f0] bg-white px-4 py-3">
             <button
               type="button"
-              onClick={() => setStep("select")}
+              onClick={goPrevStep}
               className="dn-btn dn-btn-ghost inline-flex items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-4 py-2.5 text-sm font-semibold text-[#0f172a]"
             >
-              <ArrowLeft className="h-4 w-4" /> Back to industries
+              <ArrowLeft className="h-4 w-4" /> Back
             </button>
             <div className="hidden items-center gap-2 text-xs font-medium text-[#64748b] sm:flex">
-              <span className="rounded-md border border-[#e2e8f0] bg-[#f8fafc] px-2.5 py-1">{industry.name}</span>
-              <span>{enabledModules.length} modules</span>
+              <span className="rounded-md border border-[#e2e8f0] bg-[#f8fafc] px-2.5 py-1">{STEPS[stepIndex]?.label}</span>
+              <span>{industry.name}</span>
               <span>·</span>
-              <span>{dashboardCards.length} dashboard cards</span>
+              <span>{enabledModules.length} modules</span>
             </div>
-            <button
-              type="button"
-              onClick={handleGenerate}
-              className="dn-btn dn-btn-primary inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold"
-            >
-              Create business UI <ArrowRight className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <GptPreviewButton onClick={() => setGptOpen(true)} />
+              {step === "permissions" ? (
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  className="dn-btn dn-btn-primary inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold"
+                >
+                  Save & Preview <ArrowRight className="h-4 w-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={goNextStep}
+                  className="dn-btn dn-btn-primary inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold"
+                >
+                  Continue <ArrowRight className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
 
-          <TemplatePreviewFrame
-            businessName={businessName || industry.name}
-            industryIcon={industry.theme.icon}
-            industryId={industry.id}
-            logoDataUrl={logoDataUrl}
-            themeMode={themeMode}
-            primaryColor={primaryColor}
-            secondaryColor={secondaryColor}
-            currency={currency}
-            labels={{
-              ...industry.labels,
-              product: productLabel,
-              products: productsLabel,
-            }}
-            navItems={orderedNavForPreview}
-            dashboardCards={orderedEnabledDashboardCards}
-            productsLabel={productsLabel}
-            device={previewDevice}
-            onDeviceChange={setPreviewDevice}
-            moduleCount={enabledModules.length}
-            cardCount={dashboardCards.length}
-          />
-
           <div className="space-y-6">
+              {step === "business-profile" && (
               <Panel title={`${industry.name} template`}>
                 <div className="mb-4 flex items-start gap-4">
                   <div
@@ -554,8 +576,10 @@ function IndustryTemplatesContent() {
                   </div>
                 </div>
               </Panel>
+              )}
 
-              <Panel title="1. Business profile">
+              {step === "business-profile" && (
+              <Panel title="Business profile">
                 <div className="mb-4 rounded-xl border border-dashed border-[#cbd5e1] bg-[#fafbfc] p-4">
                   <div className="flex flex-wrap items-center gap-4">
                     <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
@@ -627,115 +651,43 @@ function IndustryTemplatesContent() {
                       className="portal-input"
                     />
                   </Field>
-                  <Field label="Interface">
-                    <div className="flex gap-2">
-                      {(["light", "dark"] as ThemeMode[]).map((mode) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => setThemeMode(mode)}
-                          className={cn(
-                            "flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold capitalize",
-                            themeMode === mode
-                              ? "border-[#001840] bg-[#001840] text-white"
-                              : "border-[#e2e8f0] bg-white text-[#334155]",
-                          )}
-                        >
-                          {mode}
-                        </button>
-                      ))}
-                    </div>
-                  </Field>
-                </div>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <Field label="Primary colour">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        value={primaryColor}
-                        onChange={(e) => setPrimaryColor(e.target.value)}
-                        className="h-11 w-14 cursor-pointer rounded-xl border border-[#e2e8f0] bg-white p-1"
-                      />
-                      <input
-                        value={primaryColor}
-                        onChange={(e) => setPrimaryColor(e.target.value)}
-                        className="portal-input font-mono uppercase"
-                        placeholder="#001840"
-                      />
-                    </div>
-                  </Field>
-                  <Field label="Secondary colour">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        value={secondaryColor}
-                        onChange={(e) => setSecondaryColor(e.target.value)}
-                        className="h-11 w-14 cursor-pointer rounded-xl border border-[#e2e8f0] bg-white p-1"
-                      />
-                      <input
-                        value={secondaryColor}
-                        onChange={(e) => setSecondaryColor(e.target.value)}
-                        className="portal-input font-mono uppercase"
-                        placeholder="#0050F8"
-                      />
-                    </div>
-                  </Field>
-                </div>
-                <div className="mt-3">
-                  <p className="mb-2 text-xs font-semibold text-[#94a3b8]">Quick presets</p>
-                  <div className="flex flex-wrap gap-2">
-                    {(Object.keys(ACCENT_COLORS) as AccentColor[]).map((key) => {
-                      const preset = ACCENT_COLORS[key];
-                      const active =
-                        primaryColor.toLowerCase() === preset.primary.toLowerCase() &&
-                        secondaryColor.toLowerCase() === preset.secondary.toLowerCase();
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => {
-                            setPrimaryColor(preset.primary);
-                            setSecondaryColor(preset.secondary);
-                          }}
-                          className={cn(
-                            "inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold",
-                            active
-                              ? "border-[#0f172a] bg-[#f8fafc]"
-                              : "border-[#e2e8f0] bg-white text-[#64748b]",
-                          )}
-                          title={`${preset.primary} / ${preset.secondary}`}
-                        >
-                          <span className="flex h-4 overflow-hidden rounded-full border border-[#e2e8f0]">
-                            <span className="h-4 w-3" style={{ backgroundColor: preset.primary }} />
-                            <span className="h-4 w-3" style={{ backgroundColor: preset.secondary }} />
-                          </span>
-                          {preset.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <Field label={`Singular label (was Product)`}>
+                  <Field label="Template name">
                     <input
-                      value={productLabel}
-                      onChange={(e) => setProductLabel(e.target.value)}
+                      value={extensions.templateName ?? ""}
+                      onChange={(e) => setExtensions((prev) => ({ ...prev, templateName: e.target.value }))}
                       className="portal-input"
                     />
                   </Field>
-                  <Field label={`Plural label (was Products)`}>
+                  <Field label="Template description">
                     <input
-                      value={productsLabel}
-                      onChange={(e) => setProductsLabel(e.target.value)}
+                      value={extensions.templateDescription ?? ""}
+                      onChange={(e) => setExtensions((prev) => ({ ...prev, templateDescription: e.target.value }))}
                       className="portal-input"
                     />
                   </Field>
                 </div>
               </Panel>
+              )}
 
-              <Panel title="2. Modules & navigation">
+              {step === "theme" && (
+              <Panel title="Theme & branding">
+                <TemplateThemeFields
+                  themeMode={themeMode}
+                  onThemeModeChange={setThemeMode}
+                  primaryColor={primaryColor}
+                  onPrimaryColorChange={setPrimaryColor}
+                  secondaryColor={secondaryColor}
+                  onSecondaryColorChange={setSecondaryColor}
+                  productLabel={productLabel}
+                  onProductLabelChange={setProductLabel}
+                  productsLabel={productsLabel}
+                  onProductsLabelChange={setProductsLabel}
+                />
+              </Panel>
+              )}
+
+              {step === "modules" && (
+              <Panel title="Modules & navigation">
                 <p className="mb-2 text-sm text-[#64748b]">
                   Build a fully custom dashboard. Toggle any module on/off, and drag cards to set sidebar order. Only Dashboard and Settings stay locked.
                 </p>
@@ -772,8 +724,10 @@ function IndustryTemplatesContent() {
                   })}
                 </div>
               </Panel>
+              )}
 
-              <Panel title="3. Dashboard cards">
+              {step === "dashboard-cards" && (
+              <Panel title="Dashboard KPI cards">
                 <p className="mb-4 text-sm text-[#64748b]">
                   Choose KPI cards for the business dashboard. Toggle cards on or off and drag to set display order.
                 </p>
@@ -800,11 +754,84 @@ function IndustryTemplatesContent() {
                   })}
                 </div>
               </Panel>
+              )}
+
+              {step === "dashboard-widgets" && (
+              <Panel title="Dashboard widgets">
+                <p className="mb-4 text-sm text-[#64748b]">Choose analytics widgets shown on the dashboard preview.</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[
+                    { id: "order-status-chart", label: "Order status chart" },
+                    { id: "statistics-row", label: "Statistics row" },
+                    { id: "top-products", label: "Top products" },
+                    { id: "recent-orders", label: "Recent orders" },
+                    { id: "activity-feed", label: "Activity feed" },
+                  ].map((widget) => {
+                    const active = extensions.dashboardWidgets?.includes(widget.id as never);
+                    return (
+                      <label key={widget.id} className={cn("flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm", active ? "border-[#001840] bg-[#eef3ff]" : "border-[#e2e8f0]")}>
+                        <input
+                          type="checkbox"
+                          checked={!!active}
+                          onChange={() => {
+                            setExtensions((prev) => {
+                              const current = prev.dashboardWidgets ?? [];
+                              const next = active
+                                ? current.filter((id) => id !== widget.id)
+                                : [...current, widget.id as never];
+                              return { ...prev, dashboardWidgets: next };
+                            });
+                          }}
+                        />
+                        {widget.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </Panel>
+              )}
+
+              {step === "forms" && (
+              <Panel title="Forms & business fields">
+                <p className="mb-4 text-sm text-[#64748b]">Mark which business profile fields are required when creating a tenant.</p>
+                <div className="space-y-2">
+                  {(extensions.businessProfileFields ?? []).map((field, index) => (
+                    <label key={field.id} className="flex items-center justify-between rounded-xl border border-[#e2e8f0] px-3 py-2.5 text-sm">
+                      <span>{field.label}</span>
+                      <input
+                        type="checkbox"
+                        checked={field.required}
+                        onChange={(e) => {
+                          setExtensions((prev) => {
+                            const fields = [...(prev.businessProfileFields ?? [])];
+                            fields[index] = { ...fields[index], required: e.target.checked };
+                            return { ...prev, businessProfileFields: fields };
+                          });
+                        }}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </Panel>
+              )}
+
+              {step === "permissions" && (
+              <Panel title="Permissions & roles">
+                <p className="mb-4 text-sm text-[#64748b]">Default roles included with this industry template.</p>
+                <div className="flex flex-wrap gap-2">
+                  {industry.roles.map((role) => (
+                    <span key={role} className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-1.5 text-sm font-medium">
+                      {role}
+                    </span>
+                  ))}
+                </div>
+              </Panel>
+              )}
           </div>
         </div>
       )}
 
-      {step === "generate" && industry && (
+      {step === "preview" && industry && (
         <div className="space-y-6">
           <section className="portal-header">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -813,12 +840,12 @@ function IndustryTemplatesContent() {
                   <Check className="h-7 w-7" strokeWidth={2.2} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#0050F8]">Step 03 complete</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#0050F8]">Step 9 complete</p>
                   <h2 className="text-xl font-bold tracking-tight text-[#0f172a] md:text-2xl">
                     Business UI template generated
                   </h2>
                   <p className="mt-0.5 text-sm text-[#64748b]">
-                    {businessName} is ready to preview. Configuration saved locally until the template API is connected.
+                    {businessName} is ready to preview. Configuration saved to platform when API is available, otherwise stored locally.
                   </p>
                 </div>
               </div>
@@ -830,10 +857,11 @@ function IndustryTemplatesContent() {
                   <ExternalLink className="h-4 w-4" /> Open full preview
                 </Link>
               ) : null}
+              <GptPreviewButton onClick={() => setGptOpen(true)} />
             </div>
           </section>
 
-          <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
+          <div className="space-y-6">
             <div className="space-y-6">
               <Panel title="Configuration summary">
                 <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -914,7 +942,7 @@ function IndustryTemplatesContent() {
                 <ul className="space-y-3 text-sm text-[#475569]">
                   <li className="flex gap-2">
                     <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[#0050F8]" />
-                    Open the full preview to walk through modules with mock data.
+                    Use GPT Preview Template on any step to walk through modules with mock data.
                   </li>
                   <li className="flex gap-2">
                     <Copy className="mt-0.5 h-4 w-4 shrink-0 text-[#0050F8]" />
@@ -933,7 +961,7 @@ function IndustryTemplatesContent() {
                   <button
                     type="button"
                     onClick={() => {
-                      setStep("select");
+                      setStep("industry");
                       setSelectedId(null);
                       setLastSavedId(null);
                     }}
@@ -944,34 +972,16 @@ function IndustryTemplatesContent() {
                 </div>
               </Panel>
             </div>
-
-            <aside className="xl:sticky xl:top-4 xl:self-start">
-              <TemplatePreviewFrame
-                businessName={businessName}
-                industryIcon={industry.theme.icon}
-                industryId={industry.id}
-                logoDataUrl={logoDataUrl}
-                themeMode={themeMode}
-                primaryColor={primaryColor}
-                secondaryColor={secondaryColor}
-                currency={currency}
-                labels={{
-                  ...industry.labels,
-                  product: productLabel,
-                  products: productsLabel,
-                }}
-                navItems={orderedNavForPreview}
-                dashboardCards={orderedEnabledDashboardCards}
-                productsLabel={productsLabel}
-                device={previewDevice}
-                onDeviceChange={setPreviewDevice}
-                moduleCount={enabledModules.length}
-                cardCount={orderedEnabledDashboardCards.length}
-              />
-            </aside>
           </div>
         </div>
       )}
+      <GptPreviewDrawer
+        open={gptOpen}
+        onClose={() => setGptOpen(false)}
+        stepId={step}
+        stepLabel={STEPS.find((s) => s.id === step)?.label ?? "Preview"}
+        config={gptPreviewConfig}
+      />
       </PortalPage>
     </AdminShell>
   );
@@ -1020,200 +1030,6 @@ function PreviewList({
         ))}
       </ul>
     </div>
-  );
-}
-
-function ConfigChip({
-  selected,
-  locked = false,
-  dragging,
-  dragLabel,
-  toggleTitle,
-  title,
-  description,
-  footer,
-  trailing,
-  onToggle,
-  onDragStart,
-  onDragEnd,
-  onDrop,
-}: {
-  selected?: boolean;
-  locked?: boolean;
-  dragging?: boolean;
-  dragLabel: string;
-  toggleTitle: string;
-  title: string;
-  description?: string;
-  footer: string;
-  trailing?: React.ReactNode;
-  onToggle?: () => void;
-  onDragStart?: () => void;
-  onDragEnd?: () => void;
-  onDrop?: () => void;
-}) {
-  return (
-    <div
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.effectAllowed = "move";
-        onDragStart?.();
-      }}
-      onDragEnd={onDragEnd}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault();
-        onDrop?.();
-      }}
-      data-selected={selected ? "true" : undefined}
-      data-locked={locked ? "true" : undefined}
-      className={cn(
-        "portal-config-chip rounded-xl border border-[#e2e8f0] px-3 py-3 text-left",
-        !selected && "opacity-90",
-        dragging && "portal-config-chip--dragging",
-      )}
-    >
-      <div className="flex items-start gap-2">
-        <button
-          type="button"
-          className="portal-config-chip-handle mt-0.5 text-[#94a3b8]"
-          title="Drag to reorder"
-          aria-label={dragLabel}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-        <div
-          className={cn(
-            "portal-config-chip-toggle min-w-0 flex-1 outline-none",
-            locked ? "cursor-not-allowed" : "cursor-pointer",
-          )}
-          tabIndex={locked ? -1 : 0}
-          aria-disabled={locked || undefined}
-          onClick={() => {
-            if (!locked) onToggle?.();
-          }}
-          onKeyDown={(e) => {
-            if (locked) return;
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onToggle?.();
-            }
-          }}
-          title={toggleTitle}
-        >
-          <div className="flex items-center gap-2">
-            <span
-              className={cn(
-                "grid h-5 w-5 shrink-0 place-items-center rounded-md border text-xs font-bold",
-                selected
-                  ? "border-[#0050F8] bg-[#0050F8] text-white"
-                  : "border-[#e2e8f0] bg-white text-[#64748b]",
-              )}
-            >
-              {selected ? "✓" : ""}
-            </span>
-            <p className="truncate text-sm font-semibold text-[#0f172a]">{title}</p>
-            {trailing}
-          </div>
-          {description ? (
-            <p className="mt-1 line-clamp-2 pl-7 text-xs text-[#64748b]">{description}</p>
-          ) : null}
-          <p
-            className={cn(
-              "mt-1 pl-7 text-[11px]",
-              locked ? "font-semibold text-[#64748b]" : "font-medium text-[#94a3b8]",
-            )}
-          >
-            {footer}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DashboardCardChip({
-  id,
-  checked,
-  dragging,
-  onToggle,
-  onDragStart,
-  onDragEnd,
-  onDrop,
-}: {
-  id: DashboardCardId;
-  checked?: boolean;
-  dragging?: boolean;
-  onToggle?: () => void;
-  onDragStart?: () => void;
-  onDragEnd?: () => void;
-  onDrop?: () => void;
-}) {
-  const meta = DASHBOARD_CARD_CATALOG[id];
-  return (
-    <ConfigChip
-      selected={checked}
-      dragging={dragging}
-      dragLabel={`Reorder ${meta?.label ?? id}`}
-      toggleTitle={checked ? "Hide card" : "Show card"}
-      title={meta?.label ?? id}
-      description={meta?.description}
-      footer={checked ? "Enabled · shown on dashboard" : "Off · hidden from dashboard"}
-      onToggle={onToggle}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      onDrop={onDrop}
-    />
-  );
-}
-
-function ModuleChip({
-  id,
-  label,
-  checked,
-  locked,
-  lockReason,
-  dragging,
-  onToggle,
-  onDragStart,
-  onDragEnd,
-  onDrop,
-}: {
-  id: ModuleId;
-  label?: string;
-  checked?: boolean;
-  locked?: boolean;
-  lockReason?: string | null;
-  dragging?: boolean;
-  onToggle?: () => void;
-  onDragStart?: () => void;
-  onDragEnd?: () => void;
-  onDrop?: () => void;
-}) {
-  const meta = MODULE_CATALOG[id];
-  const displayLabel = label ?? meta?.label ?? id;
-  return (
-    <ConfigChip
-      selected={checked}
-      locked={!!locked}
-      dragging={dragging}
-      dragLabel={`Reorder ${displayLabel}`}
-      toggleTitle={locked ? lockReason ?? "Locked" : checked ? "Disable module" : "Enable module"}
-      title={displayLabel}
-      description={meta?.description}
-      footer={
-        locked
-          ? lockReason ?? "Always on"
-          : checked
-            ? "Enabled · unselect clears linked modules"
-            : "Off · enable pulls required linked modules"
-      }
-      trailing={locked ? <Lock className="ml-auto h-3.5 w-3.5 shrink-0 text-[#94a3b8]" /> : null}
-      onToggle={onToggle}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      onDrop={onDrop}
-    />
   );
 }
 

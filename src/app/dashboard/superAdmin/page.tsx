@@ -6,7 +6,6 @@ import {
   Activity,
   Building2,
   CircleDollarSign,
-  Globe2,
   Server,
   TrendingUp,
   UserPlus,
@@ -15,7 +14,7 @@ import {
 } from "lucide-react";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
-import { PortalPage, PortalPageHeader } from "@/components/admin/PortalPage";
+import { PortalPage } from "@/components/admin/PortalPage";
 import { ActivityFeed, type ActivityItem } from "@/components/design-system/ActivityFeed";
 import { Breadcrumbs } from "@/components/design-system/Breadcrumbs";
 import { MetricCard } from "@/components/design-system/MetricCard";
@@ -45,16 +44,11 @@ function PlatformConsoleContent() {
           className="mb-2"
         />
 
-        <PortalPageHeader
-          icon={Globe2}
-          title="DigiNizam Platform Console"
-          subtitle="Multi-industry Business OS — monitor businesses, revenue, users, and platform health across your SaaS ecosystem"
-          actions={
-            <Link href="/dashboard/superAdmin/businesses" className="dn-btn dn-btn-primary h-[44px] rounded-xl px-4 text-sm">
-              Manage Businesses
-            </Link>
-          }
-        />
+        <div className="mb-6 flex justify-end">
+          <Link href="/dashboard/superAdmin/businesses" className="dn-btn dn-btn-primary h-[44px] rounded-xl px-4 text-sm">
+            Manage Businesses
+          </Link>
+        </div>
 
         {/* Business metrics */}
         <section>

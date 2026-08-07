@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   Building2,
   ChevronDown,
@@ -283,16 +284,14 @@ function BusinessesContent() {
 
   return (
     <AdminShell activeTab="businesses">
-      <section className="portal-header mb-5 flex w-full items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#001840] text-[#ffffff] shadow-[0_10px_18px_rgba(0,24,64,0.28)]">
-            <Building2 className="h-6 w-6" strokeWidth={1.8} />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold lg:text-2xl">Business Management</h2>
-            <p className="text-sm text-[#657084] lg:text-base">{businessCount} businesses</p>
-          </div>
-        </div>
+      <div className="mb-5 flex w-full items-center justify-end gap-4">
+        <Link
+          href="/dashboard/superAdmin/businesses/setup"
+          className="dn-btn dn-btn-primary inline-flex h-10 gap-2 px-5 text-sm font-semibold"
+        >
+          <Plus className="h-4 w-4" />
+          Add Business
+        </Link>
         <Dialog
           open={isAddBusinessOpen}
           onOpenChange={(open) => {
@@ -304,9 +303,8 @@ function BusinessesContent() {
           }}
         >
           <DialogTrigger asChild>
-            <button type="button" className="dn-btn dn-btn-primary inline-flex h-10 gap-2 px-5 text-sm font-semibold">
-              <Plus className="h-4 w-4" />
-              Add Business
+            <button type="button" className="hidden">
+              Edit Business
             </button>
           </DialogTrigger>
           <DialogContent>
@@ -464,7 +462,7 @@ function BusinessesContent() {
             </form>
           </DialogContent>
         </Dialog>
-      </section>
+      </div>
 
       {isBusinessesError ? (
         <section className="mb-5 rounded-xl border border-[#fecaca] bg-[#fef2f2] p-5">

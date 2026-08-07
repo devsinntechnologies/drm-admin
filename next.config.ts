@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
         port: "3001",
       },
       {
+        protocol: "http",
+        hostname: "localhost",
+        port: "3002",
+      },
+      {
         protocol: "https",
         hostname: "drm.devsinntechnologies.com",
       },

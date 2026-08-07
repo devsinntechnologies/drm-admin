@@ -13,16 +13,16 @@ import {
   Flame,
   Clock3,
   Utensils,
-  LayoutDashboard,
 } from "lucide-react";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
+import { TemplateDashboard } from "@/components/business/TemplateDashboard";
 import {
   PortalPage,
-  PortalPageHeader,
   PortalStatCard,
   PortalCard,
 } from "@/components/admin/PortalPage";
+import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { useOrders } from "@/hooks/useOrders";
 import { useProducts } from "@/hooks/useProducts";
 import { useInvoices } from "@/hooks/useInvoices";
@@ -71,7 +71,21 @@ function DonutChart({ slices }: { slices: { color: string; value: number }[] }) 
   );
 }
 
-function DashboardStatic() {
+function DashboardContent() {
+  const { templateConfig } = useBusinessTemplate();
+
+  if (templateConfig?.dashboardCards?.length) {
+    return (
+      <AdminShell activeTab="dashboard">
+        <TemplateDashboard cards={templateConfig.dashboardCards} />
+      </AdminShell>
+    );
+  }
+
+  return <DashboardLegacy />;
+}
+
+function DashboardLegacy() {
   const { orders, loading: ordersLoading } = useOrders({ range: "day" });
   const { products, loading: productsLoading } = useProducts({ page: 1, limit: 100 });
   const { invoices } = useInvoices({ page: 1, limit: 100 });
@@ -144,12 +158,6 @@ function DashboardStatic() {
   return (
     <AdminShell activeTab="dashboard">
       <PortalPage>
-        <PortalPageHeader
-          icon={LayoutDashboard}
-          title="Dashboard"
-          subtitle="Today's operational overview for your business"
-        />
-
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <article className="portal-accent-card min-h-[200px] flex flex-col justify-between">
             <div className="relative z-10 flex items-start justify-between">
@@ -270,7 +278,7 @@ function DashboardStatic() {
 export default function BusinessAdminDashboard() {
   return (
     <Suspense fallback={<Loading fullScreen />}>
-      <DashboardStatic />
+      <DashboardContent />
     </Suspense>
   );
 }

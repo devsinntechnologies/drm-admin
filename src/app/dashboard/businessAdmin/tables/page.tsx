@@ -7,7 +7,7 @@ import { AlertCircle, Box, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Ed
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
-import { PortalPage, PortalPageHeader, PortalMetricRow, PortalErrorAlert, PortalRefreshFab } from "@/components/admin/PortalPage";
+import { PortalPage, PortalMetricRow, PortalErrorAlert, PortalRefreshFab } from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
 import { TableRecord, TableStatus, useTables } from "@/hooks/useTables";
 import { cn, normalizeErrorMessage } from "@/lib/utils";
@@ -183,31 +183,26 @@ function TablesContent() {
   return (
     <AdminShell activeTab="tables">
       <PortalPage>
-        <PortalPageHeader
-          icon={Store}
-          title="Restaurant Tables"
-          subtitle="Manage seating arrangements and table capacity"
-          actions={
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-              <DialogTrigger asChild>
-                <button type="button" className="dn-btn dn-btn-primary">
-                  <Plus className="h-5 w-5" /> Add Table
-                </button>
-              </DialogTrigger>
-              <DialogContent className="max-w-xl rounded-2xl p-0 overflow-hidden border-none shadow-2xl">
-                <TableForm
-                  title="Add New Table"
-                  subtitle="Create a new table entry"
-                  form={form}
-                  setForm={setForm}
-                  onSubmit={onSubmit}
-                  onClose={() => setCreateOpen(false)}
-                  loading={actionLoading}
-                />
-              </DialogContent>
-            </Dialog>
-          }
-        />
+        <div className="mb-6 flex justify-end">
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <button type="button" className="dn-btn dn-btn-primary">
+                <Plus className="h-5 w-5" /> Add Table
+              </button>
+            </DialogTrigger>
+            <DialogContent className="max-w-xl rounded-2xl p-0 overflow-hidden border-none shadow-2xl">
+              <TableForm
+                title="Add New Table"
+                subtitle="Create a new table entry"
+                form={form}
+                setForm={setForm}
+                onSubmit={onSubmit}
+                onClose={() => setCreateOpen(false)}
+                loading={actionLoading}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
 
         <PortalMetricRow label="Total Tables" value={pagination.total} icon={Store} />
 

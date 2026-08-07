@@ -50,19 +50,8 @@ export default function ActionLogsLayout({ children }: { children: React.ReactNo
   return (
     <Suspense fallback={<Loading fullScreen />}>
       <AdminShell activeTab="action-logs">
-        <section className="portal-header mb-6 flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
-            <div className="portal-icon-box h-14 w-14 shrink-0 rounded-xl">
-              <Activity className="h-7 w-7" strokeWidth={1.9} />
-            </div>
-            <div className="min-w-0">
-              <h2 className="truncate text-[1.65rem] font-semibold leading-tight text-[#181d2c] sm:text-[1.85rem]">Action Logs</h2>
-              <p className="truncate text-[0.92rem] text-[#6c7890] sm:text-[0.98rem]">Monitor system activity across businesses</p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div ref={menuRef} className="relative">
+        <div className="mb-6 flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
+          <div ref={menuRef} className="relative">
               <button
                 type="button"
                 onClick={() => setMenuOpen((open) => !open)}
@@ -104,8 +93,7 @@ export default function ActionLogsLayout({ children }: { children: React.ReactNo
               <RefreshCw className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`} strokeWidth={2} />
               Refresh
             </button>
-          </div>
-        </section>
+        </div>
 
         <section className="dn-tab-bar mb-5 lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">

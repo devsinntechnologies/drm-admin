@@ -3,11 +3,11 @@
 import Image from "next/image";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, Box, ChevronLeft, ChevronRight, Edit, Layers, Loader2, Plus, Search, Store, Trash2, X, Image as ImageIconLucide, RotateCcw, ImageIcon } from "lucide-react";
+import { AlertCircle, Box, ChevronLeft, ChevronRight, Edit, Loader2, Plus, Search, Store, Trash2, X, Image as ImageIconLucide, RotateCcw, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
-import { PortalPage, PortalPageHeader, PortalErrorAlert } from "@/components/admin/PortalPage";
+import { PortalPage, PortalErrorAlert } from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
 import { CategoryRecord, useCategories } from "@/hooks/useCategories";
 import { normalizeErrorMessage } from "@/lib/utils";
@@ -227,8 +227,6 @@ function CategoriesContent() {
   return (
     <AdminShell activeTab="categories">
       <PortalPage>
-        <PortalPageHeader icon={Layers} title="Manage Categories" subtitle="Add, update, and sort categories from one place" />
-
         <div className="portal-card">
           <div className="portal-card-body">
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.2fr]">
