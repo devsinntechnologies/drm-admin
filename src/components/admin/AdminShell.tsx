@@ -338,11 +338,11 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
         <header className="sticky top-0 z-30 border-b border-[#dbe4ef] bg-white py-3">
           <div className="flex w-full items-center justify-between gap-3 px-4 lg:px-6">
             <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-4">
-              <div className="min-w-0">
-                <h1 className="truncate text-lg font-semibold leading-tight text-[#0f172a] md:text-xl">DigiNizam</h1>
+              <div className="min-w-0 xl:hidden">
+                <h1 className="truncate text-lg font-semibold leading-tight text-[#0f172a] md:text-xl">{shellTitle}</h1>
                 <p className="truncate text-xs font-medium leading-tight text-[#58657a] md:text-sm">{portalLabel}</p>
               </div>
-              <div className="ml-auto hidden max-w-md flex-1 lg:block xl:max-w-sm">
+              <div className="hidden max-w-md flex-1 lg:ml-auto lg:block xl:ml-0 xl:max-w-lg">
                 <label className="relative block">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
                   <input
@@ -391,8 +391,8 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
           <aside className="absolute left-0 top-0 flex h-full w-[88vw] max-w-sm flex-col border-r border-[#e5edf5] bg-white shadow-[0_20px_40px_rgba(15,23,42,0.18)]">
             <div className="flex items-center justify-between border-b border-[#edf2f7] px-5 py-4">
               <div className="min-w-0">
-                <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">DigiNizam</h1>
-                <p className="truncate text-xs font-medium leading-tight text-[#667085]">Platform Console</p>
+                <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">{shellTitle}</h1>
+                <p className="truncate text-xs font-medium leading-tight text-[#667085]">{portalLabel}</p>
               </div>
 
               <button
