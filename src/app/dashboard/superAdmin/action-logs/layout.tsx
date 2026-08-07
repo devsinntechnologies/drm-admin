@@ -50,9 +50,9 @@ export default function ActionLogsLayout({ children }: { children: React.ReactNo
   return (
     <Suspense fallback={<Loading fullScreen />}>
       <AdminShell activeTab="action-logs">
-        <section className="mb-6 flex w-full flex-col gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.9),rgba(236,253,245,0.76))] px-5 py-5 shadow-[0_12px_28px_rgba(15,23,42,0.1)] lg:flex-row lg:items-center lg:justify-between">
+        <section className="portal-header mb-6 flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="grid h-14.5 w-14.5 shrink-0 place-items-center rounded-2xl bg-linear-to-br from-[#001840] to-[#0050F8] text-[#ffffff] shadow-[0_10px_20px_rgba(0,24,64,0.24)]">
+            <div className="portal-icon-box h-14 w-14 shrink-0 rounded-xl">
               <Activity className="h-7 w-7" strokeWidth={1.9} />
             </div>
             <div className="min-w-0">

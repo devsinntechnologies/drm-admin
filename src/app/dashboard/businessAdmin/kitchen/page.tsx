@@ -191,9 +191,9 @@ function KitchenPageContent() {
         <div className="grid min-h-[calc(100vh-16rem)] grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Take Away Column */}
             <div className="flex flex-col gap-4 min-h-0">
-              <div className="portal-stat-card !bg-gradient-to-r !from-[#fff7ed] !to-white border-[#fed7aa]">
+              <div className="portal-stat-card !bg-[#fff7ed] border-[#fed7aa]">
                 <div className="flex items-center gap-4">
-                  <div className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-[#ea580c] to-[#f97316] text-white shadow-md">
+                  <div className="grid h-12 w-12 place-items-center rounded-lg bg-[#ea580c] text-white">
                     <Bell className="h-6 w-6" />
                   </div>
                   <div>
@@ -224,9 +224,9 @@ function KitchenPageContent() {
 
             {/* Dining Column */}
             <div className="flex flex-col gap-4 min-h-0">
-              <div className="portal-stat-card !bg-gradient-to-r !from-[#eef3ff] !to-white border-[#c7d7f5]">
+              <div className="portal-stat-card !bg-[#eef3ff] border-[#c7d7f5]">
                 <div className="flex items-center gap-4">
-                  <div className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-[#001840] to-[#0050F8] text-white shadow-md">
+                  <div className="grid h-12 w-12 place-items-center rounded-lg bg-[#001840] text-white">
                     <CheckCircle2 className="h-6 w-6" />
                   </div>
                   <div>

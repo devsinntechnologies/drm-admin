@@ -39,19 +39,33 @@ function formatElapsed(isoDate: string) {
 }
 
 function DonutChart({ slices }: { slices: { color: string; value: number }[] }) {
-  const stops: string[] = [];
-  let current = 0;
   const total = slices.reduce((sum, slice) => sum + slice.value, 0) || 1;
-
-  slices.forEach((slice) => {
-    const start = (current / total) * 100;
-    current += slice.value;
-    const end = (current / total) * 100;
-    stops.push(`${slice.color} ${start}% ${end}%`);
-  });
+  const radius = 58;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
 
   return (
-    <div className="relative h-44 w-44 rounded-full" style={{ background: `conic-gradient(${stops.join(", ")})` }}>
+    <div className="relative h-44 w-44">
+      <svg viewBox="0 0 176 176" className="h-full w-full -rotate-90" aria-hidden>
+        {slices.map((slice, index) => {
+          const dash = (slice.value / total) * circumference;
+          const circle = (
+            <circle
+              key={`${slice.color}-${index}`}
+              cx={88}
+              cy={88}
+              r={radius}
+              fill="none"
+              stroke={slice.color}
+              strokeWidth={28}
+              strokeDasharray={`${dash} ${circumference - dash}`}
+              strokeDashoffset={-offset}
+            />
+          );
+          offset += dash;
+          return circle;
+        })}
+      </svg>
       <div className="absolute inset-[30px] rounded-full bg-white shadow-inner" />
     </div>
   );
@@ -133,11 +147,11 @@ function DashboardStatic() {
         <PortalPageHeader
           icon={LayoutDashboard}
           title="Dashboard"
-          subtitle="Today's operational overview for your restaurant"
+          subtitle="Today's operational overview for your business"
         />
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <article className="portal-gradient-card bg-gradient-to-br from-[#001840] to-[#0050F8] min-h-[200px] flex flex-col justify-between">
+          <article className="portal-accent-card min-h-[200px] flex flex-col justify-between">
             <div className="relative z-10 flex items-start justify-between">
               <p className="text-sm font-medium text-white/80">Active Orders</p>
               <div className="rounded-xl bg-white/15 p-2.5">
@@ -150,7 +164,7 @@ function DashboardStatic() {
             </div>
           </article>
 
-          <article className="portal-gradient-card bg-gradient-to-br from-[#0f766e] to-[#14b8a6] min-h-[200px] flex flex-col justify-between">
+          <article className="portal-accent-card !bg-[#0f766e] min-h-[200px] flex flex-col justify-between">
             <div className="relative z-10 flex items-start justify-between">
               <p className="text-sm font-medium text-white/80">Low Stock Alerts</p>
               <div className="rounded-xl bg-white/15 p-2.5">

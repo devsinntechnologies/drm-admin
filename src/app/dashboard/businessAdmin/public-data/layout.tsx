@@ -89,7 +89,7 @@ function PublicDataLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <AdminShell activeTab="public-data">
-      <section className="mb-6 flex w-full flex-col gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.95),rgba(241,245,249,0.9))] px-5 py-5 shadow-[0_12px_28px_rgba(15,23,42,0.08)] lg:flex-row lg:items-center lg:justify-between">
+      <section className="portal-header mb-6 flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-center gap-4">
           <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[#001840] text-white shadow-[0_10px_20px_rgba(0,24,64,0.28)]">
             <Globe2 className="h-7 w-7" strokeWidth={1.9} />

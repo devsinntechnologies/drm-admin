@@ -30,7 +30,7 @@ export default function LoaderPreviewPage() {
             key={id}
             className="overflow-hidden rounded-3xl border border-[#e2e8f0] bg-white shadow-[0_10px_28px_rgba(15,23,42,0.06)]"
           >
-            <div className="flex h-[260px] items-center justify-center bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6">
+            <div className="flex h-[260px] items-center justify-center bg-white p-6">
               <Component />
             </div>
             <div className="border-t border-[#eef2f7] px-5 py-4">

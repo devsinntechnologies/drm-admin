@@ -44,12 +44,12 @@ export default function ActionLogsDashboardPage() {
 
       <section className="mb-5 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { title: "Total Requests", value: "200", sub: "All Businesses", bg: "from-[#9041f8] to-[#5052f8]", icon: "⚡" },
-          { title: "Failure Rate", value: "13.5%", sub: "27 failed requests", bg: "from-[#ff2f5a] to-[#ec007c]", icon: "⚠" },
-          { title: "Active Users", value: "6", sub: "Unique users", bg: "from-[#2f88f1] to-[#1490c7]", icon: "👥" },
-          { title: "Avg Response", value: "600ms", sub: "Average execution time", bg: "from-[#06c364] to-[#05a765]", icon: "⏱" },
+          { title: "Total Requests", value: "200", sub: "All Businesses", bg: "bg-[#5052f8]", icon: "⚡" },
+          { title: "Failure Rate", value: "13.5%", sub: "27 failed requests", bg: "bg-[#ec007c]", icon: "⚠" },
+          { title: "Active Users", value: "6", sub: "Unique users", bg: "bg-[#1490c7]", icon: "👥" },
+          { title: "Avg Response", value: "600ms", sub: "Average execution time", bg: "bg-[#05a765]", icon: "⏱" },
         ].map((item) => (
-          <article key={item.title} className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${item.bg} p-4 text-[#ffffff] shadow-[0_10px_22px_rgba(28,48,94,0.18)]`}>
+          <article key={item.title} className={`relative overflow-hidden rounded-xl border border-white/10 ${item.bg} p-4 text-[#ffffff]`}>
             <div className="absolute right-4 top-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 text-lg">
               {item.icon}
             </div>
@@ -62,8 +62,8 @@ export default function ActionLogsDashboardPage() {
 
       <section className="mb-5 grid w-full grid-cols-1 gap-5 xl:grid-cols-[1.8fr_1fr]">
         <article className="overflow-hidden rounded-[32px] bg-white shadow-[0_10px_30px_rgba(10,17,31,0.1)]">
-          <div className="flex min-h-[86px] items-center gap-4 border-b border-[#dfe4ee] bg-gradient-to-r from-[#eef2ff] to-[#fff4f8] px-7 py-6">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-[#001840] to-[#0050F8] text-[#ffffff] shadow-[0_12px_24px_rgba(91,98,245,0.25)]">
+          <div className="flex min-h-[86px] items-center gap-4 border-b border-[#dfe4ee] bg-[#f8fafc] px-7 py-6">
+            <div className="portal-icon-box h-14 w-14 rounded-xl">
               <LineChart className="h-6 w-6" strokeWidth={1.8} />
             </div>
             <div>
@@ -115,8 +115,8 @@ export default function ActionLogsDashboardPage() {
         </article>
 
         <article className="overflow-hidden rounded-[32px] bg-white shadow-[0_10px_30px_rgba(10,17,31,0.1)]">
-          <div className="flex min-h-[86px] items-center gap-4 border-b border-[#eadff0] bg-gradient-to-r from-[#f5ecff] to-[#fff0f5] px-7 py-6">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-[#001840] to-[#0050F8] text-[#ffffff] shadow-[0_12px_24px_rgba(157,61,241,0.24)]">
+          <div className="flex min-h-[86px] items-center gap-4 border-b border-[#eadff0] bg-[#faf5ff] px-7 py-6">
+            <div className="portal-icon-box h-14 w-14 rounded-xl">
               <PieChart className="h-6 w-6" strokeWidth={1.8} />
             </div>
             <div>
@@ -127,8 +127,14 @@ export default function ActionLogsDashboardPage() {
 
           <div className="px-7 py-8">
             <div className="flex flex-col items-center">
-              <div className="h-[220px] w-[220px] rounded-full bg-[conic-gradient(#1db985_0deg_190deg,#f54040_190deg_262deg,#f59e0b_262deg_318deg,#5f63ea_318deg_360deg)] p-9">
-                <div className="h-full w-full rounded-full bg-white" />
+              <div className="relative mx-auto h-[220px] w-[220px]">
+                <svg viewBox="0 0 220 220" className="h-full w-full -rotate-90" aria-hidden>
+                  <circle cx={110} cy={110} r={78} fill="none" stroke="#1db985" strokeWidth={32} strokeDasharray="260 490" />
+                  <circle cx={110} cy={110} r={78} fill="none" stroke="#f54040" strokeDasharray="98 652" strokeDashoffset={-260} strokeWidth={32} />
+                  <circle cx={110} cy={110} r={78} fill="none" stroke="#f59e0b" strokeDasharray="68 682" strokeDashoffset={-358} strokeWidth={32} />
+                  <circle cx={110} cy={110} r={78} fill="none" stroke="#5f63ea" strokeDasharray="42 708" strokeDashoffset={-426} strokeWidth={32} />
+                </svg>
+                <div className="absolute inset-9 rounded-full bg-white" />
               </div>
 
               <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-[0.95rem] font-medium text-[#475467]">

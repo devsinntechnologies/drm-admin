@@ -7,28 +7,28 @@ const roles = [
     title: "Super Admin",
     subtitle: "Super-Admin",
     role: "super_admin",
-    gradient: "from-[#001840] to-[#0050F8]",
+    color: "#001840",
     icon: Crown,
   },
   {
     title: "Business Admin",
     subtitle: "Admin",
     role: "business_admin",
-    gradient: "from-[#002a6e] to-[#0050F8]",
+    color: "#002a6e",
     icon: LayoutDashboard,
   },
   {
     title: "John Waiter",
     subtitle: "Waiter",
     role: "waiter",
-    gradient: "from-[#0050F8] to-[#3b82f6]",
+    color: "#0050F8",
     icon: ClipboardList,
   },
   {
     title: "Chef Mike",
     subtitle: "Kitchen",
     role: "kitchen",
-    gradient: "from-[#001840] to-[#3b82f6]",
+    color: "#001840",
     icon: ChefHat,
   },
 ];
@@ -62,7 +62,8 @@ export default function HomePage() {
               <Link
                 key={role.title}
                 href={href}
-                className={`group flex min-h-21.5 items-center justify-between rounded-3xl bg-linear-to-r ${role.gradient} px-6 text-[#ffffff] shadow-[0_12px_20px_rgba(15,23,42,0.22)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_28px_rgba(15,23,42,0.26)]`}
+                className="group flex min-h-21.5 items-center justify-between rounded-xl px-6 text-[#ffffff] transition duration-200 hover:-translate-y-0.5"
+                style={{ backgroundColor: role.color }}
               >
                 <div className="flex items-center gap-4">
                   <div className="grid h-11 w-11 place-items-center rounded-[14px] bg-white/20">

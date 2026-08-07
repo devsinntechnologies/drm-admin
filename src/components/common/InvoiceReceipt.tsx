@@ -43,7 +43,7 @@ function lineTotal(item: InvoiceLineItem) {
 
 export default function InvoiceReceipt({
   orderNumber,
-  businessName = "Restaurant Manager",
+  businessName = "DigiNizam Business",
   tableLabel,
   date,
   items,
@@ -80,7 +80,7 @@ export default function InvoiceReceipt({
         className,
       )}
     >
-      <div className="relative overflow-hidden bg-[linear-gradient(135deg,#001840_0%,#0050F8_100%)] px-6 py-5 text-white">
+      <div className="relative overflow-hidden bg-[#001840] px-6 py-5 text-white">
         <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
         <div className="pointer-events-none absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-white/10" />
         <div className="relative flex items-start justify-between gap-4">

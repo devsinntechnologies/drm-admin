@@ -73,8 +73,7 @@ function LoginContent() {
     <main className="min-h-screen px-4 py-8">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-305 items-center justify-center">
         <section className="grid w-full overflow-hidden rounded-[36px] bg-white shadow-[0_28px_70px_rgba(31,41,55,0.22)] lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="relative overflow-hidden bg-linear-to-br from-[#001840] via-[#002a6e] to-[#0050F8] p-8 text-[#ffffff] sm:p-10">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,80,248,0.35),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(0,24,64,0.45),transparent_36%)]" />
+          <div className="relative overflow-hidden bg-[#001840] p-8 text-[#ffffff] sm:p-10">
             <div className="relative z-1">
               <Link href="/" className="inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-sm font-medium text-[#ffffff]/95 transition hover:bg-white/18">
                 <ArrowLeft className="h-4 w-4" />
@@ -102,7 +101,7 @@ function LoginContent() {
                     className={`relative overflow-hidden rounded-[22px] border border-white/12 shadow-[0_12px_24px_rgba(0,0,0,0.14)] ${index === 0 ? "col-span-2 row-span-2 h-55" : "h-26"}`}
                   >
                     <Image src={src} alt={`Business preview ${index + 1}`} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
-                    <div className="absolute inset-0 bg-linear-to-t from-[rgba(33,12,88,0.28)] to-transparent" />
+                    <div className="absolute inset-0 bg-[rgba(0,24,64,0.28)]" />
                   </div>
                 ))}
               </div>
@@ -117,7 +116,7 @@ function LoginContent() {
                   {selectedSubtitle.toUpperCase()}
                 </span>
                 <h2 className="mt-5 text-4xl font-semibold tracking-[-0.03em] text-[#161c2d]">Welcome back</h2>
-                <p className="mt-3 text-lg text-[#6d7488]">Sign in to continue managing your restaurant network.</p>
+                <p className="mt-3 text-lg text-[#6d7488]">Sign in to your DigiNizam platform console.</p>
               </div>
 
               <form className="space-y-5" onSubmit={handleSubmit}>
@@ -129,7 +128,7 @@ function LoginContent() {
                       type="email"
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
-                      placeholder="superadmin@restaurantmanager.com"
+                      placeholder="admin@diginizam.com"
                       autoComplete="email"
                       required
                       className="h-full w-full bg-transparent text-base text-[#161c2d] outline-none placeholder:text-[#98a2b3]"
@@ -176,7 +175,7 @@ function LoginContent() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="inline-flex h-14 w-full items-center justify-center rounded-[18px] bg-[linear-gradient(120deg,#001840_0%,#0050F8_100%)] text-lg font-semibold text-[#ffffff]! shadow-[0_14px_26px_rgba(0,24,64,0.3)] transition hover:scale-[1.01]"
+                  className="dn-btn dn-btn-primary inline-flex h-14 w-full rounded-[18px] text-lg font-semibold text-[#ffffff]! transition hover:scale-[1.01]"
                 >
                   {isLoading ? "Signing in..." : "Login to Dashboard"}
                 </button>

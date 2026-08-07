@@ -32,8 +32,8 @@ export function PortalPageHeader({
             <Icon className="h-7 w-7" strokeWidth={1.8} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#0f172a] md:text-3xl">{title}</h1>
-            {subtitle ? <p className="mt-1 text-sm font-medium text-[#64748b]">{subtitle}</p> : null}
+            <h1 className="text-xl font-bold tracking-tight text-[#0f172a] md:text-2xl">{title}</h1>
+            {subtitle ? <p className="mt-0.5 text-sm text-[#64748b]">{subtitle}</p> : null}
           </div>
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
@@ -56,17 +56,17 @@ export function PortalStatCard({
   className?: string;
 }) {
   const tones = {
-    primary: "from-[#001840] to-[#0050F8]",
-    secondary: "from-[#0050F8] to-[#3b82f6]",
-    accent: "from-[#0f766e] to-[#14b8a6]",
-    neutral: "from-[#334155] to-[#64748b]",
+    primary: "bg-[#001840]",
+    secondary: "bg-[#0050F8]",
+    accent: "bg-[#0f766e]",
+    neutral: "bg-[#334155]",
   };
 
   return (
     <article className={cn("portal-stat-card", className)}>
       <div className="flex items-center gap-4">
         {Icon ? (
-          <div className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-white shadow-[0_8px_16px_rgba(0,24,64,0.18)]", tones[tone])}>
+          <div className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-white/10 text-white", tones[tone])}>
             <Icon className="h-5 w-5" strokeWidth={1.8} />
           </div>
         ) : null}

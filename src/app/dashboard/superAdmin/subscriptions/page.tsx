@@ -341,7 +341,7 @@ function SubscriptionsContent() {
 
   return (
     <AdminShell activeTab="subscriptions">
-      <section className="mb-5 flex w-full flex-col gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.9),rgba(254,242,242,0.78))] px-6 py-5 shadow-[0_12px_28px_rgba(7,16,34,0.1)] lg:flex-row lg:items-center lg:justify-between">
+      <section className="portal-header mb-5 flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-4">
           <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#b45309] text-[#ffffff] shadow-[0_10px_18px_rgba(180,83,9,0.28)]">
             <CreditCard className="h-6 w-6" strokeWidth={1.8} />

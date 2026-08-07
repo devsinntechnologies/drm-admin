@@ -1,18 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  /* DigiNizam logo palette */
+  /* DigiNizam logo palette — flat, no gradients */
   --brand-primary: #001840;
   --brand-primary-hover: #00122e;
   --brand-secondary: #0050f8;
   --brand-secondary-hover: #0046e0;
   --brand-primary-soft: #eef3ff;
   --brand-secondary-soft: #e8effe;
+  --brand-accent: #00d4ff;
 
-  --app-bg: #f5f5f5;
+  --app-bg: #f1f5f9;
   --text-primary: #0f172a;
   --text-muted: #5b657a;
-  --surface: rgba(255, 255, 255, 0.82);
+  --surface: #ffffff;
+  --border-subtle: #e2e8f0;
+  --success: #059669;
+  --warning: #d97706;
+  --error: #dc2626;
+  --info: #0284c7;
+  --radius-md: 0.75rem;
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --btn-height: 44px;
 }
 
 @theme inline {
@@ -47,9 +56,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  height: 2.75rem;
-  padding: 0.625rem 1rem;
-  border-radius: 0.75rem;
+  height: var(--btn-height);
+  min-height: var(--btn-height);
+  padding: 0 1rem;
+  border-radius: var(--radius-md);
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.25;
@@ -120,6 +130,17 @@
   border-color: #b91c1c;
 }
 
+.dn-btn-ghost {
+  background-color: transparent;
+  color: #475569;
+  border: 1px solid transparent;
+}
+
+.dn-btn-ghost:hover:not(:disabled) {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
 .dn-tab-bar {
   display: flex;
   width: 100%;
@@ -176,7 +197,7 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  background-color: #f5f5f5;
+  background-color: var(--app-bg);
 }
 
 html {
@@ -196,7 +217,7 @@ html {
 }
 
 body {
-  background-color: #f5f5f5;
+  background-color: var(--app-bg);
   color: var(--text-primary);
   font-family: var(--font-poppins), "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -262,11 +283,23 @@ a {
 }
 
 .portal-header {
-  border-radius: 1.25rem;
-  border: 1px solid #e2e8f0;
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.98), rgba(238, 243, 255, 0.72));
-  padding: 1.5rem;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  position: relative;
+  border-radius: 0.875rem;
+  border: 1px solid var(--border-subtle);
+  background: #ffffff;
+  padding: 1.25rem 1.5rem 1.25rem 1.75rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.portal-header::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.875rem;
+  bottom: 0.875rem;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--brand-secondary);
 }
 
 .portal-icon-box {
@@ -274,10 +307,11 @@ a {
   height: 3.5rem;
   width: 3.5rem;
   place-items: center;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+  border-radius: 0.75rem;
+  background: var(--brand-primary);
   color: #ffffff;
-  box-shadow: 0 10px 20px rgba(0, 24, 64, 0.22);
+  border: 1px solid rgba(0, 80, 248, 0.35);
+  box-shadow: 0 0 0 1px rgba(0, 80, 248, 0.08);
 }
 
 .portal-stat-card {
@@ -318,7 +352,7 @@ a {
   align-items: center;
   gap: 0.875rem;
   border-bottom: 1px solid #edf2f7;
-  background: linear-gradient(120deg, #f8fbff 0%, #eef3ff 100%);
+  background: #f8fafc;
   padding: 1.125rem 1.5rem;
 }
 
@@ -372,24 +406,216 @@ a {
   cursor: not-allowed;
 }
 
-.portal-gradient-card {
+.portal-accent-card {
   position: relative;
   overflow: hidden;
-  border-radius: 1.25rem;
+  border-radius: 1rem;
   padding: 1.5rem;
   color: #ffffff;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+  background: var(--brand-primary);
+  border: 1px solid rgba(0, 80, 248, 0.4);
+  box-shadow: 0 0 0 1px rgba(0, 80, 248, 0.06);
 }
 
-.portal-gradient-card::after {
+.portal-accent-card::after {
   content: "";
   position: absolute;
-  right: -1rem;
-  top: -1rem;
-  height: 6rem;
-  width: 6rem;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.12);
+  right: 1rem;
+  top: 1rem;
+  height: 2.5rem;
+  width: 2.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Futuristic flat card for industry grid — explicit button overrides for Tailwind preflight */
+button.portal-industry-card {
+  position: relative;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  border-radius: 0.875rem;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  padding: 1.25rem;
+  text-align: left;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+button.portal-industry-card:hover {
+  border-color: #0050f8;
+  box-shadow: 0 0 0 1px rgba(0, 80, 248, 0.14);
+  transform: none;
+}
+
+button.portal-industry-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 1rem;
+  bottom: 1rem;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: transparent;
+  transition: background-color 160ms ease;
+}
+
+button.portal-industry-card:hover::before {
+  background: #0050f8;
+}
+
+/* Module / dashboard config chips — single flat surface */
+.portal-config-chip {
+  background-color: #ffffff;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.portal-config-chip[data-selected="true"] {
+  border-color: #0050f8;
+  box-shadow: 0 0 0 1px rgba(0, 80, 248, 0.08);
+}
+
+.portal-config-chip:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.portal-config-chip[data-selected="true"]:hover {
+  background-color: #f8fafc;
+  border-color: #0050f8;
+}
+
+.portal-config-chip-handle:active {
+  cursor: grabbing;
+}
+
+.portal-config-chip--dragging,
+.portal-config-chip--dragging:hover {
+  transform: scale(0.98);
+  border-style: dashed;
+  opacity: 0.65;
+}
+
+.portal-config-chip[data-locked="true"] .portal-config-chip-toggle {
+  cursor: not-allowed;
+}
+
+.portal-config-chip-handle {
+  background-color: transparent;
+  cursor: grab;
+  padding: 0;
+}
+
+.portal-config-chip-handle:hover {
+  transform: none;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+.portal-panel {
+  overflow: hidden;
+  border-radius: 0.875rem;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.portal-panel-header {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 1rem 1.25rem;
+}
+
+.portal-panel-body {
+  padding: 1.25rem;
+}
+
+.portal-callout {
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.portal-preview-toolbar {
+  display: inline-flex;
+  gap: 0.125rem;
+  border-radius: 0.625rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.125rem;
+}
+
+.portal-preview-toolbar button {
+  transform: none;
+  box-shadow: none;
+}
+
+.portal-preview-toolbar button:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.portal-preview-toolbar button[data-active="true"] {
+  background-color: #ffffff;
+  color: #0050f8;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+/* Step pipeline for wizards */
+.portal-step-pipeline {
+  display: flex;
+  width: 100%;
+  align-items: stretch;
+  overflow: hidden;
+  border-radius: 0.875rem;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+button.portal-step-item {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  border: none;
+  border-radius: 0;
+  background-color: #ffffff;
+  padding: 0.875rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #64748b;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+button.portal-step-item:hover {
+  transform: none;
+  box-shadow: none;
+  background-color: #f8fafc;
+}
+
+button.portal-step-item[data-active="true"] {
+  background-color: #001840;
+  color: #ffffff;
+}
+
+button.portal-step-item[data-active="true"]:hover {
+  background-color: #00122e;
+}
+
+button.portal-step-item[data-done="true"]:not([data-active="true"]) {
+  background-color: #eef3ff;
+  color: #0050f8;
+}
+
+.portal-step-divider {
+  width: 1px;
+  flex-shrink: 0;
+  align-self: stretch;
+  background: #e2e8f0;
 }
 
 button,
@@ -455,16 +681,23 @@ button:hover,
 input[type="button"]:hover,
 input[type="submit"]:hover,
 input[type="reset"]:hover,
-[role="button"]:hover {
+[role="button"]:hover:not(.portal-config-chip-toggle) {
   transform: translateY(-2px);
   box-shadow: 0 10px 30px rgba(2,6,23,0.06);
 }
 
-/* Tab pills should not float on hover */
+/* Tab pills and wizard controls should not float on hover */
 .dn-tab:hover,
-.dn-tab-bar button:hover {
+.dn-tab-bar button:hover,
+button.portal-step-item:hover,
+button.portal-config-chip-handle:hover,
+.portal-preview-toolbar button:hover {
   transform: none;
   box-shadow: none;
+}
+
+button.portal-industry-card:hover {
+  transform: none;
 }
 
 .dn-tab[data-active="true"]:hover,
@@ -577,12 +810,8 @@ input[type="reset"]:hover,
 }
 
 .dn-loader-shimmer {
-  background: linear-gradient(90deg, #64748b 0%, #0050f8 45%, #64748b 90%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: dn-loader-shimmer 2.2s linear infinite;
+  color: #0050f8;
+  animation: dn-loader-pulse 2.2s ease-in-out infinite;
 }
 
 .dn-loader-bar-track {
@@ -596,4 +825,74 @@ input[type="reset"]:hover,
 
 .dn-loader-glow {
   animation: dn-loader-glow 2s ease-in-out infinite;
+}
+
+.industry-shell-preview[data-size="embed"] .shell-nav-item[data-active="true"]::before {
+  height: 1rem;
+  width: 2px;
+}
+
+.template-preview-canvas {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(148, 163, 184, 0.18) 1px, transparent 0);
+  background-size: 18px 18px;
+}
+
+.industry-shell-preview button:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.industry-shell-preview .shell-nav-item[data-active="true"] {
+  position: relative;
+  background-color: var(--shell-primary);
+  color: #ffffff;
+}
+
+.industry-shell-preview .shell-nav-item[data-active="true"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 0.75rem;
+  width: 2px;
+  transform: translateY(-50%);
+  border-radius: 0 2px 2px 0;
+  background-color: var(--shell-secondary);
+}
+
+.industry-shell-preview[data-size="full"] .shell-nav-item[data-active="true"]::before {
+  height: 1.25rem;
+  width: 3px;
+}
+
+.industry-shell-preview .shell-nav-item:not([data-active="true"]):hover {
+  background-color: #f1f5f9;
+  color: var(--shell-primary);
+}
+
+.industry-shell-preview .shell-nav-item:not([data-active="true"]):hover .shell-nav-icon {
+  color: var(--shell-secondary);
+}
+
+/* Config chips — override global interactive hover (keep last for cascade) */
+.portal-config-chip-toggle,
+.portal-config-chip-toggle:hover,
+.portal-config-chip-toggle:focus-visible {
+  transform: none;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+.portal-config-chip[data-locked="true"] .portal-config-chip-toggle,
+.portal-config-chip[data-locked="true"] .portal-config-chip-toggle:hover {
+  cursor: not-allowed;
+}
+
+.portal-config-chip .portal-config-chip-handle,
+.portal-config-chip .portal-config-chip-handle:hover,
+.portal-config-chip .portal-config-chip-handle:active {
+  transform: none;
+  box-shadow: none;
+  background-color: transparent;
 }

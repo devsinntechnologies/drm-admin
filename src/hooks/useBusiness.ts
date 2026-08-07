@@ -70,6 +70,68 @@ export type PatchBusinessPayload = {
   body: CreateBusinessPayload;
 };
 
+function defaultPagination(total: number, page = 1, limit = 10): GetBusinessesResponse["pagination"] {
+  return {
+    total,
+    page,
+    limit: limit || 10,
+    totalPages: limit > 0 ? Math.ceil(total / limit) : 0,
+  };
+}
+
+/** Normalize backend envelopes: { success, data, pagination } or legacy shapes. */
+export function normalizeBusinessesResponse(response: unknown): GetBusinessesResponse {
+  if (Array.isArray(response)) {
+    return {
+      data: response as BusinessRecord[],
+      pagination: defaultPagination(response.length, 1, response.length || 10),
+    };
+  }
+
+  if (!response || typeof response !== "object") {
+    return { data: [], pagination: defaultPagination(0) };
+  }
+
+  const root = response as Record<string, unknown>;
+
+  if (Array.isArray(root.data)) {
+    const rows = root.data as BusinessRecord[];
+    const pagination =
+      root.pagination && typeof root.pagination === "object"
+        ? (root.pagination as GetBusinessesResponse["pagination"])
+        : defaultPagination(rows.length);
+    return { data: rows, pagination };
+  }
+
+  if (root.data && typeof root.data === "object") {
+    const nested = root.data as Record<string, unknown>;
+    if (Array.isArray(nested.data)) {
+      const rows = nested.data as BusinessRecord[];
+      const pagination =
+        (nested.pagination as GetBusinessesResponse["pagination"]) ??
+        (root.pagination as GetBusinessesResponse["pagination"]) ??
+        defaultPagination(rows.length);
+      return { data: rows, pagination };
+    }
+    if (Array.isArray(nested.businesses)) {
+      const rows = nested.businesses as BusinessRecord[];
+      return {
+        data: rows,
+        pagination:
+          (nested.pagination as GetBusinessesResponse["pagination"]) ??
+          defaultPagination(rows.length),
+      };
+    }
+  }
+
+  if (Array.isArray(root.businesses)) {
+    const rows = root.businesses as BusinessRecord[];
+    return { data: rows, pagination: defaultPagination(rows.length) };
+  }
+
+  return { data: [], pagination: defaultPagination(0) };
+}
+
 export const businessApi = createApi({
   reducerPath: "businessApi",
   baseQuery: fetchBaseQuery({
@@ -103,9 +165,12 @@ export const businessApi = createApi({
           queryParams.append("page", String(params.page));
         }
 
+        queryParams.append("limit", "100");
+
         const queryString = queryParams.toString();
-        return queryString ? `/business?${queryString}` : "/business";
+        return queryString ? `/business?${queryString}` : "/business?limit=100";
       },
+      transformResponse: (response: unknown) => normalizeBusinessesResponse(response),
     }),
     createBusiness: builder.mutation<CreateBusinessResponse, CreateBusinessPayload>({
       query: (body) => ({

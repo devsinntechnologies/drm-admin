@@ -14,8 +14,10 @@ import {
 } from "lucide-react";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
+import { EmptyState } from "@/components/design-system/EmptyState";
 import { toast } from "sonner";
 import { Suspense, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +36,9 @@ import {
   useLazyGetBusinessByIdQuery,
   usePatchBusinessByIdMutation,
 } from "@/hooks/useBusiness";
+import { saveBusinessProfile, getBusinessProfile } from "@/lib/business-profile";
+import { INDUSTRY_TEMPLATES } from "@/templates/industries";
+import { colorsFromAccent } from "@/templates/modules";
 
 type BusinessItem = {
   id: string;
@@ -75,6 +80,7 @@ const planColor: Record<BusinessItem["plan"], string> = {
 };
 
 function BusinessesContent() {
+  const router = useRouter();
   const [isAddBusinessOpen, setIsAddBusinessOpen] = useState(false);
   const [editingBusinessId, setEditingBusinessId] = useState<string | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -90,6 +96,7 @@ function BusinessesContent() {
     email: "",
     manager: "",
     planId: "",
+    industryId: "retail-store",
   });
   const [countryCode, setCountryCode] = useState("+92");
 
@@ -97,7 +104,7 @@ function BusinessesContent() {
   const { data: planData, isLoading: isLoadingPlans } = useGetPlansQuery();
   const statusQueryParam: BusinessStatus | undefined =
     statusFilter === "All Status" ? undefined : (statusFilter.toLowerCase() as BusinessStatus);
-  const { data: businessData, isLoading: isLoadingBusinesses, isFetching: isFetchingBusinesses, refetch } = useGetBusinessesQuery({
+  const { data: businessData, isLoading: isLoadingBusinesses, isFetching: isFetchingBusinesses, isError: isBusinessesError, error: businessesError, refetch } = useGetBusinessesQuery({
     search: searchTerm || undefined,
     status: statusQueryParam,
     page: 1,
@@ -109,7 +116,8 @@ function BusinessesContent() {
   const [deleteBusinessById, { isLoading: isDeletingBusiness }] = useDeleteBusinessByIdMutation();
 
   const mappedBusinesses = useMemo<BusinessItem[]>(() => {
-    return (businessData?.data ?? []).map((item, index) => {
+    const rows = Array.isArray(businessData?.data) ? businessData.data : [];
+    return rows.map((item, index) => {
       const planName = item.planName as BusinessItem["plan"];
       const normalizedPlan: BusinessItem["plan"] =
         planName === "Basic" || planName === "Premium" || planName === "Enterprise"
@@ -152,6 +160,11 @@ function BusinessesContent() {
   }, [mappedBusinesses, planFilter]);
 
   const showSkeleton = isLoadingBusinesses && !businessData;
+  const businessCount = businessData?.pagination?.total ?? mappedBusinesses.length;
+  const businessesErrorMessage =
+    businessesError && "status" in (businessesError as object)
+      ? `Unable to load businesses (HTTP ${(businessesError as { status?: number }).status ?? "error"}). Check your login session and API connection.`
+      : "Unable to load businesses. Check your login session and API connection.";
 
   const handleFormChange = (field: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -165,6 +178,7 @@ function BusinessesContent() {
       email: "",
       manager: "",
       planId: "",
+      industryId: "retail-store",
     });
     setCountryCode("+92");
   };
@@ -187,8 +201,26 @@ function BusinessesContent() {
 
       if (editingBusinessId) {
         await patchBusinessById({ id: editingBusinessId, body: payload }).unwrap();
+        const tpl = INDUSTRY_TEMPLATES.find((t) => t.id === form.industryId);
+        const colors = tpl ? colorsFromAccent(tpl.theme.accent) : colorsFromAccent("blue");
+        saveBusinessProfile(editingBusinessId, {
+          ...getBusinessProfile(editingBusinessId, form.businessName),
+          industryId: form.industryId,
+          primaryColor: colors.primary,
+          secondaryColor: colors.secondary,
+        });
       } else {
-        await createBusiness(payload).unwrap();
+        const created = await createBusiness(payload).unwrap();
+        const tpl = INDUSTRY_TEMPLATES.find((t) => t.id === form.industryId);
+        const colors = tpl ? colorsFromAccent(tpl.theme.accent) : colorsFromAccent("blue");
+        saveBusinessProfile(created.id, {
+          industryId: form.industryId,
+          primaryColor: colors.primary,
+          secondaryColor: colors.secondary,
+          themeMode: "light",
+          typography: "Poppins",
+          layoutStyle: "comfortable",
+        });
       }
       toast.success(editingBusinessId ? "Business updated successfully." : "Business created successfully.", { id: toastId });
       void refetch();
@@ -229,6 +261,7 @@ function BusinessesContent() {
         email: business.email,
         manager: business.ownerName,
         planId: business.planId,
+        industryId: getBusinessProfile(id, business.businessName).industryId,
       });
       toast.dismiss(toastId);
     } catch {
@@ -250,14 +283,14 @@ function BusinessesContent() {
 
   return (
     <AdminShell activeTab="businesses">
-      <section className="mb-5 flex w-full items-center justify-between gap-4 rounded-3xl border border-white bg-[linear-gradient(120deg,rgba(255,255,255,0.9),rgba(236,253,245,0.78))] px-6 py-5 shadow-[0_12px_28px_rgba(7,16,34,0.1)]">
+      <section className="portal-header mb-5 flex w-full items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#001840] text-[#ffffff] shadow-[0_10px_18px_rgba(0,24,64,0.28)]">
             <Building2 className="h-6 w-6" strokeWidth={1.8} />
           </div>
           <div>
             <h2 className="text-lg font-semibold lg:text-2xl">Business Management</h2>
-            <p className="text-sm text-[#657084] lg:text-base">{businessData?.pagination?.total ?? 0} businesses</p>
+            <p className="text-sm text-[#657084] lg:text-base">{businessCount} businesses</p>
           </div>
         </div>
         <Dialog
@@ -271,7 +304,7 @@ function BusinessesContent() {
           }}
         >
           <DialogTrigger asChild>
-            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl bg-linear-to-r from-[#001840] to-[#0050F8] px-5 text-sm font-semibold text-[#ffffff] shadow-[0_10px_20px_rgba(0,24,64,0.22)]">
+            <button type="button" className="dn-btn dn-btn-primary inline-flex h-10 gap-2 px-5 text-sm font-semibold">
               <Plus className="h-4 w-4" />
               Add Business
             </button>
@@ -346,6 +379,21 @@ function BusinessesContent() {
               </label>
 
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
+                Industry Template
+                <select
+                  value={form.industryId}
+                  onChange={(event) => setForm((prev) => ({ ...prev, industryId: event.target.value }))}
+                  className="portal-input"
+                >
+                  {INDUSTRY_TEMPLATES.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
                 Manager
                 <input
                   type="text"
@@ -417,6 +465,19 @@ function BusinessesContent() {
           </DialogContent>
         </Dialog>
       </section>
+
+      {isBusinessesError ? (
+        <section className="mb-5 rounded-xl border border-[#fecaca] bg-[#fef2f2] p-5">
+          <p className="text-sm font-semibold text-[#dc2626]">{businessesErrorMessage}</p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="dn-btn dn-btn-outline mt-3 h-[44px] rounded-xl px-4 text-sm"
+          >
+            Retry loading businesses
+          </button>
+        </section>
+      ) : null}
 
       <section className="mb-5 grid w-full grid-cols-1 gap-3 rounded-3xl border border-[#e5edf5] bg-white/85 p-4 shadow-[0_10px_26px_rgba(7,16,34,0.08)] lg:grid-cols-3">
         {showSkeleton ? (
@@ -537,7 +598,7 @@ function BusinessesContent() {
           <article
             key={business.id}
             id={`business-${business.name.replace(/\s+/g, "-").toLowerCase()}`}
-            onClick={() => window.open(`/dashboard/businessAdmin?businessId=${business.id}`, '_blank')}
+            onClick={() => router.push(`/dashboard/superAdmin/businesses/${business.id}`)}
             className="group cursor-pointer overflow-hidden rounded-3xl border border-[#e4ebf4] bg-white/90 shadow-[0_10px_24px_rgba(10,17,31,0.1)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_30px_rgba(10,17,31,0.14)]"
           >
             <div className="relative h-36 overflow-hidden">
@@ -548,7 +609,7 @@ function BusinessesContent() {
                 sizes="(max-width: 1024px) 100vw, (max-width: 1536px) 50vw, 33vw"
                 className="object-cover"
               />
-              <div className="absolute inset-0 bg-linear-to-b from-[rgba(15,23,42,0.35)] to-[rgba(15,118,110,0.75)]" />
+              <div className="absolute inset-0 bg-[rgba(15,23,42,0.45)]" />
               <div className="absolute right-4 top-3 z-2 flex gap-2">
                 <span className={`inline-flex h-7 items-center rounded-xl px-3 text-xs font-bold text-[#ffffff] ${business.status === "Active" ? "bg-[#07c357]" : business.status === "Inactive" ? "bg-[#7d8593]" : "bg-[#ff3649]"}`}>
                   {business.status}
@@ -619,6 +680,42 @@ function BusinessesContent() {
           </article>
         ))}
       </section>
+
+      {!showSkeleton && !isBusinessesError && filteredBusinesses.length === 0 ? (
+        <EmptyState
+          icon={Building2}
+          title="No businesses found"
+          description={
+            searchTerm || statusFilter !== "All Status" || planFilter !== "All Plans"
+              ? "Try adjusting your search or filters, or create a new business on the platform."
+              : "Get started by adding your first business to the DigiNizam platform."
+          }
+          primaryAction={
+            <button
+              type="button"
+              onClick={() => setIsAddBusinessOpen(true)}
+              className="dn-btn dn-btn-primary h-[44px] rounded-xl px-4 text-sm"
+            >
+              <Plus className="h-4 w-4" /> Add Business
+            </button>
+          }
+          secondaryAction={
+            (searchTerm || statusFilter !== "All Status" || planFilter !== "All Plans") ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm("");
+                  setStatusFilter("All Status");
+                  setPlanFilter("All Plans");
+                }}
+                className="dn-btn dn-btn-ghost h-[44px] rounded-xl px-4 text-sm"
+              >
+                Clear filters
+              </button>
+            ) : undefined
+          }
+        />
+      ) : null}
 
       <Dialog
         open={Boolean(deleteTargetBusiness)}

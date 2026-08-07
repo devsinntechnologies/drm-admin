@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { Activity, Building2, Crown, CreditCard, Globe2, LayoutGrid, LayoutTemplate, LogOut, Menu, Receipt, ReceiptText, Shapes, ShoppingCart, SlidersHorizontal, Store, Users, UtensilsCrossed, X } from "lucide-react";
+import { Activity, Building2, Crown, CreditCard, Globe2, LayoutGrid, LayoutTemplate, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Receipt, ReceiptText, Search, Bell, Shapes, ShoppingCart, Store, Users, UtensilsCrossed, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,7 +10,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { toast } from "sonner";
 
-type TabKey = "dashboard" | "businesses" | "subscriptions" | "features" | "industry-templates" | "action-logs" | "orders" | "kitchen" | "products" | "categories" | "public-data" | "tables" | "invoices" | "users";
+type TabKey = "dashboard" | "businesses" | "subscriptions" | "industry-templates" | "action-logs" | "orders" | "kitchen" | "products" | "categories" | "public-data" | "tables" | "invoices" | "users";
 
 type AdminShellProps = {
   activeTab: TabKey;
@@ -35,12 +35,6 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
     label: "Subscriptions",
     href: "/dashboard/superAdmin/subscriptions",
     icon: <CreditCard className="h-5 w-5" />,
-  },
-  {
-    key: "features",
-    label: "Feature Management",
-    href: "/dashboard/superAdmin/features",
-    icon: <SlidersHorizontal className="h-5 w-5" />,
   },
   {
     key: "industry-templates",
@@ -74,7 +68,7 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
   },
   {
     key: "tables",
-    label: "Restaurant Tables",
+    label: "Floor & Tables",
     href: "/dashboard/businessAdmin/tables",
     icon: <Store className="h-5 w-5" />,
   },
@@ -118,12 +112,13 @@ function getVisibleTabs(role: string | null, isImpersonating: boolean = false) {
     return tabs.filter((tab) => tab.key === "orders");
   }
 
-  return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "features" || tab.key === "industry-templates" || tab.key === "action-logs");
+  return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "industry-templates" || tab.key === "action-logs");
 }
 
 export default function AdminShell({ activeTab, children }: AdminShellProps) {
   const { role, user, logout } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [resolvedRole, setResolvedRole] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -136,6 +131,9 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
 
   useEffect(() => {
     setIsMounted(true);
+    if (typeof window !== "undefined") {
+      setSidebarCollapsed(localStorage.getItem("dn_sidebar_collapsed") === "true");
+    }
     const currentId = searchParams.get("businessId");
 
     // Sync businessId from URL to localStorage to prevent stale IDs
@@ -183,7 +181,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
   const visibleTabs = useMemo(() => {
     // During SSR and first paint, we MUST return a static set of tabs that match the server
     if (!isMounted) {
-      return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "features" || tab.key === "industry-templates" || tab.key === "action-logs");
+      return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "industry-templates" || tab.key === "action-logs");
     }
 
     const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
@@ -199,7 +197,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
     } else if (shouldShowBusinessTabs) {
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "public-data" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
     } else {
-      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "features" || tab.key === "industry-templates" || tab.key === "action-logs");
+      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "industry-templates" || tab.key === "action-logs");
       // Force Super Admin dashboard link to the superAdmin route
       baseTabs = baseTabs.map(tab =>
         tab.key === "dashboard" ? { ...tab, href: "/dashboard/superAdmin" } : tab
@@ -225,11 +223,38 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
 
   const closeMobileNav = () => setMobileNavOpen(false);
 
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") localStorage.setItem("dn_sidebar_collapsed", String(next));
+      return next;
+    });
+  };
+
+  const portalLabel =
+    !isMounted ? "..." :
+    (businessId && resolvedRole === "super_admin" && typeof window !== "undefined" && !window.location.pathname.includes("/superAdmin"))
+      ? "Impersonating Business"
+      : (resolvedRole === "super_admin" || (typeof window !== "undefined" && window.location.pathname.includes("/superAdmin")))
+        ? "Platform Console"
+        : resolvedRole === "business_admin"
+          ? "Business Workspace"
+          : resolvedRole === "kitchen" || resolvedRole === "waiter"
+            ? "Staff Portal"
+            : "Admin Portal";
+
+  const shellTitle = activeBusiness?.businessName || "DigiNizam";
+
   return (
     <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-[#dbe4ef] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] shadow-[0_10px_30px_rgba(15,23,42,0.06)] xl:flex">
-        <div className="border-b border-[#edf2f7] px-5 py-4">
-          <div className="flex items-center gap-3">
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[#dbe4ef] bg-white transition-[width] duration-200 xl:flex",
+          sidebarCollapsed ? "w-[4.5rem]" : "w-72",
+        )}
+      >
+        <div className="border-b border-[#edf2f7] px-3 py-4">
+          <div className={cn("flex items-center gap-3", sidebarCollapsed && "justify-center")}>
             <Image
               src="/logo-mark.png"
               alt="DigiNizam"
@@ -238,23 +263,19 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
               className="h-10 w-auto shrink-0 object-contain"
               priority
             />
-            <div className="min-w-0">
-              <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">
-                {activeBusiness?.businessName || "Restaurant Manager"}
-              </h1>
-              <p className="truncate text-xs font-medium leading-tight text-[#667085]">
-                {!isMounted ? "..." :
-                  (businessId && resolvedRole === "super_admin" && !window.location.pathname.includes("/superAdmin")) ? "Super Admin (Impersonating)" :
-                    (resolvedRole === "super_admin" || window.location.pathname.includes("/superAdmin")) ? "Super Admin Portal" :
-                      resolvedRole === "business_admin" ? "Business Admin" :
-                        resolvedRole === "kitchen" || resolvedRole === "waiter" ? "Staff Portal" : "Admin Portal"}
-              </p>
-            </div>
+            {!sidebarCollapsed ? (
+              <div className="min-w-0">
+                <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">{shellTitle}</h1>
+                <p className="truncate text-xs font-medium leading-tight text-[#667085]">{portalLabel}</p>
+              </div>
+            ) : null}
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col px-3 py-4">
-          <div className="mb-3 px-2 text-xs font-semibold tracking-[0.12em] text-[#94a3b8] uppercase">Navigation</div>
+        <div className="flex flex-1 flex-col px-2 py-4">
+          {!sidebarCollapsed ? (
+            <div className="mb-3 px-2 text-xs font-semibold tracking-[0.12em] text-[#94a3b8] uppercase">Navigation</div>
+          ) : null}
           <nav className="flex flex-1 flex-col gap-1">
             {visibleTabs.map((tab) => {
               const active = activeTab === tab.key;
@@ -262,24 +283,40 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                 <Link
                   key={tab.key}
                   href={isMounted ? tab.href : tab.href.split("?")[0]}
+                  title={sidebarCollapsed ? tab.label : undefined}
                   className={cn(
-                    "group flex min-w-0 items-center gap-3 px-4 py-3 text-sm font-semibold transition-all duration-200",
+                    "group flex min-w-0 items-center gap-3 py-3 text-sm font-semibold transition-all duration-200",
+                    sidebarCollapsed ? "justify-center px-2" : "px-4",
                     active
-                      ? "rounded-xl bg-[linear-gradient(135deg,#001840_0%,#0050F8_100%)] text-white shadow-[0_10px_20px_rgba(0,24,64,0.22)]"
-                      : "rounded-xl text-[#475569] hover:bg-[#eef3ff] hover:text-[#001840]",
+                      ? "relative rounded-lg bg-[#001840] text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-[#0050F8]"
+                      : "rounded-lg text-[#475569] hover:bg-[#f1f5f9] hover:text-[#001840]",
                   )}
                 >
                   <span className={cn(
                     "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors",
                     active ? "bg-white/15 text-white" : "bg-[#f1f5f9] text-[#64748b] group-hover:bg-white group-hover:text-[#0050F8]",
                   )}>{tab.icon}</span>
-                  <span className={cn("min-w-0 truncate", active ? "text-white" : "text-[#334155]")}>{tab.label}</span>
+                  {!sidebarCollapsed ? (
+                    <span className={cn("min-w-0 truncate", active ? "text-white" : "text-[#334155]")}>{tab.label}</span>
+                  ) : null}
                 </Link>
               );
             })}
           </nav>
 
-          <div className="mt-4 border-t border-[#edf2f7] pt-4">
+          <div className="mt-4 space-y-2 border-t border-[#edf2f7] pt-4">
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className={cn(
+                "dn-btn dn-btn-outline w-full text-sm",
+                sidebarCollapsed && "px-0",
+              )}
+              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen className="h-4.5 w-4.5" /> : <PanelLeftClose className="h-4.5 w-4.5" />}
+              {!sidebarCollapsed ? "Collapse" : null}
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -287,40 +324,53 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                 toast.success("Successfully logged out. See you soon!");
                 router.push("/");
               }}
-              className="dn-btn dn-btn-outline w-full"
+              className={cn("dn-btn dn-btn-outline w-full", sidebarCollapsed && "px-0")}
+              title="Logout"
             >
               <LogOut className="h-4.5 w-4.5" strokeWidth={2} />
-              Logout
+              {!sidebarCollapsed ? "Logout" : null}
             </button>
           </div>
         </div>
       </aside>
 
-      <div className="xl:pl-72">
-        <header className="relative overflow-hidden border-b border-[#dbe4ef] bg-[#f8fbff] py-4">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_0%,rgba(0,80,248,0.12),transparent_38%),radial-gradient(circle_at_0%_100%,rgba(0,24,64,0.08),transparent_42%)]" />
-          <div className="relative flex w-full items-center justify-between gap-3 px-4 lg:px-6">
-            <div className="flex min-w-0 items-center gap-3 md:gap-4">
+      <div className={cn("transition-[padding] duration-200", sidebarCollapsed ? "xl:pl-[4.5rem]" : "xl:pl-72")}>
+        <header className="sticky top-0 z-30 border-b border-[#dbe4ef] bg-white py-3">
+          <div className="flex w-full items-center justify-between gap-3 px-4 lg:px-6">
+            <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-4">
               <div className="min-w-0">
-                <h1 className="truncate text-lg font-semibold leading-tight text-[#0f172a] md:text-xl lg:text-2xl">Restaurant Manager</h1>
-                <p className="truncate text-xs font-medium leading-tight text-[#58657a] md:text-sm">
-                  {!isMounted ? "..." :
-                    (businessId && resolvedRole === "super_admin" && !window.location.pathname.includes("/superAdmin")) ? "Super Admin (Impersonating)" :
-                      (resolvedRole === "super_admin" || window.location.pathname.includes("/superAdmin")) ? "Super Admin Portal" :
-                        resolvedRole === "business_admin" ? "Business Admin" :
-                          resolvedRole === "kitchen" || resolvedRole === "waiter" ? "Staff Portal" : "Admin Portal"}
-                </p>
+                <h1 className="truncate text-lg font-semibold leading-tight text-[#0f172a] md:text-xl">DigiNizam</h1>
+                <p className="truncate text-xs font-medium leading-tight text-[#58657a] md:text-sm">{portalLabel}</p>
+              </div>
+              <div className="ml-auto hidden max-w-md flex-1 lg:block xl:max-w-sm">
+                <label className="relative block">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
+                  <input
+                    type="search"
+                    placeholder="Search businesses, users, modules…"
+                    className="h-10 w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] pl-9 pr-4 text-sm outline-none focus:border-[#0050f8] focus:ring-2 focus:ring-[#0050f8]/15"
+                  />
+                </label>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setMobileNavOpen(true)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#d7e1ed] bg-white text-[#334155] shadow-[0_8px_16px_rgba(15,23,42,0.06)] transition hover:bg-[#f4f8fc] xl:hidden"
-              aria-label="Open navigation menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                className="hidden h-10 w-10 items-center justify-center rounded-xl border border-[#e2e8f0] bg-white text-[#64748b] hover:bg-[#f8fafc] sm:inline-flex"
+                aria-label="Notifications"
+              >
+                <Bell className="h-4.5 w-4.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(true)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#d7e1ed] bg-white text-[#334155] xl:hidden"
+                aria-label="Open navigation menu"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </header>
 
@@ -341,13 +391,8 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
           <aside className="absolute left-0 top-0 flex h-full w-[88vw] max-w-sm flex-col border-r border-[#e5edf5] bg-white shadow-[0_20px_40px_rgba(15,23,42,0.18)]">
             <div className="flex items-center justify-between border-b border-[#edf2f7] px-5 py-4">
               <div className="min-w-0">
-                <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">Restaurant Manager</h1>
-                <p className="truncate text-xs font-medium leading-tight text-[#667085]">
-                    {!isMounted ? "..." :
-                      resolvedRole === "business_admin" ? "Business Admin Portal" :
-                        resolvedRole === "kitchen" || resolvedRole === "waiter" ? "Staff Portal" :
-                          "Super Admin Portal"}
-                  </p>
+                <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">DigiNizam</h1>
+                <p className="truncate text-xs font-medium leading-tight text-[#667085]">Platform Console</p>
               </div>
 
               <button
@@ -373,8 +418,8 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                       className={cn(
                         "group flex min-w-0 items-center gap-3 px-4 py-3 text-sm font-semibold transition-all duration-200",
                         active
-                          ? "rounded-xl bg-[linear-gradient(135deg,#001840_0%,#0050F8_100%)] text-white shadow-[0_10px_20px_rgba(0,24,64,0.22)]"
-                          : "rounded-xl text-[#475569] hover:bg-[#eef3ff] hover:text-[#001840]",
+                          ? "relative rounded-lg bg-[#001840] text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-[#0050F8]"
+                          : "rounded-lg text-[#475569] hover:bg-[#f1f5f9] hover:text-[#001840]",
                       )}
                     >
                       <span className={cn(

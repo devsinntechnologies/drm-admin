@@ -317,7 +317,7 @@ export default function ActionLogsPage() {
 
   return (
     <section className="w-full">
-      <div className="mb-4 rounded-3xl border border-white bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.95),rgba(220,252,231,0.72),rgba(224,242,254,0.72))] p-4 shadow-[0_18px_36px_rgba(8,18,38,0.12)]">
+      <div className="portal-header mb-4 p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-[#0f172a]">
             <Filter className="h-4 w-4" />
@@ -460,7 +460,7 @@ export default function ActionLogsPage() {
       <div className="overflow-hidden rounded-3xl border border-[#e4ebf4] bg-white/95 shadow-[0_10px_24px_rgba(10,17,31,0.1)]">
         <Table className="text-sm">
           <TableHeader>
-            <TableRow className="border-b border-[#dce7f3] bg-linear-to-r from-[#f8fbff] to-[#eef6ff] text-left hover:bg-linear-to-r hover:from-[#f8fbff] hover:to-[#eef6ff]">
+            <TableRow className="border-b border-[#dce7f3] bg-[#f8fbff] text-left hover:bg-[#f8fbff]">
               {[
                 "When",
                 "Who",
@@ -588,7 +588,7 @@ export default function ActionLogsPage() {
 
       {selected ? (
         <div className="fixed inset-0 z-50 flex justify-end overflow-x-hidden overflow-y-auto bg-slate-950/35 p-4 backdrop-blur-[1px]">
-          <div className="w-full max-w-130 max-h-[calc(100vh-2rem)] overflow-x-hidden overflow-y-auto rounded-3xl border border-white bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(240,249,255,0.94))] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.25)]">
+          <div className="portal-header w-full max-w-130 max-h-[calc(100vh-2rem)] overflow-x-hidden overflow-y-auto p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span

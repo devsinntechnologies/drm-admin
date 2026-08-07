@@ -988,7 +988,7 @@ function OrdersContent() {
 
             {/* Right: Order Summary (fixed panel) */}
             <div className="flex max-xl:min-h-[520px] min-h-0 w-full flex-col overflow-hidden rounded-[24px] border border-[#e2e8f0] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.06)] xl:w-[42%] xl:shrink-0">
-              <div className="flex shrink-0 items-center justify-between gap-3 bg-[linear-gradient(120deg,#001840_0%,#0050F8_100%)] px-5 py-4 text-white">
+              <div className="flex shrink-0 items-center justify-between gap-3 bg-[#001840] px-5 py-4 text-white">
                 <div className="flex items-center gap-3">
                   <ShoppingCart className="h-5 w-5" />
                   <span className="text-lg font-bold">Order Summary</span>
@@ -1273,7 +1273,7 @@ function OrdersContent() {
           {/* Held Orders Dialog */}
           <Dialog open={isQueueOpen} onOpenChange={setIsQueueOpen}>
             <DialogContent className="max-w-xl p-0 rounded-t-[20px] border-none overflow-hidden bg-[#f8fafc] shadow-2xl">
-              <DialogHeader className="bg-[linear-gradient(120deg,#001840_0%,#0050F8_100%)] px-7 py-5 text-[#ffffff] relative">
+              <DialogHeader className="bg-[#001840] px-7 py-5 text-[#ffffff] relative">
                 <div className="flex items-center gap-4">
                   <History className="h-5 w-5" />
                   <DialogTitle className="text-xl text-[#ffffff] font-black">Held Orders Queue</DialogTitle>
@@ -1319,7 +1319,7 @@ function OrdersContent() {
           {/* Table Selection Dialog */}
           <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
             <DialogContent className="max-w-[96vw] md:max-w-6xl p-0 rounded-[22px] border-none overflow-hidden bg-[#ebeff0] shadow-[0_24px_70px_rgba(0,0,0,0.28)] [&>button]:hidden">
-              <DialogHeader className="bg-[linear-gradient(120deg,#001840_0%,#0050F8_100%)] px-4 py-4 md:px-6 text-[#ffffff] relative">
+              <DialogHeader className="bg-[#001840] px-4 py-4 md:px-6 text-[#ffffff] relative">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="grid h-9 w-9 place-items-center rounded-full bg-white/15 shrink-0">
@@ -1358,7 +1358,7 @@ function OrdersContent() {
                         void finalizeCreateOrder(takeAwayTable.id);
                         setShowConfirmDialog(false);
                       }}
-                      className="w-full rounded-[16px] bg-gradient-to-r from-[#fd6000] to-[#d72600] px-4 py-5 md:px-6 md:py-6 text-left text-[#ffffff] shadow-[0_10px_26px_rgba(255,89,0,0.35)] transition hover:-translate-y-0.5"
+                      className="w-full rounded-[16px] bg-[#fd6000] px-4 py-5 md:px-6 md:py-6 text-left text-[#ffffff] transition hover:-translate-y-0.5"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-4 min-w-0">
@@ -1397,7 +1397,7 @@ function OrdersContent() {
                           void finalizeCreateOrder(table.id);
                           setShowConfirmDialog(false);
                         }}
-                        className="group rounded-[18px] border-2 border-[#c7d7f5] bg-gradient-to-br from-[#EEF3FF] to-[#e8effe] p-3 text-left shadow-[0_8px_22px_rgba(0,24,64,0.08)] transition hover:-translate-y-0.5 hover:border-[#0050F8] hover:shadow-[0_12px_26px_rgba(0,80,248,0.16)]"
+                        className="group rounded-[18px] border-2 border-[#c7d7f5] bg-[#EEF3FF] p-3 text-left transition hover:-translate-y-0.5 hover:border-[#0050F8]"
                       >
                         <div className="flex min-h-[210px] flex-col items-center justify-between rounded-[14px]   px-3 py-4">
                           <Armchair className="h-6 w-6 text-[#0050F8]" />
@@ -1624,7 +1624,7 @@ function OrdersContent() {
                                           {category.image ? (
                                             <Image src={productImageUrl(category.image)} alt={category.CategoryName} fill className="object-cover" />
                                           ) : (
-                                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#fef3c7] to-[#fde68a] text-[#92400e] text-sm font-black">
+                                            <div className="flex h-full w-full items-center justify-center bg-[#fde68a] text-[#92400e] text-sm font-black">
                                               {category.CategoryName.slice(0, 1).toUpperCase()}
                                             </div>
                                           )}

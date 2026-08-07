@@ -12,8 +12,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Restaurant Manager Admin",
-  description: "Restaurant manager super admin dashboard",
+  title: "DigiNizam Admin",
+  description: "Enterprise multi-industry business operating system — platform administration",
   icons: {
     icon: "/logo-mark.png",
     shortcut: "/logo-mark.png",
