@@ -30,6 +30,12 @@ type TemplatePreviewFrameProps = {
   onDeviceChange: (device: "desktop" | "tablet" | "mobile") => void;
   moduleCount: number;
   cardCount: number;
+  headerKicker?: string;
+  headerTitle?: string;
+  footerLeft?: string;
+  footerRight?: string;
+  hideFooter?: boolean;
+  className?: string;
 };
 
 export function TemplatePreviewFrame({
@@ -49,7 +55,15 @@ export function TemplatePreviewFrame({
   onDeviceChange,
   moduleCount,
   cardCount,
+  headerKicker = "Workspace preview",
+  headerTitle = "How your business admin will look",
+  footerLeft,
+  footerRight = "Live preview · updates as you customize",
+  hideFooter = false,
+  className,
 }: TemplatePreviewFrameProps) {
+  const resolvedFooterLeft =
+    footerLeft ?? `${moduleCount} modules · ${cardCount} dashboard cards · drag chips above to reorder`;
   const viewportRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.5);
   const [activeNav, setActiveNav] = useState(navItems[0]?.moduleId ?? "dashboard");
@@ -93,14 +107,14 @@ export function TemplatePreviewFrame({
   }, [device]);
 
   return (
-    <section className="template-preview-frame overflow-hidden rounded-xl border border-[#dbe4ef] bg-[#f8fafc]">
+    <section className={cn("template-preview-frame overflow-hidden rounded-xl border border-[#dbe4ef] bg-[#f8fafc]", className)}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2e8f0] bg-white px-4 py-3 sm:px-5">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0050F8]">
-            Workspace preview
+            {headerKicker}
           </p>
           <h3 className="text-sm font-semibold text-[#0f172a] sm:text-base">
-            How your business admin will look
+            {headerTitle}
           </h3>
         </div>
 
@@ -209,12 +223,12 @@ export function TemplatePreviewFrame({
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[#64748b]">
-            <p>
-              {moduleCount} modules · {cardCount} dashboard cards · drag chips above to reorder
-            </p>
-            <p className="font-medium text-[#94a3b8]">Live preview · updates as you customize</p>
-          </div>
+          {!hideFooter ? (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[#64748b]">
+              <p>{resolvedFooterLeft}</p>
+              {footerRight ? <p className="font-medium text-[#94a3b8]">{footerRight}</p> : null}
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

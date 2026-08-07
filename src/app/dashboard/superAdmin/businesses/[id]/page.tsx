@@ -20,7 +20,6 @@ import { PortalPage } from "@/components/admin/PortalPage";
 import { BusinessTemplatePreview } from "@/components/business/BusinessTemplatePreview";
 import { ActivityFeed } from "@/components/design-system/ActivityFeed";
 import { Breadcrumbs } from "@/components/design-system/Breadcrumbs";
-import { MetricCard } from "@/components/design-system/MetricCard";
 import {
   getBusinessProfile,
   getIndustryLabel,
@@ -32,6 +31,7 @@ import { INDUSTRY_TEMPLATES } from "@/templates/industries";
 import { ACCENT_COLORS, colorsFromAccent } from "@/templates/modules";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import type { AccentColor } from "@/templates/types";
+import { cn } from "@/lib/utils";
 
 function BusinessProfileContent() {
   const params = useParams();
@@ -116,65 +116,76 @@ function BusinessProfileContent() {
           className="mb-4"
         />
 
-        {/* Hero profile */}
-        <section className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
-          <div className="h-28 bg-[#001840]" />
-          <div className="px-6 pb-6">
-            <div className="-mt-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div className="flex items-end gap-4">
-                <div className="grid h-20 w-20 shrink-0 place-items-center rounded-xl border-4 border-white bg-[#eef3ff] text-[#0050f8] shadow-sm">
-                  <Building2 className="h-9 w-9" />
-                </div>
-                <div className="min-w-0 pb-1">
-                  <h1 className="truncate text-2xl font-bold text-[#0f172a]">{business.businessName}</h1>
-                  <p className="text-sm text-[#64748b]">
-                    {getIndustryLabel(profile.industryId)} · {business.planName} Plan
-                  </p>
-                </div>
+        {/* Business profile header */}
+        <section className="portal-header mb-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex min-w-0 items-start gap-4">
+              <div className="portal-icon-box shrink-0">
+                <Building2 className="h-6 w-6" strokeWidth={1.8} />
               </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => router.push(`/dashboard/superAdmin/businesses`)}
-                  className="dn-btn dn-btn-outline h-[44px] rounded-xl px-4 text-sm"
-                >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.open(`/dashboard/businessAdmin?businessId=${id}`, "_blank")}
-                  className="dn-btn dn-btn-primary inline-flex h-[44px] items-center gap-2 rounded-xl px-4 text-sm"
-                >
-                  Open Workspace <ExternalLink className="h-4 w-4" />
-                </button>
+              <div className="min-w-0">
+                <h1 className="truncate text-xl font-semibold text-[#0f172a] lg:text-2xl">
+                  {business.businessName}
+                </h1>
+                <p className="mt-1 text-sm text-[#64748b]">
+                  {getIndustryLabel(profile.industryId)} · {business.planName} Plan
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold capitalize",
+                      business.status?.toLowerCase() === "active"
+                        ? "border-[#bbf7d0] bg-[#ecfdf5] text-[#059669]"
+                        : "border-[#e2e8f0] bg-[#f8fafc] text-[#64748b]",
+                    )}
+                  >
+                    Status: {business.status}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#64748b]">
+                    <Calendar className="h-3.5 w-3.5" />
+                    Created {new Date(business.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { icon: MapPin, text: business.address },
-                { icon: Mail, text: business.email },
-                { icon: Phone, text: business.phone },
-                { icon: User, text: business.ownerName },
-              ].map(({ icon: Icon, text }) => (
-                <div key={text} className="flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-[#f8fafc] px-3 py-2.5 text-sm text-[#475569]">
-                  <Icon className="h-4 w-4 shrink-0 text-[#94a3b8]" />
-                  <span className="truncate">{text}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-medium text-[#64748b]">
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#e2e8f0] bg-white px-2.5 py-1 capitalize">
-                Status: {business.status}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" />
-                Created {new Date(business.createdAt).toLocaleDateString()}
-              </span>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard/superAdmin/businesses")}
+                className="dn-btn dn-btn-outline h-10 rounded-xl px-4 text-sm"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() => window.open(`/dashboard/businessAdmin?businessId=${id}`, "_blank")}
+                className="dn-btn dn-btn-primary inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm"
+              >
+                Open Workspace <ExternalLink className="h-4 w-4" />
+              </button>
             </div>
           </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { icon: MapPin, text: business.address },
+              { icon: Mail, text: business.email },
+              { icon: Phone, text: business.phone },
+              { icon: User, text: business.ownerName },
+            ].map(({ icon: Icon, text }) => (
+              <div
+                key={text}
+                className="flex items-center gap-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2.5 text-sm text-[#475569]"
+              >
+                <Icon className="h-4 w-4 shrink-0 text-[#94a3b8]" />
+                <span className="truncate">{text}</span>
+              </div>
+            ))}
+          </div>
         </section>
+
+        <BusinessTemplatePreview profile={profile} businessName={business.businessName} className="mb-6" />
 
         <div className="grid gap-6 xl:grid-cols-[340px_1fr]">
           {/* Theme panel */}
@@ -278,11 +289,7 @@ function BusinessProfileContent() {
             </section>
           </aside>
 
-          {/* Preview */}
-          <div className="space-y-4">
-            <BusinessTemplatePreview profile={profile} businessName={business.businessName} />
-
-            <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
+          <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
               <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-[#0f172a]">
                 <Users className="h-4 w-4 text-[#0050f8]" />
                 Recent Activity
@@ -312,8 +319,7 @@ function BusinessProfileContent() {
                   },
                 ]}
               />
-            </section>
-          </div>
+          </section>
         </div>
       </PortalPage>
     </AdminShell>
