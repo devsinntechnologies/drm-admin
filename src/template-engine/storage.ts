@@ -1,14 +1,29 @@
+import { colorsFromAccent } from "@/templates/modules";
 import type { CustomizedTemplateConfig } from "@/templates/types";
 
 const STORAGE_KEY = "diginizam_industry_templates";
+
+type LegacyConfig = CustomizedTemplateConfig & {
+  accent?: string;
+};
+
+function normalizeConfig(item: LegacyConfig): CustomizedTemplateConfig {
+  if (item.primaryColor && item.secondaryColor) return item;
+  const colors = colorsFromAccent(item.accent ?? "blue");
+  return {
+    ...item,
+    primaryColor: item.primaryColor ?? colors.primary,
+    secondaryColor: item.secondaryColor ?? colors.secondary,
+  };
+}
 
 export function loadSavedTemplates(): CustomizedTemplateConfig[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as CustomizedTemplateConfig[];
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(raw) as LegacyConfig[];
+    return Array.isArray(parsed) ? parsed.map(normalizeConfig) : [];
   } catch {
     return [];
   }

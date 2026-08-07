@@ -1,6 +1,5 @@
-import { MODULE_CATALOG } from "@/templates/modules";
+import { colorsFromAccent, MODULE_CATALOG } from "@/templates/modules";
 import type {
-  AccentColor,
   CustomizedTemplateConfig,
   DashboardCardId,
   IndustryTemplate,
@@ -28,7 +27,8 @@ export function createCustomizedConfig(input: {
   currency?: string;
   location?: string;
   branchCount?: number;
-  accent?: AccentColor;
+  primaryColor?: string;
+  secondaryColor?: string;
   themeMode?: ThemeMode;
   enabledModules?: ModuleId[];
   dashboardCards?: DashboardCardId[];
@@ -38,6 +38,7 @@ export function createCustomizedConfig(input: {
 }): CustomizedTemplateConfig {
   const enabledModules = input.enabledModules ?? [...input.industry.modules];
   const labels = input.labels ?? { ...input.industry.labels };
+  const defaults = colorsFromAccent(input.industry.theme.accent);
 
   return {
     id: `tpl_${Date.now().toString(36)}`,
@@ -50,7 +51,8 @@ export function createCustomizedConfig(input: {
     location: input.location ?? "",
     branchCount: input.branchCount ?? 1,
     logoDataUrl: input.logoDataUrl,
-    accent: input.accent ?? input.industry.theme.accent,
+    primaryColor: input.primaryColor ?? defaults.primary,
+    secondaryColor: input.secondaryColor ?? defaults.secondary,
     themeMode: input.themeMode ?? "light",
     enabledModules,
     navigation: input.navigation ?? buildDefaultNavigation(enabledModules, labels),

@@ -143,13 +143,32 @@ export const DASHBOARD_CARD_CATALOG: Record<
   "recently-added": { id: "recently-added", label: "Recently Added", description: "Newest catalog items" },
 };
 
-export const ACCENT_COLORS: Record<string, { label: string; value: string; soft: string }> = {
-  blue: { label: "Blue", value: "#0050F8", soft: "#eef3ff" },
-  green: { label: "Green", value: "#16a34a", soft: "#ecfdf5" },
-  teal: { label: "Teal", value: "#0d9488", soft: "#f0fdfa" },
-  amber: { label: "Amber", value: "#d97706", soft: "#fffbeb" },
-  rose: { label: "Rose", value: "#e11d48", soft: "#fff1f2" },
-  violet: { label: "Violet", value: "#7c3aed", soft: "#f5f3ff" },
-  slate: { label: "Slate", value: "#475569", soft: "#f1f5f9" },
-  orange: { label: "Orange", value: "#ea580c", soft: "#fff7ed" },
+/** Industry colour presets — solid primary + secondary (no gradients). */
+export const ACCENT_COLORS: Record<
+  string,
+  { label: string; primary: string; secondary: string; soft: string }
+> = {
+  blue: { label: "Blue", primary: "#001840", secondary: "#0050F8", soft: "#eef3ff" },
+  green: { label: "Green", primary: "#14532d", secondary: "#16a34a", soft: "#ecfdf5" },
+  teal: { label: "Teal", primary: "#134e4a", secondary: "#0d9488", soft: "#f0fdfa" },
+  amber: { label: "Amber", primary: "#78350f", secondary: "#d97706", soft: "#fffbeb" },
+  rose: { label: "Rose", primary: "#881337", secondary: "#e11d48", soft: "#fff1f2" },
+  violet: { label: "Violet", primary: "#4c1d95", secondary: "#7c3aed", soft: "#f5f3ff" },
+  slate: { label: "Slate", primary: "#0f172a", secondary: "#475569", soft: "#f1f5f9" },
+  orange: { label: "Orange", primary: "#7c2d12", secondary: "#ea580c", soft: "#fff7ed" },
 };
+
+export function colorsFromAccent(accent: string) {
+  const preset = ACCENT_COLORS[accent] ?? ACCENT_COLORS.blue;
+  return {
+    primary: preset.primary,
+    secondary: preset.secondary,
+    soft: preset.soft,
+  };
+}
+
+export function softFromHex(hex: string, fallback = "#eef3ff") {
+  const value = hex.trim();
+  if (!/^#([0-9a-fA-F]{6})$/.test(value)) return fallback;
+  return `${value}22`;
+}

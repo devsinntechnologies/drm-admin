@@ -7,8 +7,10 @@ import {
   ArrowRight,
   Check,
   Eye,
+  GripVertical,
   Layers3,
   LayoutTemplate,
+  Lock,
   Monitor,
   Smartphone,
   Tablet,
@@ -21,7 +23,22 @@ import { IndustryIcon } from "@/components/templates/IndustryIcon";
 import { createCustomizedConfig, buildDefaultNavigation } from "@/template-engine/builder";
 import { deleteTemplateConfig, loadSavedTemplates, saveTemplateConfig } from "@/template-engine/storage";
 import { FAMILY_LABELS, INDUSTRY_TEMPLATES, getIndustryById } from "@/templates/industries";
-import { ACCENT_COLORS, DASHBOARD_CARD_CATALOG, MODULE_CATALOG } from "@/templates/modules";
+import {
+  canDisableModule,
+  getAvailableModules,
+  getIndustryModulePlan,
+  getLockReason,
+  getLockedModules,
+  moduleLabel,
+  withDependenciesEnabled,
+  withDependentsDisabled,
+} from "@/templates/module-dependencies";
+import {
+  ACCENT_COLORS,
+  colorsFromAccent,
+  DASHBOARD_CARD_CATALOG,
+  MODULE_CATALOG,
+} from "@/templates/modules";
 import type {
   AccentColor,
   CustomizedTemplateConfig,
@@ -32,12 +49,11 @@ import type {
 } from "@/templates/types";
 import { cn } from "@/lib/utils";
 
-type WizardStep = "select" | "preview" | "customize" | "generate";
+type WizardStep = "select" | "customize" | "generate";
 
 const STEPS: Array<{ id: WizardStep; label: string }> = [
   { id: "select", label: "Select Industry" },
-  { id: "preview", label: "Template Preview" },
-  { id: "customize", label: "Customize" },
+  { id: "customize", label: "Customize Template" },
   { id: "generate", label: "Generate" },
 ];
 
@@ -52,13 +68,15 @@ function IndustryTemplatesContent() {
   const [location, setLocation] = useState("");
   const [branchCount, setBranchCount] = useState(1);
   const [themeMode, setThemeMode] = useState<ThemeMode>("light");
-  const [accent, setAccent] = useState<AccentColor>("blue");
+  const [primaryColor, setPrimaryColor] = useState("#001840");
+  const [secondaryColor, setSecondaryColor] = useState("#0050F8");
   const [enabledModules, setEnabledModules] = useState<ModuleId[]>([]);
   const [dashboardCards, setDashboardCards] = useState<DashboardCardId[]>([]);
   const [navItems, setNavItems] = useState<CustomizedTemplateConfig["navigation"]>([]);
   const [productLabel, setProductLabel] = useState("Product");
   const [productsLabel, setProductsLabel] = useState("Products");
   const [lastSavedId, setLastSavedId] = useState<string | null>(null);
+  const [dragModuleId, setDragModuleId] = useState<ModuleId | null>(null);
 
   useEffect(() => {
     setSaved(loadSavedTemplates());
@@ -69,15 +87,50 @@ function IndustryTemplatesContent() {
     [selectedId],
   );
 
+  const availableModules = useMemo(
+    () => (industry ? getAvailableModules(industry.modules, industry.optionalModules) : []),
+    [industry],
+  );
+
+  const modulePlan = useMemo(
+    () => (industry ? getIndustryModulePlan(industry.id) : undefined),
+    [industry],
+  );
+
+  const lockedModules = useMemo(
+    () =>
+      industry
+        ? getLockedModules(industry.id, enabledModules, availableModules)
+        : new Set<ModuleId>(),
+    [industry, enabledModules, availableModules],
+  );
+
+  const orderedNavForPreview = useMemo(
+    () =>
+      navItems
+        .filter((item) => enabledModules.includes(item.moduleId))
+        .map((item) => ({ ...item, visible: true })),
+    [navItems, enabledModules],
+  );
+
   function hydrateFromIndustry(tpl: IndustryTemplate) {
+    const available = getAvailableModules(tpl.modules, tpl.optionalModules);
+    const labels = { ...tpl.labels };
+    const colors = colorsFromAccent(tpl.theme.accent);
     setBusinessName(`${tpl.name} Demo`);
-    setAccent(tpl.theme.accent);
+    setPrimaryColor(colors.primary);
+    setSecondaryColor(colors.secondary);
     setThemeMode("light");
     setEnabledModules([...tpl.modules]);
     setDashboardCards([...tpl.dashboardCards]);
     setProductLabel(tpl.labels.product);
     setProductsLabel(tpl.labels.products);
-    setNavItems(buildDefaultNavigation(tpl.modules, tpl.labels));
+    setNavItems(
+      buildDefaultNavigation(available, labels).map((item) => ({
+        ...item,
+        visible: tpl.modules.includes(item.moduleId),
+      })),
+    );
   }
 
   function selectIndustry(id: string) {
@@ -85,29 +138,75 @@ function IndustryTemplatesContent() {
     if (!tpl) return;
     setSelectedId(id);
     hydrateFromIndustry(tpl);
-    setStep("preview");
+    setStep("customize");
   }
 
-  function toggleOptionalModule(moduleId: ModuleId) {
-    if (!industry) return;
-    if (industry.modules.includes(moduleId)) return;
+  function applyModuleSelection(nextEnabled: ModuleId[]) {
+    setEnabledModules(nextEnabled);
+    setNavItems((current) => {
+      const labels = { product: productLabel, products: productsLabel };
+      const available = industry
+        ? getAvailableModules(industry.modules, industry.optionalModules)
+        : nextEnabled;
+      const rebuilt = buildDefaultNavigation(available, labels);
+      if (!current.length) {
+        return rebuilt.map((r) => ({ ...r, visible: nextEnabled.includes(r.moduleId) }));
+      }
 
-    setEnabledModules((prev) => {
-      const next = prev.includes(moduleId)
-        ? prev.filter((id) => id !== moduleId)
-        : [...prev, moduleId];
+      const kept = current
+        .map((item) => {
+          const fresh = rebuilt.find((r) => r.moduleId === item.moduleId);
+          if (!fresh) return null;
+          return {
+            ...fresh,
+            label: item.label || fresh.label,
+            visible: nextEnabled.includes(item.moduleId),
+          };
+        })
+        .filter(Boolean) as CustomizedTemplateConfig["navigation"];
 
-      setNavItems((current) => {
-        const labels = { product: productLabel, products: productsLabel };
-        const rebuilt = buildDefaultNavigation(next, labels);
-        return rebuilt.map((item) => {
-          const existing = current.find((c) => c.moduleId === item.moduleId);
-          return existing ? { ...item, label: existing.label, visible: existing.visible } : item;
-        });
-      });
+      const extras = rebuilt
+        .filter((r) => !current.some((c) => c.moduleId === r.moduleId))
+        .map((r) => ({ ...r, visible: nextEnabled.includes(r.moduleId) }));
 
-      return next;
+      return [...kept, ...extras];
     });
+  }
+
+  function toggleModule(moduleId: ModuleId) {
+    if (!industry) return;
+
+    const isOn = enabledModules.includes(moduleId);
+
+    if (isOn) {
+      const check = canDisableModule(industry.id, moduleId, enabledModules, availableModules);
+      if (!check.ok) {
+        toast.error(check.reason ?? "This module cannot be disabled");
+        return;
+      }
+
+      const { next, removed } = withDependentsDisabled(
+        industry.id,
+        moduleId,
+        enabledModules,
+        availableModules,
+      );
+      const related = removed.filter((id) => id !== moduleId);
+      if (related.length) {
+        toast.message(
+          `Also unselected: ${related.map(moduleLabel).join(", ")}`,
+        );
+      }
+      applyModuleSelection(next);
+      return;
+    }
+
+    const next = withDependenciesEnabled(industry.id, moduleId, enabledModules, availableModules);
+    const added = next.filter((id) => !enabledModules.includes(id) && id !== moduleId);
+    if (added.length) {
+      toast.message(`Also enabled: ${added.map(moduleLabel).join(", ")}`);
+    }
+    applyModuleSelection(next);
   }
 
   function toggleDashboardCard(cardId: DashboardCardId) {
@@ -116,12 +215,15 @@ function IndustryTemplatesContent() {
     );
   }
 
-  function moveNav(index: number, direction: -1 | 1) {
+  function reorderModules(fromId: ModuleId, toId: ModuleId) {
+    if (fromId === toId) return;
     setNavItems((prev) => {
+      const from = prev.findIndex((item) => item.moduleId === fromId);
+      const to = prev.findIndex((item) => item.moduleId === toId);
+      if (from < 0 || to < 0) return prev;
       const next = [...prev];
-      const target = index + direction;
-      if (target < 0 || target >= next.length) return prev;
-      [next[index], next[target]] = [next[target], next[index]];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
       return next;
     });
   }
@@ -139,7 +241,8 @@ function IndustryTemplatesContent() {
       currency,
       location,
       branchCount,
-      accent,
+      primaryColor,
+      secondaryColor,
       themeMode,
       enabledModules,
       dashboardCards,
@@ -148,7 +251,7 @@ function IndustryTemplatesContent() {
         product: productLabel,
         products: productsLabel,
       },
-      navigation: navItems,
+      navigation: orderedNavForPreview,
     });
 
     const next = saveTemplateConfig(config);
@@ -164,8 +267,8 @@ function IndustryTemplatesContent() {
     toast.success("Template removed");
   }
 
-  const accentMeta = ACCENT_COLORS[accent] ?? ACCENT_COLORS.blue;
   const stepIndex = STEPS.findIndex((s) => s.id === step);
+  const softSecondary = `${secondaryColor}22`;
 
   return (
     <AdminShell activeTab="industry-templates">
@@ -195,7 +298,8 @@ function IndustryTemplatesContent() {
               type="button"
               onClick={() => {
                 if (item.id === "select") setStep("select");
-                else if (selectedId) setStep(item.id);
+                else if (item.id === "customize" && selectedId) setStep("customize");
+                else if (item.id === "generate" && lastSavedId) setStep("generate");
               }}
               className={cn(
                 "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition",
@@ -270,7 +374,7 @@ function IndustryTemplatesContent() {
                   >
                     <div
                       className="mb-4 grid h-12 w-12 place-items-center rounded-2xl"
-                      style={{ backgroundColor: color.soft, color: color.value }}
+                      style={{ backgroundColor: color.soft, color: color.secondary }}
                     >
                       <IndustryIcon name={tpl.theme.icon} />
                     </div>
@@ -280,7 +384,7 @@ function IndustryTemplatesContent() {
                     </p>
                     <p className="mt-3 line-clamp-2 text-sm text-[#64748b]">{tpl.description}</p>
                     <p className="mt-4 text-sm font-semibold text-[#0050F8] group-hover:underline">
-                      View template →
+                      Customize template →
                     </p>
                   </button>
                 );
@@ -290,7 +394,7 @@ function IndustryTemplatesContent() {
         </div>
       )}
 
-      {step === "preview" && industry && (
+      {step === "customize" && industry && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <button
@@ -299,119 +403,6 @@ function IndustryTemplatesContent() {
               className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8f0] bg-white px-4 py-2.5 text-sm font-semibold text-[#0f172a]"
             >
               <ArrowLeft className="h-4 w-4" /> Back to industries
-            </button>
-            <button
-              type="button"
-              onClick={() => setStep("customize")}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#001840] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(0,24,64,0.2)]"
-            >
-              Customize template <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-            <article className="rounded-3xl border border-[#e2e8f0] bg-white p-6 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
-              <div className="mb-5 flex items-start gap-4">
-                <div
-                  className="grid h-14 w-14 place-items-center rounded-2xl"
-                  style={{ backgroundColor: accentMeta.soft, color: accentMeta.value }}
-                >
-                  <IndustryIcon name={industry.theme.icon} className="h-7 w-7" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-semibold text-[#0f172a]">{industry.name} Template</h3>
-                  <p className="mt-1 text-sm text-[#64748b]">{industry.description}</p>
-                  <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
-                    {FAMILY_LABELS[industry.family]}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-5 md:grid-cols-2">
-                <PreviewList title="Included modules" items={industry.modules.map((id) => MODULE_CATALOG[id]?.label ?? id)} checked />
-                <PreviewList title="Optional modules" items={industry.optionalModules.map((id) => MODULE_CATALOG[id]?.label ?? id)} />
-              </div>
-
-              <div className="mt-6 grid gap-5 md:grid-cols-2">
-                <PreviewList title="Available roles" items={industry.roles} />
-                <PreviewList title="Key workflows" items={industry.workflows} />
-              </div>
-
-              <div className="mt-6">
-                <h4 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
-                  Special industry screens
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {industry.specialScreens.map((screen) => (
-                    <span
-                      key={screen}
-                      className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-1.5 text-sm font-medium text-[#334155]"
-                    >
-                      {screen}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </article>
-
-            <div className="space-y-6">
-              <article className="rounded-3xl border border-[#e2e8f0] bg-white p-5 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
-                <h4 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
-                  Sidebar preview
-                </h4>
-                <div className="rounded-2xl border border-[#edf2f7] bg-[#f8fbff] p-3">
-                  <div className="mb-3 border-b border-[#edf2f7] pb-3">
-                    <p className="text-sm font-semibold text-[#0f172a]">{industry.name}</p>
-                    <p className="text-xs text-[#64748b]">Restaurant Manager shell</p>
-                  </div>
-                  <div className="space-y-1">
-                    {industry.modules.slice(0, 10).map((id) => (
-                      <div
-                        key={id}
-                        className="rounded-xl px-3 py-2 text-sm font-medium text-[#334155] hover:bg-white"
-                      >
-                        {MODULE_CATALOG[id]?.label ?? id}
-                      </div>
-                    ))}
-                    {industry.modules.length > 10 && (
-                      <p className="px-3 pt-1 text-xs text-[#94a3b8]">
-                        +{industry.modules.length - 10} more modules
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </article>
-
-              <article className="rounded-3xl border border-[#e2e8f0] bg-white p-5 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
-                <h4 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
-                  Dashboard cards
-                </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  {industry.dashboardCards.map((id) => (
-                    <div
-                      key={id}
-                      className="rounded-2xl border border-[#e8eef7] bg-[#f8fafc] px-3 py-3"
-                    >
-                      <p className="text-xs text-[#64748b]">{DASHBOARD_CARD_CATALOG[id]?.label ?? id}</p>
-                      <p className="mt-1 text-lg font-semibold text-[#0f172a]">—</p>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {step === "customize" && industry && (
-        <div className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => setStep("preview")}
-              className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8f0] bg-white px-4 py-2.5 text-sm font-semibold text-[#0f172a]"
-            >
-              <ArrowLeft className="h-4 w-4" /> Back to preview
             </button>
             <button
               type="button"
@@ -424,6 +415,48 @@ function IndustryTemplatesContent() {
 
           <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
             <div className="space-y-6">
+              <Panel title={`${industry.name} template`}>
+                <div className="mb-4 flex items-start gap-4">
+                  <div
+                    className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl"
+                    style={{ backgroundColor: softSecondary, color: secondaryColor }}
+                  >
+                    <IndustryIcon name={industry.theme.icon} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-[#64748b]">{industry.description}</p>
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
+                      {FAMILY_LABELS[industry.family]}
+                    </p>
+                  </div>
+                </div>
+                {modulePlan && (
+                  <div className="mb-4 rounded-2xl border border-[#dbeafe] bg-[#eff6ff] px-4 py-3 text-sm text-[#1e3a8a]">
+                    <p className="font-semibold">Customization model</p>
+                    <p className="mt-1 text-[#1d4ed8]">{modulePlan.summary}</p>
+                  </div>
+                )}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <PreviewList title="Available roles" items={industry.roles} />
+                  <PreviewList title="Key workflows" items={industry.workflows} />
+                </div>
+                <div className="mt-4">
+                  <h4 className="mb-2 text-sm font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
+                    Special industry screens
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {industry.specialScreens.map((screen) => (
+                      <span
+                        key={screen}
+                        className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-1.5 text-sm font-medium text-[#334155]"
+                      >
+                        {screen}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </Panel>
+
               <Panel title="1. Business profile">
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Business name">
@@ -483,22 +516,72 @@ function IndustryTemplatesContent() {
                   </Field>
                 </div>
 
-                <div className="mt-4">
-                  <p className="mb-2 text-sm font-semibold text-[#64748b]">Accent colour</p>
-                  <div className="flex flex-wrap gap-2">
-                    {(Object.keys(ACCENT_COLORS) as AccentColor[]).map((key) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setAccent(key)}
-                        className={cn(
-                          "h-9 w-9 rounded-full border-2 transition",
-                          accent === key ? "border-[#0f172a] scale-110" : "border-transparent",
-                        )}
-                        style={{ backgroundColor: ACCENT_COLORS[key].value }}
-                        title={ACCENT_COLORS[key].label}
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <Field label="Primary colour">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        className="h-11 w-14 cursor-pointer rounded-xl border border-[#e2e8f0] bg-white p-1"
                       />
-                    ))}
+                      <input
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        className="portal-input font-mono uppercase"
+                        placeholder="#001840"
+                      />
+                    </div>
+                  </Field>
+                  <Field label="Secondary colour">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={secondaryColor}
+                        onChange={(e) => setSecondaryColor(e.target.value)}
+                        className="h-11 w-14 cursor-pointer rounded-xl border border-[#e2e8f0] bg-white p-1"
+                      />
+                      <input
+                        value={secondaryColor}
+                        onChange={(e) => setSecondaryColor(e.target.value)}
+                        className="portal-input font-mono uppercase"
+                        placeholder="#0050F8"
+                      />
+                    </div>
+                  </Field>
+                </div>
+                <div className="mt-3">
+                  <p className="mb-2 text-xs font-semibold text-[#94a3b8]">Quick presets</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(Object.keys(ACCENT_COLORS) as AccentColor[]).map((key) => {
+                      const preset = ACCENT_COLORS[key];
+                      const active =
+                        primaryColor.toLowerCase() === preset.primary.toLowerCase() &&
+                        secondaryColor.toLowerCase() === preset.secondary.toLowerCase();
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => {
+                            setPrimaryColor(preset.primary);
+                            setSecondaryColor(preset.secondary);
+                          }}
+                          className={cn(
+                            "inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold",
+                            active
+                              ? "border-[#0f172a] bg-[#f8fafc]"
+                              : "border-[#e2e8f0] bg-white text-[#64748b]",
+                          )}
+                          title={`${preset.primary} / ${preset.secondary}`}
+                        >
+                          <span className="flex h-4 overflow-hidden rounded-full border border-[#e2e8f0]">
+                            <span className="h-4 w-3" style={{ backgroundColor: preset.primary }} />
+                            <span className="h-4 w-3" style={{ backgroundColor: preset.secondary }} />
+                          </span>
+                          {preset.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -520,66 +603,45 @@ function IndustryTemplatesContent() {
                 </div>
               </Panel>
 
-              <Panel title="2. Modules">
-                <p className="mb-4 text-sm text-[#64748b]">
-                  Required modules are locked. Optional packs can be toggled.
+              <Panel title="2. Modules & navigation">
+                <p className="mb-2 text-sm text-[#64748b]">
+                  Build a fully custom dashboard. Toggle any module on/off, and drag cards to set sidebar order. Only Dashboard and Settings stay locked.
                 </p>
+                {modulePlan && (
+                  <p className="mb-4 rounded-xl bg-[#f8fafc] px-3 py-2 text-xs text-[#64748b]">
+                    {modulePlan.summary}
+                  </p>
+                )}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {industry.modules.map((id) => (
-                    <ModuleChip key={id} id={id} locked checked />
-                  ))}
-                  {industry.optionalModules.map((id) => (
-                    <ModuleChip
-                      key={id}
-                      id={id}
-                      checked={enabledModules.includes(id)}
-                      onToggle={() => toggleOptionalModule(id)}
-                    />
-                  ))}
+                  {navItems.map((item) => {
+                    const checked = enabledModules.includes(item.moduleId);
+                    const locked = checked && lockedModules.has(item.moduleId);
+                    const reason = locked
+                      ? getLockReason(industry.id, item.moduleId, enabledModules, availableModules)
+                      : null;
+                    return (
+                      <ModuleChip
+                        key={item.moduleId}
+                        id={item.moduleId}
+                        label={item.label}
+                        checked={checked}
+                        locked={!!locked}
+                        lockReason={reason}
+                        dragging={dragModuleId === item.moduleId}
+                        onToggle={() => toggleModule(item.moduleId)}
+                        onDragStart={() => setDragModuleId(item.moduleId)}
+                        onDragEnd={() => setDragModuleId(null)}
+                        onDrop={() => {
+                          if (dragModuleId) reorderModules(dragModuleId, item.moduleId);
+                          setDragModuleId(null);
+                        }}
+                      />
+                    );
+                  })}
                 </div>
               </Panel>
 
-              <Panel title="3. Navigation">
-                <p className="mb-4 text-sm text-[#64748b]">
-                  Show/hide, rename, and reorder sidebar items.
-                </p>
-                <div className="space-y-2">
-                  {navItems.map((item, index) => (
-                    <div
-                      key={item.moduleId}
-                      className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#e8eef7] bg-[#f8fafc] px-3 py-2"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={item.visible}
-                        disabled={industry.modules.includes(item.moduleId) && item.moduleId === "dashboard"}
-                        onChange={(e) =>
-                          setNavItems((prev) =>
-                            prev.map((n, i) => (i === index ? { ...n, visible: e.target.checked } : n)),
-                          )
-                        }
-                      />
-                      <input
-                        value={item.label}
-                        onChange={(e) =>
-                          setNavItems((prev) =>
-                            prev.map((n, i) => (i === index ? { ...n, label: e.target.value } : n)),
-                          )
-                        }
-                        className="min-w-0 flex-1 rounded-lg border border-[#e2e8f0] bg-white px-3 py-1.5 text-sm font-medium"
-                      />
-                      <button type="button" onClick={() => moveNav(index, -1)} className="rounded-lg border border-[#e2e8f0] bg-white px-2 py-1 text-xs font-semibold">
-                        ↑
-                      </button>
-                      <button type="button" onClick={() => moveNav(index, 1)} className="rounded-lg border border-[#e2e8f0] bg-white px-2 py-1 text-xs font-semibold">
-                        ↓
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </Panel>
-
-              <Panel title="4. Dashboard cards">
+              <Panel title="3. Dashboard cards">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {industry.dashboardCards.map((id) => {
                     const selected = dashboardCards.includes(id);
@@ -646,10 +708,15 @@ function IndustryTemplatesContent() {
                 >
                   <div
                     className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-white"
-                    style={{ background: `linear-gradient(90deg,#001840,${accentMeta.value})` }}
+                    style={{ backgroundColor: primaryColor }}
                   >
                     <span className="truncate">{businessName || industry.name}</span>
-                    <span className="opacity-80">{themeMode}</span>
+                    <span
+                      className="rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                      style={{ backgroundColor: secondaryColor }}
+                    >
+                      {themeMode}
+                    </span>
                   </div>
                   <div className="flex min-h-[280px]">
                     {previewDevice !== "mobile" && (
@@ -659,10 +726,7 @@ function IndustryTemplatesContent() {
                           themeMode === "dark" ? "border-white/10 bg-[#111827]" : "border-[#e2e8f0] bg-white",
                         )}
                       >
-                        {navItems
-                          .filter((n) => n.visible)
-                          .slice(0, 8)
-                          .map((n) => (
+                        {orderedNavForPreview.slice(0, 8).map((n) => (
                             <div key={n.moduleId} className="truncate rounded-lg px-2 py-1.5 font-medium">
                               {n.label}
                             </div>
@@ -683,14 +747,14 @@ function IndustryTemplatesContent() {
                             <p className="truncate text-[10px] opacity-60">
                               {DASHBOARD_CARD_CATALOG[id]?.label}
                             </p>
-                            <p className="mt-1 text-sm font-semibold" style={{ color: accentMeta.value }}>
+                            <p className="mt-1 text-sm font-semibold" style={{ color: secondaryColor }}>
                               •••
                             </p>
                           </div>
                         ))}
                       </div>
                       <p className="mt-3 text-[11px] opacity-60">
-                        {productsLabel} · {enabledModules.length} modules active
+                        {productsLabel} · {enabledModules.length} modules · drag cards to reorder nav
                       </p>
                     </div>
                   </div>
@@ -716,7 +780,7 @@ function IndustryTemplatesContent() {
           <article className="rounded-3xl border border-[#e2e8f0] bg-white p-6 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
             <h4 className="text-lg font-semibold text-[#0f172a]">{businessName}</h4>
             <p className="mt-1 text-sm text-[#64748b]">
-              {industry.name} · {FAMILY_LABELS[industry.family]} · {enabledModules.length} modules · {themeMode} · {accent}
+              {industry.name} · {FAMILY_LABELS[industry.family]} · {enabledModules.length} modules · {themeMode} · {primaryColor} / {secondaryColor}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               {lastSavedId && (
@@ -792,41 +856,91 @@ function PreviewList({
 
 function ModuleChip({
   id,
+  label,
   checked,
   locked,
+  lockReason,
+  dragging,
   onToggle,
+  onDragStart,
+  onDragEnd,
+  onDrop,
 }: {
   id: ModuleId;
+  label?: string;
   checked?: boolean;
   locked?: boolean;
+  lockReason?: string | null;
+  dragging?: boolean;
   onToggle?: () => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  onDrop?: () => void;
 }) {
   const meta = MODULE_CATALOG[id];
   return (
-    <button
-      type="button"
-      disabled={locked}
-      onClick={onToggle}
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "move";
+        onDragStart?.();
+      }}
+      onDragEnd={onDragEnd}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDrop?.();
+      }}
       className={cn(
         "rounded-2xl border px-3 py-3 text-left transition",
-        checked ? "border-[#0050F8] bg-[#eef3ff]" : "border-[#e2e8f0] bg-white",
-        locked && "cursor-default opacity-90",
+        checked ? "border-[#0050F8] bg-[#eef3ff]" : "border-[#e2e8f0] bg-white opacity-80",
+        dragging && "scale-[0.98] border-dashed opacity-60",
       )}
     >
-      <div className="flex items-center gap-2">
-        <span
-          className={cn(
-            "grid h-5 w-5 place-items-center rounded-md text-xs font-bold",
-            checked ? "bg-[#0050F8] text-white" : "bg-[#e2e8f0] text-[#64748b]",
-          )}
+      <div className="flex items-start gap-2">
+        <button
+          type="button"
+          className="mt-0.5 cursor-grab text-[#94a3b8] active:cursor-grabbing"
+          title="Drag to reorder sidebar"
+          aria-label={`Reorder ${label ?? meta?.label ?? id}`}
         >
-          {checked ? "✓" : ""}
-        </span>
-        <p className="text-sm font-semibold text-[#0f172a]">{meta?.label ?? id}</p>
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="min-w-0 flex-1 text-left"
+          title={locked ? lockReason ?? "Locked" : checked ? "Disable module" : "Enable module"}
+        >
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "grid h-5 w-5 shrink-0 place-items-center rounded-md text-xs font-bold",
+                checked ? "bg-[#0050F8] text-white" : "bg-[#e2e8f0] text-[#64748b]",
+              )}
+            >
+              {checked ? "✓" : ""}
+            </span>
+            <p className="truncate text-sm font-semibold text-[#0f172a]">
+              {label ?? meta?.label ?? id}
+            </p>
+            {locked ? <Lock className="ml-auto h-3.5 w-3.5 shrink-0 text-[#94a3b8]" /> : null}
+          </div>
+          <p className="mt-1 line-clamp-2 pl-7 text-xs text-[#64748b]">{meta?.description}</p>
+          {locked ? (
+            <p className="mt-1 pl-7 text-[11px] font-semibold text-[#64748b]">
+              {lockReason ?? "Always on"}
+            </p>
+          ) : (
+            <p className="mt-1 pl-7 text-[11px] font-medium text-[#94a3b8]">
+              {checked
+                ? "Enabled · unselect clears linked modules"
+                : "Off · enable pulls required linked modules"}
+            </p>
+          )}
+        </button>
       </div>
-      <p className="mt-1 line-clamp-2 pl-7 text-xs text-[#64748b]">{meta?.description}</p>
-      {locked && <p className="mt-1 pl-7 text-[11px] font-semibold text-[#94a3b8]">Required</p>}
-    </button>
+    </div>
   );
 }
 

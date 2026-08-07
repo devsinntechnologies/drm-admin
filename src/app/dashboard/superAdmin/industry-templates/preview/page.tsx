@@ -16,7 +16,7 @@ import { getMockDashboardCards, getMockProducts } from "@/template-engine/mock-d
 import { resolveVisibleNav } from "@/template-engine/builder";
 import { getTemplateConfigById } from "@/template-engine/storage";
 import { getIndustryById } from "@/templates/industries";
-import { ACCENT_COLORS } from "@/templates/modules";
+import { colorsFromAccent } from "@/templates/modules";
 import type { CustomizedTemplateConfig } from "@/templates/types";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +48,10 @@ function TemplatePreviewContent() {
     );
   }
 
-  const accent = ACCENT_COLORS[config.accent] ?? ACCENT_COLORS.blue;
+  const fallback = colorsFromAccent(industry.theme.accent);
+  const primary = config.primaryColor || fallback.primary;
+  const secondary = config.secondaryColor || fallback.secondary;
+  const soft = fallback.soft;
   const nav = resolveVisibleNav(config);
   const cards = getMockDashboardCards(config);
   const products = getMockProducts(config);
@@ -76,7 +79,7 @@ function TemplatePreviewContent() {
             </Link>
             <div
               className="grid h-10 w-10 place-items-center rounded-xl"
-              style={{ backgroundColor: accent.soft, color: accent.value }}
+              style={{ backgroundColor: soft, color: secondary }}
             >
               <IndustryIcon name={industry.theme.icon} />
             </div>
@@ -89,7 +92,7 @@ function TemplatePreviewContent() {
           </div>
           <span
             className="rounded-full px-3 py-1 text-xs font-semibold text-white"
-            style={{ backgroundColor: accent.value }}
+            style={{ backgroundColor: primary }}
           >
             Mock data
           </span>
@@ -118,7 +121,7 @@ function TemplatePreviewContent() {
                     "whitespace-nowrap rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition",
                     active ? "text-white shadow-md" : dark ? "text-white/70 hover:bg-white/5" : "text-[#334155] hover:bg-[#f8fafc]",
                   )}
-                  style={active ? { background: `linear-gradient(90deg,#001840,${accent.value})` } : undefined}
+                  style={active ? { backgroundColor: primary } : undefined}
                 >
                   {item.label}
                 </button>
@@ -149,9 +152,9 @@ function TemplatePreviewContent() {
                       <p className={cn("text-sm font-medium", dark ? "text-white/60" : "text-[#64748b]")}>
                         {card.label}
                       </p>
-                      <LayoutDashboard className="h-4 w-4" style={{ color: accent.value }} />
+                      <LayoutDashboard className="h-4 w-4" style={{ color: secondary }} />
                     </div>
-                    <p className="text-2xl font-semibold" style={{ color: accent.value }}>
+                    <p className="text-2xl font-semibold" style={{ color: secondary }}>
                       {card.value}
                     </p>
                     <p className={cn("mt-2 text-xs", dark ? "text-white/40" : "text-[#94a3b8]")}>
@@ -168,7 +171,7 @@ function TemplatePreviewContent() {
               title={config.labels.products}
               products={products}
               dark={dark}
-              accent={accent.value}
+              accent={secondary}
             />
           )}
 
@@ -176,7 +179,8 @@ function TemplatePreviewContent() {
             <PosPreview
               products={products}
               dark={dark}
-              accent={accent.value}
+              accent={secondary}
+              primary={primary}
               productLabel={config.labels.product}
             />
           )}
@@ -190,7 +194,7 @@ function TemplatePreviewContent() {
                 label={nav.find((n) => n.moduleId === activeNav)?.label ?? activeNav}
                 specialScreens={industry.specialScreens}
                 dark={dark}
-                accent={accent.value}
+                accent={secondary}
               />
             )}
         </main>
@@ -271,11 +275,13 @@ function PosPreview({
   products,
   dark,
   accent,
+  primary,
   productLabel,
 }: {
   products: ReturnType<typeof getMockProducts>;
   dark: boolean;
   accent: string;
+  primary: string;
   productLabel: string;
 }) {
   return (
@@ -331,7 +337,7 @@ function PosPreview({
           <button
             type="button"
             className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-white"
-            style={{ backgroundColor: accent }}
+            style={{ backgroundColor: primary }}
           >
             Charge
           </button>

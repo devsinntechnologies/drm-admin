@@ -200,7 +200,9 @@ export type CustomizedTemplateConfig = {
   location: string;
   branchCount: number;
   logoDataUrl?: string;
-  accent: AccentColor;
+  /** Solid brand colours — no gradients */
+  primaryColor: string;
+  secondaryColor: string;
   themeMode: ThemeMode;
   enabledModules: ModuleId[];
   navigation: Array<{ moduleId: ModuleId; label: string; visible: boolean }>;
