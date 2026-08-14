@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, ChefHat, ClipboardList, Crown, LayoutDashboard } from "lucide-react";
 import Image from "next/image";
-
 const roles = [
   {
     title: "Super Admin",
