@@ -59,6 +59,7 @@ import { useTables } from "@/hooks/useTables";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { BASE_URL } from "@/lib/constant";
 import { cn, buildOrderPatchItem, buildOrderRemoveItem, isUuid } from "@/lib/utils";
+import { SelfOrderRequestsPanel } from "@/components/orders/SelfOrderRequestsPanel";
 
 const CustomTrashIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -1431,6 +1432,8 @@ function OrdersContent() {
   return (
     <AdminShell activeTab="orders">
       <main className="w-full space-y-8 bg-[#f8fafc] min-h-[calc(100vh-80px)]">
+        <SelfOrderRequestsPanel onApproved={refetch} />
+
         {displayedOrders.length > 0 && (
           <button
             onClick={() => setView("create")}

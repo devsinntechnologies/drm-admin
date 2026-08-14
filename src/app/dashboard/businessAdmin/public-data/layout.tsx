@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Loading from "@/components/common/Loading";
-import { Eye, FolderTree, Globe2, Package, Settings2 } from "lucide-react";
+import { Eye, FolderTree, Globe2, Package, QrCode, Settings2 } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
@@ -35,6 +35,12 @@ const tabs = [
     href: `${PUBLIC_DATA_BASE}/catalog`,
     label: "Catalog Preview",
     icon: Eye,
+  },
+  {
+    key: "tables",
+    href: `${PUBLIC_DATA_BASE}/tables`,
+    label: "Tables",
+    icon: QrCode,
   },
 ] as const;
 

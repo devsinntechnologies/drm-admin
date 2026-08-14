@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, Box, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Edit, Loader2, Plus, Search, Store, Trash2, Users, LayoutGrid, RotateCcw, Image as ImageIcon, Save, X } from "lucide-react";
+import { AlertCircle, Box, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Edit, Loader2, Plus, QrCode, Search, Store, Trash2, Users, LayoutGrid, RotateCcw, Image as ImageIcon, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
@@ -20,6 +20,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { BASE_URL } from "@/lib/constant";
+import { TableQrDialog } from "@/components/tables/TableQrDialog";
 
 function ErrorAlert({ message }: { message: unknown }) {
   const errorMessage = normalizeErrorMessage(message, "Error loading tables");
@@ -37,9 +38,11 @@ function ErrorAlert({ message }: { message: unknown }) {
 function TableCard({
   table,
   onEdit,
+  onGenerateQr,
 }: {
   table: TableRecord;
   onEdit: (id: string) => void;
+  onGenerateQr: (table: TableRecord) => void;
 }) {
   const imageUrl = table.image
     ? (table.image.startsWith("http") ? table.image : `${BASE_URL}/${table.image}`)
@@ -74,13 +77,22 @@ function TableCard({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onEdit(table.id)}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border border-slate-200 bg-white text-xs font-black text-black hover:bg-slate-50 transition-colors"
-        >
-          <Edit className="h-4 w-4" /> Edit
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => onGenerateQr(table)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border border-[#c7d7f5] bg-[#EEF3FF] text-xs font-black text-[#001840] hover:bg-[#e8effe] transition-colors"
+          >
+            <QrCode className="h-4 w-4" /> Generate QR
+          </button>
+          <button
+            type="button"
+            onClick={() => onEdit(table.id)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border border-slate-200 bg-white text-xs font-black text-black hover:bg-slate-50 transition-colors"
+          >
+            <Edit className="h-4 w-4" /> Edit
+          </button>
+        </div>
       </div>
     </article>
   );
@@ -99,6 +111,7 @@ function TablesContent() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [existingImage, setExistingImage] = useState<string | null>(null);
+  const [qrTable, setQrTable] = useState<TableRecord | null>(null);
 
   const [form, setForm] = useState({
     tableNumber: "",
@@ -218,12 +231,25 @@ function TablesContent() {
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {tables.map((table) => (
-              <TableCard key={table.id} table={table} onEdit={onOpenEdit} />
+              <TableCard
+                key={table.id}
+                table={table}
+                onEdit={onOpenEdit}
+                onGenerateQr={setQrTable}
+              />
             ))}
           </div>
         )}
 
         <PortalRefreshFab onClick={() => fetchTables()} loading={loading} />
+
+        <TableQrDialog
+          table={qrTable}
+          open={!!qrTable}
+          onOpenChange={(next) => {
+            if (!next) setQrTable(null);
+          }}
+        />
 
         {/* Edit Dialog */}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
