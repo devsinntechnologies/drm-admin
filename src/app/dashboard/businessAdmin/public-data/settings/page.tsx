@@ -205,7 +205,9 @@ export default function PublicDataSettingsPage() {
               placeholder={"https://shop.example.com\nhttps://menu.example.com"}
               className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#001840]"
             />
-            <p className="mt-1 text-xs text-[#64748b]">One origin per line. Wildcard * is not allowed when enabled.</p>
+            <p className="mt-1 text-xs text-[#64748b]">
+              One origin per line. The first origin is used as the public website domain for table QR codes (`/self/tableId`). Wildcard * is not allowed when enabled.
+            </p>
           </div>
 
           <button

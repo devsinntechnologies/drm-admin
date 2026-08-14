@@ -4,6 +4,7 @@ import { Poppins } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 import ReduxProvider from "@/components/providers/ReduxProvider";
+import StaffRealtimeProvider from "@/components/providers/StaffRealtimeProvider";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -29,7 +30,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={poppins.variable} suppressHydrationWarning>
-        <ReduxProvider>{children}</ReduxProvider>
+        <ReduxProvider>
+          <StaffRealtimeProvider>{children}</StaffRealtimeProvider>
+        </ReduxProvider>
         <Toaster 
           position="top-right" 
           richColors 

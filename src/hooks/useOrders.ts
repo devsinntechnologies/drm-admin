@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { BASE_URL } from "@/lib/constant";
+import { STAFF_REALTIME_EVENTS } from "@/lib/staff-realtime";
 
 function parseApiError(text: string, fallback: string) {
   try {
@@ -179,6 +180,14 @@ export function useOrders(options: UseOrdersOptions = {}) {
 
   useEffect(() => {
     fetchOrders(1, range);
+  }, [fetchOrders, range]);
+
+  useEffect(() => {
+    const refresh = () => {
+      void fetchOrders(1, range);
+    };
+    window.addEventListener(STAFF_REALTIME_EVENTS.ORDERS_CHANGED, refresh);
+    return () => window.removeEventListener(STAFF_REALTIME_EVENTS.ORDERS_CHANGED, refresh);
   }, [fetchOrders, range]);
 
   const createOrder = useCallback(
