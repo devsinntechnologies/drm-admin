@@ -320,24 +320,26 @@ export async function generateTableQrCard(options: {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not create QR canvas");
 
-  const margin = 48;
+  const margin = 0;
   const cardX = margin;
   const cardY = margin;
   const cardW = width - margin * 2;
   const cardH = height - margin * 2;
-  const headerH = 520;
-  const pillH = 132;
-  const qrSize = 1280;
+  const headerH = 500;
+  const footerH = 360;
+  const pillH = 128;
   const businessName = options.businessName || "Restaurant";
   const tagline = options.tagline?.trim() || DEFAULT_TAGLINE;
   const tableNumber = options.tableNumber || "Table";
   const compactTable = tableNumber.length <= 3;
-  const tableLabelY = cardY + headerH + 58;
-  const tableNumberY = tableLabelY + (compactTable ? 150 : 120);
-  const qrY = tableNumberY + 46;
-  const pillY = qrY + qrSize + 36;
-  const footerY = pillY + pillH + 20;
-  const footerH = cardY + cardH - footerY;
+  const footerY = cardY + cardH - footerH;
+  const pillY = footerY - 20 - pillH;
+  const tableLabelY = cardY + headerH + 44;
+  const tableNumberY = tableLabelY + (compactTable ? 136 : 108);
+  const qrTop = tableNumberY + 24;
+  const qrBottom = pillY - 24;
+  const qrSize = Math.max(640, Math.min(cardW - 240, qrBottom - qrTop));
+  const qrY = qrTop + Math.max(0, (qrBottom - qrTop - qrSize) / 2);
 
   ctx.fillStyle = "#eef1f4";
   ctx.fillRect(0, 0, width, height);
@@ -370,7 +372,7 @@ export async function generateTableQrCard(options: {
     options.businessLogoUrl ? loadImage(options.businessLogoUrl) : Promise.resolve(null),
     loadImage(options.poweredByLogoUrl || "/diginizam-logo.svg"),
     QRCode.toDataURL(options.url, {
-      width: 1280,
+      width: Math.round(qrSize),
       margin: 2,
       errorCorrectionLevel: "H",
       color: { dark: "#111111", light: "#ffffff" },
@@ -436,23 +438,23 @@ export async function generateTableQrCard(options: {
 
   ctx.fillStyle = MUTED;
   ctx.font = "600 26px system-ui, sans-serif";
-  ctx.fillText("Powered by", width / 2, footerY + 78);
+  ctx.fillText("Powered by", width / 2, footerY + 86);
 
   if (poweredByLogo) {
-    drawContainedImage(ctx, poweredByLogo, width / 2 - 240, footerY + 92, 480, 88);
+    drawContainedImage(ctx, poweredByLogo, width / 2 - 240, footerY + 104, 480, 88);
   } else {
     ctx.fillStyle = DIGINIZAM_BLUE;
     ctx.font = "800 44px system-ui, sans-serif";
-    ctx.fillText("DIGINIZAM", width / 2, footerY + 160);
+    ctx.fillText("DIGINIZAM", width / 2, footerY + 170);
   }
 
   ctx.fillStyle = MUTED;
   ctx.font = "500 22px system-ui, sans-serif";
-  ctx.fillText("Simplify. Manage. Grow —", width / 2, footerY + 206);
+  ctx.fillText("Simplify. Manage. Grow —", width / 2, footerY + 230);
 
   ctx.fillStyle = DIGINIZAM_BLUE;
   ctx.font = "700 30px system-ui, sans-serif";
-  ctx.fillText("diginizam.com", width / 2, footerY + 250);
+  ctx.fillText("diginizam.com", width / 2, footerY + 278);
 
   ctx.restore();
 
