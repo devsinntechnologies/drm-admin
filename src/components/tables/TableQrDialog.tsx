@@ -59,6 +59,7 @@ export function TableQrDialog({
       url,
       tableNumber: table.tableNumber,
       businessName: settings?.displayName || "Restaurant",
+      tagline: settings?.description,
       businessLogoUrl: imageUrl(settings?.logo),
       poweredByLogoUrl: "/diginizam-logo.svg",
       primaryColor: settings?.primaryColor,

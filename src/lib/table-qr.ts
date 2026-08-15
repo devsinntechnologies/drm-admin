@@ -2,8 +2,9 @@ const A4_WIDTH_PX = 2480;
 const A4_HEIGHT_PX = 3508;
 const DEFAULT_PRIMARY = "#001840";
 const DIGINIZAM_BLUE = "#0149EC";
-const INK = "#0f172a";
-const MUTED = "#64748b";
+const INK = "#1a202c";
+const MUTED = "#6b7280";
+const DEFAULT_TAGLINE = "Delicious Food. Great Experience.";
 
 export function storefrontSelfOrderUrl(
   origins: string[] | undefined,
@@ -27,15 +28,6 @@ export function storefrontSelfOrderUrl(
 function normalizeHex(value?: string | null, fallback = DEFAULT_PRIMARY) {
   const hex = (value || "").trim();
   return /^#([0-9a-fA-F]{6})$/.test(hex) ? hex : fallback;
-}
-
-function mixWithWhite(hex: string, amount = 0.88) {
-  const raw = hex.replace("#", "");
-  const r = parseInt(raw.slice(0, 2), 16);
-  const g = parseInt(raw.slice(2, 4), 16);
-  const b = parseInt(raw.slice(4, 6), 16);
-  const mix = (channel: number) => Math.round(channel + (255 - channel) * amount);
-  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement | null> {
@@ -80,6 +72,197 @@ function drawContainedImage(
   ctx.drawImage(image, x + (maxWidth - width) / 2, y + (maxHeight - height) / 2, width, height);
 }
 
+function drawDotGrid(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+) {
+  ctx.fillStyle = color;
+  for (let row = 0; row < 4; row += 1) {
+    for (let col = 0; col < 4; col += 1) {
+      ctx.beginPath();
+      ctx.arc(x + col * 20, y + row * 20, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawHeaderWave(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  color: string,
+) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + width, y);
+  ctx.lineTo(x + width, y + height + 20);
+  ctx.bezierCurveTo(
+    x + width * 0.72,
+    y + height + 150,
+    x + width * 0.32,
+    y + height - 90,
+    x,
+    y + height + 36,
+  );
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawFooterBand(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  accent: string,
+) {
+  ctx.fillStyle = "#f4f6f8";
+  ctx.beginPath();
+  ctx.moveTo(x, y + 40);
+  ctx.bezierCurveTo(x + width * 0.28, y - 36, x + width * 0.7, y + 70, x + width, y + 8);
+  ctx.lineTo(x + width, y + height);
+  ctx.lineTo(x, y + height);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(x + 40, y + 40);
+  ctx.bezierCurveTo(x + width * 0.28, y - 36, x + width * 0.7, y + 70, x + width - 40, y + 8);
+  ctx.stroke();
+}
+
+function drawTableLabel(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  y: number,
+  accent: string,
+) {
+  ctx.fillStyle = accent;
+  ctx.font = "700 36px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("TABLE", cx, y);
+  const labelWidth = ctx.measureText("TABLE").width;
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 5;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(cx - labelWidth / 2 - 90, y - 12);
+  ctx.lineTo(cx - labelWidth / 2 - 24, y - 12);
+  ctx.moveTo(cx + labelWidth / 2 + 24, y - 12);
+  ctx.lineTo(cx + labelWidth / 2 + 90, y - 12);
+  ctx.stroke();
+  ctx.lineCap = "butt";
+}
+
+function drawFoodIcons(ctx: CanvasRenderingContext2D, cardX: number, cardW: number, top: number) {
+  ctx.save();
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.28)";
+  ctx.lineWidth = 6;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  const burger = (x: number, y: number) => {
+    ctx.beginPath();
+    ctx.arc(x, y, 28, Math.PI, 0);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - 30, y + 10);
+    ctx.lineTo(x + 30, y + 10);
+    ctx.moveTo(x - 28, y + 22);
+    ctx.quadraticCurveTo(x, y + 34, x + 28, y + 22);
+    ctx.stroke();
+  };
+  const bowl = (x: number, y: number) => {
+    ctx.beginPath();
+    ctx.moveTo(x - 28, y);
+    ctx.quadraticCurveTo(x, y + 40, x + 28, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - 8, y - 18);
+    ctx.quadraticCurveTo(x - 4, y - 30, x - 8, y - 40);
+    ctx.moveTo(x + 8, y - 16);
+    ctx.quadraticCurveTo(x + 12, y - 28, x + 8, y - 38);
+    ctx.stroke();
+  };
+  const pizza = (x: number, y: number) => {
+    ctx.beginPath();
+    ctx.moveTo(x, y - 32);
+    ctx.lineTo(x + 28, y + 28);
+    ctx.lineTo(x - 28, y + 28);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x, y + 4, 5, 0, Math.PI * 2);
+    ctx.stroke();
+  };
+  const cup = (x: number, y: number) => {
+    ctx.beginPath();
+    ctx.moveTo(x - 18, y - 20);
+    ctx.lineTo(x - 12, y + 28);
+    ctx.lineTo(x + 12, y + 28);
+    ctx.lineTo(x + 18, y - 20);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x + 22, y, 12, -0.6, 0.6);
+    ctx.stroke();
+  };
+  const cloche = (x: number, y: number) => {
+    ctx.beginPath();
+    ctx.arc(x, y + 8, 30, Math.PI, 0);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - 36, y + 10);
+    ctx.lineTo(x + 36, y + 10);
+    ctx.moveTo(x - 6, y - 28);
+    ctx.lineTo(x + 6, y - 28);
+    ctx.stroke();
+  };
+
+  burger(cardX + 160, top + 80);
+  bowl(cardX + cardW - 180, top + 70);
+  pizza(cardX + 130, top + 520);
+  cup(cardX + cardW - 150, top + 480);
+  cloche(cardX + 170, top + 980);
+  bowl(cardX + cardW - 190, top + 1020);
+  ctx.restore();
+}
+
+function drawScanGlyph(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
+  ctx.save();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 6;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  roundRect(ctx, cx - 14, cy - 22, 28, 44, 6);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - 6, cy - 16);
+  ctx.lineTo(cx + 6, cy - 16);
+  ctx.stroke();
+  const corners: Array<[number, number, number, number, number, number]> = [
+    [cx - 28, cy - 16, cx - 28, cy - 26, cx - 16, cy - 26],
+    [cx + 16, cy - 26, cx + 28, cy - 26, cx + 28, cy - 16],
+    [cx - 28, cy + 16, cx - 28, cy + 26, cx - 16, cy + 26],
+    [cx + 16, cy + 26, cx + 28, cy + 26, cx + 28, cy + 16],
+  ];
+  corners.forEach(([x1, y1, x2, y2, x3, y3]) => {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.lineTo(x3, y3);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
 function drawBusinessMark(
   ctx: CanvasRenderingContext2D,
   logo: HTMLImageElement | null,
@@ -90,33 +273,27 @@ function drawBusinessMark(
   primary: string,
 ) {
   ctx.save();
-  ctx.shadowColor = "rgba(15, 23, 42, 0.18)";
-  ctx.shadowBlur = 28;
-  ctx.shadowOffsetY = 10;
+  ctx.shadowColor = "rgba(15, 23, 42, 0.14)";
+  ctx.shadowBlur = 20;
+  ctx.shadowOffsetY = 6;
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.fillStyle = "#ffffff";
   ctx.fill();
   ctx.restore();
 
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(255,255,255,0.55)";
-  ctx.lineWidth = 10;
-  ctx.stroke();
-
   if (logo) {
     ctx.save();
     ctx.beginPath();
-    ctx.arc(cx, cy, radius - 16, 0, Math.PI * 2);
+    ctx.arc(cx, cy, radius - 10, 0, Math.PI * 2);
     ctx.clip();
-    drawContainedImage(ctx, logo, cx - radius + 22, cy - radius + 22, (radius - 22) * 2, (radius - 22) * 2);
+    drawContainedImage(ctx, logo, cx - radius + 16, cy - radius + 16, (radius - 16) * 2, (radius - 16) * 2);
     ctx.restore();
     return;
   }
 
   ctx.fillStyle = primary;
-  ctx.font = "800 92px system-ui, sans-serif";
+  ctx.font = "800 84px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText((name.trim()[0] || "D").toUpperCase(), cx, cy + 4);
@@ -127,6 +304,7 @@ export async function generateTableQrCard(options: {
   url: string;
   tableNumber: string;
   businessName: string;
+  tagline?: string | null;
   businessLogoUrl?: string | null;
   poweredByLogoUrl?: string | null;
   primaryColor?: string | null;
@@ -142,121 +320,141 @@ export async function generateTableQrCard(options: {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not create QR canvas");
 
-  const pad = 96;
-  const cardX = pad;
-  const cardY = pad;
-  const cardW = width - pad * 2;
-  const cardH = height - pad * 2;
-  const headerH = 720;
-  const footerH = 360;
+  const margin = 48;
+  const cardX = margin;
+  const cardY = margin;
+  const cardW = width - margin * 2;
+  const cardH = height - margin * 2;
+  const headerH = 640;
+  const footerH = 400;
+  const pillH = 148;
+  const qrSize = 1120;
   const businessName = options.businessName || "Restaurant";
+  const tagline = options.tagline?.trim() || DEFAULT_TAGLINE;
+  const tableNumber = options.tableNumber || "Table";
+  const footerY = cardY + cardH - footerH;
+  const pillY = footerY - 28 - pillH;
+  const qrY = pillY - 52 - qrSize;
+  const bodyTop = cardY + headerH;
 
-  ctx.fillStyle = mixWithWhite(primary, 0.93);
+  ctx.fillStyle = "#eef1f4";
   ctx.fillRect(0, 0, width, height);
 
   ctx.save();
-  ctx.shadowColor = "rgba(15, 23, 42, 0.16)";
-  ctx.shadowBlur = 48;
-  ctx.shadowOffsetY = 18;
+  ctx.shadowColor = "rgba(15, 23, 42, 0.12)";
+  ctx.shadowBlur = 28;
+  ctx.shadowOffsetY = 10;
   ctx.fillStyle = "#ffffff";
-  roundRect(ctx, cardX, cardY, cardW, cardH, 56);
+  roundRect(ctx, cardX, cardY, cardW, cardH, 36);
   ctx.fill();
   ctx.restore();
 
   ctx.save();
-  roundRect(ctx, cardX, cardY, cardW, cardH, 56);
+  roundRect(ctx, cardX, cardY, cardW, cardH, 36);
   ctx.clip();
 
-  ctx.fillStyle = primary;
-  ctx.fillRect(cardX, cardY, cardW, headerH);
-  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  drawHeaderWave(ctx, cardX, cardY, cardW, headerH, primary);
+  ctx.fillStyle = "rgba(255,255,255,0.10)";
   ctx.beginPath();
-  ctx.arc(cardX + 180, cardY + 80, 260, 0, Math.PI * 2);
+  ctx.arc(cardX + 180, cardY + 80, 210, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(cardX + cardW - 80, cardY + headerH - 40, 200, 0, Math.PI * 2);
+  ctx.arc(cardX + cardW - 90, cardY + headerH - 10, 170, 0, Math.PI * 2);
   ctx.fill();
+  drawDotGrid(ctx, cardX + 70, cardY + 64, "rgba(255,255,255,0.28)");
+  drawDotGrid(ctx, cardX + cardW - 146, cardY + 64, "rgba(255,255,255,0.28)");
 
   const [businessLogo, poweredByLogo, qrDataUrl] = await Promise.all([
     options.businessLogoUrl ? loadImage(options.businessLogoUrl) : Promise.resolve(null),
     loadImage(options.poweredByLogoUrl || "/diginizam-logo.svg"),
     QRCode.toDataURL(options.url, {
-      width: 1120,
+      width: 900,
       margin: 2,
       errorCorrectionLevel: "H",
       color: { dark: "#111111", light: "#ffffff" },
     }),
   ]);
 
-  const markY = cardY + 250;
-  drawBusinessMark(ctx, businessLogo, businessName, width / 2, markY, 128, primary);
+  drawBusinessMark(ctx, businessLogo, businessName, width / 2, cardY + 228, 118, primary);
 
   ctx.fillStyle = "#ffffff";
-  ctx.font = "800 78px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(businessName, width / 2, cardY + 470, cardW - 200);
+  ctx.font = "800 70px system-ui, sans-serif";
+  ctx.fillText(businessName, width / 2, cardY + 420, cardW - 200);
+  ctx.font = "600 34px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
+  ctx.fillText(tagline, width / 2, cardY + 482, cardW - 260);
 
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(width / 2 - 120, cardY + 520);
-  ctx.lineTo(width / 2 + 120, cardY + 520);
-  ctx.stroke();
+  drawFoodIcons(ctx, cardX, cardW, bodyTop);
 
-  ctx.fillStyle = MUTED;
-  ctx.font = "700 36px system-ui, sans-serif";
-  ctx.fillText("T A B L E", width / 2, cardY + headerH + 130);
+  const tableBlockBottom = qrY - 36;
+  const tableBlockMid = (bodyTop + 70 + tableBlockBottom) / 2;
+  drawTableLabel(ctx, width / 2, tableBlockMid - 70, primary);
 
+  const compactTable = tableNumber.length <= 3;
   ctx.fillStyle = INK;
-  ctx.font = "800 132px system-ui, sans-serif";
-  ctx.fillText(options.tableNumber || "Table", width / 2, cardY + headerH + 280, cardW - 220);
+  ctx.font = compactTable ? "800 176px system-ui, sans-serif" : "800 96px system-ui, sans-serif";
+  ctx.fillText(tableNumber, width / 2, tableBlockMid + 90, cardW - 280);
 
-  const qrSize = 1080;
   const qrX = (width - qrSize) / 2;
-  const qrY = cardY + headerH + 360;
   const qrImage = await loadImage(qrDataUrl);
   if (qrImage) {
-    ctx.fillStyle = "#f8fafc";
-    roundRect(ctx, qrX - 56, qrY - 56, qrSize + 112, qrSize + 112, 40);
-    ctx.fill();
-    ctx.strokeStyle = "#e2e8f0";
-    ctx.lineWidth = 6;
-    ctx.stroke();
     ctx.fillStyle = "#ffffff";
-    roundRect(ctx, qrX - 16, qrY - 16, qrSize + 32, qrSize + 32, 24);
+    roundRect(ctx, qrX - 28, qrY - 28, qrSize + 56, qrSize + 56, 28);
     ctx.fill();
+    ctx.strokeStyle = primary;
+    ctx.lineWidth = 7;
+    ctx.stroke();
     ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
   }
 
-  ctx.fillStyle = MUTED;
-  ctx.font = "600 44px system-ui, sans-serif";
-  ctx.fillText("Scan to order from this table", width / 2, qrY + qrSize + 110);
-
-  const footerY = cardY + cardH - footerH;
-  ctx.fillStyle = "#f8fafc";
-  ctx.fillRect(cardX, footerY, cardW, footerH);
-  ctx.strokeStyle = "#e2e8f0";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(cardX + 160, footerY);
-  ctx.lineTo(cardX + cardW - 160, footerY);
+  const pillW = 1320;
+  const pillX = (width - pillW) / 2;
+  ctx.fillStyle = "#ffffff";
+  roundRect(ctx, pillX, pillY, pillW, pillH, 74);
+  ctx.fill();
+  ctx.strokeStyle = primary;
+  ctx.lineWidth = 6;
   ctx.stroke();
 
+  ctx.beginPath();
+  ctx.arc(pillX + 86, pillY + pillH / 2, 48, 0, Math.PI * 2);
+  ctx.fillStyle = primary;
+  ctx.fill();
+  drawScanGlyph(ctx, pillX + 86, pillY + pillH / 2);
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = INK;
+  ctx.font = "800 38px system-ui, sans-serif";
+  ctx.fillText("Scan to order from this table", pillX + 168, pillY + 62);
   ctx.fillStyle = MUTED;
-  ctx.font = "600 32px system-ui, sans-serif";
-  ctx.fillText("Powered by", width / 2, footerY + 78);
+  ctx.font = "600 28px system-ui, sans-serif";
+  ctx.fillText("View menu  •  Choose items  •  Place order", pillX + 168, pillY + 106);
+  ctx.textAlign = "center";
+
+  drawFooterBand(ctx, cardX, footerY, cardW, footerH, primary);
+  drawDotGrid(ctx, cardX + 70, cardY + cardH - 140, "rgba(148,163,184,0.38)");
+  drawDotGrid(ctx, cardX + cardW - 146, cardY + cardH - 140, "rgba(148,163,184,0.38)");
+
+  ctx.fillStyle = MUTED;
+  ctx.font = "600 28px system-ui, sans-serif";
+  ctx.fillText("Powered by", width / 2, footerY + 118);
 
   if (poweredByLogo) {
-    drawContainedImage(ctx, poweredByLogo, width / 2 - 280, footerY + 100, 560, 128);
+    drawContainedImage(ctx, poweredByLogo, width / 2 - 270, footerY + 136, 540, 104);
   } else {
-    ctx.fillStyle = INK;
-    ctx.font = "800 56px system-ui, sans-serif";
-    ctx.fillText("DigiNizam", width / 2, footerY + 180);
+    ctx.fillStyle = DIGINIZAM_BLUE;
+    ctx.font = "800 48px system-ui, sans-serif";
+    ctx.fillText("DIGINIZAM", width / 2, footerY + 210);
   }
 
+  ctx.fillStyle = MUTED;
+  ctx.font = "500 24px system-ui, sans-serif";
+  ctx.fillText("Simplify. Manage. Grow —", width / 2, footerY + 268);
+
   ctx.fillStyle = DIGINIZAM_BLUE;
-  ctx.font = "700 38px system-ui, sans-serif";
-  ctx.fillText("diginizam.com", width / 2, footerY + 280);
+  ctx.font = "700 32px system-ui, sans-serif";
+  ctx.fillText("diginizam.com", width / 2, footerY + 322);
 
   ctx.restore();
 
