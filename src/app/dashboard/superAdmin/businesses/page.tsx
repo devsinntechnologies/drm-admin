@@ -4,6 +4,7 @@ import Image from "next/image";
 import {
   Building2,
   ChevronDown,
+  Copy,
   Mail,
   MapPin,
   Phone,
@@ -37,6 +38,7 @@ import {
   usePatchBusinessByIdMutation,
 } from "@/hooks/useBusiness";
 import { saveBusinessProfile, getBusinessProfile } from "@/lib/business-profile";
+import { normalizeErrorMessage } from "@/lib/utils";
 import { INDUSTRY_TEMPLATES } from "@/templates/industries";
 import { colorsFromAccent } from "@/templates/modules";
 
@@ -86,6 +88,14 @@ function BusinessesContent() {
   const [statusOpen, setStatusOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const [deleteTargetBusiness, setDeleteTargetBusiness] = useState<BusinessItem | null>(null);
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    email: string;
+    password: string;
+    businessName: string;
+    emailSent: boolean;
+    emailError?: string;
+  } | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All Status" | BusinessItem["status"]>("All Status");
   const [planFilter, setPlanFilter] = useState<"All Plans" | BusinessItem["plan"]>("All Plans");
@@ -181,21 +191,30 @@ function BusinessesContent() {
       industryId: "retail-store",
     });
     setCountryCode("+92");
+    setFormError(null);
   };
 
   const handleCreateBusiness = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setFormError(null);
 
     const toastId = toast.loading(editingBusinessId ? "Updating business..." : "Creating business...");
 
     try {
       const phoneDigits = form.phoneNumber.replace(/\D/g, "");
+      if (!phoneDigits) {
+        throw new Error("Enter a valid phone number.");
+      }
+      if (!form.planId) {
+        throw new Error("Select a plan.");
+      }
+
       const payload = {
-        businessName: form.businessName,
-        address: form.address,
+        businessName: form.businessName.trim(),
+        address: form.address.trim(),
         phone: `${countryCode}${phoneDigits}`,
-        email: form.email,
-        manager: form.manager,
+        email: form.email.trim(),
+        manager: form.manager.trim(),
         planId: form.planId,
       };
 
@@ -209,6 +228,7 @@ function BusinessesContent() {
           primaryColor: colors.primary,
           secondaryColor: colors.secondary,
         });
+        toast.success("Business updated successfully.", { id: toastId });
       } else {
         const created = await createBusiness(payload).unwrap();
         const tpl = INDUSTRY_TEMPLATES.find((t) => t.id === form.industryId);
@@ -221,19 +241,41 @@ function BusinessesContent() {
           typography: "Poppins",
           layoutStyle: "comfortable",
         });
+
+        const emailSent = created.credentialsEmailSent === true;
+        const emailError = created.credentialsEmailError;
+
+        if (created.temporaryPassword) {
+          setCreatedCredentials({
+            email: created.loginEmail || created.ownerEmail || payload.email,
+            password: created.temporaryPassword,
+            businessName: created.businessName || payload.businessName,
+            emailSent,
+            emailError,
+          });
+        }
+
+        if (emailSent) {
+          toast.success("Business created. Login details were emailed to the owner.", { id: toastId });
+        } else {
+          toast.success("Business created.", { id: toastId });
+          toast.warning(
+            emailError ||
+              "The login password email was not sent. Copy the password from the dialog and share it with the owner.",
+          );
+        }
       }
-      toast.success(editingBusinessId ? "Business updated successfully." : "Business created successfully.", { id: toastId });
       void refetch();
       setIsAddBusinessOpen(false);
       setEditingBusinessId(null);
       resetForm();
     } catch (err) {
-      toast.error(
-        editingBusinessId
-          ? "Failed to update business. Please try again."
-          : "Failed to create business. Please try again.",
-        { id: toastId }
+      const message = normalizeErrorMessage(
+        err,
+        editingBusinessId ? "Failed to update business. Please try again." : "Failed to create business. Please try again.",
       );
+      setFormError(message);
+      toast.error(message, { id: toastId });
     }
   };
 
@@ -264,8 +306,8 @@ function BusinessesContent() {
         industryId: getBusinessProfile(id, business.businessName).industryId,
       });
       toast.dismiss(toastId);
-    } catch {
-      toast.error("Failed to load business details.", { id: toastId });
+    } catch (err) {
+      toast.error(normalizeErrorMessage(err, "Failed to load business details."), { id: toastId });
     }
   };
 
@@ -276,8 +318,8 @@ function BusinessesContent() {
       toast.success("Business status updated successfully.", { id: toastId });
       void refetch();
       setDeleteTargetBusiness(null);
-    } catch {
-      toast.error("Failed to update business status. Please try again.", { id: toastId });
+    } catch (err) {
+      toast.error(normalizeErrorMessage(err, "Failed to update business status. Please try again."), { id: toastId });
     }
   };
 
@@ -320,6 +362,11 @@ function BusinessesContent() {
             </DialogHeader>
 
             <form className="grid gap-4" onSubmit={handleCreateBusiness}>
+              {formError ? (
+                <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-sm text-[#b91c1c]">
+                  {formError}
+                </div>
+              ) : null}
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
                 Business Name
                 <input
@@ -755,6 +802,98 @@ function BusinessesContent() {
               {isDeletingBusiness ? "Deactivating..." : "Deactivate"}
             </button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(createdCredentials)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCreatedCredentials(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Owner login credentials</DialogTitle>
+            <DialogDescription>
+              {createdCredentials
+                ? `Save these for ${createdCredentials.businessName}. The password is shown only once.`
+                : "Save these credentials. The password is shown only once."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {createdCredentials ? (
+            <div className="mt-2 grid gap-3">
+              <div className="rounded-xl border border-[#e5e7eb] bg-[#f8fafc] px-3 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#657084]">Login email</p>
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <p className="break-all text-sm font-semibold text-[#111827]">{createdCredentials.email}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(createdCredentials.email);
+                      toast.success("Email copied");
+                    }}
+                    className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-[#d7dbe4] px-2.5 text-xs font-semibold text-[#374151]"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[#e5e7eb] bg-[#f8fafc] px-3 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#657084]">Temporary password</p>
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <p className="break-all font-mono text-sm font-semibold text-[#111827]">{createdCredentials.password}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(createdCredentials.password);
+                      toast.success("Password copied");
+                    }}
+                    className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-[#d7dbe4] px-2.5 text-xs font-semibold text-[#374151]"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy
+                  </button>
+                </div>
+              </div>
+
+              {createdCredentials.emailSent ? (
+                <p className="rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-2 text-xs text-[#166534]">
+                  These credentials were also emailed to {createdCredentials.email}.
+                </p>
+              ) : (
+                <p className="rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-xs text-[#92400e]">
+                  {createdCredentials.emailError || "The password email was not sent."} Copy these details and share them with the owner.
+                </p>
+              )}
+
+              <div className="mt-1 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(
+                      `Email: ${createdCredentials.email}\nPassword: ${createdCredentials.password}`,
+                    );
+                    toast.success("Credentials copied");
+                  }}
+                  className="inline-flex h-10 items-center rounded-xl border border-[#d7dbe4] px-4 text-sm font-semibold text-[#374151]"
+                >
+                  Copy both
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCreatedCredentials(null)}
+                  className="inline-flex h-10 items-center rounded-xl bg-[#001840] px-4 text-sm font-semibold text-[#ffffff]"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
     </AdminShell>

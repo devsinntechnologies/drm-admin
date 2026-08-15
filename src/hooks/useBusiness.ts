@@ -63,6 +63,10 @@ export type CreateBusinessResponse = {
   planName: string;
   createdAt: string;
   updatedAt: string;
+  temporaryPassword?: string;
+  loginEmail?: string;
+  credentialsEmailSent?: boolean;
+  credentialsEmailError?: string;
 };
 
 export type PatchBusinessPayload = {
@@ -178,6 +182,8 @@ export const businessApi = createApi({
         method: "POST",
         body,
       }),
+      transformResponse: (response: CreateBusinessResponse | { data: CreateBusinessResponse }) =>
+        "data" in response && response.data ? response.data : (response as CreateBusinessResponse),
     }),
     getBusinessById: builder.query<BusinessRecord, string>({
       query: (id) => `/business/${id}`,

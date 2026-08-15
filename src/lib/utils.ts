@@ -5,6 +5,33 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+function firstUsefulText(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+
+    if (Array.isArray(value)) {
+      const parts = value
+        .map((item) => (typeof item === "string" ? item.trim() : ""))
+        .filter(Boolean);
+      if (parts.length) {
+        return parts.join(". ");
+      }
+    }
+
+    if (value && typeof value === "object") {
+      const nested = value as { message?: unknown; error?: unknown; details?: unknown };
+      const nestedText = firstUsefulText(nested.message, nested.error, nested.details);
+      if (nestedText) {
+        return nestedText;
+      }
+    }
+  }
+
+  return undefined;
+}
+
 export function normalizeErrorMessage(error: unknown, fallbackMessage = "Something went wrong.") {
   if (typeof error === "string") {
     return error;
@@ -21,29 +48,19 @@ export function normalizeErrorMessage(error: unknown, fallbackMessage = "Somethi
     data?: unknown;
   };
 
-  const directMessage = [payload.message, payload.error].find((value) => typeof value === "string" && value.trim().length > 0);
-  if (typeof directMessage === "string") {
+  const directMessage = firstUsefulText(payload.message, payload.error);
+  if (directMessage) {
     return directMessage;
   }
 
-  if (payload.message && typeof payload.message === "object") {
-    const nested = payload.message as { message?: unknown; error?: unknown };
-    const nestedText = [nested.message, nested.error].find(
-      (value) => typeof value === "string" && value.trim().length > 0,
-    );
-    if (typeof nestedText === "string") {
-      return nestedText;
-    }
-  }
-
-  if (typeof payload.statusCode === "number") {
-    return `${fallbackMessage} (${payload.statusCode})`;
-  }
-
   if (payload.data && typeof payload.data === "object") {
-    const nested = payload.data as { message?: unknown; error?: unknown; statusCode?: unknown };
-    const nestedMessage = [nested.message, nested.error].find((value) => typeof value === "string" && value.trim().length > 0);
-    if (typeof nestedMessage === "string") {
+    const nested = payload.data as {
+      message?: unknown;
+      error?: unknown;
+      statusCode?: unknown;
+    };
+    const nestedMessage = firstUsefulText(nested.message, nested.error);
+    if (nestedMessage) {
       return nestedMessage;
     }
 
@@ -52,11 +69,11 @@ export function normalizeErrorMessage(error: unknown, fallbackMessage = "Somethi
     }
   }
 
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return fallbackMessage;
+  if (typeof payload.statusCode === "number") {
+    return `${fallbackMessage} (${payload.statusCode})`;
   }
+
+  return fallbackMessage;
 }
 export function getStoredAuthToken() {
   if (typeof window === "undefined") return null;
