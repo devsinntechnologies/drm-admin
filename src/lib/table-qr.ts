@@ -100,14 +100,14 @@ function drawHeaderWave(
   ctx.beginPath();
   ctx.moveTo(x, y);
   ctx.lineTo(x + width, y);
-  ctx.lineTo(x + width, y + height + 20);
+  ctx.lineTo(x + width, y + height);
   ctx.bezierCurveTo(
-    x + width * 0.72,
-    y + height + 150,
-    x + width * 0.32,
-    y + height - 90,
+    x + width * 0.74,
+    y + height + 70,
+    x + width * 0.34,
+    y + height - 36,
     x,
-    y + height + 36,
+    y + height + 18,
   );
   ctx.closePath();
   ctx.fill();
@@ -325,17 +325,19 @@ export async function generateTableQrCard(options: {
   const cardY = margin;
   const cardW = width - margin * 2;
   const cardH = height - margin * 2;
-  const headerH = 640;
-  const footerH = 400;
-  const pillH = 148;
-  const qrSize = 1120;
+  const headerH = 520;
+  const pillH = 132;
+  const qrSize = 1280;
   const businessName = options.businessName || "Restaurant";
   const tagline = options.tagline?.trim() || DEFAULT_TAGLINE;
   const tableNumber = options.tableNumber || "Table";
-  const footerY = cardY + cardH - footerH;
-  const pillY = footerY - 28 - pillH;
-  const qrY = pillY - 52 - qrSize;
-  const bodyTop = cardY + headerH;
+  const compactTable = tableNumber.length <= 3;
+  const tableLabelY = cardY + headerH + 58;
+  const tableNumberY = tableLabelY + (compactTable ? 150 : 120);
+  const qrY = tableNumberY + 46;
+  const pillY = qrY + qrSize + 36;
+  const footerY = pillY + pillH + 20;
+  const footerH = cardY + cardH - footerY;
 
   ctx.fillStyle = "#eef1f4";
   ctx.fillRect(0, 0, width, height);
@@ -368,33 +370,29 @@ export async function generateTableQrCard(options: {
     options.businessLogoUrl ? loadImage(options.businessLogoUrl) : Promise.resolve(null),
     loadImage(options.poweredByLogoUrl || "/diginizam-logo.svg"),
     QRCode.toDataURL(options.url, {
-      width: 900,
+      width: 1280,
       margin: 2,
       errorCorrectionLevel: "H",
       color: { dark: "#111111", light: "#ffffff" },
     }),
   ]);
 
-  drawBusinessMark(ctx, businessLogo, businessName, width / 2, cardY + 228, 118, primary);
+  drawBusinessMark(ctx, businessLogo, businessName, width / 2, cardY + 188, 102, primary);
 
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
-  ctx.font = "800 70px system-ui, sans-serif";
-  ctx.fillText(businessName, width / 2, cardY + 420, cardW - 200);
-  ctx.font = "600 34px system-ui, sans-serif";
+  ctx.font = "800 64px system-ui, sans-serif";
+  ctx.fillText(businessName, width / 2, cardY + 348, cardW - 200);
+  ctx.font = "600 30px system-ui, sans-serif";
   ctx.fillStyle = "rgba(255,255,255,0.92)";
-  ctx.fillText(tagline, width / 2, cardY + 482, cardW - 260);
+  ctx.fillText(tagline, width / 2, cardY + 398, cardW - 260);
 
-  drawFoodIcons(ctx, cardX, cardW, bodyTop);
+  drawFoodIcons(ctx, cardX, cardW, cardY + headerH);
+  drawTableLabel(ctx, width / 2, tableLabelY, primary);
 
-  const tableBlockBottom = qrY - 36;
-  const tableBlockMid = (bodyTop + 70 + tableBlockBottom) / 2;
-  drawTableLabel(ctx, width / 2, tableBlockMid - 70, primary);
-
-  const compactTable = tableNumber.length <= 3;
   ctx.fillStyle = INK;
-  ctx.font = compactTable ? "800 176px system-ui, sans-serif" : "800 96px system-ui, sans-serif";
-  ctx.fillText(tableNumber, width / 2, tableBlockMid + 90, cardW - 280);
+  ctx.font = compactTable ? "800 150px system-ui, sans-serif" : "800 88px system-ui, sans-serif";
+  ctx.fillText(tableNumber, width / 2, tableNumberY, cardW - 280);
 
   const qrX = (width - qrSize) / 2;
   const qrImage = await loadImage(qrDataUrl);
@@ -437,24 +435,24 @@ export async function generateTableQrCard(options: {
   drawDotGrid(ctx, cardX + cardW - 146, cardY + cardH - 140, "rgba(148,163,184,0.38)");
 
   ctx.fillStyle = MUTED;
-  ctx.font = "600 28px system-ui, sans-serif";
-  ctx.fillText("Powered by", width / 2, footerY + 118);
+  ctx.font = "600 26px system-ui, sans-serif";
+  ctx.fillText("Powered by", width / 2, footerY + 78);
 
   if (poweredByLogo) {
-    drawContainedImage(ctx, poweredByLogo, width / 2 - 270, footerY + 136, 540, 104);
+    drawContainedImage(ctx, poweredByLogo, width / 2 - 240, footerY + 92, 480, 88);
   } else {
     ctx.fillStyle = DIGINIZAM_BLUE;
-    ctx.font = "800 48px system-ui, sans-serif";
-    ctx.fillText("DIGINIZAM", width / 2, footerY + 210);
+    ctx.font = "800 44px system-ui, sans-serif";
+    ctx.fillText("DIGINIZAM", width / 2, footerY + 160);
   }
 
   ctx.fillStyle = MUTED;
-  ctx.font = "500 24px system-ui, sans-serif";
-  ctx.fillText("Simplify. Manage. Grow —", width / 2, footerY + 268);
+  ctx.font = "500 22px system-ui, sans-serif";
+  ctx.fillText("Simplify. Manage. Grow —", width / 2, footerY + 206);
 
   ctx.fillStyle = DIGINIZAM_BLUE;
-  ctx.font = "700 32px system-ui, sans-serif";
-  ctx.fillText("diginizam.com", width / 2, footerY + 322);
+  ctx.font = "700 30px system-ui, sans-serif";
+  ctx.fillText("diginizam.com", width / 2, footerY + 250);
 
   ctx.restore();
 
