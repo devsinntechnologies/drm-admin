@@ -1,11 +1,12 @@
-const A4_WIDTH_PX = 2480;
-const A4_HEIGHT_PX = 3508;
-const DEFAULT_PRIMARY = "#ff6a00";
+const LETTER_WIDTH_PX = 2550; // 8.5in @ 300 DPI
+const LETTER_HEIGHT_PX = 3300; // 11in @ 300 DPI
+
+const DEFAULT_PRIMARY = "#ff6800";
 const DIGINIZAM_BLUE = "#0149EC";
-const INK = "#0f172a";
-const MUTED = "#64748b";
-const BORDER = "#e5e7eb";
+const INK = "#101b31";
+const MUTED = "#5f708a";
 const DEFAULT_TAGLINE = "Delicious Food. Great Experience.";
+const FONT_FAMILY = '"Poppins", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
 export function storefrontSelfOrderUrl(
   origins: string[] | undefined,
@@ -29,6 +30,32 @@ export function storefrontSelfOrderUrl(
 function normalizeHex(value?: string | null, fallback = DEFAULT_PRIMARY) {
   const hex = (value || "").trim();
   return /^#([0-9a-fA-F]{6})$/.test(hex) ? hex : fallback;
+}
+
+function hexToRgb(hex: string) {
+  const value = normalizeHex(hex).slice(1);
+  return {
+    r: parseInt(value.slice(0, 2), 16),
+    g: parseInt(value.slice(2, 4), 16),
+    b: parseInt(value.slice(4, 6), 16),
+  };
+}
+
+function rgba(hex: string, alpha: number) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function mixWithWhite(hex: string, amount: number) {
+  const { r, g, b } = hexToRgb(hex);
+  const mix = (channel: number) => Math.round(channel + (255 - channel) * amount);
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+}
+
+function darken(hex: string, amount: number) {
+  const { r, g, b } = hexToRgb(hex);
+  const f = 1 - amount;
+  return `rgb(${Math.round(r * f)}, ${Math.round(g * f)}, ${Math.round(b * f)})`;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement | null> {
@@ -79,57 +106,56 @@ function drawContainedImage(
   );
 }
 
-function fitFontSize(
+function setFont(
+  ctx: CanvasRenderingContext2D,
+  weight: number,
+  size: number,
+  family = FONT_FAMILY,
+) {
+  ctx.font = `${weight} ${size}px ${family}`;
+}
+
+function drawFittedText(
   ctx: CanvasRenderingContext2D,
   text: string,
+  cx: number,
+  y: number,
   maxWidth: number,
   startSize: number,
   minSize: number,
-  weight = 800,
+  weight: number,
+  color: string,
 ) {
   let size = startSize;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = color;
+
   while (size > minSize) {
-    ctx.font = `${weight} ${size}px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    setFont(ctx, weight, size);
     if (ctx.measureText(text).width <= maxWidth) break;
     size -= 2;
   }
-  return size;
-}
 
-function drawSpacedText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  centerX: number,
-  y: number,
-  spacing: number,
-) {
-  const widths = [...text].map((char) => ctx.measureText(char).width);
-  const total = widths.reduce((sum, value) => sum + value, 0) + spacing * (text.length - 1);
-  let x = centerX - total / 2;
-  ctx.textAlign = "left";
-  [...text].forEach((char, index) => {
-    ctx.fillText(char, x, y);
-    x += widths[index] + spacing;
-  });
-  ctx.textAlign = "center";
+  ctx.fillText(text, cx, y);
 }
 
 function drawDotGrid(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
+  rows: number,
+  cols: number,
+  gap: number,
+  radius: number,
   color: string,
-  rows = 4,
-  cols = 4,
-  spacing = 26,
-  radius = 4,
 ) {
   ctx.save();
   ctx.fillStyle = color;
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
       ctx.beginPath();
-      ctx.arc(x + col * spacing, y + row * spacing, radius, 0, Math.PI * 2);
+      ctx.arc(x + col * gap, y + row * gap, radius, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -139,129 +165,97 @@ function drawDotGrid(
 function drawHeader(
   ctx: CanvasRenderingContext2D,
   width: number,
-  height: number,
   primary: string,
 ) {
-  ctx.save();
-  const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, primary);
-  gradient.addColorStop(1, primary);
-  ctx.fillStyle = gradient;
+  // Reference design: full orange top with a rising wave toward the right.
+  const gradient = ctx.createLinearGradient(0, 0, width, 0);
+  gradient.addColorStop(0, mixWithWhite(primary, 0.04));
+  gradient.addColorStop(0.52, primary);
+  gradient.addColorStop(1, darken(primary, 0.025));
 
+  ctx.save();
+  ctx.fillStyle = gradient;
   ctx.beginPath();
   ctx.moveTo(0, 0);
   ctx.lineTo(width, 0);
-  ctx.lineTo(width, height - 165);
+  ctx.lineTo(width, 625);
   ctx.bezierCurveTo(
     width * 0.80,
-    height - 24,
-    width * 0.35,
-    height - 60,
+    820,
+    width * 0.63,
+    920,
+    width * 0.44,
+    900,
+  );
+  ctx.bezierCurveTo(
+    width * 0.22,
+    878,
+    width * 0.08,
+    952,
     0,
-    height + 50,
+    1065,
   );
   ctx.closePath();
   ctx.fill();
 
-  // Large soft circles keep the same orange palette while making the header richer.
+  // Translucent circular accents from the reference.
   ctx.fillStyle = "rgba(255,255,255,0.085)";
   ctx.beginPath();
-  ctx.arc(90, 85, 270, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(width - 60, 70, 250, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(width - 180, height - 145, 185, 0, Math.PI * 2);
+  ctx.arc(120, 80, 285, 0, Math.PI * 2);
   ctx.fill();
 
-  drawDotGrid(ctx, 130, 285, "rgba(255,255,255,0.42)", 4, 3, 28, 5);
-  drawDotGrid(ctx, width - 405, 175, "rgba(255,255,255,0.34)", 4, 4, 29, 5);
+  ctx.beginPath();
+  ctx.arc(width - 90, 60, 265, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Small decorative ring and grids.
+  ctx.strokeStyle = "rgba(255,255,255,0.78)";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.arc(118, 790, 50, 0, Math.PI * 2);
+  ctx.stroke();
+
+  drawDotGrid(ctx, 280, 690, 4, 2, 38, 6, "rgba(255,255,255,0.92)");
+  drawDotGrid(ctx, width - 430, 220, 4, 3, 38, 6, "rgba(255,255,255,0.70)");
   ctx.restore();
 }
 
-function drawFooterBand(
+function drawHeaderDivider(
   ctx: CanvasRenderingContext2D,
-  width: number,
+  cx: number,
   y: number,
-  height: number,
-  accent: string,
 ) {
   ctx.save();
-  ctx.fillStyle = "#f8fafc";
-  ctx.beginPath();
-  ctx.moveTo(0, y + 88);
-  ctx.bezierCurveTo(width * 0.24, y - 18, width * 0.68, y + 40, width, y + 6);
-  ctx.lineTo(width, y + height);
-  ctx.lineTo(0, y + height);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.strokeStyle = accent;
-  ctx.lineWidth = 9;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(18, y + 84);
-  ctx.bezierCurveTo(width * 0.24, y - 13, width * 0.68, y + 45, width - 18, y + 11);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawHeaderDivider(ctx: CanvasRenderingContext2D, cx: number, y: number) {
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,0.88)";
-  ctx.fillStyle = "#ffffff";
+  ctx.strokeStyle = "rgba(255,255,255,0.90)";
   ctx.lineWidth = 4;
   ctx.lineCap = "round";
 
   ctx.beginPath();
-  ctx.moveTo(cx - 190, y);
-  ctx.lineTo(cx - 54, y);
-  ctx.moveTo(cx + 54, y);
-  ctx.lineTo(cx + 190, y);
+  ctx.moveTo(cx - 410, y);
+  ctx.lineTo(cx - 76, y);
+  ctx.moveTo(cx + 76, y);
+  ctx.lineTo(cx + 410, y);
   ctx.stroke();
 
+  ctx.fillStyle = "#ffffff";
   ctx.beginPath();
-  ctx.arc(cx, y, 9, 0, Math.PI * 2);
+  ctx.arc(cx, y, 12, 0, Math.PI * 2);
   ctx.fill();
-  ctx.restore();
-}
-
-function drawTableHeading(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  y: number,
-  accent: string,
-) {
-  ctx.save();
-  ctx.fillStyle = accent;
-  ctx.font = "800 48px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  drawSpacedText(ctx, "TABLE", cx, y, 12);
-
-  ctx.strokeStyle = accent;
-  ctx.lineWidth = 5;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(cx - 260, y - 15);
-  ctx.lineTo(cx - 165, y - 15);
-  ctx.moveTo(cx + 165, y - 15);
-  ctx.lineTo(cx + 260, y - 15);
-  ctx.stroke();
   ctx.restore();
 }
 
 function drawBusinessMark(
   ctx: CanvasRenderingContext2D,
   logo: HTMLImageElement | null,
-  name: string,
+  businessName: string,
   cx: number,
   cy: number,
   radius: number,
   primary: string,
 ) {
   ctx.save();
-  ctx.shadowColor = "rgba(15, 23, 42, 0.18)";
-  ctx.shadowBlur = 28;
+  ctx.shadowColor = "rgba(15, 23, 42, 0.12)";
+  ctx.shadowBlur = 18;
   ctx.shadowOffsetY = 8;
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
@@ -270,156 +264,222 @@ function drawBusinessMark(
   ctx.restore();
 
   ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,0.8)";
-  ctx.lineWidth = 7;
+  ctx.strokeStyle = "rgba(255,255,255,0.80)";
+  ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
+  ctx.arc(cx, cy, radius - 1, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 
   if (logo) {
     ctx.save();
     ctx.beginPath();
-    ctx.arc(cx, cy, radius - 15, 0, Math.PI * 2);
+    ctx.arc(cx, cy, radius - 12, 0, Math.PI * 2);
     ctx.clip();
     drawContainedImage(
       ctx,
       logo,
-      cx - radius + 24,
-      cy - radius + 24,
-      (radius - 24) * 2,
-      (radius - 24) * 2,
+      cx - radius + 25,
+      cy - radius + 25,
+      (radius - 25) * 2,
+      (radius - 25) * 2,
     );
     ctx.restore();
     return;
   }
 
   ctx.fillStyle = primary;
-  ctx.font = "800 94px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText((name.trim()[0] || "D").toUpperCase(), cx, cy + 2);
+  setFont(ctx, 800, 115);
+  ctx.fillText((businessName.trim()[0] || "R").toUpperCase(), cx, cy + 4);
   ctx.textBaseline = "alphabetic";
+}
+
+function drawTableLabel(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  y: number,
+  primary: string,
+) {
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.fillStyle = primary;
+  setFont(ctx, 700, 55);
+  ctx.fillText("T A B L E", cx, y);
+
+  ctx.strokeStyle = primary;
+  ctx.lineWidth = 4;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(cx - 395, y - 18);
+  ctx.lineTo(cx - 250, y - 18);
+  ctx.moveTo(cx + 250, y - 18);
+  ctx.lineTo(cx + 395, y - 18);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawFoodIcons(
   ctx: CanvasRenderingContext2D,
   width: number,
-  accent: string,
+  primary: string,
 ) {
+  const stroke = rgba(primary, 0.20);
+  const line = 7;
+
   ctx.save();
-  ctx.strokeStyle = accent;
-  ctx.globalAlpha = 0.14;
-  ctx.lineWidth = 6;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = line;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
   const burger = (x: number, y: number, s = 1) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
     ctx.beginPath();
-    ctx.arc(x, y, 36 * s, Math.PI, 0);
+    ctx.arc(0, -10, 66, Math.PI, 0);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(x - 41 * s, y + 13 * s);
-    ctx.lineTo(x + 41 * s, y + 13 * s);
-    ctx.moveTo(x - 36 * s, y + 31 * s);
-    ctx.quadraticCurveTo(x, y + 43 * s, x + 36 * s, y + 31 * s);
+    ctx.moveTo(-70, 7);
+    ctx.lineTo(70, 7);
+    ctx.moveTo(-64, 28);
+    ctx.quadraticCurveTo(0, 52, 64, 28);
+    ctx.moveTo(-58, 44);
+    ctx.lineTo(58, 44);
     ctx.stroke();
+    ctx.restore();
   };
 
   const steamBowl = (x: number, y: number, s = 1) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
     ctx.beginPath();
-    ctx.moveTo(x - 35 * s, y);
-    ctx.quadraticCurveTo(x, y + 48 * s, x + 35 * s, y);
+    ctx.moveTo(-62, 10);
+    ctx.quadraticCurveTo(0, 82, 62, 10);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(x - 12 * s, y - 20 * s);
-    ctx.quadraticCurveTo(x - 4 * s, y - 35 * s, x - 10 * s, y - 50 * s);
-    ctx.moveTo(x + 11 * s, y - 18 * s);
-    ctx.quadraticCurveTo(x + 18 * s, y - 33 * s, x + 12 * s, y - 48 * s);
+    ctx.moveTo(-22, -18);
+    ctx.quadraticCurveTo(-8, -45, -24, -65);
+    ctx.moveTo(12, -20);
+    ctx.quadraticCurveTo(28, -48, 10, -68);
     ctx.stroke();
+    ctx.restore();
+  };
+
+  const riceBowl = (x: number, y: number, s = 1) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
+    ctx.beginPath();
+    ctx.moveTo(-60, 10);
+    ctx.quadraticCurveTo(0, 80, 60, 10);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(-28, -2, 22, Math.PI, 0);
+    ctx.arc(0, -9, 28, Math.PI, 0);
+    ctx.arc(31, -1, 22, Math.PI, 0);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(38, -15);
+    ctx.lineTo(72, -78);
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  const drink = (x: number, y: number, s = 1) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
+    ctx.beginPath();
+    ctx.moveTo(-38, -44);
+    ctx.lineTo(-26, 58);
+    ctx.lineTo(28, 58);
+    ctx.lineTo(40, -44);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-44, -44);
+    ctx.lineTo(44, -44);
+    ctx.moveTo(4, -45);
+    ctx.lineTo(22, -95);
+    ctx.lineTo(56, -95);
+    ctx.stroke();
+    ctx.restore();
   };
 
   const pizza = (x: number, y: number, s = 1) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
     ctx.beginPath();
-    ctx.moveTo(x, y - 43 * s);
-    ctx.lineTo(x + 35 * s, y + 36 * s);
-    ctx.lineTo(x - 35 * s, y + 36 * s);
+    ctx.moveTo(0, -72);
+    ctx.lineTo(58, 62);
+    ctx.quadraticCurveTo(0, 78, -58, 62);
     ctx.closePath();
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(x - 11 * s, y + 10 * s, 5 * s, 0, Math.PI * 2);
-    ctx.arc(x + 12 * s, y + 22 * s, 5 * s, 0, Math.PI * 2);
+    ctx.arc(-12, 8, 9, 0, Math.PI * 2);
+    ctx.arc(20, 30, 8, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
   };
 
-  const cup = (x: number, y: number, s = 1) => {
+  const cloche = (x: number, y: number, s = 1) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
     ctx.beginPath();
-    ctx.moveTo(x - 24 * s, y - 29 * s);
-    ctx.lineTo(x - 17 * s, y + 34 * s);
-    ctx.lineTo(x + 17 * s, y + 34 * s);
-    ctx.lineTo(x + 24 * s, y - 29 * s);
-    ctx.closePath();
+    ctx.arc(0, 22, 68, Math.PI, 0);
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(x + 29 * s, y, 14 * s, -0.7, 0.7);
+    ctx.moveTo(-82, 24);
+    ctx.lineTo(82, 24);
+    ctx.moveTo(-14, -48);
+    ctx.quadraticCurveTo(0, -64, 14, -48);
     ctx.stroke();
+    ctx.restore();
   };
 
-  burger(165, 1520, 1.12);
-  steamBowl(width - 165, 1535, 1.08);
-  pizza(145, 2195, 1.02);
-  cup(width - 150, 2160, 1.06);
+  burger(245, 1270, 0.95);
+  steamBowl(width - 235, 1270, 0.90);
+  riceBowl(250, 1835, 0.90);
+  drink(width - 245, 1835, 0.86);
+  pizza(215, 2290, 0.86);
+  cloche(width - 245, 2315, 0.88);
+
+  drawDotGrid(ctx, 140, 1515, 4, 3, 34, 5.5, rgba(primary, 0.15));
+  drawDotGrid(ctx, width - 160, 2150, 4, 3, 34, 5.5, rgba(primary, 0.15));
+
   ctx.restore();
 }
 
-function drawCornerMarks(
+function drawScanGlyph(
   ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  accent: string,
+  cx: number,
+  cy: number,
 ) {
-  ctx.save();
-  ctx.strokeStyle = accent;
-  ctx.globalAlpha = 0.48;
-  ctx.lineWidth = 6;
-  ctx.lineCap = "round";
-  const d = 38;
-  const inset = 28;
-
-  const corners: Array<[number, number, number, number, number, number]> = [
-    [x + inset + d, y + inset, x + inset, y + inset, x + inset, y + inset + d],
-    [x + w - inset - d, y + inset, x + w - inset, y + inset, x + w - inset, y + inset + d],
-    [x + inset + d, y + h - inset, x + inset, y + h - inset, x + inset, y + h - inset - d],
-    [x + w - inset - d, y + h - inset, x + w - inset, y + h - inset, x + w - inset, y + h - inset - d],
-  ];
-
-  corners.forEach(([x1, y1, x2, y2, x3, y3]) => {
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.lineTo(x3, y3);
-    ctx.stroke();
-  });
-  ctx.restore();
-}
-
-function drawScanGlyph(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
   ctx.save();
   ctx.strokeStyle = "#ffffff";
   ctx.lineWidth = 7;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
-  roundRect(ctx, cx - 22, cy - 34, 44, 68, 8);
+  roundRect(ctx, cx - 28, cy - 45, 56, 90, 11);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(cx - 15, cy - 34);
+  ctx.lineTo(cx + 15, cy - 34);
   ctx.stroke();
 
   const corners: Array<[number, number, number, number, number, number]> = [
-    [cx - 42, cy - 24, cx - 42, cy - 40, cx - 24, cy - 40],
-    [cx + 24, cy - 40, cx + 42, cy - 40, cx + 42, cy - 24],
-    [cx - 42, cy + 24, cx - 42, cy + 40, cx - 24, cy + 40],
-    [cx + 24, cy + 40, cx + 42, cy + 40, cx + 42, cy + 24],
+    [cx - 57, cy - 30, cx - 57, cy - 53, cx - 34, cy - 53],
+    [cx + 34, cy - 53, cx + 57, cy - 53, cx + 57, cy - 30],
+    [cx - 57, cy + 30, cx - 57, cy + 53, cx - 34, cy + 53],
+    [cx + 34, cy + 53, cx + 57, cy + 53, cx + 57, cy + 30],
   ];
 
   corners.forEach(([x1, y1, x2, y2, x3, y3]) => {
@@ -429,82 +489,163 @@ function drawScanGlyph(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
     ctx.lineTo(x3, y3);
     ctx.stroke();
   });
+
+  // Tiny QR indication inside phone.
+  ctx.lineWidth = 4;
+  ctx.strokeRect(cx - 12, cy - 7, 9, 9);
+  ctx.strokeRect(cx + 4, cy - 7, 9, 9);
+  ctx.strokeRect(cx - 12, cy + 9, 9, 9);
+  ctx.beginPath();
+  ctx.moveTo(cx + 4, cy + 9);
+  ctx.lineTo(cx + 12, cy + 9);
+  ctx.lineTo(cx + 12, cy + 18);
+  ctx.stroke();
   ctx.restore();
 }
 
-function drawOrderCta(
+function drawScanCallout(
   ctx: CanvasRenderingContext2D,
-  centerX: number,
+  width: number,
+  primary: string,
   y: number,
-  accent: string,
 ) {
-  const title = "Scan to order from this table";
-  const steps = ["View menu", "Choose items", "Place order"];
-  const titleFont =
-    "800 42px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  const stepFont =
-    "500 28px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  // Compact capsule from the reference, sized to content rather than page width.
+  const boxW = 1360;
+  const boxH = 178;
+  const boxX = (width - boxW) / 2 + 45;
+  const radius = 60;
+  const iconRadius = 83;
+  const iconCx = boxX + 30;
+  const iconCy = y + boxH / 2;
 
   ctx.save();
-  ctx.font = titleFont;
-  const titleWidth = ctx.measureText(title).width;
-  ctx.font = stepFont;
-  const stepWidths = steps.map((step) => ctx.measureText(step).width);
-
-  const bulletGap = 38;
-  const stepsWidth = stepWidths.reduce((sum, value) => sum + value, 0) + bulletGap * 2;
-  const iconDiameter = 104;
-  const height = 140;
-  const leftPadding = 25;
-  const gapAfterIcon = 30;
-  const rightPadding = 32;
-  const contentWidth = Math.max(titleWidth, stepsWidth);
-  const width = Math.ceil(leftPadding + iconDiameter + gapAfterIcon + contentWidth + rightPadding);
-  const x = centerX - width / 2;
-
-  ctx.shadowColor = "rgba(15, 23, 42, 0.08)";
+  ctx.shadowColor = "rgba(15,23,42,0.06)";
   ctx.shadowBlur = 14;
   ctx.shadowOffsetY = 5;
-  ctx.fillStyle = "#ffffff";
-  roundRect(ctx, x, y, width, height, 70);
+  ctx.fillStyle = "rgba(255,255,255,0.98)";
+  roundRect(ctx, boxX, y, boxW, boxH, radius);
   ctx.fill();
+  ctx.restore();
 
-  ctx.shadowColor = "transparent";
-  ctx.strokeStyle = accent;
-  ctx.lineWidth = 5;
-  roundRect(ctx, x, y, width, height, 70);
+  ctx.save();
+  ctx.strokeStyle = primary;
+  ctx.lineWidth = 4;
+  roundRect(ctx, boxX, y, boxW, boxH, radius);
   ctx.stroke();
 
-  const iconCx = x + leftPadding + iconDiameter / 2;
-  const iconCy = y + height / 2;
+  ctx.fillStyle = primary;
   ctx.beginPath();
-  ctx.arc(iconCx, iconCy, iconDiameter / 2, 0, Math.PI * 2);
-  ctx.fillStyle = accent;
+  ctx.arc(iconCx, iconCy, iconRadius, 0, Math.PI * 2);
   ctx.fill();
   drawScanGlyph(ctx, iconCx, iconCy);
 
-  const textX = x + leftPadding + iconDiameter + gapAfterIcon;
   ctx.textAlign = "left";
   ctx.fillStyle = INK;
-  ctx.font = titleFont;
-  ctx.fillText(title, textX, y + 58);
+  setFont(ctx, 800, 60);
+  ctx.fillText("Scan to order from this table", boxX + 205, y + 76);
 
-  ctx.font = stepFont;
-  const baselineY = y + 106;
-  let cursorX = textX;
-  steps.forEach((step, index) => {
+  const subtitleY = y + 132;
+  setFont(ctx, 500, 39);
+  ctx.fillStyle = MUTED;
+  ctx.fillText("View menu", boxX + 205, subtitleY);
+
+  const firstW = ctx.measureText("View menu").width;
+  ctx.fillStyle = primary;
+  ctx.beginPath();
+  ctx.arc(boxX + 205 + firstW + 30, subtitleY - 13, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = MUTED;
+  const secondX = boxX + 205 + firstW + 58;
+  ctx.fillText("Choose items", secondX, subtitleY);
+
+  const secondW = ctx.measureText("Choose items").width;
+  ctx.fillStyle = primary;
+  ctx.beginPath();
+  ctx.arc(secondX + secondW + 30, subtitleY - 13, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = MUTED;
+  ctx.fillText("Place order", secondX + secondW + 58, subtitleY);
+  ctx.restore();
+}
+
+function drawFooter(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  primary: string,
+  poweredByLogo: HTMLImageElement | null,
+) {
+  const startY = 2800;
+
+  // Gray/white footer region with the exact reference-style arched top edge.
+  ctx.save();
+  ctx.fillStyle = "#f7f8fa";
+  ctx.beginPath();
+  ctx.moveTo(0, startY + 120);
+  ctx.bezierCurveTo(
+    width * 0.22,
+    startY - 30,
+    width * 0.52,
+    startY - 25,
+    width * 0.72,
+    startY + 18,
+  );
+  ctx.bezierCurveTo(
+    width * 0.86,
+    startY + 45,
+    width * 0.95,
+    startY + 78,
+    width,
+    startY + 110,
+  );
+  ctx.lineTo(width, height);
+  ctx.lineTo(0, height);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = primary;
+  ctx.lineWidth = 11;
+  ctx.beginPath();
+  ctx.moveTo(0, startY + 120);
+  ctx.bezierCurveTo(
+    width * 0.22,
+    startY - 30,
+    width * 0.52,
+    startY - 25,
+    width * 0.72,
+    startY + 18,
+  );
+  ctx.bezierCurveTo(
+    width * 0.86,
+    startY + 45,
+    width * 0.95,
+    startY + 78,
+    width,
+    startY + 110,
+  );
+  ctx.stroke();
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = MUTED;
+  setFont(ctx, 600, 34);
+  ctx.fillText("Powered by", width / 2, 2990);
+
+  if (poweredByLogo) {
+    drawContainedImage(ctx, poweredByLogo, width / 2 - 350, 3010, 700, 150);
+  } else {
+    ctx.fillStyle = DIGINIZAM_BLUE;
+    setFont(ctx, 800, 78);
+    ctx.fillText("DIGINIZAM", width / 2, 3110);
     ctx.fillStyle = MUTED;
-    ctx.fillText(step, cursorX, baselineY);
-    cursorX += stepWidths[index];
+    setFont(ctx, 500, 24);
+    ctx.fillText("Simplify. Manage. Grow.", width / 2, 3146);
+  }
 
-    if (index < steps.length - 1) {
-      ctx.fillStyle = accent;
-      ctx.beginPath();
-      ctx.arc(cursorX + 18, baselineY - 10, 5, 0, Math.PI * 2);
-      ctx.fill();
-      cursorX += bulletGap;
-    }
-  });
+  ctx.fillStyle = DIGINIZAM_BLUE;
+  setFont(ctx, 700, 35);
+  ctx.fillText("diginizam.com", width / 2, 3225);
   ctx.restore();
 }
 
@@ -519,9 +660,24 @@ export async function generateTableQrCard(options: {
   secondaryColor?: string | null;
 }): Promise<string> {
   const QRCode = (await import("qrcode")).default;
+
+  // Let Poppins/Inter finish loading if the host application already includes them.
+  if (typeof document !== "undefined" && "fonts" in document) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      // Font fallback is handled by FONT_FAMILY.
+    }
+  }
+
   const primary = normalizeHex(options.primaryColor, DEFAULT_PRIMARY);
-  const width = A4_WIDTH_PX;
-  const height = A4_HEIGHT_PX;
+  const width = LETTER_WIDTH_PX;
+  const height = LETTER_HEIGHT_PX;
+  const cx = width / 2;
+
+  const businessName = options.businessName?.trim() || "Restaurant";
+  const tagline = options.tagline?.trim() || DEFAULT_TAGLINE;
+  const tableNumber = options.tableNumber?.trim() || "7";
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -530,129 +686,114 @@ export async function generateTableQrCard(options: {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not create QR canvas");
 
-  const businessName = options.businessName || "Restaurant";
-  const tagline = options.tagline?.trim() || DEFAULT_TAGLINE;
-  const tableNumber = options.tableNumber || "Table";
-  const compactTable = tableNumber.length <= 3;
-
-  // Balanced A4 proportions: strong brand header, dominant QR, compact CTA, clean footer.
-  const headerH = 850;
-  const tableLabelY = 1060;
-  const tableNumberY = compactTable ? 1280 : 1255;
-  const qrSize = 1040;
-  const qrX = (width - qrSize) / 2;
-  const qrY = 1430;
-  const qrFramePad = 54;
-  const ctaY = 2585;
-  const footerH = 430;
-  const footerY = height - footerH;
-
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  // Thin outer print-safe frame.
+  const [businessLogo, poweredByLogo] = await Promise.all([
+    options.businessLogoUrl ? loadImage(options.businessLogoUrl) : Promise.resolve(null),
+    loadImage(options.poweredByLogoUrl || "/diginizam-logo.svg"),
+  ]);
+
+  // ---------- HEADER ----------
+  drawHeader(ctx, width, primary);
+
+  drawBusinessMark(ctx, businessLogo, businessName, cx, 305, 195, primary);
+
+  drawFittedText(
+    ctx,
+    businessName,
+    cx,
+    665,
+    width - 380,
+    142,
+    86,
+    800,
+    "#ffffff",
+  );
+
+  drawHeaderDivider(ctx, cx, 742);
+
+  drawFittedText(
+    ctx,
+    tagline,
+    cx,
+    845,
+    width - 500,
+    60,
+    42,
+    500,
+    "rgba(255,255,255,0.96)",
+  );
+
+  // ---------- BODY ----------
+  drawFoodIcons(ctx, width, primary);
+
+  drawTableLabel(ctx, cx, 1045, primary);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = INK;
+  const compactTable = tableNumber.length <= 3;
+  drawFittedText(
+    ctx,
+    tableNumber,
+    cx,
+    compactTable ? 1300 : 1270,
+    850,
+    compactTable ? 235 : 150,
+    105,
+    800,
+    INK,
+  );
+
+  // QR dimensions intentionally remain square on Letter paper.
+  const qrOuterSize = 1200;
+  const qrPadding = 56;
+  const qrSize = qrOuterSize - qrPadding * 2;
+  const qrX = cx - qrOuterSize / 2;
+  const qrY = 1350;
+
+  const qrDataUrl = await QRCode.toDataURL(options.url, {
+    width: qrSize,
+    margin: 1,
+    errorCorrectionLevel: "H",
+    color: {
+      dark: "#111111",
+      light: "#ffffff",
+    },
+  });
+  const qrImage = await loadImage(qrDataUrl);
+
   ctx.save();
-  ctx.strokeStyle = BORDER;
-  ctx.lineWidth = 4;
-  roundRect(ctx, 10, 10, width - 20, height - 20, 32);
+  ctx.shadowColor = "rgba(15,23,42,0.08)";
+  ctx.shadowBlur = 16;
+  ctx.shadowOffsetY = 8;
+  ctx.fillStyle = "#ffffff";
+  roundRect(ctx, qrX, qrY, qrOuterSize, qrOuterSize, 45);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = primary;
+  ctx.lineWidth = 5;
+  roundRect(ctx, qrX, qrY, qrOuterSize, qrOuterSize, 45);
   ctx.stroke();
   ctx.restore();
 
-  drawHeader(ctx, width, headerH, primary);
-
-  const [businessLogo, poweredByLogo, qrDataUrl] = await Promise.all([
-    options.businessLogoUrl ? loadImage(options.businessLogoUrl) : Promise.resolve(null),
-    loadImage(options.poweredByLogoUrl || "/diginizam-logo.svg"),
-    QRCode.toDataURL(options.url, {
-      width: qrSize,
-      margin: 2,
-      errorCorrectionLevel: "H",
-      color: { dark: "#111111", light: "#ffffff" },
-    }),
-  ]);
-
-  drawBusinessMark(ctx, businessLogo, businessName, width / 2, 225, 118, primary);
-
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#ffffff";
-  const nameSize = fitFontSize(ctx, businessName, width - 380, 108, 72, 800);
-  ctx.font = `800 ${nameSize}px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText(businessName, width / 2, 520);
-
-  drawHeaderDivider(ctx, width / 2, 612);
-
-  const taglineSize = fitFontSize(ctx, tagline, width - 560, 48, 34, 500);
-  ctx.fillStyle = "rgba(255,255,255,0.96)";
-  ctx.font = `500 ${taglineSize}px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText(tagline, width / 2, 700);
-
-  drawFoodIcons(ctx, width, primary);
-
-  drawTableHeading(ctx, width / 2, tableLabelY, primary);
-  ctx.fillStyle = INK;
-  ctx.font = compactTable
-    ? "800 190px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-    : "800 108px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillText(tableNumber, width / 2, tableNumberY, width - 460);
-
-  const qrImage = await loadImage(qrDataUrl);
   if (qrImage) {
-    const frameX = qrX - qrFramePad;
-    const frameY = qrY - qrFramePad;
-    const frameW = qrSize + qrFramePad * 2;
-    const frameH = qrSize + qrFramePad * 2;
-
-    ctx.save();
-    ctx.shadowColor = "rgba(15, 23, 42, 0.10)";
-    ctx.shadowBlur = 28;
-    ctx.shadowOffsetY = 10;
-    ctx.fillStyle = "#ffffff";
-    roundRect(ctx, frameX, frameY, frameW, frameH, 46);
-    ctx.fill();
-    ctx.restore();
-
-    ctx.save();
-    ctx.strokeStyle = primary;
-    ctx.lineWidth = 7;
-    roundRect(ctx, frameX, frameY, frameW, frameH, 46);
-    ctx.stroke();
-    drawCornerMarks(ctx, frameX, frameY, frameW, frameH, primary);
-    ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-    ctx.restore();
+    ctx.drawImage(
+      qrImage,
+      qrX + qrPadding,
+      qrY + qrPadding,
+      qrSize,
+      qrSize,
+    );
   }
 
-  drawOrderCta(ctx, width / 2, ctaY, primary);
+  // ---------- CTA ----------
+  drawScanCallout(ctx, width, primary, 2600);
 
-  // Micro helper line makes the action clear without adding another large block.
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#94a3b8";
-  ctx.font = "600 25px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillText("No app required • Open camera and scan", width / 2, ctaY + 185);
-
-  drawFooterBand(ctx, width, footerY, footerH, primary);
-  drawDotGrid(ctx, 110, height - 145, "rgba(148,163,184,0.30)", 4, 4, 26, 4);
-  drawDotGrid(ctx, width - 205, height - 145, "rgba(148,163,184,0.30)", 4, 4, 26, 4);
-
-  ctx.textAlign = "center";
-  ctx.fillStyle = MUTED;
-  ctx.font = "600 29px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillText("Powered by", width / 2, footerY + 142);
-
-  if (poweredByLogo) {
-    drawContainedImage(ctx, poweredByLogo, width / 2 - 300, footerY + 160, 600, 116);
-  } else {
-    ctx.fillStyle = DIGINIZAM_BLUE;
-    ctx.font = "800 58px system-ui, sans-serif";
-    ctx.fillText("DIGINIZAM", width / 2, footerY + 250);
-  }
-
-  ctx.fillStyle = MUTED;
-  ctx.font = "500 22px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillText("Simplify. Manage. Grow.", width / 2, footerY + 310);
-
-  ctx.fillStyle = DIGINIZAM_BLUE;
-  ctx.font = "800 32px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillText("diginizam.com", width / 2, footerY + 356);
+  // ---------- FOOTER ----------
+  drawFooter(ctx, width, height, primary, poweredByLogo);
 
   return canvas.toDataURL("image/png");
 }
@@ -666,7 +807,14 @@ export async function downloadQrPng(dataUrl: string, fileName: string) {
 
 export async function downloadQrPdf(dataUrl: string, fileName: string) {
   const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  doc.addImage(dataUrl, "PNG", 0, 0, 210, 297);
+
+  // US Letter portrait: 8.5 × 11 in = 215.9 × 279.4 mm.
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "letter",
+  });
+
+  doc.addImage(dataUrl, "PNG", 0, 0, 215.9, 279.4);
   doc.save(fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`);
 }
