@@ -335,6 +335,90 @@ function drawScanGlyph(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
   ctx.restore();
 }
 
+function drawOrderCta(
+  ctx: CanvasRenderingContext2D,
+  centerX: number,
+  y: number,
+  accent: string,
+) {
+  const title = "Scan to order from this table";
+  const steps = ["View menu", "Choose items", "Place order"];
+
+  const titleFont =
+    "800 42px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  const stepFont =
+    "500 28px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+  ctx.save();
+  ctx.font = titleFont;
+  const titleWidth = ctx.measureText(title).width;
+
+  ctx.font = stepFont;
+  const stepWidths = steps.map((step) => ctx.measureText(step).width);
+  const bulletGap = 38;
+  const stepsWidth = stepWidths.reduce((sum, value) => sum + value, 0) + bulletGap * 2;
+
+  const height = 142;
+  const iconDiameter = 104;
+  const leftPadding = 26;
+  const gapAfterIcon = 30;
+  const rightPadding = 34;
+  const contentWidth = Math.max(titleWidth, stepsWidth);
+  const width = Math.min(1240, Math.max(1000, leftPadding + iconDiameter + gapAfterIcon + contentWidth + rightPadding));
+  const x = centerX - width / 2;
+
+  // Compact premium container: no unnecessary empty space around the copy.
+  ctx.shadowColor = "rgba(15, 23, 42, 0.08)";
+  ctx.shadowBlur = 14;
+  ctx.shadowOffsetY = 5;
+  ctx.fillStyle = "#ffffff";
+  roundRect(ctx, x, y, width, height, 71);
+  ctx.fill();
+
+  ctx.shadowColor = "transparent";
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 5;
+  roundRect(ctx, x, y, width, height, 71);
+  ctx.stroke();
+
+  const iconCx = x + leftPadding + iconDiameter / 2;
+  const iconCy = y + height / 2;
+  ctx.beginPath();
+  ctx.arc(iconCx, iconCy, iconDiameter / 2, 0, Math.PI * 2);
+  ctx.fillStyle = accent;
+  ctx.fill();
+  drawScanGlyph(ctx, iconCx, iconCy);
+
+  const textX = x + leftPadding + iconDiameter + gapAfterIcon;
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = INK;
+  ctx.font = titleFont;
+  ctx.fillText(title, textX, y + 57);
+
+  ctx.font = stepFont;
+  ctx.fillStyle = MUTED;
+  let cursorX = textX;
+  const baselineY = y + 106;
+
+  steps.forEach((step, index) => {
+    ctx.fillStyle = MUTED;
+    ctx.fillText(step, cursorX, baselineY);
+    cursorX += stepWidths[index];
+
+    if (index < steps.length - 1) {
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.arc(cursorX + 18, baselineY - 10, 5, 0, Math.PI * 2);
+      ctx.fill();
+      cursorX += bulletGap;
+    }
+  });
+
+  ctx.restore();
+}
+
 function drawBusinessMark(
   ctx: CanvasRenderingContext2D,
   logo: HTMLImageElement | null,
@@ -429,10 +513,8 @@ export async function generateTableQrCard(options: {
   const qrX = (width - qrSize) / 2;
   const qrY = 1455;
 
-  const pillW = 1460;
-  const pillH = 188;
-  const pillX = (width - pillW) / 2;
-  const pillY = 2655;
+  // Keep the order CTA close to the QR and let its width fit the content.
+  const pillY = 2595;
 
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
@@ -523,58 +605,7 @@ export async function generateTableQrCard(options: {
     ctx.restore();
   }
 
-  ctx.save();
-  ctx.shadowColor = "rgba(15, 23, 42, 0.08)";
-  ctx.shadowBlur = 18;
-  ctx.shadowOffsetY = 6;
-  ctx.fillStyle = "#ffffff";
-  roundRect(ctx, pillX, pillY, pillW, pillH, 90);
-  ctx.fill();
-  ctx.restore();
-
-  ctx.save();
-  ctx.strokeStyle = primary;
-  ctx.lineWidth = 5;
-  roundRect(ctx, pillX, pillY, pillW, pillH, 90);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(pillX + 108, pillY + pillH / 2, 70, 0, Math.PI * 2);
-  ctx.fillStyle = primary;
-  ctx.fill();
-  drawScanGlyph(ctx, pillX + 108, pillY + pillH / 2);
-
-  ctx.textAlign = "left";
-  ctx.fillStyle = INK;
-  ctx.font = "800 48px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillText("Scan to order from this table", pillX + 220, pillY + 78);
-
-  ctx.fillStyle = MUTED;
-  ctx.font = "500 34px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillText("View menu", pillX + 220, pillY + 132);
-
-  const viewWidth = ctx.measureText("View menu").width;
-  ctx.fillStyle = primary;
-  ctx.beginPath();
-  ctx.arc(pillX + 220 + viewWidth + 24, pillY + 121, 5, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = MUTED;
-  ctx.fillText("Choose items", pillX + 220 + viewWidth + 44, pillY + 132);
-  const chooseWidth = ctx.measureText("Choose items").width;
-
-  ctx.fillStyle = primary;
-  ctx.beginPath();
-  ctx.arc(pillX + 220 + viewWidth + 44 + chooseWidth + 24, pillY + 121, 5, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = MUTED;
-  ctx.fillText(
-    "Place order",
-    pillX + 220 + viewWidth + 44 + chooseWidth + 44,
-    pillY + 132,
-  );
-  ctx.restore();
+  drawOrderCta(ctx, width / 2, pillY, primary);
 
   drawFooterBand(ctx, cardX, footerY, cardW, footerH, primary);
 
@@ -602,19 +633,19 @@ export async function generateTableQrCard(options: {
   ctx.textAlign = "center";
   ctx.fillStyle = MUTED;
   ctx.font = "600 30px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillText("Powered by", width / 2, footerY + 138);
+  ctx.fillText("Powered by", width / 2, footerY + 124);
 
   if (poweredByLogo) {
-    drawContainedImage(ctx, poweredByLogo, width / 2 - 310, footerY + 156, 620, 132);
+    drawContainedImage(ctx, poweredByLogo, width / 2 - 300, footerY + 142, 600, 126);
   } else {
     ctx.fillStyle = DIGINIZAM_BLUE;
     ctx.font = "800 58px system-ui, sans-serif";
-    ctx.fillText("DIGINIZAM", width / 2, footerY + 255);
+    ctx.fillText("DIGINIZAM", width / 2, footerY + 242);
   }
 
   ctx.fillStyle = DIGINIZAM_BLUE;
   ctx.font = "800 34px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillText("diginizam.com", width / 2, footerY + 350);
+  ctx.fillText("diginizam.com", width / 2, footerY + 326);
 
   ctx.restore();
 
