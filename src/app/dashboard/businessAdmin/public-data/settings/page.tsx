@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Loading from "@/components/common/Loading";
-import { AlertCircle, Loader2, RefreshCw, Save } from "lucide-react";
+import { AlertCircle, ImagePlus, Loader2, RefreshCw, Save, X } from "lucide-react";
+import { BASE_URL } from "@/lib/constant";
 import { toast } from "sonner";
 import { usePublicDataSettings, CatalogSyncStatusResponse } from "@/hooks/usePublicData";
 import { normalizeErrorMessage } from "@/lib/utils";
@@ -25,8 +26,12 @@ export default function PublicDataSettingsPage() {
     displayName: "",
     description: "",
     logo: "",
+    primaryColor: "#001840",
+    secondaryColor: "#0050F8",
     allowedOriginsText: "",
   });
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<CatalogSyncStatusResponse | null>(null);
   const [syncLoading, setSyncLoading] = useState(false);
 
@@ -38,8 +43,18 @@ export default function PublicDataSettingsPage() {
       displayName: settings.displayName ?? "",
       description: settings.description ?? "",
       logo: settings.logo ?? "",
+      primaryColor: settings.primaryColor || "#001840",
+      secondaryColor: settings.secondaryColor || "#0050F8",
       allowedOriginsText: (settings.allowedOrigins ?? []).join("\n"),
     });
+    setLogoFile(null);
+    setLogoPreview(
+      settings.logo
+        ? settings.logo.startsWith("http")
+          ? settings.logo
+          : `${BASE_URL}/${settings.logo.replace(/^\//, "")}`
+        : null,
+    );
   }, [settings]);
 
   const loadSyncStatus = async () => {
@@ -71,6 +86,12 @@ export default function PublicDataSettingsPage() {
       return;
     }
 
+    const hex = /^#([0-9a-fA-F]{6})$/;
+    if (!hex.test(form.primaryColor) || !hex.test(form.secondaryColor)) {
+      toast.error("Primary and secondary colors must be hex values like #001840");
+      return;
+    }
+
     const toastId = toast.loading("Saving settings...");
     try {
       await updateSettings({
@@ -79,7 +100,10 @@ export default function PublicDataSettingsPage() {
         displayName: form.displayName.trim(),
         description: form.description.trim(),
         logo: form.logo.trim() || undefined,
+        primaryColor: form.primaryColor,
+        secondaryColor: form.secondaryColor,
         allowedOrigins,
+        logoFile,
       });
       toast.success("Settings saved successfully", { id: toastId });
       await fetchSettings();
@@ -122,7 +146,7 @@ export default function PublicDataSettingsPage() {
         <div className="mb-6">
           <h3 className="text-xl font-bold text-[#0f172a]">Storefront Settings</h3>
           <p className="text-sm text-[#64748b]">
-            Control public website enablement, branding, and operational catalog sync.
+            Control public website enablement, branding colors, logo, and operational catalog sync. Table QR cards use these colors and logo.
           </p>
         </div>
 
@@ -187,13 +211,86 @@ export default function PublicDataSettingsPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-[#0f172a]">Logo path</label>
-            <input
-              value={form.logo}
-              onChange={(e) => setForm((prev) => ({ ...prev, logo: e.target.value }))}
-              placeholder="uploads/public-catalog/logo.webp"
-              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#001840]"
-            />
+            <label className="mb-2 block text-sm font-semibold text-[#0f172a]">Business logo</label>
+            <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
+              <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
+                {logoPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoPreview} alt="Business logo" className="h-full w-full object-contain p-1" />
+                ) : (
+                  <ImagePlus className="h-6 w-6 text-[#94a3b8]" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-[#64748b]">
+                  Used on table QR cards. JPEG, PNG, or WebP.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-xs font-semibold text-[#0f172a]">
+                    <ImagePlus className="h-4 w-4" />
+                    Upload logo
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] || null;
+                        setLogoFile(file);
+                        setLogoPreview(file ? URL.createObjectURL(file) : logoPreview);
+                      }}
+                    />
+                  </label>
+                  {logoPreview ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLogoFile(null);
+                        setLogoPreview(null);
+                        setForm((prev) => ({ ...prev, logo: "" }));
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border border-[#fee2e2] bg-white px-3 py-2 text-xs font-semibold text-[#dc2626]"
+                    >
+                      <X className="h-3.5 w-3.5" /> Remove
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-[#0f172a]">Primary color</label>
+              <div className="flex items-center gap-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2">
+                <input
+                  type="color"
+                  value={form.primaryColor}
+                  onChange={(e) => setForm((prev) => ({ ...prev, primaryColor: e.target.value }))}
+                  className="h-10 w-12 cursor-pointer rounded-md border-0 bg-transparent"
+                />
+                <input
+                  value={form.primaryColor}
+                  onChange={(e) => setForm((prev) => ({ ...prev, primaryColor: e.target.value }))}
+                  className="w-full bg-transparent text-sm font-semibold uppercase outline-none"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-[#0f172a]">Secondary color</label>
+              <div className="flex items-center gap-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2">
+                <input
+                  type="color"
+                  value={form.secondaryColor}
+                  onChange={(e) => setForm((prev) => ({ ...prev, secondaryColor: e.target.value }))}
+                  className="h-10 w-12 cursor-pointer rounded-md border-0 bg-transparent"
+                />
+                <input
+                  value={form.secondaryColor}
+                  onChange={(e) => setForm((prev) => ({ ...prev, secondaryColor: e.target.value }))}
+                  className="w-full bg-transparent text-sm font-semibold uppercase outline-none"
+                />
+              </div>
+            </div>
           </div>
 
           <div>

@@ -16,6 +16,8 @@ export interface PublicCatalogSettings {
   displayName?: string | null;
   description?: string | null;
   logo?: string | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
   allowedOrigins: string[];
   lastSyncedAt?: string | null;
   createdAt?: string;
@@ -80,7 +82,10 @@ export interface UpdatePublicCatalogSettingsPayload {
   displayName?: string;
   description?: string;
   logo?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
   allowedOrigins?: string[];
+  logoFile?: File | null;
 }
 
 export interface PublicCategoryPayload {
@@ -210,6 +215,19 @@ export function usePublicDataSettings() {
       try {
         const url = new URL(`${BASE_URL}/public-data/settings`);
         appendBusinessId(url, activeBusinessId);
+        const { logoFile, ...fields } = payload;
+        if (logoFile) {
+          const logoUrl = new URL(`${BASE_URL}/public-data/settings/logo`);
+          appendBusinessId(logoUrl, activeBusinessId);
+          const form = new FormData();
+          form.append("logoFile", logoFile);
+          const logoResponse = await fetch(logoUrl.toString(), {
+            method: "POST",
+            headers: { accept: "*/*", Authorization: `Bearer ${token}` },
+            body: form,
+          });
+          await readJson(logoResponse, "Failed to upload logo");
+        }
         const response = await fetch(url.toString(), {
           method: "PATCH",
           headers: {
@@ -217,7 +235,7 @@ export function usePublicDataSettings() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(fields),
         });
         const json = await readJson<{ data?: PublicCatalogSettings } | PublicCatalogSettings>(
           response,

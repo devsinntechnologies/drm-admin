@@ -13,7 +13,12 @@ import {
 import { usePublicDataSettings } from "@/hooks/usePublicData";
 import { TableRecord } from "@/hooks/useTables";
 import { BASE_URL } from "@/lib/constant";
-import { generateTableQrCard, storefrontSelfOrderUrl } from "@/lib/table-qr";
+import {
+  downloadQrPdf,
+  downloadQrPng,
+  generateTableQrCard,
+  storefrontSelfOrderUrl,
+} from "@/lib/table-qr";
 
 function imageUrl(path?: string | null) {
   if (!path?.trim()) return null;
@@ -55,7 +60,9 @@ export function TableQrDialog({
       tableNumber: table.tableNumber,
       businessName: settings?.displayName || "Restaurant",
       businessLogoUrl: imageUrl(settings?.logo),
-      poweredByLogoUrl: "/logo-mark.svg",
+      poweredByLogoUrl: "/logo-mark.png",
+      primaryColor: settings?.primaryColor,
+      secondaryColor: settings?.secondaryColor,
     })
       .then((dataUrl) => {
         if (!cancelled) setPreview(dataUrl);
@@ -74,12 +81,18 @@ export function TableQrDialog({
     };
   }, [open, table, settings]);
 
-  const onDownload = () => {
-    if (!preview || !table) return;
-    const link = document.createElement("a");
-    link.href = preview;
-    link.download = `table-${table.tableNumber.replace(/\s+/g, "-").toLowerCase()}-qr.png`;
-    link.click();
+  const fileBase = table
+    ? `table-${table.tableNumber.replace(/\s+/g, "-").toLowerCase()}-qr`
+    : "table-qr";
+
+  const onDownloadPng = () => {
+    if (!preview) return;
+    void downloadQrPng(preview, `${fileBase}.png`);
+  };
+
+  const onDownloadPdf = () => {
+    if (!preview) return;
+    void downloadQrPdf(preview, `${fileBase}.pdf`);
   };
 
   return (
@@ -117,15 +130,26 @@ export function TableQrDialog({
                 </div>
               )}
               <p className="truncate text-center text-xs text-slate-500">{targetUrl}</p>
-              <button
-                type="button"
-                onClick={onDownload}
-                disabled={!preview}
-                className="dn-btn dn-btn-primary w-full disabled:opacity-60"
-              >
-                <Download className="h-4 w-4" />
-                Download QR Image
-              </button>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={onDownloadPng}
+                  disabled={!preview}
+                  className="dn-btn dn-btn-primary w-full disabled:opacity-60"
+                >
+                  <Download className="h-4 w-4" />
+                  A4 PNG
+                </button>
+                <button
+                  type="button"
+                  onClick={onDownloadPdf}
+                  disabled={!preview}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  <Download className="h-4 w-4" />
+                  A4 PDF
+                </button>
+              </div>
             </>
           )}
         </div>
