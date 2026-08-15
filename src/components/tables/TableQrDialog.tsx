@@ -60,7 +60,7 @@ export function TableQrDialog({
       tableNumber: table.tableNumber,
       businessName: settings?.displayName || "Restaurant",
       businessLogoUrl: imageUrl(settings?.logo),
-      poweredByLogoUrl: "/logo-mark.png",
+      poweredByLogoUrl: "/diginizam-logo.svg",
       primaryColor: settings?.primaryColor,
       secondaryColor: settings?.secondaryColor,
     })
