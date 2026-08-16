@@ -7,6 +7,7 @@ import {
   Building2,
   Calendar,
   ExternalLink,
+  Globe2,
   Mail,
   MapPin,
   Palette,
@@ -30,6 +31,7 @@ import { getIndustryPreviewProfile } from "@/lib/industry-preview-profiles";
 import { INDUSTRY_TEMPLATES } from "@/templates/industries";
 import { ACCENT_COLORS, colorsFromAccent } from "@/templates/modules";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
+import { useWebsite } from "@/hooks/useWebsite";
 import type { AccentColor } from "@/templates/types";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +40,7 @@ function BusinessProfileContent() {
   const router = useRouter();
   const id = typeof params.id === "string" ? params.id : "";
   const { data: business, isLoading, isError } = useGetBusinessByIdQuery(id, { skip: !id });
+  const { website } = useWebsite(id);
   const [profile, setProfile] = useState<BusinessProfileConfig | null>(null);
 
   useEffect(() => {
@@ -182,6 +185,30 @@ function BusinessProfileContent() {
                 <span className="truncate">{text}</span>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="mb-6 rounded-2xl border border-[#e2e8f0] bg-white p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#001840] text-white">
+                <Globe2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-[#0f172a]">DigiNizam Website</h2>
+                <p className="mt-1 text-sm text-[#64748b]">
+                  {website
+                    ? `${website.status} · ${website.publicUrl}`
+                    : "No website yet. Open the workspace to create one."}
+                </p>
+              </div>
+            </div>
+            <Link
+              href={`/dashboard/businessAdmin/website?businessId=${id}`}
+              className="dn-btn dn-btn-primary inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm"
+            >
+              Manage website <ExternalLink className="h-4 w-4" />
+            </Link>
           </div>
         </section>
 

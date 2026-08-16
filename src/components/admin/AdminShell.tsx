@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { Activity, Building2, Crown, CreditCard, Globe2, LayoutGrid, LayoutTemplate, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Receipt, ReceiptText, Search, Bell, Shapes, ShoppingCart, Store, Users, UtensilsCrossed, X } from "lucide-react";
+import { Activity, AppWindow, Building2, Crown, CreditCard, Globe2, LayoutGrid, LayoutTemplate, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Receipt, ReceiptText, Search, Bell, Shapes, ShoppingCart, Store, Users, UtensilsCrossed, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,7 +10,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { toast } from "sonner";
 
-type TabKey = "dashboard" | "businesses" | "subscriptions" | "industry-templates" | "action-logs" | "orders" | "kitchen" | "products" | "categories" | "public-data" | "tables" | "invoices" | "users";
+type TabKey = "dashboard" | "businesses" | "subscriptions" | "industry-templates" | "action-logs" | "orders" | "kitchen" | "products" | "categories" | "public-data" | "website" | "tables" | "invoices" | "users";
 
 type AdminShellProps = {
   activeTab: TabKey;
@@ -67,6 +67,12 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
     icon: <Globe2 className="h-5 w-5" />,
   },
   {
+    key: "website",
+    label: "Website",
+    href: "/dashboard/businessAdmin/website",
+    icon: <AppWindow className="h-5 w-5" />,
+  },
+  {
     key: "tables",
     label: "Floor & Tables",
     href: "/dashboard/businessAdmin/tables",
@@ -101,7 +107,7 @@ const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactN
 function getVisibleTabs(role: string | null, isImpersonating: boolean = false) {
   // If we are impersonating, we always want the business admin view
   if (isImpersonating || role === "business_admin") {
-    return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "public-data" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
+    return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "public-data" || tab.key === "website" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
   }
 
   if (role === "kitchen") {
@@ -195,7 +201,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
     if (resolvedRole === "waiter" || resolvedRole === "kitchen") {
       baseTabs = tabs.filter((tab) => tab.key === "orders");
     } else if (shouldShowBusinessTabs) {
-      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "public-data" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
+      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "public-data" || tab.key === "website" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
     } else {
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "industry-templates" || tab.key === "action-logs");
       // Force Super Admin dashboard link to the superAdmin route

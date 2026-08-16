@@ -16,9 +16,9 @@ export const metadata: Metadata = {
   title: "DigiNizam Admin",
   description: "Enterprise multi-industry business operating system — platform administration",
   icons: {
-    icon: "/logo-mark.png",
-    shortcut: "/logo-mark.png",
-    apple: "/logo-mark.png",
+    icon: "/logo-mark.svg",
+    shortcut: "/logo-mark.svg",
+    apple: "/logo-mark.svg",
   },
 };
 
