@@ -16,7 +16,7 @@ import {
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
-import { PortalPage, PortalPageHeader, PortalRefreshFab } from "@/components/admin/PortalPage";
+import { PortalPage, PortalRefreshFab } from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrders } from "@/hooks/useOrders";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
@@ -186,8 +186,6 @@ function KitchenPageContent() {
   return (
     <AdminShell activeTab="kitchen">
       <PortalPage>
-        <PortalPageHeader icon={UtensilsCrossed} title="Kitchen Display" subtitle="Track and advance orders in real time" />
-
         <div className="grid min-h-[calc(100vh-16rem)] grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Take Away Column */}
             <div className="flex flex-col gap-4 min-h-0">

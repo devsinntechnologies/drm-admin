@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Check, ChevronDown, CreditCard, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
@@ -341,17 +341,7 @@ function SubscriptionsContent() {
 
   return (
     <AdminShell activeTab="subscriptions">
-      <section className="portal-header mb-5 flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-4">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#b45309] text-[#ffffff] shadow-[0_10px_18px_rgba(180,83,9,0.28)]">
-            <CreditCard className="h-6 w-6" strokeWidth={1.8} />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold lg:text-2xl">Subscription Management</h2>
-            <p className="text-sm text-[#657084] lg:text-base">Manage plans, pricing, and billing access.</p>
-          </div>
-        </div>
-
+      <div className="mb-5 flex w-full justify-end">
         <button
           type="button"
           onClick={openCreatePlanDialog}
@@ -360,7 +350,7 @@ function SubscriptionsContent() {
           <Plus className="h-4 w-4" />
           Add Plan
         </button>
-      </section>
+      </div>
 
       <section className="mb-6 w-full rounded-3xl border border-[#e4ebf4] bg-white/90 p-6 shadow-[0_10px_24px_rgba(10,17,31,0.08)]">
         <div className="mb-5 flex items-center justify-between gap-4">

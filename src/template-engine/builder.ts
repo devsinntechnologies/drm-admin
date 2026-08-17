@@ -7,14 +7,21 @@ import type {
   ThemeMode,
 } from "@/templates/types";
 
+const WORKSPACE_NAV_LABELS: Partial<Record<ModuleId, string>> = {
+  menu: "Products",
+  tables: "Floor & Tables",
+  sales: "Invoices",
+  staff: "Users",
+  "public-catalog": "Public Catalog",
+};
+
 export function buildDefaultNavigation(
   modules: ModuleId[],
   labels: IndustryTemplate["labels"],
 ): CustomizedTemplateConfig["navigation"] {
   return modules.map((moduleId) => {
-    let label = MODULE_CATALOG[moduleId]?.label ?? moduleId;
+    let label = WORKSPACE_NAV_LABELS[moduleId] ?? MODULE_CATALOG[moduleId]?.label ?? moduleId;
     if (moduleId === "products") label = labels.products;
-    if (moduleId === "menu") label = labels.products;
     if (moduleId === "orders" && labels.orders) label = labels.orders;
     if (moduleId === "customers" && labels.customers) label = labels.customers;
     return { moduleId, label, visible: true };

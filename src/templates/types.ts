@@ -87,7 +87,8 @@ export type ModuleId =
   | "publishers"
   | "accounting"
   | "hr"
-  | "multi-branch";
+  | "multi-branch"
+  | "public-catalog";
 
 export type DashboardCardId =
   | "today-sales"
@@ -208,4 +209,76 @@ export type CustomizedTemplateConfig = {
   navigation: Array<{ moduleId: ModuleId; label: string; visible: boolean }>;
   dashboardCards: DashboardCardId[];
   labels: IndustryTemplate["labels"];
+  /** Extended builder settings — persisted locally until backend JSONB column is added */
+  extensions?: TemplateConfigExtensions;
 };
+
+export type DashboardWidgetId =
+  | "order-status-chart"
+  | "statistics-row"
+  | "top-products"
+  | "recent-orders"
+  | "activity-feed";
+
+export type BusinessProfileFieldConfig = {
+  id: string;
+  label: string;
+  type: "text" | "email" | "phone" | "url" | "textarea";
+  required: boolean;
+  enabled: boolean;
+};
+
+export type CustomFormFieldConfig = {
+  id: string;
+  form: "customer" | "employee" | "product" | "appointment" | "custom";
+  label: string;
+  required: boolean;
+  validation?: string;
+};
+
+export type RolePermissionMatrix = Record<string, Record<string, boolean>>;
+
+export type TemplateConfigExtensions = {
+  templateName?: string;
+  templateDescription?: string;
+  industryCategory?: string;
+  industryStatus?: "active" | "draft" | "archived";
+  accentColor?: string;
+  backgroundColor?: string;
+  typography?: string;
+  sidebarStyle?: "default" | "compact" | "wide";
+  headerStyle?: "default" | "minimal";
+  borderRadius?: "sm" | "md" | "lg";
+  dashboardWidgets?: DashboardWidgetId[];
+  businessProfileFields?: BusinessProfileFieldConfig[];
+  customFormFields?: CustomFormFieldConfig[];
+  rolePermissions?: RolePermissionMatrix;
+  businessEmail?: string;
+  businessPhone?: string;
+  businessAddress?: string;
+  website?: string;
+  taxNumber?: string;
+  registrationNumber?: string;
+  timezone?: string;
+  language?: string;
+};
+
+export type TemplateBuilderStepId =
+  | "industry"
+  | "business-profile"
+  | "theme"
+  | "modules"
+  | "dashboard-cards"
+  | "dashboard-widgets"
+  | "forms"
+  | "permissions"
+  | "preview";
+
+export type BusinessSetupStepId =
+  | "select-template"
+  | "business-profile"
+  | "theme"
+  | "modules"
+  | "dashboard"
+  | "review"
+  | "generate";

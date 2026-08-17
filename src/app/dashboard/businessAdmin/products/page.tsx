@@ -31,7 +31,6 @@ import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import {
   PortalPage,
-  PortalPageHeader,
   PortalMetricRow,
   PortalErrorAlert,
   PortalEmptyState,
@@ -406,32 +405,25 @@ function MenuItemsContent() {
   return (
     <AdminShell activeTab="products">
       <PortalPage>
-        <PortalPageHeader
-          icon={Box}
-          title="Menu Items"
-          subtitle="Manage products & stock levels"
-          actions={
-            <>
-              <button type="button" onClick={() => setCreateOpen(true)} className="dn-btn dn-btn-primary">
-                <Plus className="h-5 w-5" /> Add Product
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push(`/dashboard/businessAdmin/categories${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
-                className="dn-btn dn-btn-outline"
-              >
-                <Shapes className="h-5 w-5" /> Categories
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push(`/dashboard/businessAdmin/ingredients${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
-                className="dn-btn dn-btn-soft"
-              >
-                <Package className="h-5 w-5" /> Ingredients
-              </button>
-            </>
-          }
-        />
+        <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
+          <button type="button" onClick={() => setCreateOpen(true)} className="dn-btn dn-btn-primary">
+            <Plus className="h-5 w-5" /> Add Product
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push(`/dashboard/businessAdmin/categories${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
+            className="dn-btn dn-btn-outline"
+          >
+            <Shapes className="h-5 w-5" /> Categories
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push(`/dashboard/businessAdmin/ingredients${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
+            className="dn-btn dn-btn-soft"
+          >
+            <Package className="h-5 w-5" /> Ingredients
+          </button>
+        </div>
 
         <PortalMetricRow label="Total Items" value={pagination.total} icon={Box} />
 

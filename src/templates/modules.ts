@@ -73,6 +73,12 @@ export const MODULE_CATALOG: Record<
   accounting: { id: "accounting", label: "Accounting", description: "Optional accounting pack", category: "Optional" },
   hr: { id: "hr", label: "HR & Payroll", description: "Optional HR pack", category: "Optional" },
   "multi-branch": { id: "multi-branch", label: "Multi-branch", description: "Optional multi-branch pack", category: "Optional" },
+  "public-catalog": {
+    id: "public-catalog",
+    label: "Public Catalog",
+    description: "Customer-facing online menu and catalog",
+    category: "Catalog",
+  },
 };
 
 export const DASHBOARD_CARD_CATALOG: Record<

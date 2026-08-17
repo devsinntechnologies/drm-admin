@@ -1,0 +1,55 @@
+import {
+  Activity,
+  Building2,
+  Calendar,
+  CreditCard,
+  Globe2,
+  LayoutDashboard,
+  LayoutGrid,
+  Package,
+  Receipt,
+  Settings,
+  Shapes,
+  ShoppingCart,
+  Store,
+  Tag,
+  Truck,
+  Users,
+  UtensilsCrossed,
+  Warehouse,
+  type LucideIcon,
+} from "lucide-react";
+import type { ModuleId } from "@/templates/types";
+
+export const MODULE_ICONS: Partial<Record<ModuleId | string, LucideIcon>> = {
+  dashboard: LayoutDashboard,
+  pos: ShoppingCart,
+  orders: ShoppingCart,
+  sales: Receipt,
+  products: LayoutGrid,
+  categories: Shapes,
+  inventory: Package,
+  departments: Warehouse,
+  batches: Package,
+  expiry: Calendar,
+  purchases: CreditCard,
+  suppliers: Truck,
+  promotions: Tag,
+  "price-management": Tag,
+  customers: Users,
+  counters: Store,
+  branches: Building2,
+  reports: Activity,
+  settings: Settings,
+  staff: Users,
+  tables: Store,
+  kitchen: UtensilsCrossed,
+  menu: UtensilsCrossed,
+  "public-catalog": Globe2,
+  invoices: Receipt,
+  users: Users,
+};
+
+export function resolveModuleIcon(moduleId: string): LucideIcon {
+  return MODULE_ICONS[moduleId] ?? LayoutGrid;
+}

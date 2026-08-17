@@ -1,23 +1,99 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { Activity, AppWindow, Building2, Crown, CreditCard, Globe2, LayoutGrid, LayoutTemplate, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Receipt, ReceiptText, Search, Bell, Shapes, ShoppingCart, Store, Users, UtensilsCrossed, X } from "lucide-react";
+import { Activity, AppWindow, Building2, Crown, CreditCard, Globe2, LayoutGrid, LayoutTemplate, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Receipt, Bell, Shapes, ShoppingCart, Store, Users, UtensilsCrossed, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
-import { useSearchParams, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
+import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
+import { buildBusinessWorkspaceNav, type WorkspaceNavTab } from "@/lib/build-business-workspace-nav";
+import { pathnameToModuleId } from "@/lib/module-routes";
 import { toast } from "sonner";
 
-type TabKey = "dashboard" | "businesses" | "subscriptions" | "industry-templates" | "action-logs" | "orders" | "kitchen" | "products" | "categories" | "public-data" | "website" | "tables" | "invoices" | "users";
+type TabKey = string;
 
 type AdminShellProps = {
   activeTab: TabKey;
+  pageTitle?: string;
   children: React.ReactNode;
 };
 
-const tabs: Array<{ key: TabKey; label: string; href: string; icon: React.ReactNode }> = [
+const PATH_PAGE_TITLES: Record<string, string> = {
+  "/dashboard/superAdmin": "DigiNizam Platform Console",
+  "/dashboard/businessAdmin": "Dashboard",
+  "/dashboard/superAdmin/businesses": "Business Management",
+  "/dashboard/superAdmin/businesses/setup": "Business Setup Wizard",
+  "/dashboard/superAdmin/subscriptions": "Subscription Management",
+  "/dashboard/superAdmin/industry-templates": "Industry Templates",
+  "/dashboard/superAdmin/action-logs": "Action Logs",
+  "/dashboard/businessAdmin/products": "Menu Items",
+  "/dashboard/businessAdmin/categories": "Manage Categories",
+  "/dashboard/businessAdmin/public-data": "Public Catalog",
+  "/dashboard/businessAdmin/public-data/categories": "Public Catalog",
+  "/dashboard/businessAdmin/public-data/products": "Public Catalog",
+  "/dashboard/businessAdmin/public-data/catalog": "Public Catalog",
+  "/dashboard/businessAdmin/tables": "Restaurant Tables",
+  "/dashboard/businessAdmin/invoices": "Invoices",
+  "/dashboard/businessAdmin/orders": "Orders",
+  "/dashboard/businessAdmin/kitchen": "Kitchen Display",
+  "/dashboard/businessAdmin/users": "Team",
+  "/dashboard/businessAdmin/ingredients": "Inventory & Ingredients",
+};
+
+function resolvePageTitle(
+  pathname: string,
+  activeTab: TabKey,
+  profileBusinessName?: string,
+  templateNavLabel?: string,
+): string {
+  if (pathname.includes("/businesses/setup")) return "Business Setup Wizard";
+
+  if (profileBusinessName && /\/superAdmin\/businesses\/[^/]+$/.test(pathname)) {
+    return profileBusinessName;
+  }
+
+  if (templateNavLabel) return templateNavLabel;
+
+  const path = pathname.split("?")[0];
+  if (PATH_PAGE_TITLES[path]) return PATH_PAGE_TITLES[path];
+
+  return tabs.find((tab) => tab.key === activeTab)?.label ?? "Dashboard";
+}
+
+function isNavTabActive(tabKey: string, resolvedActiveTab: string, fallbackTab: string) {
+  if (tabKey === resolvedActiveTab || tabKey === fallbackTab) return true;
+
+  const publicCatalogKeys = new Set(["public-data", "public-catalog"]);
+  return (
+    publicCatalogKeys.has(tabKey) &&
+    (publicCatalogKeys.has(resolvedActiveTab) || publicCatalogKeys.has(fallbackTab))
+  );
+}
+
+function NavTabLabel({ label, inProgress, active }: { label: string; inProgress?: boolean; active: boolean }) {
+  if (!inProgress) {
+    return <span className={cn("min-w-0 truncate", active ? "text-white" : "text-[#334155]")}>{label}</span>;
+  }
+
+  return (
+    <span className={cn("flex min-w-0 flex-1 items-center gap-2", active ? "text-white" : "text-[#334155]")}>
+      <span className="min-w-0 truncate">{label}</span>
+      <span
+        className={cn(
+          "shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide",
+          active ? "bg-white/20 text-white" : "bg-[#fef3c7] text-[#b45309]",
+        )}
+      >
+        In Progress
+      </span>
+    </span>
+  );
+}
+
+const tabs: Array<WorkspaceNavTab> = [
   {
     key: "dashboard",
     label: "Dashboard",
@@ -121,68 +197,73 @@ function getVisibleTabs(role: string | null, isImpersonating: boolean = false) {
   return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "industry-templates" || tab.key === "action-logs");
 }
 
-export default function AdminShell({ activeTab, children }: AdminShellProps) {
+export default function AdminShell({ activeTab, pageTitle: pageTitleProp, children }: AdminShellProps) {
   const { role, user, logout } = useAuth();
+  const { templateConfig, primaryColor, secondaryColor, logoUrl, businessId: contextBusinessId } = useBusinessTemplate();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [resolvedRole, setResolvedRole] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
-  const businessId = useActiveBusinessId();
-  const searchParams = useSearchParams();
+  const hookBusinessId = useActiveBusinessId();
+  const businessId = contextBusinessId ?? hookBusinessId;
+  const pathname = usePathname();
   const router = useRouter();
   const { data: activeBusiness } = useGetBusinessByIdQuery(businessId || "", {
     skip: !businessId,
   });
 
+  const isBusinessSetup = pathname.includes("/businesses/setup");
+  const profileBusinessIdMatch = !isBusinessSetup ? pathname.match(/\/superAdmin\/businesses\/([^/]+)$/) : null;
+  const profileBusinessId = profileBusinessIdMatch?.[1];
+  const { data: profileBusiness } = useGetBusinessByIdQuery(profileBusinessId || "", {
+    skip: !profileBusinessId,
+  });
+
+  const resolvedActiveTab = pathnameToModuleId(pathname) ?? activeTab;
+  const templateNavLabel = templateConfig?.navigation.find((item) => item.moduleId === resolvedActiveTab)?.label;
+
+  const pageTitle = pageTitleProp ?? resolvePageTitle(pathname, resolvedActiveTab, profileBusiness?.businessName, templateNavLabel);
+
   useEffect(() => {
     setIsMounted(true);
-    if (typeof window !== "undefined") {
-      setSidebarCollapsed(localStorage.getItem("dn_sidebar_collapsed") === "true");
-    }
-    const currentId = searchParams.get("businessId");
+    if (typeof window === "undefined") return;
 
-    // Sync businessId from URL to localStorage to prevent stale IDs
-    if (typeof window !== "undefined" && currentId) {
+    setSidebarCollapsed(localStorage.getItem("dn_sidebar_collapsed") === "true");
+
+    const currentId = new URLSearchParams(window.location.search).get("businessId");
+
+    if (currentId) {
       localStorage.setItem("businessId", currentId);
     }
 
-    // Auto-append businessId to URL if missing and we are on a businessAdmin page
-    if (typeof window !== "undefined" && isMounted) {
-      if (!currentId && businessId && window.location.pathname.includes("/businessAdmin")) {
-        const newParams = new URLSearchParams(window.location.search);
-        newParams.set("businessId", businessId);
-        router.replace(`${window.location.pathname}?${newParams.toString()}`);
-      }
+    if (isMounted && !currentId && businessId && window.location.pathname.includes("/businessAdmin")) {
+      const newParams = new URLSearchParams(window.location.search);
+      newParams.set("businessId", businessId);
+      router.replace(`${window.location.pathname}?${newParams.toString()}`);
     }
 
-    // Security & Contextual Redirects
-    if (typeof window !== "undefined" && isMounted && resolvedRole) {
-      const isSuperAdminPath = window.location.pathname.includes("/superAdmin");
-      const isBusinessAdminPath = window.location.pathname.includes("/businessAdmin");
-
-      // 1. If a non-super-admin tries to access /superAdmin, kick them out
-      if (isSuperAdminPath && resolvedRole !== "super_admin") {
-        router.replace("/dashboard");
-        return;
-      }
-
-      // 2. If a super-admin is on a business path but HAS NO businessId, kick them to global view
-      if (isBusinessAdminPath && resolvedRole === "super_admin" && !businessId) {
-        router.replace("/dashboard");
-        return;
-      }
+    const storedRole =
+      role ?? localStorage.getItem("roleName") ?? localStorage.getItem("auth_role") ?? localStorage.getItem("role");
+    if (storedRole) {
+      setResolvedRole(storedRole);
     }
 
-    if (role) {
-      setResolvedRole(role);
+    if (!isMounted || !storedRole) return;
+
+    const isSuperAdminPath = window.location.pathname.includes("/superAdmin");
+    const isBusinessAdminPath = window.location.pathname.includes("/businessAdmin");
+    const urlBusinessId = currentId ?? businessId;
+
+    if (isSuperAdminPath && storedRole !== "super_admin") {
+      router.replace("/dashboard");
       return;
     }
 
-    if (typeof window !== "undefined") {
-      setResolvedRole(localStorage.getItem("roleName") || localStorage.getItem("auth_role") || localStorage.getItem("role"));
+    if (isBusinessAdminPath && storedRole === "super_admin" && !urlBusinessId) {
+      router.replace("/dashboard");
     }
-  }, [role, businessId, isMounted, searchParams, router]);
+  }, [role, businessId, isMounted, router, pathname]);
 
   const visibleTabs = useMemo(() => {
     // During SSR and first paint, we MUST return a static set of tabs that match the server
@@ -196,6 +277,10 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
 
     const isImpersonating = !!businessId && resolvedRole === "super_admin";
     const shouldShowBusinessTabs = isBusinessAdminRoute || isImpersonating || resolvedRole === "business_admin";
+
+    if (shouldShowBusinessTabs && templateConfig && businessId) {
+      return buildBusinessWorkspaceNav(templateConfig, businessId);
+    }
 
     let baseTabs;
     if (resolvedRole === "waiter" || resolvedRole === "kitchen") {
@@ -225,7 +310,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
     }
 
     return baseTabs;
-  }, [resolvedRole, businessId, isMounted]);
+  }, [resolvedRole, businessId, isMounted, templateConfig, pathname]);
 
   const closeMobileNav = () => setMobileNavOpen(false);
 
@@ -250,6 +335,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
             : "Admin Portal";
 
   const shellTitle = activeBusiness?.businessName || "DigiNizam";
+  const shellLogo = logoUrl || activeBusiness?.logo || null;
 
   return (
     <div className="min-h-screen">
@@ -261,14 +347,23 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
       >
         <div className="border-b border-[#edf2f7] px-3 py-4">
           <div className={cn("flex items-center gap-3", sidebarCollapsed && "justify-center")}>
-            <Image
-              src="/logo-mark.png"
-              alt="DigiNizam"
-              width={48}
-              height={40}
-              className="h-10 w-auto shrink-0 object-contain"
-              priority
-            />
+            {shellLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={shellLogo}
+                alt={shellTitle}
+                className="h-10 w-10 shrink-0 rounded-lg object-contain"
+              />
+            ) : (
+              <Image
+                src="/logo-mark.png"
+                alt="DigiNizam"
+                width={48}
+                height={40}
+                className="h-10 w-auto shrink-0 object-contain"
+                priority
+              />
+            )}
             {!sidebarCollapsed ? (
               <div className="min-w-0">
                 <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">{shellTitle}</h1>
@@ -284,7 +379,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
           ) : null}
           <nav className="flex flex-1 flex-col gap-1">
             {visibleTabs.map((tab) => {
-              const active = activeTab === tab.key;
+              const active = isNavTabActive(tab.key, resolvedActiveTab, activeTab);
               return (
                 <Link
                   key={tab.key}
@@ -294,16 +389,29 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                     "group flex min-w-0 items-center gap-3 py-3 text-sm font-semibold transition-all duration-200",
                     sidebarCollapsed ? "justify-center px-2" : "px-4",
                     active
-                      ? "relative rounded-lg bg-[#001840] text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-[#0050F8]"
-                      : "rounded-lg text-[#475569] hover:bg-[#f1f5f9] hover:text-[#001840]",
+                      ? "relative rounded-lg text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r"
+                      : "rounded-lg text-[#475569] hover:bg-[#f1f5f9]",
                   )}
+                  style={
+                    active
+                      ? {
+                          backgroundColor: primaryColor,
+                          color: "#fff",
+                        }
+                      : undefined
+                  }
                 >
-                  <span className={cn(
-                    "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors",
-                    active ? "bg-white/15 text-white" : "bg-[#f1f5f9] text-[#64748b] group-hover:bg-white group-hover:text-[#0050F8]",
-                  )}>{tab.icon}</span>
+                  <span
+                    className={cn(
+                      "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors",
+                      active ? "bg-white/15 text-white" : "bg-[#f1f5f9] text-[#64748b] group-hover:bg-white",
+                    )}
+                    style={!active ? { color: undefined } : undefined}
+                  >
+                    {tab.icon}
+                  </span>
                   {!sidebarCollapsed ? (
-                    <span className={cn("min-w-0 truncate", active ? "text-white" : "text-[#334155]")}>{tab.label}</span>
+                    <NavTabLabel label={tab.label} inProgress={tab.inProgress} active={active} />
                   ) : null}
                 </Link>
               );
@@ -344,19 +452,8 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
         <header className="sticky top-0 z-30 border-b border-[#dbe4ef] bg-white py-3">
           <div className="flex w-full items-center justify-between gap-3 px-4 lg:px-6">
             <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-4">
-              <div className="min-w-0 xl:hidden">
-                <h1 className="truncate text-lg font-semibold leading-tight text-[#0f172a] md:text-xl">{shellTitle}</h1>
-                <p className="truncate text-xs font-medium leading-tight text-[#58657a] md:text-sm">{portalLabel}</p>
-              </div>
-              <div className="hidden max-w-md flex-1 lg:ml-auto lg:block xl:ml-0 xl:max-w-lg">
-                <label className="relative block">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
-                  <input
-                    type="search"
-                    placeholder="Search businesses, users, modules…"
-                    className="h-10 w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] pl-9 pr-4 text-sm outline-none focus:border-[#0050f8] focus:ring-2 focus:ring-[#0050f8]/15"
-                  />
-                </label>
+              <div className="min-w-0">
+                <h1 className="truncate text-lg font-semibold leading-tight text-[#0f172a] md:text-xl">{pageTitle}</h1>
               </div>
             </div>
 
@@ -415,7 +512,7 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
               <div className="mb-3 px-2 text-xs font-semibold tracking-[0.12em] text-[#94a3b8] uppercase">Navigation</div>
               <nav className="flex flex-1 flex-col gap-1">
                 {visibleTabs.map((tab) => {
-                  const active = activeTab === tab.key;
+                  const active = isNavTabActive(tab.key, resolvedActiveTab, activeTab);
                   return (
                     <Link
                       key={tab.key}
@@ -424,15 +521,16 @@ export default function AdminShell({ activeTab, children }: AdminShellProps) {
                       className={cn(
                         "group flex min-w-0 items-center gap-3 px-4 py-3 text-sm font-semibold transition-all duration-200",
                         active
-                          ? "relative rounded-lg bg-[#001840] text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-[#0050F8]"
-                          : "rounded-lg text-[#475569] hover:bg-[#f1f5f9] hover:text-[#001840]",
+                          ? "relative rounded-lg text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r"
+                          : "rounded-lg text-[#475569] hover:bg-[#f1f5f9]",
                       )}
+                      style={active ? { backgroundColor: primaryColor } : undefined}
                     >
                       <span className={cn(
                         "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors",
-                        active ? "bg-white/15 text-white" : "bg-[#f1f5f9] text-[#64748b] group-hover:bg-white group-hover:text-[#0050F8]",
+                        active ? "bg-white/15 text-white" : "bg-[#f1f5f9] text-[#64748b] group-hover:bg-white",
                       )}>{tab.icon}</span>
-                      <span className={cn("min-w-0 truncate", active ? "text-white" : "text-[#334155]")}>{tab.label}</span>
+                      <NavTabLabel label={tab.label} inProgress={tab.inProgress} active={active} />
                     </Link>
                   );
                 })}

@@ -2,6 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/lib/features/auth/authSlice";
 import { planApi } from "@/hooks/usePlan";
 import { businessApi } from "@/hooks/useBusiness";
+import { industryTemplateApi } from "@/hooks/useIndustryTemplate";
 import { actionLogsApi } from "@/hooks/useActionLogs";
 
 export const store = configureStore({
@@ -9,10 +10,16 @@ export const store = configureStore({
     auth: authReducer,
     [planApi.reducerPath]: planApi.reducer,
     [businessApi.reducerPath]: businessApi.reducer,
+    [industryTemplateApi.reducerPath]: industryTemplateApi.reducer,
     [actionLogsApi.reducerPath]: actionLogsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(planApi.middleware, businessApi.middleware, actionLogsApi.middleware),
+    getDefaultMiddleware().concat(
+      planApi.middleware,
+      businessApi.middleware,
+      industryTemplateApi.middleware,
+      actionLogsApi.middleware,
+    ),
 });
 
 export type AppStore = typeof store;

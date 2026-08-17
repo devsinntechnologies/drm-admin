@@ -74,15 +74,13 @@ function IngredientsContent() {
       <main className="w-full space-y-6 px-0">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.back()}
-              className="rounded-full p-2 hover:bg-gray-100 transition"
-            >
-              <ArrowLeft className="h-6 w-6 text-black" />
-            </button>
-            <h1 className="text-2xl font-bold text-[#111827]">Inventory & Ingredients</h1>
-          </div>
+          <button
+            onClick={() => router.back()}
+            className="rounded-full p-2 hover:bg-gray-100 transition"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-6 w-6 text-black" />
+          </button>
           <div className="flex items-center gap-2">
             <button className="rounded-xl bg-[#eefdf5] p-3 text-[#16a34a] transition hover:bg-[#dcfce7]">
               <Printer className="h-5 w-5" />

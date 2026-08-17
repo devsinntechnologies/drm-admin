@@ -28,12 +28,29 @@ function LoginContent() {
 
   const allowedRoles = ["super_admin", "business_admin", "waiter", "kitchen"];
   const roleFromQuery = searchParams.get("role");
+  const returnTo = searchParams.get("returnTo");
   const selectedRole =
     roleFromQuery && allowedRoles.includes(roleFromQuery)
       ? roleFromQuery
       : "super_admin";
   const selectedTitle = searchParams.get("title") || "Super Admin";
   const selectedSubtitle = searchParams.get("subtitle") || "Super-Admin";
+
+  const redirectAfterLogin = (businessId: string | null) => {
+    if (returnTo && returnTo.startsWith("/")) {
+      router.push(returnTo);
+      return;
+    }
+
+    const businessIdParam = businessId ? `?businessId=${encodeURIComponent(businessId)}` : "";
+    if (selectedRole === "kitchen" || selectedRole === "waiter") {
+      router.push(`/dashboard/businessAdmin/orders${businessIdParam}`);
+    } else if (selectedRole === "business_admin") {
+      router.push(`/dashboard/businessAdmin${businessIdParam}`);
+    } else {
+      router.push("/dashboard/superAdmin");
+    }
+  };
 
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -48,15 +65,7 @@ function LoginContent() {
       if (isSuccess) {
         toast.success("Login successful! Redirecting...", { id: toastId });
         const businessId = localStorage.getItem("businessId");
-        const businessIdParam = businessId ? `?businessId=${encodeURIComponent(businessId)}` : "";
-
-        if (selectedRole === "kitchen" || selectedRole === "waiter") {
-          router.push(`/dashboard/businessAdmin/orders${businessIdParam}`);
-        } else if (selectedRole === "business_admin") {
-          router.push(`/dashboard/businessAdmin${businessIdParam}`);
-        } else {
-          router.push("/dashboard/superAdmin");
-        }
+        redirectAfterLogin(businessId);
       } else {
         toast.error("Unable to sign in. Please check your credentials.", { id: toastId });
       }

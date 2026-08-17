@@ -7,7 +7,6 @@ import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import {
   PortalPage,
-  PortalPageHeader,
 } from "@/components/admin/PortalPage";
 import InvoiceReceipt, { InvoicePrintButton } from "@/components/common/InvoiceReceipt";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -209,17 +208,12 @@ function InvoicesContent() {
   return (
     <AdminShell activeTab="invoices">
       <PortalPage>
-        <PortalPageHeader
-          icon={Receipt}
-          title="Invoices"
-          subtitle="Track billing, payments, and receipts"
-          actions={
-            <button type="button" onClick={handleExportPDF} className="dn-btn dn-btn-outline shrink-0">
-              <Download className="h-4 w-4" />
-              Export PDF
-            </button>
-          }
-        />
+        <div className="mb-6 flex justify-end">
+          <button type="button" onClick={handleExportPDF} className="dn-btn dn-btn-outline shrink-0">
+            <Download className="h-4 w-4" />
+            Export PDF
+          </button>
+        </div>
 
         {/* Stats */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">

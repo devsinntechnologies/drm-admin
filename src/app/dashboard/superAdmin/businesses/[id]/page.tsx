@@ -4,7 +4,6 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  Building2,
   Calendar,
   ExternalLink,
   Globe2,
@@ -45,6 +44,18 @@ function BusinessProfileContent() {
 
   useEffect(() => {
     if (!id || !business) return;
+    const templateConfig = business.templateConfig;
+    if (templateConfig) {
+      setProfile({
+        industryId: templateConfig.industryId,
+        primaryColor: templateConfig.primaryColor,
+        secondaryColor: templateConfig.secondaryColor,
+        themeMode: templateConfig.themeMode,
+        typography: "Poppins",
+        layoutStyle: "comfortable",
+      });
+      return;
+    }
     setProfile(getBusinessProfile(id, business.businessName));
   }, [id, business]);
 
@@ -119,36 +130,31 @@ function BusinessProfileContent() {
           className="mb-4"
         />
 
-        {/* Business profile header */}
-        <section className="portal-header mb-6">
+        {/* Business profile */}
+        <section className="mb-6 rounded-xl border border-[#e2e8f0] bg-white p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex min-w-0 items-start gap-4">
-              <div className="portal-icon-box shrink-0">
-                <Building2 className="h-6 w-6" strokeWidth={1.8} />
-              </div>
-              <div className="min-w-0">
-                <h1 className="truncate text-xl font-semibold text-[#0f172a] lg:text-2xl">
-                  {business.businessName}
-                </h1>
-                <p className="mt-1 text-sm text-[#64748b]">
-                  {getIndustryLabel(profile.industryId)} · {business.planName} Plan
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold capitalize",
-                      business.status?.toLowerCase() === "active"
-                        ? "border-[#bbf7d0] bg-[#ecfdf5] text-[#059669]"
-                        : "border-[#e2e8f0] bg-[#f8fafc] text-[#64748b]",
-                    )}
-                  >
-                    Status: {business.status}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#64748b]">
-                    <Calendar className="h-3.5 w-3.5" />
-                    Created {new Date(business.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
+            <div className="min-w-0">
+              <p className="text-sm text-[#64748b]">
+                {getIndustryLabel(profile.industryId)} · {business.planName} Plan
+                {business.templateConfig
+                  ? ` · ${business.templateConfig.enabledModules.length} modules · ${business.templateConfig.dashboardCards.length} KPI cards`
+                  : null}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold capitalize",
+                    business.status?.toLowerCase() === "active"
+                      ? "border-[#bbf7d0] bg-[#ecfdf5] text-[#059669]"
+                      : "border-[#e2e8f0] bg-[#f8fafc] text-[#64748b]",
+                  )}
+                >
+                  Status: {business.status}
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#64748b]">
+                  <Calendar className="h-3.5 w-3.5" />
+                  Created {new Date(business.createdAt).toLocaleDateString()}
+                </span>
               </div>
             </div>
 
@@ -162,7 +168,9 @@ function BusinessProfileContent() {
               </button>
               <button
                 type="button"
-                onClick={() => window.open(`/dashboard/businessAdmin?businessId=${id}`, "_blank")}
+                onClick={() =>
+                  window.open(`${window.location.origin}/dashboard/businessAdmin?businessId=${id}`, "_blank", "noopener,noreferrer")
+                }
                 className="dn-btn dn-btn-primary inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm"
               >
                 Open Workspace <ExternalLink className="h-4 w-4" />
