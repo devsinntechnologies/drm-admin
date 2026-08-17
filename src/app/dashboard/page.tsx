@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { isPharmacyWorkspaceRole, workspaceHomePath } from "@/lib/pharmacy-role-nav";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -19,12 +20,11 @@ export default function DashboardPage() {
 
     const businessId = typeof window !== "undefined" ? localStorage.getItem("businessId") : null;
 
-    if (currentRole === "business_admin") {
-      router.replace(businessId ? `/dashboard/businessAdmin?businessId=${businessId}` : "/dashboard/businessAdmin");
+    if (isPharmacyWorkspaceRole(currentRole) && currentRole !== "super_admin") {
+      router.replace(workspaceHomePath(currentRole, businessId));
     } else if (currentRole === "kitchen" || currentRole === "waiter") {
       router.replace(businessId ? `/dashboard/businessAdmin/orders?businessId=${businessId}` : "/dashboard/businessAdmin/orders");
     } else if (currentRole === "super_admin") {
-      // If super_admin is impersonating, take them to the business dashboard
       if (businessId) {
         router.replace(`/dashboard/businessAdmin?businessId=${businessId}`);
       } else {

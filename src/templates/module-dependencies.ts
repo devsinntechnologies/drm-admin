@@ -49,6 +49,8 @@ export const INDUSTRY_MODULE_PLANS: Record<string, IndustryModulePlan> = {
       batches: ["products", "inventory"],
       expiry: ["batches", "products"],
       prescriptions: ["products", "customers"],
+      cdss: ["products", "customers"],
+      "controlled-substances": ["pos", "prescriptions"],
       purchases: ["suppliers", "inventory", "products"],
       returns: ["sales", "products"],
       accounting: ["sales", "reports"],

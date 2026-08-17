@@ -154,6 +154,7 @@ function normalizeBusinessRecord(response: unknown): BusinessRecord {
 export const businessApi = createApi({
   reducerPath: "businessApi",
   baseQuery: authenticatedBaseQueryWithReauth,
+  tagTypes: ["Business"],
   endpoints: (builder) => ({
     getBusinesses: builder.query<GetBusinessesResponse, GetBusinessesQueryParams | void>({
       query: (params) => {
@@ -177,6 +178,7 @@ export const businessApi = createApi({
         return queryString ? `/business?${queryString}` : "/business?limit=100";
       },
       transformResponse: (response: unknown) => normalizeBusinessesResponse(response),
+      providesTags: [{ type: "Business", id: "LIST" }],
     }),
     createBusiness: builder.mutation<CreateBusinessResponse, CreateBusinessPayload>({
       query: (body) => ({
@@ -186,10 +188,12 @@ export const businessApi = createApi({
       }),
       transformResponse: (response: unknown) =>
         normalizeBusinessRecord(response) as CreateBusinessResponse,
+      invalidatesTags: [{ type: "Business", id: "LIST" }],
     }),
     getBusinessById: builder.query<BusinessRecord, string>({
       query: (id) => `/business/${id}`,
       transformResponse: (response: unknown) => normalizeBusinessRecord(response),
+      providesTags: (_result, _error, id) => [{ type: "Business", id }],
     }),
     patchBusinessById: builder.mutation<BusinessRecord, PatchBusinessPayload>({
       query: ({ id, body }) => ({
@@ -198,12 +202,17 @@ export const businessApi = createApi({
         body,
       }),
       transformResponse: (response: unknown) => normalizeBusinessRecord(response),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "Business", id },
+        { type: "Business", id: "LIST" },
+      ],
     }),
     deleteBusinessById: builder.mutation<{ success?: boolean } | void, string>({
       query: (id) => ({
         url: `/business/${id}`,
         method: "DELETE",
       }),
+      invalidatesTags: [{ type: "Business", id: "LIST" }],
     }),
   }),
 });

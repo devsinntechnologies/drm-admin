@@ -32,8 +32,8 @@ export function PortalPageHeader({
             <Icon className="h-7 w-7" strokeWidth={1.8} />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-[#0f172a] md:text-2xl">{title}</h1>
-            {subtitle ? <p className="mt-0.5 text-sm text-[#64748b]">{subtitle}</p> : null}
+            <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)] md:text-2xl">{title}</h1>
+            {subtitle ? <p className="mt-0.5 text-sm text-[var(--text-muted)]">{subtitle}</p> : null}
           </div>
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
@@ -71,8 +71,8 @@ export function PortalStatCard({
           </div>
         ) : null}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#94a3b8]">{label}</p>
-          <p className="mt-1 text-2xl font-bold text-[#0f172a]">{value}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">{label}</p>
+          <p className="mt-1 text-2xl font-bold text-[var(--text-primary)]">{value}</p>
         </div>
       </div>
     </article>
@@ -94,8 +94,8 @@ export function PortalMetricRow({
         <Icon className="h-5 w-5" strokeWidth={1.8} />
       </div>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-[#94a3b8]">{label}</p>
-        <p className="text-2xl font-bold text-[#0f172a]">{value}</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">{label}</p>
+        <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
       </div>
     </div>
   );
@@ -121,13 +121,13 @@ export function PortalCard({
       {title ? (
         <div className={cn("portal-card-header", headerClassName)}>
           {Icon ? (
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#eef3ff] text-[#0050F8]">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]">
               <Icon className="h-5 w-5" strokeWidth={1.8} />
             </div>
           ) : null}
           <div>
-            <h2 className="text-lg font-bold text-[#0f172a]">{title}</h2>
-            {subtitle ? <p className="text-sm text-[#64748b]">{subtitle}</p> : null}
+            <h2 className="text-lg font-bold text-[var(--text-primary)]">{title}</h2>
+            {subtitle ? <p className="text-sm text-[var(--text-muted)]">{subtitle}</p> : null}
           </div>
         </div>
       ) : null}
@@ -161,8 +161,8 @@ export function PortalEmptyState({
       <div className="portal-icon-box !h-16 !w-16 !rounded-2xl">
         <Icon className="h-8 w-8" strokeWidth={1.6} />
       </div>
-      <p className="mt-4 text-lg font-semibold text-[#0f172a]">{title}</p>
-      {description ? <p className="mt-1 max-w-sm text-sm text-[#64748b]">{description}</p> : null}
+      <p className="mt-4 text-lg font-semibold text-[var(--text-primary)]">{title}</p>
+      {description ? <p className="mt-1 max-w-sm text-sm text-[var(--text-muted)]">{description}</p> : null}
       {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
@@ -187,7 +187,7 @@ export function PortalRefreshFab({ onClick, loading }: { onClick: () => void; lo
 }
 
 export const portalInputClass =
-  "w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm font-medium text-[#0f172a] outline-none transition focus:border-[#0050F8] focus:ring-2 focus:ring-[#0050F8]/20";
+  "w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] px-4 py-3 text-sm font-medium text-[var(--text-primary)] outline-none transition focus:border-[var(--brand-secondary)] focus:ring-2 focus:ring-[var(--brand-secondary)]/20";
 
 export const portalSearchClass =
-  "h-11 w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] pl-10 pr-4 text-sm font-medium outline-none focus:border-[#0050F8] focus:ring-2 focus:ring-[#0050F8]/20";
+  "h-11 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] pl-10 pr-4 text-sm font-medium text-[var(--text-primary)] outline-none focus:border-[var(--brand-secondary)] focus:ring-2 focus:ring-[var(--brand-secondary)]/20";

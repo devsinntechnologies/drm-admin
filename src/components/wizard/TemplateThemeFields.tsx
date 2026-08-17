@@ -56,9 +56,10 @@ export function TemplateThemeFields({
               className={cn(
                 "flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold capitalize",
                 themeMode === mode
-                  ? "border-[#001840] bg-[#001840] text-white"
+                  ? "border-transparent text-white"
                   : "border-[#e2e8f0] bg-white text-[#334155]",
               )}
+              style={themeMode === mode ? { backgroundColor: primaryColor, borderColor: primaryColor } : undefined}
             >
               {mode}
             </button>

@@ -11,6 +11,8 @@ import {
 import InvoiceReceipt, { InvoicePrintButton } from "@/components/common/InvoiceReceipt";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
+import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
+import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { useInvoices, type InvoiceRecord } from "@/hooks/useInvoices";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -62,6 +64,8 @@ function toStatus(raw: string): InvoiceRow["status"] {
 function InvoicesContent() {
   const router = useRouter();
   const { role } = useAuth();
+  const { templateConfig } = useBusinessTemplate();
+  const isPharmacy = templateConfig?.industryId === "pharmacy";
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -86,8 +90,7 @@ function InvoicesContent() {
       return;
     }
 
-    const isBusinessRole = currentRole === "business_admin" || currentRole === "super_admin";
-    if (!isBusinessRole) {
+    if (!canAccessWorkspacePage(currentRole, "sales")) {
       router.replace("/dashboard");
       return;
     }
@@ -206,7 +209,11 @@ function InvoicesContent() {
   if (!isAuthorized) return null;
 
   return (
-    <AdminShell activeTab="invoices">
+    <AdminShell
+      activeTab="invoices"
+      pageTitle={isPharmacy ? "Sales" : "Invoices"}
+      pageSubtitle={isPharmacy ? "Paid invoices and pharmacy sale history" : undefined}
+    >
       <PortalPage>
         <div className="mb-6 flex justify-end">
           <button type="button" onClick={handleExportPDF} className="dn-btn dn-btn-outline shrink-0">
@@ -297,7 +304,9 @@ function InvoicesContent() {
               <p className="mt-1 text-sm text-[#64748b]">
                 {statusFilter === "pending"
                   ? "All invoices are paid — great work!"
-                  : "Complete an order to generate your first invoice."}
+                  : isPharmacy
+                    ? "Complete a POS sale to generate your first invoice."
+                    : "Complete an order to generate your first invoice."}
               </p>
             </div>
           ) : (

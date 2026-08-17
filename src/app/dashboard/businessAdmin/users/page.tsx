@@ -11,6 +11,9 @@ import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Edit, Loader2, Plus, Search, Trash2, Users, User, UtensilsCrossed, X } from "lucide-react";
+import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
+import { PharmacyStaffPanel } from "@/components/pharmacy/PharmacyStaffPanel";
+import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { normalizeErrorMessage } from "@/lib/utils";
 
 function formatJoinedDate(isoDate: string) {
@@ -49,6 +52,8 @@ function UsersContent() {
     deleteUser,
   } = useUsers();
   const activeBusinessId = useActiveBusinessId();
+  const { templateConfig } = useBusinessTemplate();
+  const isPharmacy = templateConfig?.industryId === "pharmacy";
   const impersonatedBusinessId = searchParams.get("businessId");
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -77,15 +82,14 @@ function UsersContent() {
     }
 
     if (role) {
-      const isBusinessRole = role === "business_admin";
       const isSuperAdminImpersonating = role === "super_admin" && !!impersonatedBusinessId;
-
-      if (!isBusinessRole && !isSuperAdminImpersonating) {
+      const staffModule = isPharmacy ? "staff" : "users";
+      if (!canAccessWorkspacePage(role, staffModule) && !isSuperAdminImpersonating && role !== "business_admin") {
         router.replace("/dashboard");
         return;
       }
     }
-  }, [isAuthenticated, role, router, impersonatedBusinessId]);
+      }, [isAuthenticated, role, router, impersonatedBusinessId, isPharmacy]);
 
   const filteredUsers = useMemo(() => {
     let filtered = users;
@@ -194,8 +198,23 @@ function UsersContent() {
     { label: "Total", value: users.length, icon: Users, tone: "neutral" as const },
   ];
 
+  if (isPharmacy) {
+    return (
+      <AdminShell
+        activeTab="staff"
+        pageTitle="Staff"
+        pageSubtitle="Pharmacist, cashier, manager, shift, and inventory logins"
+        headerIcon={Users}
+      >
+        <PortalPage>
+          <PharmacyStaffPanel />
+        </PortalPage>
+      </AdminShell>
+    );
+  }
+
   return (
-    <AdminShell activeTab="users">
+    <AdminShell activeTab="users" pageTitle="Team" pageSubtitle="Waiters and kitchen staff" headerIcon={Users}>
       <PortalPage>
         <div className="mb-6 flex justify-end">
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>

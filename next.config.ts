@@ -1,18 +1,18 @@
 import type { NextConfig } from "next";
 
+const localApiHosts = ["localhost", "127.0.0.1"] as const;
+const localApiPorts = ["3000", "3001", "3002", "4000", "4001"] as const;
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
-      {
-        protocol: "http",
-        hostname: "localhost",
-        port: "3001",
-      },
-      {
-        protocol: "http",
-        hostname: "localhost",
-        port: "3002",
-      },
+      ...localApiHosts.flatMap((hostname) =>
+        localApiPorts.map((port) => ({
+          protocol: "http" as const,
+          hostname,
+          port,
+        })),
+      ),
       {
         protocol: "https",
         hostname: "drm.devsinntechnologies.com",

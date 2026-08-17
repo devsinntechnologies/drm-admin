@@ -14,6 +14,8 @@
   --text-primary: #0f172a;
   --text-muted: #5b657a;
   --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --input-bg: #f8fafc;
   --border-subtle: #e2e8f0;
   --success: #059669;
   --warning: #d97706;
@@ -35,19 +37,19 @@
 .portal-input {
   width: 100%;
   border-radius: 0.75rem;
-  border: 1px solid #e2e8f0;
-  background-color: #f8fafc;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--input-bg, #f8fafc);
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #0f172a;
+  color: var(--text-primary);
   outline: none;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .portal-input:focus {
-  border-color: #0050f8;
-  box-shadow: 0 0 0 2px rgba(0, 80, 248, 0.2);
+  border-color: var(--brand-secondary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-secondary) 22%, transparent);
 }
 
 /* ── Shared portal button + tab utilities ── */
@@ -286,7 +288,7 @@ a {
   position: relative;
   border-radius: 0.875rem;
   border: 1px solid var(--border-subtle);
-  background: #ffffff;
+  background: var(--surface);
   padding: 1.25rem 1.5rem 1.25rem 1.75rem;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
@@ -310,14 +312,14 @@ a {
   border-radius: 0.75rem;
   background: var(--brand-primary);
   color: #ffffff;
-  border: 1px solid rgba(0, 80, 248, 0.35);
-  box-shadow: 0 0 0 1px rgba(0, 80, 248, 0.08);
+  border: 1px solid color-mix(in srgb, var(--brand-secondary) 35%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-secondary) 8%, transparent);
 }
 
 .portal-stat-card {
   border-radius: 1.25rem;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
   padding: 1.25rem;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
   transition: transform 160ms ease, box-shadow 160ms ease;
@@ -333,8 +335,8 @@ a {
   align-items: center;
   gap: 1rem;
   border-radius: 1.25rem;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
   padding: 1.25rem 1.5rem;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
 }
@@ -342,8 +344,8 @@ a {
 .portal-card {
   overflow: hidden;
   border-radius: 1.25rem;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
 }
 
@@ -351,8 +353,8 @@ a {
   display: flex;
   align-items: center;
   gap: 0.875rem;
-  border-bottom: 1px solid #edf2f7;
-  background: #f8fafc;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-muted);
   padding: 1.125rem 1.5rem;
 }
 
@@ -374,8 +376,8 @@ a {
   align-items: center;
   justify-content: center;
   border-radius: 1.25rem;
-  border: 2px dashed #dbe4ef;
-  background: #f8fbff;
+  border: 2px dashed var(--border-subtle);
+  background: var(--surface-muted);
   padding: 4rem 1.5rem;
   text-align: center;
 }
@@ -425,10 +427,86 @@ a {
 .business-workspace .dn-btn-primary {
   background-color: var(--biz-primary, var(--brand-primary));
   border-color: var(--biz-primary, var(--brand-primary));
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--biz-primary, var(--brand-primary)) 28%, transparent);
 }
 
 .business-workspace .dn-btn-primary:hover {
-  filter: brightness(1.08);
+  background-color: var(--brand-primary-hover);
+  border-color: var(--brand-primary-hover);
+  filter: none;
+}
+
+.business-workspace .dn-btn-secondary {
+  background-color: var(--biz-secondary, var(--brand-secondary));
+  border-color: var(--biz-secondary, var(--brand-secondary));
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--biz-secondary, var(--brand-secondary)) 28%, transparent);
+}
+
+.business-workspace .dn-btn-outline {
+  background-color: var(--surface);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+.business-workspace .dn-btn-outline:hover:not(:disabled) {
+  background-color: var(--surface-muted);
+}
+
+.business-workspace .dn-tab-bar {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border-color: var(--border-subtle);
+}
+
+.business-workspace {
+  background: var(--app-bg);
+  color: var(--text-primary);
+}
+
+.business-workspace .admin-shell-aside,
+.business-workspace .admin-shell-header,
+.business-workspace .admin-shell-mobile {
+  background: var(--surface);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.admin-shell-nav {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-muted) 50%, transparent) transparent;
+}
+
+.admin-shell-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.admin-shell-nav::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-muted) 50%, transparent);
+  border-radius: 999px;
+}
+
+.business-workspace-dark .dn-btn-ghost:hover:not(:disabled) {
+  background-color: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.industry-shell-preview[data-theme="dark"] {
+  background: #0b1220;
+  border-color: #243044;
+}
+
+.industry-shell-preview[data-theme="dark"] .shell-surface {
+  background: #111827;
+  border-color: #243044;
+  color: #f8fafc;
+}
+
+.industry-shell-preview[data-theme="dark"] .shell-nav-item:not([data-active="true"]) {
+  color: #cbd5e1;
+}
+
+.industry-shell-preview[data-theme="dark"] .shell-nav-item:not([data-active="true"]):hover {
+  background-color: color-mix(in srgb, var(--shell-secondary) 16%, transparent);
+  color: #ffffff;
 }
 
 .portal-accent-card::after {

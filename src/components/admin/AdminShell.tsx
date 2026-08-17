@@ -11,13 +11,23 @@ import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { buildBusinessWorkspaceNav, type WorkspaceNavTab } from "@/lib/build-business-workspace-nav";
 import { pathnameToModuleId } from "@/lib/module-routes";
+import {
+  canAccessWorkspacePage,
+  filterPharmacyNavForRole,
+  isPharmacyStaffRole,
+  workspaceHomePath,
+} from "@/lib/pharmacy-role-nav";
 import { toast } from "sonner";
+import { resolveMediaUrl, businessInitials } from "@/lib/media-url";
 
 type TabKey = string;
 
 type AdminShellProps = {
   activeTab: TabKey;
   pageTitle?: string;
+  pageSubtitle?: string;
+  headerActions?: React.ReactNode;
+  headerIcon?: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   children: React.ReactNode;
 };
 
@@ -64,31 +74,42 @@ function resolvePageTitle(
 }
 
 function isNavTabActive(tabKey: string, resolvedActiveTab: string, fallbackTab: string) {
-  if (tabKey === resolvedActiveTab || tabKey === fallbackTab) return true;
+  const current = resolvedActiveTab || fallbackTab;
+  if (tabKey === current) return true;
 
-  const publicCatalogKeys = new Set(["public-data", "public-catalog"]);
-  return (
-    publicCatalogKeys.has(tabKey) &&
-    (publicCatalogKeys.has(resolvedActiveTab) || publicCatalogKeys.has(fallbackTab))
-  );
+  const aliases: Record<string, string[]> = {
+    "public-data": ["public-catalog"],
+    "public-catalog": ["public-data"],
+    invoices: ["sales"],
+    sales: ["invoices"],
+    users: ["staff"],
+    staff: ["users"],
+  };
+  return aliases[tabKey]?.includes(current) ?? false;
 }
 
-function NavTabLabel({ label, inProgress, active }: { label: string; inProgress?: boolean; active: boolean }) {
-  if (!inProgress) {
-    return <span className={cn("min-w-0 truncate", active ? "text-white" : "text-[#334155]")}>{label}</span>;
-  }
-
+function NavTabLabel({
+  label,
+  inProgress,
+  active,
+}: {
+  label: string;
+  inProgress?: boolean;
+  active: boolean;
+}) {
   return (
-    <span className={cn("flex min-w-0 flex-1 items-center gap-2", active ? "text-white" : "text-[#334155]")}>
+    <span className={cn("flex min-w-0 flex-1 items-center gap-2", active ? "text-white" : "text-[var(--text-primary)]")}>
       <span className="min-w-0 truncate">{label}</span>
-      <span
-        className={cn(
-          "shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide",
-          active ? "bg-white/20 text-white" : "bg-[#fef3c7] text-[#b45309]",
-        )}
-      >
-        In Progress
-      </span>
+      {inProgress ? (
+        <span
+          className={cn(
+            "shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide",
+            active ? "bg-white/20 text-white" : "bg-[#fef3c7] text-[#b45309]",
+          )}
+        >
+          In Progress
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -180,24 +201,67 @@ const tabs: Array<WorkspaceNavTab> = [
   },
 ];
 
-function getVisibleTabs(role: string | null, isImpersonating: boolean = false) {
-  // If we are impersonating, we always want the business admin view
-  if (isImpersonating || role === "business_admin") {
-    return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "public-data" || tab.key === "website" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
+function SidebarBrand({
+  title,
+  logoSrc,
+  color,
+  usePlatformLogo,
+}: {
+  title: string;
+  logoSrc: string | null;
+  color: string;
+  usePlatformLogo: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [logoSrc]);
+
+  if (logoSrc && !failed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={logoSrc}
+        alt={title}
+        className="h-10 w-10 shrink-0 rounded-lg bg-white object-contain"
+        onError={() => setFailed(true)}
+      />
+    );
   }
 
-  if (role === "kitchen") {
-    return tabs.filter((tab) => tab.key === "orders");
+  if (usePlatformLogo) {
+    return (
+      <Image
+        src="/logo-mark.png"
+        alt="DigiNizam"
+        width={48}
+        height={40}
+        className="h-10 w-auto shrink-0 object-contain"
+        priority
+      />
+    );
   }
 
-  if (role === "waiter") {
-    return tabs.filter((tab) => tab.key === "orders");
-  }
-
-  return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "industry-templates" || tab.key === "action-logs");
+  return (
+    <span
+      className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-sm font-bold text-white"
+      style={{ backgroundColor: color }}
+      aria-hidden
+    >
+      {businessInitials(title)}
+    </span>
+  );
 }
 
-export default function AdminShell({ activeTab, pageTitle: pageTitleProp, children }: AdminShellProps) {
+export default function AdminShell({
+  activeTab,
+  pageTitle: pageTitleProp,
+  pageSubtitle,
+  headerActions,
+  headerIcon: HeaderIcon,
+  children,
+}: AdminShellProps) {
   const { role, user, logout } = useAuth();
   const { templateConfig, primaryColor, secondaryColor, logoUrl, businessId: contextBusinessId } = useBusinessTemplate();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -265,6 +329,16 @@ export default function AdminShell({ activeTab, pageTitle: pageTitleProp, childr
     }
   }, [role, businessId, isMounted, router, pathname]);
 
+  useEffect(() => {
+    if (!isMounted || !resolvedRole) return;
+    const isPharmacyWorkspace =
+      templateConfig?.industryId === "pharmacy" || isPharmacyStaffRole(resolvedRole);
+    if (!isPharmacyWorkspace) return;
+    const moduleId = pathnameToModuleId(pathname) || "dashboard";
+    if (canAccessWorkspacePage(resolvedRole, moduleId)) return;
+    router.replace(workspaceHomePath(resolvedRole, businessId));
+  }, [isMounted, resolvedRole, pathname, templateConfig?.industryId, businessId, router]);
+
   const visibleTabs = useMemo(() => {
     // During SSR and first paint, we MUST return a static set of tabs that match the server
     if (!isMounted) {
@@ -279,12 +353,21 @@ export default function AdminShell({ activeTab, pageTitle: pageTitleProp, childr
     const shouldShowBusinessTabs = isBusinessAdminRoute || isImpersonating || resolvedRole === "business_admin";
 
     if (shouldShowBusinessTabs && templateConfig && businessId) {
-      return buildBusinessWorkspaceNav(templateConfig, businessId);
+      const workspaceTabs = buildBusinessWorkspaceNav(templateConfig, businessId);
+      if (templateConfig.industryId === "pharmacy") {
+        return filterPharmacyNavForRole(workspaceTabs, resolvedRole);
+      }
+      return workspaceTabs;
     }
 
     let baseTabs;
     if (resolvedRole === "waiter" || resolvedRole === "kitchen") {
       baseTabs = tabs.filter((tab) => tab.key === "orders");
+    } else if (isPharmacyStaffRole(resolvedRole)) {
+      if (templateConfig && businessId) {
+        return filterPharmacyNavForRole(buildBusinessWorkspaceNav(templateConfig, businessId), resolvedRole);
+      }
+      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "pos" || tab.key === "products");
     } else if (shouldShowBusinessTabs) {
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "public-data" || tab.key === "website" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
     } else {
@@ -330,83 +413,76 @@ export default function AdminShell({ activeTab, pageTitle: pageTitleProp, childr
         ? "Platform Console"
         : resolvedRole === "business_admin"
           ? "Business Workspace"
-          : resolvedRole === "kitchen" || resolvedRole === "waiter"
+          : resolvedRole === "kitchen" || resolvedRole === "waiter" || isPharmacyStaffRole(resolvedRole)
             ? "Staff Portal"
             : "Admin Portal";
 
-  const shellTitle = activeBusiness?.businessName || "DigiNizam";
-  const shellLogo = logoUrl || activeBusiness?.logo || null;
+  const shellTitle = activeBusiness?.businessName || templateConfig?.businessName || "DigiNizam";
+  const shellLogo = resolveMediaUrl(logoUrl || activeBusiness?.logo || null);
+  const usePlatformLogo = !pathname.includes("/businessAdmin");
 
   return (
-    <div className="min-h-screen">
+    <div className="admin-shell min-h-screen bg-[var(--app-bg)] text-[var(--text-primary)]">
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[#dbe4ef] bg-white transition-[width] duration-200 xl:flex",
+          "admin-shell-aside fixed inset-y-0 left-0 z-40 hidden h-dvh flex-col overflow-hidden border-r bg-[var(--surface)] transition-[width] duration-200 xl:flex",
           sidebarCollapsed ? "w-[4.5rem]" : "w-72",
         )}
+        style={{ borderColor: "var(--border-subtle)" }}
       >
-        <div className="border-b border-[#edf2f7] px-3 py-4">
+        <div className="shrink-0 border-b px-3 py-4" style={{ borderColor: "var(--border-subtle)" }}>
           <div className={cn("flex items-center gap-3", sidebarCollapsed && "justify-center")}>
-            {shellLogo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={shellLogo}
-                alt={shellTitle}
-                className="h-10 w-10 shrink-0 rounded-lg object-contain"
-              />
-            ) : (
-              <Image
-                src="/logo-mark.png"
-                alt="DigiNizam"
-                width={48}
-                height={40}
-                className="h-10 w-auto shrink-0 object-contain"
-                priority
-              />
-            )}
+            <SidebarBrand
+              title={shellTitle}
+              logoSrc={shellLogo}
+              color={primaryColor}
+              usePlatformLogo={usePlatformLogo}
+            />
             {!sidebarCollapsed ? (
               <div className="min-w-0">
-                <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">{shellTitle}</h1>
-                <p className="truncate text-xs font-medium leading-tight text-[#667085]">{portalLabel}</p>
+                <h1 className="truncate text-sm font-semibold leading-tight text-[var(--text-primary)]">{shellTitle}</h1>
+                <p className="truncate text-xs font-medium leading-tight text-[var(--text-muted)]">{portalLabel}</p>
               </div>
             ) : null}
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col px-2 py-4">
+        <div className="flex min-h-0 flex-1 flex-col px-2 py-4">
           {!sidebarCollapsed ? (
-            <div className="mb-3 px-2 text-xs font-semibold tracking-[0.12em] text-[#94a3b8] uppercase">Navigation</div>
+            <div className="mb-3 shrink-0 px-2 text-xs font-semibold tracking-[0.12em] text-[var(--text-muted)] uppercase">Navigation</div>
           ) : null}
-          <nav className="flex flex-1 flex-col gap-1">
+          <nav className="admin-shell-nav flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pr-1">
             {visibleTabs.map((tab) => {
               const active = isNavTabActive(tab.key, resolvedActiveTab, activeTab);
               return (
                 <Link
                   key={tab.key}
                   href={isMounted ? tab.href : tab.href.split("?")[0]}
-                  title={sidebarCollapsed ? tab.label : undefined}
+                  title={tab.description ? `${tab.label} — ${tab.description}` : tab.label}
                   className={cn(
                     "group flex min-w-0 items-center gap-3 py-3 text-sm font-semibold transition-all duration-200",
                     sidebarCollapsed ? "justify-center px-2" : "px-4",
                     active
-                      ? "relative rounded-lg text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r"
-                      : "rounded-lg text-[#475569] hover:bg-[#f1f5f9]",
+                      ? "relative rounded-lg text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-white"
+                      : "rounded-lg text-[var(--text-muted)]",
                   )}
                   style={
                     active
-                      ? {
-                          backgroundColor: primaryColor,
-                          color: "#fff",
-                        }
-                      : undefined
+                      ? { backgroundColor: primaryColor, color: "#fff" }
+                      : { ["--nav-hover" as string]: `${secondaryColor}18` }
                   }
+                  onMouseEnter={(event) => {
+                    if (!active) event.currentTarget.style.backgroundColor = `${secondaryColor}14`;
+                  }}
+                  onMouseLeave={(event) => {
+                    if (!active) event.currentTarget.style.backgroundColor = "transparent";
+                  }}
                 >
                   <span
                     className={cn(
                       "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors",
-                      active ? "bg-white/15 text-white" : "bg-[#f1f5f9] text-[#64748b] group-hover:bg-white",
+                      active ? "bg-white/15 text-white" : "bg-[var(--surface-muted)] text-[var(--text-muted)] group-hover:bg-[var(--surface)]",
                     )}
-                    style={!active ? { color: undefined } : undefined}
                   >
                     {tab.icon}
                   </span>
@@ -417,8 +493,9 @@ export default function AdminShell({ activeTab, pageTitle: pageTitleProp, childr
               );
             })}
           </nav>
+        </div>
 
-          <div className="mt-4 space-y-2 border-t border-[#edf2f7] pt-4">
+        <div className="shrink-0 space-y-2 border-t px-2 py-4" style={{ borderColor: "var(--border-subtle)" }}>
             <button
               type="button"
               onClick={toggleSidebar}
@@ -444,23 +521,34 @@ export default function AdminShell({ activeTab, pageTitle: pageTitleProp, childr
               <LogOut className="h-4.5 w-4.5" strokeWidth={2} />
               {!sidebarCollapsed ? "Logout" : null}
             </button>
-          </div>
         </div>
       </aside>
 
       <div className={cn("transition-[padding] duration-200", sidebarCollapsed ? "xl:pl-[4.5rem]" : "xl:pl-72")}>
-        <header className="sticky top-0 z-30 border-b border-[#dbe4ef] bg-white py-3">
+        <header className="admin-shell-header sticky top-0 z-30 border-b bg-[var(--surface)] py-3" style={{ borderColor: "var(--border-subtle)" }}>
           <div className="flex w-full items-center justify-between gap-3 px-4 lg:px-6">
-            <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              {HeaderIcon ? (
+                <div className="portal-icon-box !h-10 !w-10 shrink-0 !rounded-xl">
+                  <HeaderIcon className="h-5 w-5" strokeWidth={1.8} />
+                </div>
+              ) : null}
               <div className="min-w-0">
-                <h1 className="truncate text-lg font-semibold leading-tight text-[#0f172a] md:text-xl">{pageTitle}</h1>
+                <h1 className="truncate text-lg font-semibold leading-tight text-[var(--text-primary)] md:text-xl">{pageTitle}</h1>
+                {pageSubtitle ? (
+                  <p className="mt-0.5 line-clamp-2 text-xs font-medium text-[var(--text-muted)] sm:line-clamp-1 sm:text-sm">
+                    {pageSubtitle}
+                  </p>
+                ) : null}
               </div>
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
+              {headerActions ? <div className="hidden items-center gap-2 sm:flex">{headerActions}</div> : null}
               <button
                 type="button"
-                className="hidden h-10 w-10 items-center justify-center rounded-xl border border-[#e2e8f0] bg-white text-[#64748b] hover:bg-[#f8fafc] sm:inline-flex"
+                className="hidden h-10 w-10 items-center justify-center rounded-xl border bg-[var(--surface)] text-[var(--text-muted)] hover:bg-[var(--surface-muted)] sm:inline-flex"
+                style={{ borderColor: "var(--border-subtle)" }}
                 aria-label="Notifications"
               >
                 <Bell className="h-4.5 w-4.5" />
@@ -468,7 +556,8 @@ export default function AdminShell({ activeTab, pageTitle: pageTitleProp, childr
               <button
                 type="button"
                 onClick={() => setMobileNavOpen(true)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#d7e1ed] bg-white text-[#334155] xl:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border bg-[var(--surface)] text-[var(--text-primary)] xl:hidden"
+                style={{ borderColor: "var(--border-subtle)" }}
                 aria-label="Open navigation menu"
               >
                 <Menu className="h-5 w-5" />
@@ -491,26 +580,35 @@ export default function AdminShell({ activeTab, pageTitle: pageTitleProp, childr
             onClick={closeMobileNav}
           />
 
-          <aside className="absolute left-0 top-0 flex h-full w-[88vw] max-w-sm flex-col border-r border-[#e5edf5] bg-white shadow-[0_20px_40px_rgba(15,23,42,0.18)]">
-            <div className="flex items-center justify-between border-b border-[#edf2f7] px-5 py-4">
-              <div className="min-w-0">
-                <h1 className="truncate text-sm font-semibold leading-tight text-[#0f172a]">{shellTitle}</h1>
-                <p className="truncate text-xs font-medium leading-tight text-[#667085]">{portalLabel}</p>
+          <aside className="admin-shell-mobile absolute left-0 top-0 flex h-full w-[88vw] max-w-sm flex-col overflow-hidden border-r bg-[var(--surface)] shadow-[0_20px_40px_rgba(15,23,42,0.18)]" style={{ borderColor: "var(--border-subtle)" }}>
+            <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "var(--border-subtle)" }}>
+              <div className="flex min-w-0 items-center gap-3">
+                <SidebarBrand
+                  title={shellTitle}
+                  logoSrc={shellLogo}
+                  color={primaryColor}
+                  usePlatformLogo={usePlatformLogo}
+                />
+                <div className="min-w-0">
+                  <h1 className="truncate text-sm font-semibold leading-tight text-[var(--text-primary)]">{shellTitle}</h1>
+                  <p className="truncate text-xs font-medium leading-tight text-[var(--text-muted)]">{portalLabel}</p>
+                </div>
               </div>
 
               <button
                 type="button"
                 onClick={closeMobileNav}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#d7e1ed] bg-white text-[#334155]"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border bg-[var(--surface)] text-[var(--text-primary)]"
+                style={{ borderColor: "var(--border-subtle)" }}
                 aria-label="Close navigation menu"
               >
                 <X className="h-4.5 w-4.5" />
               </button>
             </div>
 
-            <div className="flex flex-1 flex-col px-3 py-4">
-              <div className="mb-3 px-2 text-xs font-semibold tracking-[0.12em] text-[#94a3b8] uppercase">Navigation</div>
-              <nav className="flex flex-1 flex-col gap-1">
+            <div className="flex min-h-0 flex-1 flex-col px-3 py-4">
+              <div className="mb-3 shrink-0 px-2 text-xs font-semibold tracking-[0.12em] text-[var(--text-muted)] uppercase">Navigation</div>
+              <nav className="admin-shell-nav flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pr-1">
                 {visibleTabs.map((tab) => {
                   const active = isNavTabActive(tab.key, resolvedActiveTab, activeTab);
                   return (
@@ -518,17 +616,24 @@ export default function AdminShell({ activeTab, pageTitle: pageTitleProp, childr
                       key={tab.key}
                       href={isMounted ? tab.href : tab.href.split("?")[0]}
                       onClick={closeMobileNav}
+                      title={tab.description ? `${tab.label} — ${tab.description}` : tab.label}
                       className={cn(
                         "group flex min-w-0 items-center gap-3 px-4 py-3 text-sm font-semibold transition-all duration-200",
                         active
-                          ? "relative rounded-lg text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r"
-                          : "rounded-lg text-[#475569] hover:bg-[#f1f5f9]",
+                          ? "relative rounded-lg text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-white"
+                          : "rounded-lg text-[var(--text-muted)]",
                       )}
                       style={active ? { backgroundColor: primaryColor } : undefined}
+                      onMouseEnter={(event) => {
+                        if (!active) event.currentTarget.style.backgroundColor = `${secondaryColor}14`;
+                      }}
+                      onMouseLeave={(event) => {
+                        if (!active) event.currentTarget.style.backgroundColor = "transparent";
+                      }}
                     >
                       <span className={cn(
                         "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors",
-                        active ? "bg-white/15 text-white" : "bg-[#f1f5f9] text-[#64748b] group-hover:bg-white",
+                        active ? "bg-white/15 text-white" : "bg-[var(--surface-muted)] text-[var(--text-muted)] group-hover:bg-[var(--surface)]",
                       )}>{tab.icon}</span>
                       <NavTabLabel label={tab.label} inProgress={tab.inProgress} active={active} />
                     </Link>
@@ -536,7 +641,7 @@ export default function AdminShell({ activeTab, pageTitle: pageTitleProp, childr
                 })}
               </nav>
 
-              <div className="mt-4 border-t border-[#edf2f7] pt-4">
+              <div className="mt-4 shrink-0 border-t pt-4" style={{ borderColor: "var(--border-subtle)" }}>
                 <button
                   type="button"
                   onClick={() => {

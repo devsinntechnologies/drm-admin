@@ -24,7 +24,15 @@ export function useActiveBusinessId() {
 
     // 3. Fallback to localStorage ONLY for business-related roles
     if (typeof window !== "undefined") {
-      const isStaff = role === "business_admin" || role === "kitchen" || role === "waiter";
+      const isStaff =
+        role === "business_admin" ||
+        role === "kitchen" ||
+        role === "waiter" ||
+        role === "pharmacist" ||
+        role === "cashier" ||
+        role === "inventory_manager" ||
+        role === "pharmacy_manager" ||
+        role === "shift_incharge";
       if (isStaff) {
         const storedId = localStorage.getItem("businessId");
         return storedId ? storedId.trim() : null;

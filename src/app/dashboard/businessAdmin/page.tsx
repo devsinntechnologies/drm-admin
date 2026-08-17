@@ -76,7 +76,7 @@ function DashboardContent() {
 
   if (templateConfig?.dashboardCards?.length) {
     return (
-      <AdminShell activeTab="dashboard">
+      <AdminShell activeTab="dashboard" pageTitle="Dashboard" pageSubtitle="Today’s sales, expiry, and stock at a glance">
         <TemplateDashboard cards={templateConfig.dashboardCards} />
       </AdminShell>
     );

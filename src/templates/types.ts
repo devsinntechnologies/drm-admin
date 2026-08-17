@@ -88,7 +88,9 @@ export type ModuleId =
   | "accounting"
   | "hr"
   | "multi-branch"
-  | "public-catalog";
+  | "public-catalog"
+  | "cdss"
+  | "controlled-substances";
 
 export type DashboardCardId =
   | "today-sales"

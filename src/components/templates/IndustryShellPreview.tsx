@@ -168,12 +168,13 @@ export function IndustryShellPreview({
       )}
       style={shellThemeStyle}
       data-size={full ? "full" : embed ? "embed" : "compact"}
+      data-theme={themeMode}
     >
       <div className={cn("flex", shellMinHeight, dark ? "bg-[#0b1220]" : "bg-[#f1f5f9]")}>
         {showSidebar ? (
           <aside
             className={cn(
-              "flex shrink-0 flex-col border-r border-[#dbe4ef] bg-white",
+              "shell-surface flex shrink-0 flex-col border-r border-[#dbe4ef] bg-white",
               sidebarWidth,
             )}
           >
@@ -196,10 +197,10 @@ export function IndustryShellPreview({
                   />
                 )}
                 <div className="min-w-0">
-                  <p className={cn("truncate font-semibold leading-tight text-[#0f172a]", t.brandTitle)}>
+                  <p className={cn("truncate font-semibold leading-tight", t.brandTitle, dark ? "text-slate-100" : "text-[#0f172a]")}>
                     {businessName || "Business"}
                   </p>
-                  <p className={cn("truncate font-medium text-[#667085]", t.brandSub)}>
+                  <p className={cn("truncate font-medium", t.brandSub, dark ? "text-slate-400" : "text-[#667085]")}>
                     Business Workspace
                   </p>
                 </div>
@@ -250,12 +251,12 @@ export function IndustryShellPreview({
         ) : null}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className={cn("flex items-center justify-between gap-2 border-b border-[#dbe4ef] bg-white", full ? "px-4 py-3 lg:px-6" : embed ? "px-3 py-2.5" : "px-2.5 py-2")}>
+          <header className={cn("shell-surface flex items-center justify-between gap-2 border-b border-[#dbe4ef] bg-white", full ? "px-4 py-3 lg:px-6" : embed ? "px-3 py-2.5" : "px-2.5 py-2")}>
             <div className="min-w-0">
-              <p className={cn("truncate font-semibold text-[#0f172a]", t.headerTitle)}>
+              <p className={cn("truncate font-semibold", t.headerTitle, dark ? "text-slate-100" : "text-[#0f172a]")}>
                 DigiNizam
               </p>
-              <p className={cn("truncate font-medium text-[#58657a]", t.headerSub)}>
+              <p className={cn("truncate font-medium", t.headerSub, dark ? "text-slate-400" : "text-[#58657a]")}>
                 Business Workspace
               </p>
             </div>

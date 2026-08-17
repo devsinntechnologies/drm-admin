@@ -7,10 +7,13 @@ import {
   LayoutDashboard,
   LayoutGrid,
   Package,
+  Pill,
   Receipt,
   Settings,
   Shapes,
+  ShieldAlert,
   ShoppingCart,
+  Stethoscope,
   Store,
   Tag,
   Truck,
@@ -48,6 +51,12 @@ export const MODULE_ICONS: Partial<Record<ModuleId | string, LucideIcon>> = {
   "public-catalog": Globe2,
   invoices: Receipt,
   users: Users,
+  prescriptions: Stethoscope,
+  cdss: Pill,
+  "controlled-substances": ShieldAlert,
+  accounting: CreditCard,
+  shifts: Calendar,
+  returns: Receipt,
 };
 
 export function resolveModuleIcon(moduleId: string): LucideIcon {

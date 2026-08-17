@@ -24,7 +24,7 @@ function ModuleWorkspaceContent() {
 
   if (!isModuleImplemented(moduleId)) {
     return (
-      <AdminShell activeTab={moduleId}>
+      <AdminShell activeTab={moduleId} pageTitle={moduleLabel}>
         <ModuleInProgress moduleId={moduleId} moduleLabel={moduleLabel} />
       </AdminShell>
     );
@@ -39,7 +39,7 @@ function ModuleWorkspaceContent() {
   };
 
   return (
-    <AdminShell activeTab={moduleId}>
+    <AdminShell activeTab={moduleId} pageTitle={moduleLabel}>
       <TemplateModulePreview
         moduleId={moduleId}
         moduleLabel={moduleLabel}

@@ -15,9 +15,34 @@ export const MODULE_HREF: Partial<Record<ModuleId, string>> = {
   staff: `${BUSINESS_ADMIN_BASE}/users`,
   menu: `${BUSINESS_ADMIN_BASE}/products`,
   "public-catalog": `${BUSINESS_ADMIN_BASE}/public-data`,
+  settings: `${BUSINESS_ADMIN_BASE}/settings`,
 };
 
-export function getModuleHref(moduleId: ModuleId | string): string {
+const PHARMACY_MODULE_HREF: Partial<Record<ModuleId, string>> = {
+  inventory: `${BUSINESS_ADMIN_BASE}/inventory`,
+  pos: `${BUSINESS_ADMIN_BASE}/pos`,
+  batches: `${BUSINESS_ADMIN_BASE}/batches`,
+  expiry: `${BUSINESS_ADMIN_BASE}/expiry`,
+  suppliers: `${BUSINESS_ADMIN_BASE}/suppliers`,
+  purchases: `${BUSINESS_ADMIN_BASE}/purchases`,
+  prescriptions: `${BUSINESS_ADMIN_BASE}/prescriptions`,
+  customers: `${BUSINESS_ADMIN_BASE}/customers`,
+  returns: `${BUSINESS_ADMIN_BASE}/returns`,
+  reports: `${BUSINESS_ADMIN_BASE}/reports`,
+  accounting: `${BUSINESS_ADMIN_BASE}/accounting`,
+  shifts: `${BUSINESS_ADMIN_BASE}/shifts`,
+  cdss: `${BUSINESS_ADMIN_BASE}/cdss`,
+  "controlled-substances": `${BUSINESS_ADMIN_BASE}/controlled-substances`,
+  branches: `${BUSINESS_ADMIN_BASE}/branches`,
+  sales: `${BUSINESS_ADMIN_BASE}/invoices`,
+  staff: `${BUSINESS_ADMIN_BASE}/users`,
+};
+
+export function getModuleHref(moduleId: ModuleId | string, industryId?: string | null): string {
+  if (industryId === "pharmacy") {
+    const pharmacyHref = PHARMACY_MODULE_HREF[moduleId as ModuleId];
+    if (pharmacyHref) return pharmacyHref;
+  }
   return MODULE_HREF[moduleId as ModuleId] ?? `${BUSINESS_ADMIN_BASE}/modules/${moduleId}`;
 }
 
@@ -37,7 +62,29 @@ export function pathnameToModuleId(pathname: string): string | null {
   const generated = path.match(/\/businessAdmin\/modules\/([^/]+)/);
   if (generated?.[1]) return generated[1];
 
+  const pharmacyMatch: Array<[string, string]> = [
+    [`${BUSINESS_ADMIN_BASE}/inventory`, "inventory"],
+    [`${BUSINESS_ADMIN_BASE}/pos`, "pos"],
+    [`${BUSINESS_ADMIN_BASE}/batches`, "batches"],
+    [`${BUSINESS_ADMIN_BASE}/expiry`, "expiry"],
+    [`${BUSINESS_ADMIN_BASE}/suppliers`, "suppliers"],
+    [`${BUSINESS_ADMIN_BASE}/purchases`, "purchases"],
+    [`${BUSINESS_ADMIN_BASE}/prescriptions`, "prescriptions"],
+    [`${BUSINESS_ADMIN_BASE}/customers`, "customers"],
+    [`${BUSINESS_ADMIN_BASE}/returns`, "returns"],
+    [`${BUSINESS_ADMIN_BASE}/reports`, "reports"],
+    [`${BUSINESS_ADMIN_BASE}/accounting`, "accounting"],
+    [`${BUSINESS_ADMIN_BASE}/shifts`, "shifts"],
+    [`${BUSINESS_ADMIN_BASE}/cdss`, "cdss"],
+    [`${BUSINESS_ADMIN_BASE}/controlled-substances`, "controlled-substances"],
+    [`${BUSINESS_ADMIN_BASE}/branches`, "branches"],
+  ];
+  for (const [prefix, moduleId] of pharmacyMatch) {
+    if (path === prefix || path.startsWith(`${prefix}/`)) return moduleId;
+  }
+
   for (const [moduleId, href] of Object.entries(MODULE_HREF)) {
+    if (moduleId === "dashboard") continue;
     if (path === href || path.startsWith(`${href}/`)) {
       return moduleId;
     }
@@ -52,10 +99,12 @@ export function pathnameToModuleId(pathname: string): string | null {
   if (path.includes("/kitchen")) return "kitchen";
   if (path.includes("/tables")) return "tables";
   if (path.includes("/public-data")) return "public-catalog";
+  if (path.includes("/settings")) return "settings";
 
   return null;
 }
 
-export function isDedicatedModuleRoute(moduleId: string): boolean {
+export function isDedicatedModuleRoute(moduleId: string, industryId?: string | null): boolean {
+  if (industryId === "pharmacy" && PHARMACY_MODULE_HREF[moduleId as ModuleId]) return true;
   return Boolean(MODULE_HREF[moduleId as ModuleId]);
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Box, ChevronLeft, ChevronRight, Edit, Loader2, Plus, Search, Store, Trash2, X, Image as ImageIconLucide, RotateCcw, ImageIcon } from "lucide-react";
@@ -9,6 +8,7 @@ import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { PortalPage, PortalErrorAlert } from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
+import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { CategoryRecord, useCategories } from "@/hooks/useCategories";
 import { normalizeErrorMessage } from "@/lib/utils";
 import { DeleteConfirmDialog } from "@/components/common/DeleteConfirmDialog";
@@ -44,7 +44,8 @@ function CategoryListItem({
       <div className="flex items-center gap-4">
         <div className="relative h-12 w-12 overflow-hidden rounded-xl bg-[#f8fafc] flex items-center justify-center border border-[#f1f5f9]">
           {imageUrl ? (
-            <Image src={imageUrl} alt={category.CategoryName} fill className="object-cover" />
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt={category.CategoryName} className="absolute inset-0 h-full w-full object-cover" />
           ) : (
             <ImageIcon className="h-6 w-6 text-[#111827]" />
           )}
@@ -111,10 +112,9 @@ function CategoriesContent() {
       return;
     }
 
-    const isBusinessRole = currentRole === "business_admin";
     const isSuperAdminImpersonating = currentRole === "super_admin" && !!impersonatedBusinessId;
 
-    if (!isBusinessRole && !isSuperAdminImpersonating) {
+    if (!canAccessWorkspacePage(currentRole, "categories") && !isSuperAdminImpersonating) {
       router.replace("/dashboard");
       return;
     }
@@ -225,7 +225,7 @@ function CategoriesContent() {
   }
 
   return (
-    <AdminShell activeTab="categories">
+    <AdminShell activeTab="categories" pageTitle="Categories" pageSubtitle="Group medicines or products for faster search">
       <PortalPage>
         <div className="portal-card">
           <div className="portal-card-body">

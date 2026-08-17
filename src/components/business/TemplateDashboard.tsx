@@ -6,6 +6,7 @@ import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { PREVIEW_CARD_VALUES } from "@/template-engine/dashboard-mock-data";
 import { DASHBOARD_CARD_CATALOG } from "@/templates/modules";
 import type { DashboardCardId } from "@/templates/types";
+import { usePharmacyQuery } from "@/hooks/usePharmacyQuery";
 import { cn } from "@/lib/utils";
 
 type TemplateDashboardProps = {
@@ -14,7 +15,21 @@ type TemplateDashboardProps = {
 };
 
 export function TemplateDashboard({ cards, className }: TemplateDashboardProps) {
-  const { primaryColor, secondaryColor, currency } = useBusinessTemplate();
+  const { primaryColor, secondaryColor, currency, templateConfig } = useBusinessTemplate();
+  const isPharmacy = templateConfig?.industryId === "pharmacy";
+  const { data: live } = usePharmacyQuery<Record<string, number>>(isPharmacy ? "/pharmacy-reports/dashboard" : null);
+
+  const formatValue = (id: DashboardCardId) => {
+    if (isPharmacy && live && live[id] != null) {
+      const raw = live[id];
+      if (id === "today-sales" || id === "batch-value") {
+        const prefix = currency === "PKR" ? "Rs" : currency;
+        return `${prefix} ${Number(raw).toFixed(0)}`;
+      }
+      return String(raw);
+    }
+    return PREVIEW_CARD_VALUES[id] ?? "—";
+  };
 
   if (!cards.length) {
     return (
@@ -35,7 +50,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {accentCards.map((id, index) => {
             const meta = DASHBOARD_CARD_CATALOG[id];
-            const value = PREVIEW_CARD_VALUES[id] ?? "—";
+            const value = formatValue(id);
             const bg = index === 0 ? primaryColor : secondaryColor;
             return (
               <article
@@ -50,7 +65,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
                   ) : null}
                 </div>
                 <div>
-                  <h3 className="text-4xl font-bold">{value.replace("Rs", currency === "PKR" ? "Rs" : currency)}</h3>
+                  <h3 className="text-4xl font-bold">{String(value).replace("Rs", currency === "PKR" ? "Rs" : currency)}</h3>
                 </div>
               </article>
             );
@@ -62,7 +77,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
         <div className={cn("grid grid-cols-1 gap-4", statCards.length >= 3 ? "md:grid-cols-3" : "md:grid-cols-2")}>
           {statCards.map((id, index) => {
             const meta = DASHBOARD_CARD_CATALOG[id];
-            const value = PREVIEW_CARD_VALUES[id] ?? "—";
+            const value = formatValue(id);
             const tone = index % 3 === 0 ? "primary" : index % 3 === 1 ? "secondary" : "accent";
             return (
               <PortalStatCard
@@ -77,10 +92,11 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
         </div>
       ) : null}
 
-      <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
-        <h3 className="text-sm font-semibold text-[#0f172a]">Configured KPI cards</h3>
-        <p className="mt-1 text-sm text-[#64748b]">
-          Dashboard layout follows your industry template. Live data integration will replace sample values.
+      <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-5">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">Configured KPI cards</h3>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">
+          Dashboard layout follows your industry template.
+          {isPharmacy ? " Values below are live pharmacy KPIs." : " Live data integration will replace sample values."}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {cards.map((id) => (

@@ -9,7 +9,6 @@ import {
   Globe2,
   Mail,
   MapPin,
-  Palette,
   Phone,
   User,
   Users,
@@ -18,20 +17,17 @@ import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { PortalPage } from "@/components/admin/PortalPage";
 import { BusinessTemplatePreview } from "@/components/business/BusinessTemplatePreview";
+import { BusinessWorkspaceSettings } from "@/components/business/BusinessWorkspaceSettings";
 import { ActivityFeed } from "@/components/design-system/ActivityFeed";
 import { Breadcrumbs } from "@/components/design-system/Breadcrumbs";
 import {
   getBusinessProfile,
   getIndustryLabel,
-  saveBusinessProfile,
   type BusinessProfileConfig,
 } from "@/lib/business-profile";
 import { getIndustryPreviewProfile } from "@/lib/industry-preview-profiles";
-import { INDUSTRY_TEMPLATES } from "@/templates/industries";
-import { ACCENT_COLORS, colorsFromAccent } from "@/templates/modules";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { useWebsite } from "@/hooks/useWebsite";
-import type { AccentColor } from "@/templates/types";
 import { cn } from "@/lib/utils";
 
 function BusinessProfileContent() {
@@ -91,22 +87,6 @@ function BusinessProfileContent() {
         </div>
       </AdminShell>
     );
-  }
-
-  function updateProfile(next: Partial<BusinessProfileConfig>) {
-    const merged = { ...profile!, ...next };
-    setProfile(merged);
-    saveBusinessProfile(id, merged);
-  }
-
-  function applyIndustry(industryId: string) {
-    const template = INDUSTRY_TEMPLATES.find((t) => t.id === industryId);
-    const colors = template ? colorsFromAccent(template.theme.accent) : colorsFromAccent("blue");
-    updateProfile({
-      industryId,
-      primaryColor: colors.primary,
-      secondaryColor: colors.secondary,
-    });
   }
 
   const stats = [
@@ -222,95 +202,30 @@ function BusinessProfileContent() {
 
         <BusinessTemplatePreview profile={profile} businessName={business.businessName} className="mb-6" />
 
-        <div className="grid gap-6 xl:grid-cols-[340px_1fr]">
-          {/* Theme panel */}
-          <aside className="space-y-4">
-            <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <Palette className="h-4 w-4 text-[#0050f8]" />
-                <h2 className="text-sm font-bold text-[#0f172a]">Theme & Branding</h2>
-              </div>
-
-              <label className="mb-3 block text-xs font-semibold text-[#64748b]">Industry Template</label>
-              <select
-                value={profile.industryId}
-                onChange={(e) => applyIndustry(e.target.value)}
-                className="portal-input mb-4"
-              >
-                {INDUSTRY_TEMPLATES.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-                <option value="gym">Gym & Fitness</option>
-                <option value="clinic">Healthcare Clinic</option>
-                <option value="real-estate">Real Estate</option>
-                <option value="logistics">Logistics</option>
-                <option value="education">Education</option>
-                <option value="agency">Agency</option>
-              </select>
-
-              <div className="mb-4 grid grid-cols-2 gap-3">
-                <label className="block text-xs font-semibold text-[#64748b]">
-                  Primary
-                  <input
-                    type="color"
-                    value={profile.primaryColor}
-                    onChange={(e) => updateProfile({ primaryColor: e.target.value })}
-                    className="mt-1 h-10 w-full cursor-pointer rounded-lg border border-[#e2e8f0]"
-                  />
-                </label>
-                <label className="block text-xs font-semibold text-[#64748b]">
-                  Secondary
-                  <input
-                    type="color"
-                    value={profile.secondaryColor}
-                    onChange={(e) => updateProfile({ secondaryColor: e.target.value })}
-                    className="mt-1 h-10 w-full cursor-pointer rounded-lg border border-[#e2e8f0]"
-                  />
-                </label>
-              </div>
-
-              <p className="mb-2 text-xs font-semibold text-[#64748b]">Quick presets</p>
-              <div className="flex flex-wrap gap-1.5">
-                {(Object.keys(ACCENT_COLORS) as AccentColor[]).map((key) => {
-                  const preset = ACCENT_COLORS[key];
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() =>
-                        updateProfile({
-                          primaryColor: preset.primary,
-                          secondaryColor: preset.secondary,
-                        })
+        {business.templateConfig ? (
+          <div className="mb-6">
+            <BusinessWorkspaceSettings
+              businessId={id}
+              businessName={business.businessName}
+              templateConfig={business.templateConfig}
+              onDraftChange={(draft) =>
+                setProfile((current) =>
+                  current
+                    ? {
+                        ...current,
+                        primaryColor: draft.primaryColor,
+                        secondaryColor: draft.secondaryColor,
+                        themeMode: draft.themeMode,
                       }
-                      className="h-7 w-7 rounded-md border border-[#e2e8f0]"
-                      style={{ backgroundColor: preset.primary }}
-                      title={preset.label}
-                    />
-                  );
-                })}
-              </div>
+                    : current,
+                )
+              }
+            />
+          </div>
+        ) : null}
 
-              <div className="mt-4 flex gap-2">
-                {(["light", "dark"] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => updateProfile({ themeMode: mode })}
-                    className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold capitalize ${
-                      profile.themeMode === mode
-                        ? "border-[#001840] bg-[#001840] text-white"
-                        : "border-[#e2e8f0] bg-white text-[#64748b]"
-                    }`}
-                  >
-                    {mode}
-                  </button>
-                ))}
-              </div>
-            </section>
-
+        <div className="grid gap-6 xl:grid-cols-[340px_1fr]">
+          <aside className="space-y-4">
             <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
               <h2 className="mb-3 text-sm font-bold text-[#0f172a]">Business Statistics</h2>
               <div className="grid grid-cols-2 gap-2">

@@ -6,6 +6,7 @@ import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import type { ApiTemplateConfig } from "@/hooks/useIndustryTemplate";
 import { getStoredAuthToken } from "@/lib/utils";
+import { buildWorkspaceThemeStyle } from "@/templates/modules";
 
 type BusinessTemplateContextValue = {
   businessId: string | null;
@@ -83,12 +84,7 @@ export function BusinessTemplateProvider({ children, businessId = null }: Busine
       isLoading: isWorkspaceLoading,
       isError,
       isUnauthorized,
-      themeStyle: {
-        ["--biz-primary" as string]: primaryColor,
-        ["--biz-secondary" as string]: secondaryColor,
-        ["--brand-primary" as string]: primaryColor,
-        ["--brand-secondary" as string]: secondaryColor,
-      },
+      themeStyle: buildWorkspaceThemeStyle(primaryColor, secondaryColor, themeMode) as CSSProperties,
     };
   }, [authToken, business, businessId, isError, isLoading, isUnauthorized, templateConfig]);
 
@@ -112,12 +108,7 @@ export function useBusinessTemplate() {
       isLoading: false,
       isError: false,
       isUnauthorized: false,
-      themeStyle: {
-        ["--biz-primary" as string]: DEFAULT_PRIMARY,
-        ["--biz-secondary" as string]: DEFAULT_SECONDARY,
-        ["--brand-primary" as string]: DEFAULT_PRIMARY,
-        ["--brand-secondary" as string]: DEFAULT_SECONDARY,
-      },
+      themeStyle: buildWorkspaceThemeStyle(DEFAULT_PRIMARY, DEFAULT_SECONDARY, "light") as CSSProperties,
     };
   }
   return ctx;

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Box, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Edit, Loader2, Plus, QrCode, Search, Store, Trash2, Users, LayoutGrid, RotateCcw, Image as ImageIcon, Save, X } from "lucide-react";
@@ -51,7 +50,8 @@ function TableCard({
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow">
       <div className="relative h-72">
-        <Image src={imageUrl} alt={table.tableNumber} fill sizes="(max-width: 640px) 100vw, 25vw" className="object-cover" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={imageUrl} alt={table.tableNumber} className="absolute inset-0 h-full w-full object-cover" />
 
         {/* Badges */}
         <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-[#00c853] px-3 py-1 text-[10px] font-black text-[#ffffff] uppercase tracking-wider">

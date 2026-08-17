@@ -14,10 +14,10 @@ const buttonVariants = cva(
         secondary:
           "bg-[var(--brand-secondary)] text-[#ffffff] shadow-[0_10px_20px_rgba(0,80,248,0.22)] hover:bg-[var(--brand-secondary-hover)]",
         outline:
-          "border border-[#d7e1ed] bg-white text-[#0f172a] shadow-[0_8px_16px_rgba(15,23,42,0.06)] hover:bg-[#f4f8fc]",
+          "border border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-primary)] shadow-[0_8px_16px_rgba(15,23,42,0.06)] hover:bg-[var(--surface-muted)]",
         soft:
           "bg-[var(--brand-primary-soft)] text-[var(--brand-primary)] hover:bg-[var(--brand-secondary-soft)]",
-        ghost: "text-[#334155] hover:bg-[#f8fafc] hover:text-[#111827]",
+        ghost: "text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]",
         destructive: "bg-[#dc2626] text-[#ffffff] hover:bg-[#b91c1c]",
         link: "text-[var(--brand-secondary)] underline-offset-4 hover:underline",
       },

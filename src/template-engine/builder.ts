@@ -68,6 +68,35 @@ export function createCustomizedConfig(input: {
   };
 }
 
+export function syncNavigationToEnabledModules(
+  current: CustomizedTemplateConfig["navigation"] | undefined,
+  enabledModules: ModuleId[],
+  labels: IndustryTemplate["labels"],
+): CustomizedTemplateConfig["navigation"] {
+  const rebuilt = buildDefaultNavigation(enabledModules, labels);
+  if (!current?.length) {
+    return rebuilt.map((item) => ({ ...item, visible: enabledModules.includes(item.moduleId) }));
+  }
+
+  const kept = current
+    .map((item) => {
+      const fresh = rebuilt.find((row) => row.moduleId === item.moduleId);
+      if (!fresh) return null;
+      return {
+        ...fresh,
+        label: item.label || fresh.label,
+        visible: enabledModules.includes(item.moduleId),
+      };
+    })
+    .filter(Boolean) as CustomizedTemplateConfig["navigation"];
+
+  const extras = rebuilt
+    .filter((row) => !current.some((item) => item.moduleId === row.moduleId))
+    .map((row) => ({ ...row, visible: enabledModules.includes(row.moduleId) }));
+
+  return [...kept, ...extras];
+}
+
 export function resolveVisibleNav(config: CustomizedTemplateConfig) {
   return config.navigation.filter((item) => item.visible && config.enabledModules.includes(item.moduleId));
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import { ImageIcon, QrCode, Store } from "lucide-react";
 import Loading from "@/components/common/Loading";
@@ -50,7 +49,8 @@ export default function PublicCatalogTablesPage() {
                 >
                   <div className="relative h-36 bg-slate-50">
                     {imageUrl ? (
-                      <Image src={imageUrl} alt={table.tableNumber} fill className="object-cover" />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={imageUrl} alt={table.tableNumber} className="absolute inset-0 h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full items-center justify-center">
                         <ImageIcon className="h-8 w-8 text-slate-300" />

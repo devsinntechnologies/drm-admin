@@ -16,6 +16,21 @@ export const IMPLEMENTED_MODULES = new Set<ModuleId>([
   "kitchen",
   "staff",
   "inventory",
+  "pos",
+  "batches",
+  "expiry",
+  "suppliers",
+  "purchases",
+  "prescriptions",
+  "customers",
+  "returns",
+  "reports",
+  "accounting",
+  "shifts",
+  "cdss",
+  "controlled-substances",
+  "branches",
+  "settings",
 ]);
 
 /** Core restaurant sidebar modules that match the live business workspace. */

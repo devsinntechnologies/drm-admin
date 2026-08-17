@@ -28,6 +28,8 @@ export const MODULE_CATALOG: Record<
   batches: { id: "batches", label: "Batches", description: "Batch-wise stock", category: "Inventory" },
   expiry: { id: "expiry", label: "Expiry Management", description: "Expiry alerts and disposal", category: "Inventory" },
   prescriptions: { id: "prescriptions", label: "Prescriptions", description: "Prescription intake and fills", category: "Pharmacy" },
+  cdss: { id: "cdss", label: "Clinical Decision Support", description: "Interaction, allergy, and duplicate-therapy checks", category: "Pharmacy" },
+  "controlled-substances": { id: "controlled-substances", label: "Controlled Substances", description: "Scheduled drug audit log and compliance", category: "Pharmacy" },
   collections: { id: "collections", label: "Collections", description: "Seasonal / style collections", category: "Catalog" },
   variants: { id: "variants", label: "Size & Colour Matrix", description: "Variant matrix management", category: "Catalog" },
   measurements: { id: "measurements", label: "Measurements", description: "Customer measurement profiles", category: "CRM" },
@@ -173,8 +175,57 @@ export function colorsFromAccent(accent: string) {
   };
 }
 
+function parseHex(hex: string): [number, number, number] | null {
+  const match = hex.trim().match(/^#([0-9a-fA-F]{6})$/);
+  if (!match) return null;
+  const n = parseInt(match[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+export function shiftHex(hex: string, amount: number, fallback: string) {
+  const parsed = parseHex(hex);
+  if (!parsed) return fallback;
+  const adj = (channel: number) => Math.max(0, Math.min(255, Math.round(channel + amount)));
+  return `#${parsed.map(adj).map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+
+export function mixHex(hex: string, withHex: string, amountOfHex: number, fallback: string) {
+  const a = parseHex(hex);
+  const b = parseHex(withHex);
+  if (!a || !b) return fallback;
+  const mix = (index: number) => Math.round(a[index] * amountOfHex + b[index] * (1 - amountOfHex));
+  return `#${[mix(0), mix(1), mix(2)].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+
 export function softFromHex(hex: string, fallback = "#eef3ff") {
   const value = hex.trim();
   if (!/^#([0-9a-fA-F]{6})$/.test(value)) return fallback;
   return `${value}22`;
+}
+
+export function buildWorkspaceThemeStyle(
+  primaryColor: string,
+  secondaryColor: string,
+  themeMode: "light" | "dark" = "light",
+) {
+  const dark = themeMode === "dark";
+  return {
+    ["--biz-primary"]: primaryColor,
+    ["--biz-secondary"]: secondaryColor,
+    ["--biz-primary-soft"]: softFromHex(primaryColor),
+    ["--biz-secondary-soft"]: softFromHex(secondaryColor),
+    ["--brand-primary"]: primaryColor,
+    ["--brand-secondary"]: secondaryColor,
+    ["--brand-primary-hover"]: shiftHex(primaryColor, -22, primaryColor),
+    ["--brand-secondary-hover"]: shiftHex(secondaryColor, -22, secondaryColor),
+    ["--brand-primary-soft"]: dark ? mixHex(primaryColor, "#111827", 0.28, "#1e293b") : softFromHex(primaryColor),
+    ["--brand-secondary-soft"]: dark ? mixHex(secondaryColor, "#111827", 0.28, "#1e293b") : softFromHex(secondaryColor),
+    ["--app-bg"]: dark ? "#0b1220" : mixHex(primaryColor, "#f8fafc", 0.05, "#f1f5f9"),
+    ["--surface"]: dark ? "#111827" : "#ffffff",
+    ["--surface-muted"]: dark ? "#1e293b" : "#f8fafc",
+    ["--input-bg"]: dark ? "#0f172a" : "#f8fafc",
+    ["--text-primary"]: dark ? "#f8fafc" : "#0f172a",
+    ["--text-muted"]: dark ? "#94a3b8" : "#64748b",
+    ["--border-subtle"]: dark ? "#243044" : "#dbe4ef",
+  } as const;
 }

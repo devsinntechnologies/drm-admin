@@ -36,3 +36,15 @@ export function unwrapApiData<T>(payload: T | { data?: T }): T {
   }
   return payload as T;
 }
+
+export function asList<T = unknown>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (!value || typeof value !== "object") return [];
+  const record = value as { data?: unknown };
+  if (Array.isArray(record.data)) return record.data as T[];
+  if (record.data && typeof record.data === "object") {
+    const nested = (record.data as { data?: unknown }).data;
+    if (Array.isArray(nested)) return nested as T[];
+  }
+  return [];
+}

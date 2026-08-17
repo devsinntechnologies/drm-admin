@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -38,6 +37,7 @@ import {
   portalInputClass,
 } from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
+import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { Product, useProducts, CreateProductVariantPayload } from "@/hooks/useProducts";
 import { BASE_URL } from "@/lib/constant";
 import { CategoryRecord, useCategories } from "@/hooks/useCategories";
@@ -51,6 +51,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
+import { apiClient } from "@/lib/api-client";
+import { EMPTY_MEDICINE_PROFILE, MedicineProfileFields, profileToPayload, type MedicineProfileForm } from "@/components/pharmacy/MedicineProfileFields";
 
 function ErrorAlert({ message }: { message: unknown }) {
   const errorMessage = normalizeErrorMessage(message, "Error loading items");
@@ -149,7 +152,8 @@ function MenuCard({
     <article className="overflow-hidden rounded-3xl bg-white border border-gray-100 shadow-sm flex flex-col">
       <div className="relative h-80 w-full bg-[#f8fafc]">
         {imageUrl ? (
-          <Image src={imageUrl} alt={item.name} fill className="object-cover" />
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt={item.name} className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-[#94a3b8]">
             <ImageIcon className="h-8 w-8 opacity-20" />
@@ -201,7 +205,11 @@ function MenuCard({
 
 function MenuItemsContent() {
   const router = useRouter();
-  const { role } = useAuth();
+  const { token, role } = useAuth();
+  const { templateConfig } = useBusinessTemplate();
+  const isPharmacy = templateConfig?.industryId === "pharmacy";
+  const [createMedicine, setCreateMedicine] = useState<MedicineProfileForm>(EMPTY_MEDICINE_PROFILE);
+  const [editMedicine, setEditMedicine] = useState<MedicineProfileForm>(EMPTY_MEDICINE_PROFILE);
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -262,10 +270,9 @@ function MenuItemsContent() {
       return;
     }
 
-    const isBusinessRole = currentRole === "business_admin";
     const isSuperAdminImpersonating = currentRole === "super_admin" && !!impersonatedBusinessId;
 
-    if (!isBusinessRole && !isSuperAdminImpersonating) {
+    if (!canAccessWorkspacePage(currentRole, "products") && !isSuperAdminImpersonating) {
       router.replace("/dashboard");
       return;
     }
@@ -296,6 +303,7 @@ function MenuItemsContent() {
       image: null,
     });
     setCreateVariants([]);
+    setCreateMedicine(EMPTY_MEDICINE_PROFILE);
   };
 
   const resetEditForm = () => {
@@ -310,6 +318,7 @@ function MenuItemsContent() {
       image: null,
     });
     setEditVariants([]);
+    setEditMedicine(EMPTY_MEDICINE_PROFILE);
     setEditId(null);
   };
 
@@ -322,8 +331,17 @@ function MenuItemsContent() {
     try {
       await createProduct({
         ...createForm,
+        isKitchen: isPharmacy ? false : createForm.isKitchen,
         variants: createVariants,
       });
+      if (isPharmacy) {
+        const list = await apiClient.get<any>("/products?limit=100", token, impersonatedBusinessId);
+        const rows = list?.data || list || [];
+        const created = Array.isArray(rows) ? rows.find((item: any) => item.name === createForm.name) : null;
+        if (created?.id) {
+          await apiClient.put(`/pharmacy-catalog/products/${created.id}/profile`, profileToPayload(createMedicine), token, impersonatedBusinessId);
+        }
+      }
       toast.success("Product added successfully", { id: toastId });
       setCreateOpen(false);
       resetCreateForm();
@@ -355,6 +373,30 @@ function MenuItemsContent() {
           inStock: v.inStock,
         })) || []
       );
+      if (isPharmacy) {
+        try {
+          const profile = await apiClient.get<any>(`/pharmacy-catalog/products/${id}`, token, impersonatedBusinessId);
+          if (profile) {
+            const strip = profile.units?.find((u: any) => u.unit === "strip")?.factorToBase || 10;
+            const box = profile.units?.find((u: any) => u.unit === "box")?.factorToBase || 100;
+            setEditMedicine({
+              genericName: profile.genericName || "",
+              saltName: profile.saltName || "",
+              barcode: profile.barcode || "",
+              hsnCode: profile.hsnCode || "",
+              gstRate: Number(profile.gstRate || 0),
+              rxRequired: Boolean(profile.rxRequired),
+              controlledSchedule: profile.controlledSchedule || "",
+              reorderLevel: Number(profile.reorderLevel || 0),
+              baseUnit: profile.baseUnit || "tablet",
+              stripToTablet: Number(strip),
+              boxToStrip: Number(strip) ? Number(box) / Number(strip) : 10,
+            });
+          }
+        } catch {
+          setEditMedicine(EMPTY_MEDICINE_PROFILE);
+        }
+      }
       toast.dismiss(toastId);
       setEditOpen(true);
     } catch (err) {
@@ -372,6 +414,9 @@ function MenuItemsContent() {
         ...editForm,
         variants: editVariants,
       });
+      if (isPharmacy) {
+        await apiClient.put(`/pharmacy-catalog/products/${editId}/profile`, profileToPayload(editMedicine), token, impersonatedBusinessId);
+      }
       toast.success("Product updated successfully", { id: toastId });
       setEditOpen(false);
       resetEditForm();
@@ -403,11 +448,15 @@ function MenuItemsContent() {
   if (!isAuthorized) return null;
 
   return (
-    <AdminShell activeTab="products">
+    <AdminShell
+      activeTab="products"
+      pageTitle={isPharmacy ? "Medicines" : "Menu Items"}
+      pageSubtitle={isPharmacy ? "Catalog with salt, barcode, GST, and Rx flags" : undefined}
+    >
       <PortalPage>
         <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
           <button type="button" onClick={() => setCreateOpen(true)} className="dn-btn dn-btn-primary">
-            <Plus className="h-5 w-5" /> Add Product
+            <Plus className="h-5 w-5" /> {isPharmacy ? "Add medicine" : "Add Product"}
           </button>
           <button
             type="button"
@@ -416,23 +465,25 @@ function MenuItemsContent() {
           >
             <Shapes className="h-5 w-5" /> Categories
           </button>
-          <button
-            type="button"
-            onClick={() => router.push(`/dashboard/businessAdmin/ingredients${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
-            className="dn-btn dn-btn-soft"
-          >
-            <Package className="h-5 w-5" /> Ingredients
-          </button>
+          {isPharmacy ? null : (
+            <button
+              type="button"
+              onClick={() => router.push(`/dashboard/businessAdmin/ingredients${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
+              className="dn-btn dn-btn-soft"
+            >
+              <Package className="h-5 w-5" /> Ingredients
+            </button>
+          )}
         </div>
 
-        <PortalMetricRow label="Total Items" value={pagination.total} icon={Box} />
+        <PortalMetricRow label={isPharmacy ? "Total medicines" : "Total Items"} value={pagination.total} icon={Box} />
 
         {error ? <ErrorAlert message={error} /> : null}
 
         {loading ? (
           <Loading />
         ) : filteredProducts.length === 0 ? (
-          <PortalEmptyState icon={Box} title="No products found" description="Add a new product to get started." />
+          <PortalEmptyState icon={Box} title={isPharmacy ? "No medicines found" : "No products found"} description={isPharmacy ? "Add a medicine to start billing and stock tracking." : "Add a new product to get started."} />
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredProducts.map((item) => (
@@ -449,8 +500,10 @@ function MenuItemsContent() {
             <div className="bg-white">
               <div className="p-6 pb-4 border-b">
                 <DialogHeader>
-                  <DialogTitle className="text-2xl font-bold">Add New Product</DialogTitle>
-                  <DialogDescription>Fill in the details to create a new product</DialogDescription>
+                  <DialogTitle className="text-2xl font-bold">{isPharmacy ? "Add medicine" : "Add New Product"}</DialogTitle>
+                  <DialogDescription>
+                    {isPharmacy ? "Name, price, GST, barcode, and clinical flags" : "Fill in the details to create a new product"}
+                  </DialogDescription>
                 </DialogHeader>
               </div>
 
@@ -497,6 +550,7 @@ function MenuItemsContent() {
                     </div>
                   </div>
                   <VariantsEditor variants={createVariants} setVariants={setCreateVariants} />
+                  {isPharmacy ? <MedicineProfileFields value={createMedicine} onChange={setCreateMedicine} /> : null}
                   <div className="space-y-2">
                     <label className="text-sm font-bold">Image</label>
                     <div className="flex items-center gap-3">
@@ -572,6 +626,7 @@ function MenuItemsContent() {
                     </div>
                   </div>
                   <VariantsEditor variants={editVariants} setVariants={setEditVariants} />
+                  {isPharmacy ? <MedicineProfileFields value={editMedicine} onChange={setEditMedicine} /> : null}
                   <div className="space-y-2">
                     <label className="text-sm font-bold">Image</label>
                     <div className="flex items-center gap-3">
