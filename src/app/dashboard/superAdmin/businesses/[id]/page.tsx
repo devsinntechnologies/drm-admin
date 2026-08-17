@@ -202,27 +202,26 @@ function BusinessProfileContent() {
 
         <BusinessTemplatePreview profile={profile} businessName={business.businessName} className="mb-6" />
 
-        {business.templateConfig ? (
-          <div className="mb-6">
-            <BusinessWorkspaceSettings
-              businessId={id}
-              businessName={business.businessName}
-              templateConfig={business.templateConfig}
-              onDraftChange={(draft) =>
-                setProfile((current) =>
-                  current
-                    ? {
-                        ...current,
-                        primaryColor: draft.primaryColor,
-                        secondaryColor: draft.secondaryColor,
-                        themeMode: draft.themeMode,
-                      }
-                    : current,
-                )
-              }
-            />
-          </div>
-        ) : null}
+        <div className="mb-6">
+          <BusinessWorkspaceSettings
+            businessId={id}
+            businessName={business.businessName}
+            templateConfig={business.templateConfig}
+            fallbackIndustryId={profile.industryId}
+            onDraftChange={(draft) =>
+              setProfile((current) =>
+                current
+                  ? {
+                      ...current,
+                      primaryColor: draft.primaryColor,
+                      secondaryColor: draft.secondaryColor,
+                      themeMode: draft.themeMode,
+                    }
+                  : current,
+              )
+            }
+          />
+        </div>
 
         <div className="grid gap-6 xl:grid-cols-[340px_1fr]">
           <aside className="space-y-4">

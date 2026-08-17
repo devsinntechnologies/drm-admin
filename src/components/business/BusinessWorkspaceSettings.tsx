@@ -37,6 +37,7 @@ type Props = {
   businessId: string;
   businessName: string;
   templateConfig: ApiTemplateConfig | null | undefined;
+  fallbackIndustryId?: string;
   onDraftChange?: (draft: DraftChange) => void;
 };
 
@@ -44,10 +45,11 @@ export function BusinessWorkspaceSettings({
   businessId,
   businessName,
   templateConfig,
+  fallbackIndustryId,
   onDraftChange,
 }: Props) {
   const dispatch = useDispatch();
-  const industry = getIndustryById(templateConfig?.industryId ?? "");
+  const industry = getIndustryById(templateConfig?.industryId ?? fallbackIndustryId ?? "");
   const availableModules = useMemo<ModuleId[]>(() => {
     if (!industry) return [];
     return Array.from(new Set([...industry.modules, ...(industry.optionalModules ?? [])]));
@@ -58,7 +60,7 @@ export function BusinessWorkspaceSettings({
   const [themeMode, setThemeMode] = useState<ThemeMode>(templateConfig?.themeMode ?? "light");
   const [logoUrl, setLogoUrl] = useState<string | null>(templateConfig?.logoUrl ?? null);
   const [enabledModules, setEnabledModules] = useState<ModuleId[]>(
-    (templateConfig?.enabledModules ?? []) as ModuleId[],
+    (templateConfig?.enabledModules ?? industry?.modules ?? []) as ModuleId[],
   );
 
   const [updateConfig, { isLoading: savingUpdate }] = useUpdateTemplateConfigMutation();
@@ -72,8 +74,8 @@ export function BusinessWorkspaceSettings({
     setSecondaryColor(templateConfig?.secondaryColor ?? "#0050F8");
     setThemeMode(templateConfig?.themeMode ?? "light");
     setLogoUrl(templateConfig?.logoUrl ?? null);
-    setEnabledModules((templateConfig?.enabledModules ?? []) as ModuleId[]);
-  }, [templateConfig]);
+    setEnabledModules((templateConfig?.enabledModules ?? industry?.modules ?? []) as ModuleId[]);
+  }, [templateConfig, industry?.modules]);
 
   useEffect(() => {
     onDraftChangeRef.current?.({ primaryColor, secondaryColor, themeMode, logoUrl, enabledModules });
@@ -175,7 +177,7 @@ export function BusinessWorkspaceSettings({
     return (
       <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
         <p className="text-sm text-[#64748b]">
-          This business does not have a saved industry template yet, so theme and modules cannot be edited here.
+          Could not match an industry for this business. Open Industry Templates, pick an industry, then Generate and link it to this business.
         </p>
       </section>
     );
