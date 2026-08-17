@@ -49,8 +49,14 @@ export default function PublicCatalogTablesPage() {
                 >
                   <div className="relative h-36 bg-slate-50">
                     {imageUrl ? (
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={imageUrl} alt={table.tableNumber} className="absolute inset-0 h-full w-full object-cover" />
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={imageUrl}
+                          alt={table.tableNumber}
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                      </>
                     ) : (
                       <div className="flex h-full items-center justify-center">
                         <ImageIcon className="h-8 w-8 text-slate-300" />
