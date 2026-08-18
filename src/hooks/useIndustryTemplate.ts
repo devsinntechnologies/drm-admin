@@ -17,6 +17,7 @@ export type ApiTemplateConfig = {
   industryName: string;
   family: IndustryFamily;
   currency: string;
+  market?: string;
   location: string;
   branchCount: number;
   logoUrl?: string | null;
@@ -42,6 +43,7 @@ export type CreateTemplateConfigPayload = {
   dashboardCards: DashboardCardId[];
   labels: IndustryTemplate["labels"];
   currency?: string;
+  market?: string;
   location?: string;
   branchCount?: number;
   logoUrl?: string;
@@ -81,6 +83,7 @@ export function apiConfigToCustomized(item: ApiTemplateConfig): CustomizedTempla
     industryName: item.industryName,
     family: item.family,
     currency: item.currency ?? "PKR",
+    market: item.market,
     location: item.location ?? "",
     branchCount: item.branchCount ?? 1,
     primaryColor: item.primaryColor,

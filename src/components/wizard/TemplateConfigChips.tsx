@@ -158,6 +158,7 @@ export function ModuleChip({
   locked,
   lockReason,
   dragging,
+  industryId,
   onToggle,
   onDragStart,
   onDragEnd,
@@ -169,6 +170,7 @@ export function ModuleChip({
   locked?: boolean;
   lockReason?: string | null;
   dragging?: boolean;
+  industryId?: string | null;
   onToggle?: () => void;
   onDragStart?: () => void;
   onDragEnd?: () => void;
@@ -176,7 +178,7 @@ export function ModuleChip({
 }) {
   const meta = MODULE_CATALOG[id];
   const displayLabel = label ?? meta?.label ?? id;
-  const inProgress = !isModuleImplemented(id);
+  const inProgress = !isModuleImplemented(id, industryId);
   return (
     <ConfigChip
       selected={checked}

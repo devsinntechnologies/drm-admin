@@ -81,6 +81,65 @@ export const MODULE_CATALOG: Record<
     description: "Customer-facing online menu and catalog",
     category: "Catalog",
   },
+  "billing-pricing": {
+    id: "billing-pricing",
+    label: "Billing & Pricing",
+    description:
+      "Configurable Single Game flat rate, Double Game flat rate, and Century per-minute timer (minimum duration and rounding) per branch and table",
+    category: "Snooker",
+  },
+  "credit-udhar": {
+    id: "credit-udhar",
+    label: "Credit / Udhar",
+    description:
+      "Customer credit ledger for Udhar sales, limits, recoveries, partial payments, write-offs, outstanding balances, and statements",
+    category: "Snooker",
+  },
+  discounts: {
+    id: "discounts",
+    label: "Discounts",
+    description: "Fixed or percentage discounts with mandatory reasons, approval limits, and discount history",
+    category: "Snooker",
+  },
+  "audit-logs": {
+    id: "audit-logs",
+    label: "Audit Logs",
+    description:
+      "Immutable history of discounts, credit entries, price changes, role changes, and daily closings",
+    category: "Snooker",
+  },
+  notifications: {
+    id: "notifications",
+    label: "Notifications",
+    description:
+      "Alerts for overdue credit, cash discrepancies, large discounts, maintenance issues, and pending closings",
+    category: "Snooker",
+  },
+  tournaments: {
+    id: "tournaments",
+    label: "Tournaments",
+    description: "Tournaments and leagues with player registration, brackets, table scheduling, scores, and prize pools",
+    category: "Snooker",
+  },
+  loyalty: {
+    id: "loyalty",
+    label: "Loyalty Programme",
+    description: "Reward points, redemption rules, loyalty levels, expiry policies, and loyalty reporting",
+    category: "Snooker",
+  },
+  "table-booking": {
+    id: "table-booking",
+    label: "Online Table Booking",
+    description:
+      "Customer-facing table availability and reservations with deposits, confirmations, and cancellation rules",
+    category: "Snooker",
+  },
+  subscriptions: {
+    id: "subscriptions",
+    label: "Subscription Management",
+    description: "SaaS packages, trials, invoices, renewals, usage limits, and suspension rules",
+    category: "Optional",
+  },
 };
 
 export const DASHBOARD_CARD_CATALOG: Record<
@@ -149,6 +208,10 @@ export const DASHBOARD_CARD_CATALOG: Record<
   "best-selling-books": { id: "best-selling-books", label: "Best-selling Books", description: "Top titles" },
   "top-authors": { id: "top-authors", label: "Top Authors", description: "Best-selling authors" },
   "recently-added": { id: "recently-added", label: "Recently Added", description: "Newest catalog items" },
+  "active-sessions": { id: "active-sessions", label: "Active Sessions", description: "Tables currently in play" },
+  "century-running": { id: "century-running", label: "Century Timers", description: "Premium tables with live timers" },
+  "cash-on-hand": { id: "cash-on-hand", label: "Cash on Hand", description: "Drawer cash since daily opening" },
+  "overdue-credit": { id: "overdue-credit", label: "Overdue Credit", description: "Udhar balances past due" },
 };
 
 /** Industry colour presets — solid primary + secondary (no gradients). */

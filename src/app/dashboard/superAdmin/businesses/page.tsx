@@ -43,6 +43,8 @@ import { persistIndustryTemplateForBusiness } from "@/template-engine/persist-te
 import { normalizeErrorMessage } from "@/lib/utils";
 import { INDUSTRY_TEMPLATES } from "@/templates/industries";
 import { colorsFromAccent } from "@/templates/modules";
+import { PharmacyCountryPicker } from "@/components/pharmacy/PharmacyCountryPicker";
+import { pharmacyCountryDefaults, type PharmacyMarketCode } from "@/lib/pharmacy-market";
 
 type BusinessItem = {
   id: string;
@@ -111,6 +113,7 @@ function BusinessesContent() {
     industryId: "retail-store",
   });
   const [countryCode, setCountryCode] = useState("+92");
+  const [pharmacyCountry, setPharmacyCountry] = useState<PharmacyMarketCode>("PK");
 
 
   const { data: planData, isLoading: isLoadingPlans } = useGetPlansQuery();
@@ -193,6 +196,7 @@ function BusinessesContent() {
       industryId: "retail-store",
     });
     setCountryCode("+92");
+    setPharmacyCountry("PK");
     setFormError(null);
   };
 
@@ -220,6 +224,15 @@ function BusinessesContent() {
         planId: form.planId,
       };
 
+      const pharmacyDefaults =
+        form.industryId === "pharmacy" ? pharmacyCountryDefaults(pharmacyCountry) : null;
+      const templatePayload = {
+        industryId: form.industryId,
+        location: payload.address || pharmacyDefaults?.location,
+        currency: pharmacyDefaults?.currency,
+        market: pharmacyDefaults?.market,
+      };
+
       if (editingBusinessId) {
         await patchBusinessById({ id: editingBusinessId, body: payload }).unwrap();
         const tpl = INDUSTRY_TEMPLATES.find((t) => t.id === form.industryId);
@@ -233,8 +246,7 @@ function BusinessesContent() {
         const persist = await persistIndustryTemplateForBusiness({
           businessId: editingBusinessId,
           businessName: payload.businessName,
-          industryId: form.industryId,
-          location: payload.address,
+          ...templatePayload,
         });
         if (!persist.persistedToApi) {
           toast.warning(
@@ -262,8 +274,7 @@ function BusinessesContent() {
         const persist = await persistIndustryTemplateForBusiness({
           businessId: created.id,
           businessName: created.businessName || payload.businessName,
-          industryId: form.industryId,
-          location: payload.address,
+          ...templatePayload,
         });
         if (!persist.persistedToApi) {
           toast.warning(
@@ -326,6 +337,7 @@ function BusinessesContent() {
         .replace(/\D/g, "");
 
       setCountryCode(nextCountryCode);
+      setPharmacyCountry(nextCountryCode === "+44" ? "UK" : "PK");
       setForm({
         businessName: business.businessName,
         address: business.address,
@@ -456,7 +468,21 @@ function BusinessesContent() {
                 Industry Template
                 <select
                   value={form.industryId}
-                  onChange={(event) => setForm((prev) => ({ ...prev, industryId: event.target.value }))}
+                  onChange={(event) => {
+                    const industryId = event.target.value;
+                    setForm((prev) => {
+                      if (industryId !== "pharmacy") return { ...prev, industryId };
+                      const defaults = pharmacyCountryDefaults(pharmacyCountry);
+                      return {
+                        ...prev,
+                        industryId,
+                        address: prev.address.trim() ? prev.address : defaults.location,
+                      };
+                    });
+                    if (industryId === "pharmacy") {
+                      setCountryCode(pharmacyCountryDefaults(pharmacyCountry).phonePrefix);
+                    }
+                  }}
                   className="portal-input"
                 >
                   {INDUSTRY_TEMPLATES.map((t) => (
@@ -466,6 +492,21 @@ function BusinessesContent() {
                   ))}
                 </select>
               </label>
+
+              {form.industryId === "pharmacy" ? (
+                <PharmacyCountryPicker
+                  value={pharmacyCountry}
+                  onChange={(code) => {
+                    const defaults = pharmacyCountryDefaults(code);
+                    setPharmacyCountry(code);
+                    setCountryCode(defaults.phonePrefix);
+                    setForm((prev) => ({
+                      ...prev,
+                      address: prev.address.trim() ? prev.address : defaults.location,
+                    }));
+                  }}
+                />
+              ) : null}
 
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
                 Manager

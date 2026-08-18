@@ -32,26 +32,36 @@ export function GstBreakdown({
   tax,
   discount,
   total,
+  taxLabel = "Tax",
+  money,
+  extra,
 }: {
   subtotal: number;
   tax: number;
   discount: number;
   total: number;
+  taxLabel?: string;
+  money?: (value: number) => string;
+  extra?: Array<{ label: string; value: number }>;
 }) {
+  const fmt = money ?? ((value: number) => value.toFixed(2));
   const row = (label: string, value: number) => (
     <div className="flex items-center justify-between text-sm">
       <span className="text-[#64748b]">{label}</span>
-      <span className="font-semibold text-[#0f172a]">{value.toFixed(2)}</span>
+      <span className="font-semibold text-[#0f172a]">{fmt(value)}</span>
     </div>
   );
   return (
     <div className="space-y-1.5 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
       {row("Subtotal", subtotal)}
       {row("Discount", discount)}
-      {row("GST / VAT", tax)}
+      {row(taxLabel, tax)}
+      {(extra || []).map((item) => (
+        <div key={item.label}>{row(item.label, item.value)}</div>
+      ))}
       <div className="flex items-center justify-between border-t border-[#e2e8f0] pt-2 text-base">
         <span className="font-semibold">Total</span>
-        <span className="font-bold">{total.toFixed(2)}</span>
+        <span className="font-bold">{fmt(total)}</span>
       </div>
     </div>
   );
@@ -62,16 +72,20 @@ export function ControlledSaleGate({
   patientIdNumber,
   onDoctor,
   onPatient,
+  doctorLabel = "Doctor license",
+  patientLabel = "Patient ID",
 }: {
   doctorLicense: string;
   patientIdNumber: string;
   onDoctor: (value: string) => void;
   onPatient: (value: string) => void;
+  doctorLabel?: string;
+  patientLabel?: string;
 }) {
   return (
     <div className="grid gap-3 rounded-xl border border-[#fecaca] bg-[#fff7f7] p-4 md:grid-cols-2">
       <label className="text-sm font-medium text-[#991b1b]">
-        Doctor license
+        {doctorLabel}
         <input
           value={doctorLicense}
           onChange={(event) => onDoctor(event.target.value)}
@@ -79,7 +93,7 @@ export function ControlledSaleGate({
         />
       </label>
       <label className="text-sm font-medium text-[#991b1b]">
-        Patient ID
+        {patientLabel}
         <input
           value={patientIdNumber}
           onChange={(event) => onPatient(event.target.value)}

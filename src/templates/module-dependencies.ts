@@ -311,6 +311,34 @@ export const INDUSTRY_MODULE_PLANS: Record<string, IndustryModulePlan> = {
     },
     summary: "Fully customizable. Turning off Books (Products) also clears Authors, Publishers, and POS.",
   },
+  "snooker-pos": {
+    industryId: "snooker-pos",
+    compulsory: [...SHELL],
+    dependencies: {
+      pos: ["tables", "billing-pricing"],
+      "billing-pricing": ["tables"],
+      "credit-udhar": ["customers"],
+      discounts: ["pos"],
+      customers: [],
+      expenses: ["reports"],
+      shifts: ["staff"],
+      staff: [],
+      "audit-logs": ["settings"],
+      notifications: ["settings"],
+      branches: ["tables", "staff"],
+      reports: [],
+      memberships: ["customers"],
+      loyalty: ["customers"],
+      tournaments: ["tables", "customers"],
+      "table-booking": ["tables"],
+      subscriptions: ["settings"],
+      accounting: ["reports"],
+      hr: ["staff"],
+      "multi-branch": ["branches"],
+    },
+    summary:
+      "Fully customizable. POS Sessions need Tables plus Billing & Pricing (Single, Double, and Century rates). Credit / Udhar needs Players. Future modules such as Tournaments, Memberships, Loyalty, and Online Booking can be enabled independently.",
+  },
 };
 
 export function getIndustryModulePlan(industryId: string): IndustryModulePlan | undefined {

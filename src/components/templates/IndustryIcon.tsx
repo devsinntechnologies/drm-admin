@@ -1,6 +1,7 @@
 import {
   BookOpen,
   Car,
+  CircleDot,
   Coffee,
   Cpu,
   Factory,
@@ -34,6 +35,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   factory: Factory,
   car: Car,
   book: BookOpen,
+  snooker: CircleDot,
 };
 
 export function IndustryIcon({

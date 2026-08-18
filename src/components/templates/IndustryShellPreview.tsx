@@ -16,6 +16,7 @@ import {
   Shapes,
   ShoppingCart,
   Store,
+  Timer,
   Users,
   UtensilsCrossed,
   type LucideIcon,
@@ -44,6 +45,8 @@ const MODULE_ICONS: Partial<Record<ModuleId, LucideIcon>> = {
   kitchen: UtensilsCrossed,
   menu: UtensilsCrossed,
   appointments: Calendar,
+  "billing-pricing": Timer,
+  "credit-udhar": CreditCard,
 };
 
 export type ShellNavItem = {

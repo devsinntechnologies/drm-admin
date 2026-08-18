@@ -6,6 +6,7 @@ import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { PREVIEW_CARD_VALUES } from "@/template-engine/dashboard-mock-data";
 import { DASHBOARD_CARD_CATALOG } from "@/templates/modules";
 import type { DashboardCardId } from "@/templates/types";
+import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { usePharmacyQuery } from "@/hooks/usePharmacyQuery";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +16,8 @@ type TemplateDashboardProps = {
 };
 
 export function TemplateDashboard({ cards, className }: TemplateDashboardProps) {
-  const { primaryColor, secondaryColor, currency, templateConfig } = useBusinessTemplate();
+  const { primaryColor, secondaryColor, templateConfig } = useBusinessTemplate();
+  const { money } = usePharmacyMarket();
   const isPharmacy = templateConfig?.industryId === "pharmacy";
   const { data: live } = usePharmacyQuery<Record<string, number>>(isPharmacy ? "/pharmacy-reports/dashboard" : null);
 
@@ -23,8 +25,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
     if (isPharmacy && live && live[id] != null) {
       const raw = live[id];
       if (id === "today-sales" || id === "batch-value") {
-        const prefix = currency === "PKR" ? "Rs" : currency;
-        return `${prefix} ${Number(raw).toFixed(0)}`;
+        return money(Number(raw));
       }
       return String(raw);
     }
@@ -65,7 +66,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
                   ) : null}
                 </div>
                 <div>
-                  <h3 className="text-4xl font-bold">{String(value).replace("Rs", currency === "PKR" ? "Rs" : currency)}</h3>
+                  <h3 className="text-4xl font-bold">{value}</h3>
                 </div>
               </article>
             );

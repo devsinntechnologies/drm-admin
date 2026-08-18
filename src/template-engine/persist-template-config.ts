@@ -30,6 +30,7 @@ function configToApiPayload(
     dashboardCards: config.dashboardCards,
     labels: config.labels,
     currency: config.currency,
+    market: config.market,
     location: config.location,
     branchCount: config.branchCount,
     businessId,
@@ -88,6 +89,8 @@ export async function persistIndustryTemplateForBusiness(options: {
   businessName: string;
   industryId: string;
   location?: string;
+  currency?: string;
+  market?: string;
 }): Promise<PersistTemplateResult> {
   const industry = INDUSTRY_TEMPLATES.find((item) => item.id === options.industryId);
   if (!industry) {
@@ -105,6 +108,8 @@ export async function persistIndustryTemplateForBusiness(options: {
     businessName: options.businessName,
     industry,
     location: options.location,
+    currency: options.currency,
+    market: options.market,
   });
   return persistTemplateConfig(config, { businessId: options.businessId });
 }

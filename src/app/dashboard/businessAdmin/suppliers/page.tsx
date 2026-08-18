@@ -11,9 +11,11 @@ import { portalInputClass, PortalEmptyState } from "@/components/admin/PortalPag
 import { apiClient } from "@/lib/api-client";
 import { asList } from "@/lib/api";
 import { usePharmacyAction, usePharmacyQuery } from "@/hooks/usePharmacyQuery";
+import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 
 function SuppliersContent() {
   const { token, businessId, run } = usePharmacyAction();
+  const { market } = usePharmacyMarket();
   const { data, loading, error, reload } = usePharmacyQuery<any>("/pharmacy/procurement/suppliers");
   const { data: aging } = usePharmacyQuery<any[]>("/pharmacy/procurement/aging");
   const [form, setForm] = useState({ name: "", phone: "", email: "", gstin: "" });
@@ -38,10 +40,10 @@ function SuppliersContent() {
         <input className={portalInputClass} placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         <input className={portalInputClass} placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
         <input className={portalInputClass} placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        <input className={portalInputClass} placeholder="GSTIN" value={form.gstin} onChange={(e) => setForm({ ...form, gstin: e.target.value })} />
+        <input className={portalInputClass} placeholder={market.taxIdLabel} value={form.gstin} onChange={(e) => setForm({ ...form, gstin: e.target.value })} />
         <Button type="submit">Add supplier</Button>
       </form>
-      <DataTable columns={[{ key: "name", label: "Supplier" }, { key: "phone", label: "Phone" }, { key: "email", label: "Email" }, { key: "gstin", label: "GSTIN" }, { key: "terms", label: "Terms" }]} rows={rows} empty={<PortalEmptyState icon={Truck} title="No suppliers" />} />
+      <DataTable columns={[{ key: "name", label: "Supplier" }, { key: "phone", label: "Phone" }, { key: "email", label: "Email" }, { key: "gstin", label: market.taxIdLabel }, { key: "terms", label: "Terms" }]} rows={rows} empty={<PortalEmptyState icon={Truck} title="No suppliers" />} />
       <h2 className="mt-6 text-sm font-semibold text-[#64748b]">Vendor aging</h2>
       <DataTable columns={[{ key: "supplier", label: "Supplier" }, { key: "outstanding", label: "Outstanding" }, { key: "bucket", label: "Bucket" }]} rows={asList<any>(aging).map((row: any) => ({ supplier: row.supplier?.name, outstanding: Number(row.outstanding || 0).toFixed(2), bucket: row.bucket }))} />
     </PharmacyPage>

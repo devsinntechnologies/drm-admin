@@ -11,6 +11,8 @@ import { portalInputClass } from "@/components/admin/PortalPage";
 import { apiClient } from "@/lib/api-client";
 import { asList } from "@/lib/api";
 import { usePharmacyAction, usePharmacyQuery } from "@/hooks/usePharmacyQuery";
+import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
+import { isControlledSchedule, prescriptionChargeAmount } from "@/lib/pharmacy-market";
 
 type CartLine = {
   productId: string;
@@ -55,8 +57,10 @@ function roundMoney(value: number) {
 
 function PosContent() {
   const { token, businessId, pending, run } = usePharmacyAction();
+  const { market, money } = usePharmacyMarket();
   const { data: shift, reload: reloadShift } = usePharmacyQuery<any>("/pos/shifts/current");
   const { data: customers } = usePharmacyQuery<any>("/pharmacy/customers?limit=50");
+  const { data: prescriptions } = usePharmacyQuery<any>("/pharmacy/prescriptions?status=received");
   const { data: catalog } = usePharmacyQuery<MedicineProfile[]>("/pharmacy-catalog");
   const { data: inventory } = usePharmacyQuery<any[]>("/pharmacy/inventory");
   const catalogRows = useMemo(() => asList<MedicineProfile>(catalog), [catalog]);
@@ -77,6 +81,10 @@ function PosContent() {
   const [discount, setDiscount] = useState(0);
   const [cash, setCash] = useState(0);
   const [card, setCard] = useState(0);
+  const [wallet, setWallet] = useState(0);
+  const [prescriptionId, setPrescriptionId] = useState("");
+  const [prescriptionChannel, setPrescriptionChannel] = useState("");
+  const [nhsExemptionCode, setNhsExemptionCode] = useState(market.code === "UK" ? "PAID" : "");
   const [tenderTouched, setTenderTouched] = useState(false);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [doctorLicense, setDoctorLicense] = useState("");
@@ -88,14 +96,22 @@ function PosContent() {
   const totals = useMemo(() => {
     const subtotal = cart.reduce((sum, line) => sum + line.unitPrice * line.qty, 0);
     const tax = cart.reduce((sum, line) => sum + (line.unitPrice * line.qty * line.gstRate) / 100, 0);
-    const total = Math.max(0, subtotal + tax - Number(discount || 0));
+    const hasRx = cart.some((line) => line.rxRequired || isControlledSchedule(line.controlledSchedule));
+    const channel = prescriptionChannel || (market.code === "UK" ? "nhs" : "paper");
+    const nhsCharge = prescriptionChargeAmount(market, {
+      hasRxItem: hasRx,
+      prescriptionChannel: channel,
+      nhsExemptionCode,
+    });
+    const total = Math.max(0, subtotal + tax + nhsCharge - Number(discount || 0));
     return {
       subtotal: roundMoney(subtotal),
       tax: roundMoney(tax),
       discount: roundMoney(Number(discount || 0)),
+      prescriptionCharge: roundMoney(nhsCharge),
       total: roundMoney(total),
     };
-  }, [cart, discount]);
+  }, [cart, discount, market, nhsExemptionCode, prescriptionChannel]);
 
   const cartQtyByProduct = useMemo(() => {
     const map = new Map<string, number>();
@@ -121,9 +137,11 @@ function PosContent() {
     return -1;
   };
 
-  const paid = roundMoney(Number(cash || 0) + Number(card || 0));
+  const paid = roundMoney(Number(cash || 0) + Number(card || 0) + Number(wallet || 0));
   const due = roundMoney(totals.total - paid);
-  const needsControlled = cart.some((line) => line.controlledSchedule);
+  const needsControlled = cart.some((line) => isControlledSchedule(line.controlledSchedule));
+  const needsRx = cart.some((line) => line.rxRequired || isControlledSchedule(line.controlledSchedule));
+  const walletMethod = market.paymentMethods.find((item) => !["cash", "card", "nhs_exempt"].includes(item.id));
 
   useEffect(() => {
     if (!tenderTouched) {
@@ -289,11 +307,13 @@ function PosContent() {
     if (result?.block) return;
     const cashAmount = roundMoney(Number(cash || 0));
     const cardAmount = roundMoney(Number(card || 0));
+    const walletAmount = roundMoney(Number(wallet || 0));
     const payments =
-      cashAmount + cardAmount > 0
+      cashAmount + cardAmount + walletAmount > 0
         ? [
             ...(cashAmount > 0 ? [{ method: "cash", amount: cashAmount }] : []),
             ...(cardAmount > 0 ? [{ method: "card", amount: cardAmount }] : []),
+            ...(walletAmount > 0 && walletMethod ? [{ method: walletMethod.id, amount: walletAmount }] : []),
           ]
         : [{ method: "cash", amount: totals.total }];
     const tendered = payments.reduce((sum, item) => sum + item.amount, 0);
@@ -318,6 +338,9 @@ function PosContent() {
             discount: Number(discount || 0),
             doctorLicense: doctorLicense || undefined,
             patientIdNumber: patientIdNumber || undefined,
+            prescriptionId: prescriptionId || undefined,
+            prescriptionChannel: prescriptionChannel || (market.code === "UK" ? "nhs" : "paper"),
+            nhsExemptionCode: market.code === "UK" ? nhsExemptionCode || undefined : undefined,
           },
           token,
           businessId,
@@ -326,7 +349,9 @@ function PosContent() {
         setCart([]);
         setCash(0);
         setCard(0);
+        setWallet(0);
         setDiscount(0);
+        setPrescriptionId("");
         setTenderTouched(false);
         toast.success("Sale completed");
       } catch (err) {
@@ -351,7 +376,7 @@ function PosContent() {
       moduleId="pos"
       icon={ShoppingCart}
       title="Point of Sale"
-      subtitle="Search by name, generic, salt, or barcode. GST, multi-tender, and FEFO dispatch"
+      subtitle={market.posSubtitle}
       actions={
         shift ? (
           <Button variant="outline" onClick={closeShift} disabled={pending}>
@@ -448,7 +473,7 @@ function PosContent() {
                           <span className="text-sm font-semibold text-[#0f172a]">{item.product?.name}</span>
                           <span className="text-xs text-[#64748b]">
                             {[item.genericName, item.saltName, item.barcode].filter(Boolean).join(" · ")}
-                            {item.product?.price != null ? ` · ${Number(item.product.price).toFixed(2)}` : ""}
+                            {item.product?.price != null ? ` · ${money(Number(item.product.price))}` : ""}
                           </span>
                         </span>
                         <span className={`shrink-0 text-xs font-semibold ${inStock ? "text-[#166534]" : "text-[#b91c1c]"}`}>
@@ -479,7 +504,8 @@ function PosContent() {
                     <tr key={line.productId} className="border-t">
                       <td className="px-3 py-2">
                         {line.name}
-                        {line.controlledSchedule ? <span className="ml-2 text-xs text-[#b91c1c]">Controlled</span> : null}
+                        {line.rxRequired ? <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-[#1d4ed8]">Rx</span> : null}
+                        {isControlledSchedule(line.controlledSchedule) ? <span className="ml-2 text-xs text-[#b91c1c]">Controlled</span> : null}
                       </td>
                       <td className="px-3 py-2">
                         <input
@@ -504,7 +530,7 @@ function PosContent() {
                           className="w-20 rounded-lg border px-2 py-1"
                         />
                       </td>
-                      <td className="px-3 py-2">{(line.unitPrice * line.qty).toFixed(2)}</td>
+                      <td className="px-3 py-2">{money(line.unitPrice * line.qty)}</td>
                       <td className="px-3 py-2">
                         <button type="button" onClick={() => setCart((prev) => prev.filter((item) => item.productId !== line.productId))}>
                           <Trash2 className="h-4 w-4 text-[#94a3b8]" />
@@ -526,10 +552,14 @@ function PosContent() {
         </section>
 
         <aside className="space-y-4">
+          <div className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 py-2">
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">{market.regulator} · {market.taxAuthority}</span>
+            <span className="rounded-full bg-[var(--brand-secondary)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--brand-secondary)]">{market.name}</span>
+          </div>
           {shift ? (
             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3">
               <p className="text-xs font-semibold text-[var(--text-muted)]">Open shift</p>
-              <p className="mt-1 text-sm text-[var(--text-primary)]">Opening cash {Number(shift.openingCash || 0).toFixed(2)}</p>
+              <p className="mt-1 text-sm text-[var(--text-primary)]">Opening cash {money(Number(shift.openingCash || 0))}</p>
               <label className="mt-2 block text-xs font-semibold text-[var(--text-muted)]">
                 Closing cash counted
                 <input
@@ -556,12 +586,36 @@ function PosContent() {
               </option>
             ))}
           </select>
-          {needsControlled ? (
+          <select className={portalInputClass} value={prescriptionId} onChange={(event) => setPrescriptionId(event.target.value)}>
+            <option value="">No linked prescription</option>
+            {asList<any>(prescriptions).map((rx: any) => (
+              <option key={rx.id} value={rx.id}>
+                {(rx.customer?.name || "Patient")} · {rx.doctorName || "Rx"} · {rx.channel || rx.status}
+              </option>
+            ))}
+          </select>
+          {needsRx ? (
+            <select className={portalInputClass} value={prescriptionChannel} onChange={(event) => setPrescriptionChannel(event.target.value)}>
+              {market.prescriptionChannels.map((channel) => (
+                <option key={channel.id} value={channel.id}>{channel.label}</option>
+              ))}
+            </select>
+          ) : null}
+          {market.code === "UK" && needsRx ? (
+            <select className={portalInputClass} value={nhsExemptionCode} onChange={(event) => setNhsExemptionCode(event.target.value)}>
+              {market.exemptionOptions.map((option) => (
+                <option key={option.code} value={option.code}>{option.label}</option>
+              ))}
+            </select>
+          ) : null}
+          {needsControlled || needsRx ? (
             <ControlledSaleGate
               doctorLicense={doctorLicense}
               patientIdNumber={patientIdNumber}
               onDoctor={setDoctorLicense}
               onPatient={setPatientIdNumber}
+              doctorLabel={market.doctorLicenseLabel}
+              patientLabel={market.patientIdLabel}
             />
           ) : null}
           <input
@@ -571,7 +625,7 @@ function PosContent() {
             value={discount || ""}
             onChange={(e) => setDiscount(Number(e.target.value))}
           />
-          <div className="grid grid-cols-2 gap-2">
+          <div className={`grid gap-2 ${walletMethod ? "grid-cols-3" : "grid-cols-2"}`}>
             <label className="text-xs font-semibold text-[#64748b]">
               Cash
               <input
@@ -602,6 +656,23 @@ function PosContent() {
                 }}
               />
             </label>
+            {walletMethod ? (
+              <label className="text-xs font-semibold text-[#64748b]">
+                {walletMethod.label}
+                <input
+                  className={`${portalInputClass} mt-1`}
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder={walletMethod.label}
+                  value={wallet || ""}
+                  onChange={(e) => {
+                    setTenderTouched(true);
+                    setWallet(Number(e.target.value));
+                  }}
+                />
+              </label>
+            ) : null}
           </div>
           <button
             type="button"
@@ -610,16 +681,25 @@ function PosContent() {
               setTenderTouched(true);
               setCash(totals.total);
               setCard(0);
+              setWallet(0);
             }}
           >
-            Fill exact cash {totals.total.toFixed(2)}
+            Fill exact cash {money(totals.total)}
           </button>
-          <GstBreakdown {...totals} />
+          <GstBreakdown
+            subtotal={totals.subtotal}
+            tax={totals.tax}
+            discount={totals.discount}
+            total={totals.total}
+            taxLabel={market.taxName}
+            money={money}
+            extra={totals.prescriptionCharge > 0 ? [{ label: "NHS charge", value: totals.prescriptionCharge }] : []}
+          />
           <p className={`text-sm ${due === 0 ? "text-[#166534]" : "text-[#b45309]"}`}>
-            {due === 0 ? "Tenders match the total" : `Due ${due.toFixed(2)}`}
+            {due === 0 ? "Tenders match the total" : `Due ${money(due)}`}
           </p>
           <Button className="w-full" disabled={!cart.length || pending || !shift} onClick={checkout}>
-            {shift ? `Charge ${totals.total.toFixed(2)}` : "Open a shift to charge"}
+            {shift ? `Charge ${money(totals.total)}` : "Open a shift to charge"}
           </Button>
           {receipt ? (
             <div className="rounded-xl border border-[#dcfce7] bg-[#f0fdf4] p-3 text-sm">

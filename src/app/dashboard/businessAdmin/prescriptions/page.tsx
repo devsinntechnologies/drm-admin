@@ -11,19 +11,21 @@ import { portalInputClass } from "@/components/admin/PortalPage";
 import { apiClient } from "@/lib/api-client";
 import { asList } from "@/lib/api";
 import { usePharmacyAction, usePharmacyQuery } from "@/hooks/usePharmacyQuery";
+import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { useProducts } from "@/hooks/useProducts";
 
 function PrescriptionsContent() {
   const { token, businessId, run } = usePharmacyAction();
+  const { market } = usePharmacyMarket();
   const { data, loading, error, reload } = usePharmacyQuery<any>("/pharmacy/prescriptions");
   const { data: reminders } = usePharmacyQuery<any[]>("/pharmacy/prescriptions/reminders");
   const { data: customers } = usePharmacyQuery<any>("/pharmacy/customers?limit=50");
   const { products } = useProducts({ limit: 100 });
-  const [form, setForm] = useState({ customerId: "", doctorName: "", doctorLicense: "", productId: "", qtyPrescribed: 1, dosage: "", refillDate: "" });
+  const [form, setForm] = useState({ customerId: "", doctorName: "", doctorLicense: "", productId: "", qtyPrescribed: 1, dosage: "", refillDate: "", channel: "", exemptionCode: "" });
   const [image, setImage] = useState<File | null>(null);
 
   return (
-    <PharmacyPage moduleId="prescriptions" icon={Stethoscope} title="Prescriptions" subtitle="Digital intake, image upload, partial fill, and refill reminders" loading={loading} error={error}>
+    <PharmacyPage moduleId="prescriptions" icon={Stethoscope} title="Prescriptions" subtitle={market.prescriptionsSubtitle} loading={loading} error={error}>
       <form className="grid gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-4 md:grid-cols-3" onSubmit={(e) => {
         e.preventDefault();
         run(async () => {
@@ -31,6 +33,8 @@ function PrescriptionsContent() {
           payload.append("customerId", form.customerId);
           payload.append("doctorName", form.doctorName);
           payload.append("doctorLicense", form.doctorLicense);
+          payload.append("channel", form.channel);
+          payload.append("exemptionCode", form.exemptionCode);
           payload.append("refillDate", form.refillDate);
           payload.append("items", JSON.stringify([{ productId: form.productId, qtyPrescribed: form.qtyPrescribed, dosage: form.dosage }]));
           if (image) payload.append("image", image);
@@ -51,7 +55,21 @@ function PrescriptionsContent() {
           {asList(customers).map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <input className={portalInputClass} placeholder="Doctor" value={form.doctorName} onChange={(e) => setForm({ ...form, doctorName: e.target.value })} />
-        <input className={portalInputClass} placeholder="Doctor license" value={form.doctorLicense} onChange={(e) => setForm({ ...form, doctorLicense: e.target.value })} />
+        <input className={portalInputClass} placeholder={market.doctorLicenseLabel} value={form.doctorLicense} onChange={(e) => setForm({ ...form, doctorLicense: e.target.value })} />
+        <select className={portalInputClass} value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}>
+          <option value="">Channel</option>
+          {market.prescriptionChannels.map((channel) => (
+            <option key={channel.id} value={channel.id}>{channel.label}</option>
+          ))}
+        </select>
+        {market.exemptionOptions.length ? (
+          <select className={portalInputClass} value={form.exemptionCode} onChange={(e) => setForm({ ...form, exemptionCode: e.target.value })}>
+            <option value="">Exemption</option>
+            {market.exemptionOptions.map((option) => (
+              <option key={option.code} value={option.code}>{option.label}</option>
+            ))}
+          </select>
+        ) : null}
         <select className={portalInputClass} value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })} required>
           <option value="">Medicine</option>
           {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -66,7 +84,7 @@ function PrescriptionsContent() {
         columns={[{ key: "patient", label: "Patient" }, { key: "doctor", label: "Doctor" }, { key: "status", label: "Status" }, { key: "items", label: "Lines" }, { key: "actions", label: "" }]}
         rows={asList(data).map((row: any) => ({
           patient: row.customer?.name || "—",
-          doctor: row.doctorName || "—",
+          doctor: [row.doctorName, row.channel].filter(Boolean).join(" · ") || "—",
           status: <StatusBadge value={row.status} tone={row.status === "filled" ? "success" : "warn"} />,
           items: (row.items || []).map((item: any) => `${item.product?.name} ${item.qtyFilled}/${item.qtyPrescribed}`).join(", "),
           actions: row.status !== "filled" && row.status !== "cancelled" ? (

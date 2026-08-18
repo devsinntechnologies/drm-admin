@@ -32,8 +32,17 @@ type InvoiceRow = {
   itemCount: number;
 };
 
-function formatCurrency(value: number) {
-  return `PKR ${value.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function formatCurrency(value: number, currency = "PKR") {
+  try {
+    return new Intl.NumberFormat(currency === "GBP" ? "en-GB" : currency === "PKR" ? "en-PK" : "en-US", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return `${currency} ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
 }
 
 function parsePrice(value?: string | null) {
@@ -64,7 +73,7 @@ function toStatus(raw: string): InvoiceRow["status"] {
 function InvoicesContent() {
   const router = useRouter();
   const { role } = useAuth();
-  const { templateConfig } = useBusinessTemplate();
+  const { templateConfig, currency } = useBusinessTemplate();
   const isPharmacy = templateConfig?.industryId === "pharmacy";
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
@@ -167,7 +176,7 @@ function InvoicesContent() {
         r.id,
         r.orderNumber,
         r.date,
-        formatCurrency(r.amount),
+        formatCurrency(r.amount, currency),
         r.status,
       ]);
 
@@ -227,7 +236,7 @@ function InvoicesContent() {
           {[
             { label: "Total Invoices", value: stats.total, tone: "text-[#001840]" },
             { label: "Pending Payment", value: stats.pending, tone: "text-[#ea580c]" },
-            { label: "Collected Revenue", value: formatCurrency(stats.revenue), tone: "text-[#0050F8]" },
+            { label: "Collected Revenue", value: formatCurrency(stats.revenue, currency), tone: "text-[#0050F8]" },
           ].map((card) => (
             <article key={card.label} className="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wider text-[#94a3b8]">{card.label}</p>
@@ -340,7 +349,7 @@ function InvoicesContent() {
                           {invoice.date}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-sm font-bold text-[#0050F8]">{formatCurrency(invoice.amount)}</td>
+                      <td className="px-4 py-4 text-sm font-bold text-[#0050F8]">{formatCurrency(invoice.amount, currency)}</td>
                       <td className="px-4 py-4">
                         <span
                           className={cn(

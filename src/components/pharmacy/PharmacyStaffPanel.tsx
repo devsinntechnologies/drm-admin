@@ -9,6 +9,7 @@ import { DataTable, StatusBadge } from "@/components/workspace/DataTable";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/api-client";
 import { usePharmacyAction, usePharmacyQuery } from "@/hooks/usePharmacyQuery";
+import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { PHARMACY_STAFF_ROLES, type PharmacyStaffRole } from "@/lib/pharmacy-role-nav";
 
 type StaffFilter = "all" | PharmacyStaffRole;
@@ -37,6 +38,7 @@ function roleLabel(role?: string) {
 
 export function PharmacyStaffPanel() {
   const { role } = useAuth();
+  const { market } = usePharmacyMarket();
   const { token, businessId, pending, run } = usePharmacyAction();
   const canManage = role === "business_admin" || role === "super_admin" || role === "pharmacy_manager";
   const { rows, loading, error, reload } = usePharmacyQuery<PharmacyStaffRow[]>("/pharmacy/staff");
@@ -115,7 +117,7 @@ export function PharmacyStaffPanel() {
               <option key={role} value={role}>{ROLE_LABEL[role]}</option>
             ))}
           </select>
-          <input className={portalInputClass} placeholder="License (optional)" value={form.licenseNumber} onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })} />
+          <input className={portalInputClass} placeholder={market.staffLicenseLabel} value={form.licenseNumber} onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })} />
           <Button type="submit" disabled={pending} className="sm:col-span-2 lg:col-span-1">
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
           </Button>
@@ -163,7 +165,7 @@ export function PharmacyStaffPanel() {
           { key: "name", label: "Name" },
           { key: "email", label: "Email" },
           { key: "role", label: "Role" },
-          { key: "license", label: "License" },
+          { key: "license", label: market.staffLicenseLabel },
           { key: "status", label: "Status" },
           { key: "actions", label: "" },
         ]}

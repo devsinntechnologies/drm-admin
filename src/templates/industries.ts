@@ -1,4 +1,10 @@
 import type { IndustryTemplate } from "./types";
+import {
+  SNOOKER_OPTIONAL_MODULES,
+  SNOOKER_POS_INDUSTRY_ID,
+  SNOOKER_PRODUCT_SCOPE,
+  SNOOKER_SIDEBAR_MODULES,
+} from "./snooker-pos";
 
 export const INDUSTRY_TEMPLATES: IndustryTemplate[] = [
   {
@@ -19,7 +25,7 @@ export const INDUSTRY_TEMPLATES: IndustryTemplate[] = [
   {
     id: "pharmacy",
     name: "Pharmacy",
-    description: "Medicine catalog with batches, expiry alerts, and prescription intake.",
+    description: "Dual-market pharmacy ERP for Pakistan (DRAP/FBR/GST) and the UK (MHRA/HMRC/NHS).",
     family: "high-volume-retail",
     theme: { accent: "green", icon: "pill" },
     labels: { product: "Medicine", products: "Medicines", customer: "Patient", customers: "Patients", order: "Sale", orders: "Sales" },
@@ -244,6 +250,53 @@ export const INDUSTRY_TEMPLATES: IndustryTemplate[] = [
     workflows: ["ISBN scan sale", "Author browse", "Reserve book", "Publisher receive"],
     specialScreens: ["ISBN metadata form", "Book cover preview", "Author / publisher filters", "Reserved status"],
     features: {},
+  },
+  {
+    id: SNOOKER_POS_INDUSTRY_ID,
+    name: "Snooker POS",
+    description:
+      "Club POS for snooker and pool: live tables, Single/Double/Century billing, sessions, Udhar credit, daily cash close, and multi-branch reporting.",
+    family: "service-business",
+    theme: { accent: "green", icon: "snooker" },
+    labels: {
+      product: "Game",
+      products: "Games",
+      customer: "Player",
+      customers: "Players",
+      order: "Session",
+      orders: "Sessions",
+    },
+    modules: [...SNOOKER_SIDEBAR_MODULES],
+    optionalModules: [...SNOOKER_OPTIONAL_MODULES],
+    dashboardCards: [
+      "tables-occupied",
+      "active-sessions",
+      "today-sales",
+      "gross-profit",
+      "cash-on-hand",
+      "overdue-credit",
+    ],
+    roles: ["Owner", "Manager", "Cashier", "Accountant", "Viewer", "Super Admin"],
+    workflows: [
+      "Table Selection → Game Type → Start Session → Timer/Game → Finish → Discount → Cash/Udhar → Receipt → Table Available",
+      "Single Game flat-rate billing",
+      "Double Game flat-rate billing",
+      "Century timer Start / Pause / Resume / Stop",
+      "Daily opening cash",
+      "Daily closing reconciliation with variance approval",
+      "Udhar sale, partial recovery, and statement",
+    ],
+    specialScreens: [
+      "Live table floor (available, occupied, reserved, maintenance)",
+      "POS session: Single, Double, and Century",
+      "Century timer with per-minute pricing, minimum duration, and rounding",
+      "Discount reason and approval",
+      "Cash / Udhar payment and receipt",
+      "Daily opening and closing cash drawer",
+      "Credit ledger and overdue alerts",
+    ],
+    features: { tables: true, timeBilling: true, creditLedger: true },
+    productScope: SNOOKER_PRODUCT_SCOPE,
   },
 ];
 

@@ -18,6 +18,7 @@ type BusinessTemplateContextValue = {
   themeMode: "light" | "dark";
   logoUrl: string | null;
   currency: string;
+  market: string;
   isLoading: boolean;
   isError: boolean;
   isUnauthorized: boolean;
@@ -82,6 +83,7 @@ export function BusinessTemplateProvider({ children, businessId = null }: Busine
       themeMode,
       logoUrl: templateConfig?.logoUrl ?? business?.logo ?? null,
       currency: templateConfig?.currency ?? "PKR",
+      market: templateConfig?.market ?? (templateConfig?.currency === "GBP" ? "UK" : "PK"),
       isLoading: isWorkspaceLoading,
       isError,
       isUnauthorized,
@@ -106,6 +108,7 @@ export function useBusinessTemplate() {
       themeMode: "light" as const,
       logoUrl: null,
       currency: "PKR",
+      market: "PK",
       isLoading: false,
       isError: false,
       isUnauthorized: false,

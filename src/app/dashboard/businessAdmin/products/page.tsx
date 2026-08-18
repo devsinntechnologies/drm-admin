@@ -52,6 +52,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
+import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { apiClient } from "@/lib/api-client";
 import { EMPTY_MEDICINE_PROFILE, MedicineProfileFields, profileToPayload, type MedicineProfileForm } from "@/components/pharmacy/MedicineProfileFields";
 
@@ -67,6 +68,7 @@ function VariantsEditor({
   variants: CreateProductVariantPayload[];
   setVariants: React.Dispatch<React.SetStateAction<CreateProductVariantPayload[]>>;
 }) {
+  const { currency } = usePharmacyMarket();
   const [vForm, setVForm] = useState<CreateProductVariantPayload>({ name: "", price: 0, inStock: 0 });
 
   const onAddVariant = () => {
@@ -85,7 +87,7 @@ function VariantsEditor({
             <div key={i} className="flex items-center justify-between rounded-xl border border-[#f1f5f9] bg-white p-3 shadow-sm">
               <div>
                 <p className="text-sm font-bold text-[#111827]">{v.name}</p>
-                <p className="text-xs text-[#6b7280]">PKR {v.price} • {v.inStock} in stock</p>
+                <p className="text-xs text-[#6b7280]">{currency} {v.price} • {v.inStock} in stock</p>
               </div>
               <button
                 type="button"
@@ -207,6 +209,7 @@ function MenuItemsContent() {
   const router = useRouter();
   const { token, role } = useAuth();
   const { templateConfig } = useBusinessTemplate();
+  const { market, currency } = usePharmacyMarket();
   const isPharmacy = templateConfig?.industryId === "pharmacy";
   const [createMedicine, setCreateMedicine] = useState<MedicineProfileForm>(EMPTY_MEDICINE_PROFILE);
   const [editMedicine, setEditMedicine] = useState<MedicineProfileForm>(EMPTY_MEDICINE_PROFILE);
@@ -451,7 +454,7 @@ function MenuItemsContent() {
     <AdminShell
       activeTab="products"
       pageTitle={isPharmacy ? "Medicines" : "Menu Items"}
-      pageSubtitle={isPharmacy ? "Catalog with salt, barcode, GST, and Rx flags" : undefined}
+      pageSubtitle={isPharmacy ? market.catalogSubtitle : undefined}
     >
       <PortalPage>
         <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
@@ -502,7 +505,7 @@ function MenuItemsContent() {
                 <DialogHeader>
                   <DialogTitle className="text-2xl font-bold">{isPharmacy ? "Add medicine" : "Add New Product"}</DialogTitle>
                   <DialogDescription>
-                    {isPharmacy ? "Name, price, GST, barcode, and clinical flags" : "Fill in the details to create a new product"}
+                    {isPharmacy ? `Name, price, ${market.taxName}, barcode, and clinical flags` : "Fill in the details to create a new product"}
                   </DialogDescription>
                 </DialogHeader>
               </div>
@@ -531,7 +534,7 @@ function MenuItemsContent() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-sm font-bold">Price (PKR)</label>
+                      <label className="text-sm font-bold">Price ({currency})</label>
                       <input
                         type="number"
                         value={createForm.price}
@@ -607,7 +610,7 @@ function MenuItemsContent() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-sm font-bold">Price (PKR)</label>
+                      <label className="text-sm font-bold">Price ({currency})</label>
                       <input
                         type="number"
                         value={editForm.price}

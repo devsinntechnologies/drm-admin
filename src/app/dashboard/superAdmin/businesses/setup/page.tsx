@@ -24,6 +24,8 @@ import { INDUSTRY_TEMPLATES } from "@/templates/industries";
 import { colorsFromAccent } from "@/templates/modules";
 import type { DashboardCardId, ModuleId } from "@/templates/types";
 import type { BusinessSetupStepId } from "@/templates/types";
+import { PharmacyCountryPicker } from "@/components/pharmacy/PharmacyCountryPicker";
+import { pharmacyCountryDefaults } from "@/lib/pharmacy-market";
 import { cn } from "@/lib/utils";
 
 const STEPS = [
@@ -38,6 +40,7 @@ const STEPS = [
 
 const countryOptions = [
   { label: "Pakistan (+92)", value: "+92" },
+  { label: "United Kingdom (+44)", value: "+44" },
   { label: "United States (+1)", value: "+1" },
   { label: "United Arab Emirates (+971)", value: "+971" },
 ];
@@ -254,6 +257,20 @@ function BusinessSetupContent() {
               </div>
             </div>
 
+            {builder.industry.id === "pharmacy" ? (
+              <div className="mb-4">
+                <PharmacyCountryPicker
+                  value={builder.market === "UK" ? "UK" : "PK"}
+                  onChange={(code) => {
+                    builder.applyPharmacyCountry(code);
+                    const defaults = pharmacyCountryDefaults(code);
+                    setCountryCode(defaults.phonePrefix);
+                    if (!address.trim()) setAddress(defaults.location);
+                  }}
+                />
+              </div>
+            ) : null}
+
             <div className="grid gap-4 md:grid-cols-2">
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
                 Business name *
@@ -293,11 +310,20 @@ function BusinessSetupContent() {
               </label>
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
                 Currency
-                <select value={builder.currency} onChange={(e) => builder.setCurrency(e.target.value)} className="portal-input">
-                  <option value="PKR">PKR</option>
-                  <option value="USD">USD</option>
-                  <option value="AED">AED</option>
-                </select>
+                {builder.industry.id === "pharmacy" ? (
+                  <input
+                    value={`${builder.currency} · ${builder.market === "UK" ? "United Kingdom" : "Pakistan"}`}
+                    disabled
+                    className="portal-input opacity-70"
+                  />
+                ) : (
+                  <select value={builder.currency} onChange={(e) => builder.setCurrency(e.target.value)} className="portal-input">
+                    <option value="PKR">PKR · Pakistan</option>
+                    <option value="GBP">GBP · United Kingdom</option>
+                    <option value="USD">USD</option>
+                    <option value="AED">AED</option>
+                  </select>
+                )}
               </label>
             </div>
           </WizardLayout>
@@ -345,6 +371,7 @@ function BusinessSetupContent() {
                     checked={checked}
                     locked={!!locked}
                     lockReason={reason}
+                    industryId={builder.industry?.id}
                     dragging={dragModuleId === item.moduleId}
                     onToggle={() => builder.toggleModule(item.moduleId)}
                     onDragStart={() => setDragModuleId(item.moduleId)}
@@ -415,6 +442,11 @@ function BusinessSetupContent() {
                 <h4 className="font-semibold text-[#0f172a]">Template</h4>
                 <ul className="mt-2 space-y-1 text-sm text-[#64748b]">
                   <li>{builder.industry.name}</li>
+                  {builder.industry.id === "pharmacy" ? (
+                    <li>{builder.market === "UK" ? "United Kingdom" : "Pakistan"} · {builder.currency}</li>
+                  ) : (
+                    <li>{builder.currency}</li>
+                  )}
                   <li>{builder.enabledModules.length} modules</li>
                   <li>{builder.dashboardCards.length} dashboard cards</li>
                   <li>{builder.themeMode} theme</li>

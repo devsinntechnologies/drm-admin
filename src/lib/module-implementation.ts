@@ -1,4 +1,5 @@
 import type { ModuleId } from "@/templates/types";
+import { SNOOKER_OPTIONAL_MODULES, SNOOKER_SIDEBAR_MODULES } from "@/templates/snooker-pos";
 
 /**
  * Modules with a fully built business workspace page (API-backed or dedicated UI).
@@ -33,6 +34,11 @@ export const IMPLEMENTED_MODULES = new Set<ModuleId>([
   "settings",
 ]);
 
+export const SNOOKER_IMPLEMENTED_MODULES = new Set<ModuleId>([
+  ...SNOOKER_SIDEBAR_MODULES,
+  ...SNOOKER_OPTIONAL_MODULES,
+]);
+
 /** Core restaurant sidebar modules that match the live business workspace. */
 export const RESTAURANT_LIVE_MODULES: ModuleId[] = [
   "dashboard",
@@ -46,7 +52,10 @@ export const RESTAURANT_LIVE_MODULES: ModuleId[] = [
   "staff",
 ];
 
-export function isModuleImplemented(moduleId: string): boolean {
+export function isModuleImplemented(moduleId: string, industryId?: string | null): boolean {
+  if (industryId === "snooker-pos") {
+    return SNOOKER_IMPLEMENTED_MODULES.has(moduleId as ModuleId);
+  }
   return IMPLEMENTED_MODULES.has(moduleId as ModuleId);
 }
 

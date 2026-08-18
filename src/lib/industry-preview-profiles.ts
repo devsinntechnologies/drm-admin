@@ -230,6 +230,54 @@ const PROFILES: Record<string, IndustryPreviewProfile> = {
       },
     ],
   },
+  "snooker-pos": {
+    id: "snooker-pos",
+    label: "Snooker POS",
+    dashboardMetrics: [
+      { label: "Tables Occupied", value: "8 / 12", delta: "Live" },
+      { label: "Active Sessions", value: "6", delta: "2 Century" },
+      { label: "Today Sales", value: "Rs 86K", delta: "+11%" },
+      { label: "Overdue Udhar", value: "Rs 18.5K", delta: "Alert" },
+    ],
+    navItems: [
+      "Dashboard",
+      "Tables",
+      "POS Sessions",
+      "Billing",
+      "Customers",
+      "Credit",
+      "Reports",
+    ],
+    modules: [
+      {
+        id: "tables",
+        label: "Table Management",
+        description: "Snooker/pool tables, live status, reservations, and table pricing",
+        metrics: [
+          { label: "Occupied", value: "8" },
+          { label: "Available", value: "4" },
+        ],
+      },
+      {
+        id: "pos",
+        label: "POS Sessions",
+        description: "Single, Double, and Century sessions through to cash or Udhar",
+        metrics: [
+          { label: "Live", value: "6" },
+          { label: "Closed Today", value: "41" },
+        ],
+      },
+      {
+        id: "credit-udhar",
+        label: "Credit / Udhar",
+        description: "Limits, recoveries, partial payments, and statements",
+        metrics: [
+          { label: "Outstanding", value: "Rs 64K" },
+          { label: "Overdue", value: "Rs 18.5K" },
+        ],
+      },
+    ],
+  },
 };
 
 export function getIndustryPreviewProfile(industryId: string): IndustryPreviewProfile {
@@ -247,12 +295,12 @@ export function getIndustryPreviewProfile(industryId: string): IndustryPreviewPr
 
 /** Platform-wide industry distribution for Super Admin dashboard. */
 export const PLATFORM_INDUSTRY_DISTRIBUTION = [
-  { label: "Retail", value: 28, color: "#0050f8" },
-  { label: "Restaurants", value: 18, color: "#ea580c" },
-  { label: "Clinics", value: 14, color: "#059669" },
-  { label: "Gyms", value: 12, color: "#7c3aed" },
-  { label: "Salons", value: 10, color: "#db2777" },
-  { label: "Real Estate", value: 8, color: "#0891b2" },
-  { label: "Logistics", value: 6, color: "#ca8a04" },
-  { label: "Others", value: 4, color: "#64748b" },
+  { label: "Retail", value: 26, color: "#0050f8" },
+  { label: "Restaurants", value: 17, color: "#ea580c" },
+  { label: "Clinics", value: 13, color: "#059669" },
+  { label: "Gyms", value: 11, color: "#7c3aed" },
+  { label: "Snooker clubs", value: 9, color: "#16a34a" },
+  { label: "Salons", value: 9, color: "#db2777" },
+  { label: "Real Estate", value: 7, color: "#0891b2" },
+  { label: "Others", value: 8, color: "#64748b" },
 ];

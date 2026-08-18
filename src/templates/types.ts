@@ -90,7 +90,16 @@ export type ModuleId =
   | "multi-branch"
   | "public-catalog"
   | "cdss"
-  | "controlled-substances";
+  | "controlled-substances"
+  | "billing-pricing"
+  | "credit-udhar"
+  | "discounts"
+  | "audit-logs"
+  | "notifications"
+  | "tournaments"
+  | "loyalty"
+  | "table-booking"
+  | "subscriptions";
 
 export type DashboardCardId =
   | "today-sales"
@@ -154,7 +163,21 @@ export type DashboardCardId =
   | "top-vehicle-brands"
   | "best-selling-books"
   | "top-authors"
-  | "recently-added";
+  | "recently-added"
+  | "active-sessions"
+  | "century-running"
+  | "cash-on-hand"
+  | "overdue-credit";
+
+export type IndustryProductScopeGroup = "core" | "future" | "platform";
+
+export type IndustryProductScopeItem = {
+  number: number;
+  name: string;
+  description: string;
+  group: IndustryProductScopeGroup;
+  sidebarModule?: ModuleId;
+};
 
 export type IndustryTemplate = {
   id: string;
@@ -189,7 +212,11 @@ export type IndustryTemplate = {
     variants?: boolean;
     serialNumbers?: boolean;
     delivery?: boolean;
+    timeBilling?: boolean;
+    creditLedger?: boolean;
   };
+  /** Full product-scope modules (may be more granular than the sidebar). */
+  productScope?: IndustryProductScopeItem[];
 };
 
 export type CustomizedTemplateConfig = {
@@ -200,6 +227,7 @@ export type CustomizedTemplateConfig = {
   industryName: string;
   family: IndustryFamily;
   currency: string;
+  market?: string;
   location: string;
   branchCount: number;
   logoDataUrl?: string;

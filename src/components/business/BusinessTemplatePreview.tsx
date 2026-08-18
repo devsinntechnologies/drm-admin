@@ -20,7 +20,7 @@ export function BusinessTemplatePreview({ profile, businessName, className }: Pr
 
   const navItems = useMemo(() => {
     if (!industry) return [{ moduleId: "dashboard", label: "Dashboard", visible: true }];
-    return buildDefaultNavigation(industry.modules, industry.labels);
+    return buildDefaultNavigation(industry.modules, industry.labels, industry.id);
   }, [industry]);
 
   const dashboardCards = industry?.dashboardCards ?? [];

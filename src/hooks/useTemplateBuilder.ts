@@ -25,12 +25,14 @@ import type {
   TemplateConfigExtensions,
   ThemeMode,
 } from "@/templates/types";
+import { pharmacyCountryDefaults, type PharmacyMarketCode } from "@/lib/pharmacy-market";
 
 export function useTemplateBuilder(initialIndustryId?: string | null) {
   const [selectedId, setSelectedId] = useState<string | null>(initialIndustryId ?? null);
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [businessName, setBusinessName] = useState("");
   const [currency, setCurrency] = useState("PKR");
+  const [market, setMarket] = useState<PharmacyMarketCode>("PK");
   const [location, setLocation] = useState("");
   const [branchCount, setBranchCount] = useState(1);
   const [themeMode, setThemeMode] = useState<ThemeMode>("light");
@@ -50,7 +52,14 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
   const resolveIndustry = useCallback(
     (id: string | null) => {
       if (!id) return null;
-      return apiIndustries[id] ?? getIndustryById(id) ?? null;
+      const local = getIndustryById(id) ?? null;
+      const api = apiIndustries[id];
+      if (!api) return local;
+      return {
+        ...api,
+        productScope: local?.productScope ?? api.productScope,
+        features: { ...local?.features, ...api.features },
+      };
     },
     [apiIndustries],
   );
@@ -104,10 +113,16 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
     setDashboardCardOrder([...tpl.dashboardCards]);
     setProductLabel(tpl.labels.product);
     setProductsLabel(tpl.labels.products);
+    if (tpl.id === "pharmacy") {
+      const defaults = pharmacyCountryDefaults("PK");
+      setMarket(defaults.market);
+      setCurrency(defaults.currency);
+      setLocation(defaults.location);
+    }
     setLogoDataUrl(null);
     setExtensions(createDefaultExtensions(tpl.name));
     setNavItems(
-      buildDefaultNavigation(available, labels).map((item) => ({
+      buildDefaultNavigation(available, labels, tpl.id).map((item) => ({
         ...item,
         visible: tpl.modules.includes(item.moduleId),
       })),
@@ -132,6 +147,7 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
     setSelectedId(config.industryId);
     setBusinessName(config.businessName);
     setCurrency(config.currency);
+    setMarket(config.market === "UK" ? "UK" : "PK");
     setLocation(config.location);
     setBranchCount(config.branchCount);
     setThemeMode(config.themeMode);
@@ -155,7 +171,7 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
         const available = industry
           ? getAvailableModules(industry.modules, industry.optionalModules)
           : nextEnabled;
-        const rebuilt = buildDefaultNavigation(available, labels);
+        const rebuilt = buildDefaultNavigation(available, labels, industry?.id);
         if (!current.length) {
           return rebuilt.map((r) => ({ ...r, visible: nextEnabled.includes(r.moduleId) }));
         }
@@ -265,6 +281,7 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
       businessName,
       industry,
       currency,
+      market,
       location,
       branchCount,
       primaryColor,
@@ -280,6 +297,7 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
     industry,
     businessName,
     currency,
+    market,
     location,
     branchCount,
     primaryColor,
@@ -386,6 +404,14 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
     setBusinessName,
     currency,
     setCurrency,
+    market,
+    setMarket,
+    applyPharmacyCountry: (code: PharmacyMarketCode) => {
+      const defaults = pharmacyCountryDefaults(code);
+      setMarket(defaults.market);
+      setCurrency(defaults.currency);
+      setLocation(defaults.location);
+    },
     location,
     setLocation,
     branchCount,

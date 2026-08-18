@@ -38,10 +38,40 @@ const PHARMACY_MODULE_HREF: Partial<Record<ModuleId, string>> = {
   staff: `${BUSINESS_ADMIN_BASE}/users`,
 };
 
+const SNOOKER_MODULE_IDS = [
+  "tables",
+  "pos",
+  "billing-pricing",
+  "customers",
+  "credit-udhar",
+  "discounts",
+  "expenses",
+  "shifts",
+  "reports",
+  "staff",
+  "audit-logs",
+  "notifications",
+  "branches",
+  "settings",
+  "memberships",
+  "loyalty",
+  "tournaments",
+  "table-booking",
+  "subscriptions",
+] as const;
+
+const SNOOKER_MODULE_HREF: Partial<Record<ModuleId, string>> = Object.fromEntries(
+  SNOOKER_MODULE_IDS.map((id) => [id, `${BUSINESS_ADMIN_BASE}/snooker/${id}`]),
+) as Partial<Record<ModuleId, string>>;
+
 export function getModuleHref(moduleId: ModuleId | string, industryId?: string | null): string {
   if (industryId === "pharmacy") {
     const pharmacyHref = PHARMACY_MODULE_HREF[moduleId as ModuleId];
     if (pharmacyHref) return pharmacyHref;
+  }
+  if (industryId === "snooker-pos") {
+    const snookerHref = SNOOKER_MODULE_HREF[moduleId as ModuleId];
+    if (snookerHref) return snookerHref;
   }
   return MODULE_HREF[moduleId as ModuleId] ?? `${BUSINESS_ADMIN_BASE}/modules/${moduleId}`;
 }
@@ -61,6 +91,9 @@ export function pathnameToModuleId(pathname: string): string | null {
 
   const generated = path.match(/\/businessAdmin\/modules\/([^/]+)/);
   if (generated?.[1]) return generated[1];
+
+  const snookerMatch = path.match(/\/businessAdmin\/snooker\/([^/]+)/);
+  if (snookerMatch?.[1]) return snookerMatch[1];
 
   const pharmacyMatch: Array<[string, string]> = [
     [`${BUSINESS_ADMIN_BASE}/inventory`, "inventory"],
@@ -106,5 +139,6 @@ export function pathnameToModuleId(pathname: string): string | null {
 
 export function isDedicatedModuleRoute(moduleId: string, industryId?: string | null): boolean {
   if (industryId === "pharmacy" && PHARMACY_MODULE_HREF[moduleId as ModuleId]) return true;
+  if (industryId === "snooker-pos" && SNOOKER_MODULE_HREF[moduleId as ModuleId]) return true;
   return Boolean(MODULE_HREF[moduleId as ModuleId]);
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { portalInputClass } from "@/components/admin/PortalPage";
+import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 
 export type MedicineProfileForm = {
   genericName: string;
@@ -37,21 +38,36 @@ export function MedicineProfileFields({
   value: MedicineProfileForm;
   onChange: (value: MedicineProfileForm) => void;
 }) {
+  const { market } = usePharmacyMarket();
   const set = (patch: Partial<MedicineProfileForm>) => onChange({ ...value, ...patch });
   return (
     <div className="space-y-3 rounded-xl border border-[#dcfce7] bg-[#f0fdf4] p-4">
-      <p className="text-sm font-semibold text-[#166534]">Medicine details</p>
+      <p className="text-sm font-semibold text-[#166534]">
+        Medicine details · {market.regulator}
+      </p>
       <div className="grid gap-3 md:grid-cols-2">
         <input className={portalInputClass} placeholder="Generic name" value={value.genericName} onChange={(e) => set({ genericName: e.target.value })} />
         <input className={portalInputClass} placeholder="Salt / composition" value={value.saltName} onChange={(e) => set({ saltName: e.target.value })} />
         <input className={portalInputClass} placeholder="Barcode" value={value.barcode} onChange={(e) => set({ barcode: e.target.value })} />
-        <input className={portalInputClass} placeholder="HSN" value={value.hsnCode} onChange={(e) => set({ hsnCode: e.target.value })} />
-        <input className={portalInputClass} type="number" placeholder="GST %" value={value.gstRate} onChange={(e) => set({ gstRate: Number(e.target.value) })} />
+        <input className={portalInputClass} placeholder={market.productCodeHint} value={value.hsnCode} onChange={(e) => set({ hsnCode: e.target.value })} />
+        <input className={portalInputClass} type="number" placeholder={`${market.taxName} %`} value={value.gstRate} onChange={(e) => set({ gstRate: Number(e.target.value) })} />
         <input className={portalInputClass} type="number" placeholder="Reorder level" value={value.reorderLevel} onChange={(e) => set({ reorderLevel: Number(e.target.value) })} />
-        <input className={portalInputClass} placeholder="Schedule (e.g. H1)" value={value.controlledSchedule} onChange={(e) => set({ controlledSchedule: e.target.value })} />
+        <select
+          className={portalInputClass}
+          value={value.controlledSchedule}
+          onChange={(e) => {
+            const next = e.target.value;
+            const rx = ["POM", "H", "H1", "X", "CD2", "CD3", "CD4", "CD5"].includes(next);
+            set({ controlledSchedule: next, rxRequired: rx ? true : value.rxRequired });
+          }}
+        >
+          {market.schedules.map((option) => (
+            <option key={option.value || "otc"} value={option.value}>{option.label}</option>
+          ))}
+        </select>
         <label className="flex items-center gap-2 text-sm font-medium">
           <input type="checkbox" checked={value.rxRequired} onChange={(e) => set({ rxRequired: e.target.checked })} />
-          Rx required
+          Rx / POM required
         </label>
         <input className={portalInputClass} type="number" placeholder="Tablets per strip" value={value.stripToTablet} onChange={(e) => set({ stripToTablet: Number(e.target.value) })} />
         <input className={portalInputClass} type="number" placeholder="Strips per box" value={value.boxToStrip} onChange={(e) => set({ boxToStrip: Number(e.target.value) })} />

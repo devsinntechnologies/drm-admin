@@ -14,7 +14,7 @@ export type BusinessProfileConfig = {
 const STORAGE_KEY = "diginizam_business_profiles";
 
 const INDUSTRY_KEYWORDS: Array<{ keywords: string[]; industryId: string }> = [
-  { keywords: ["gym", "fitness", "workout"], industryId: "gym" },
+  { keywords: ["snooker", "pool", "billiard", "cue", "club"], industryId: "snooker-pos" },
   { keywords: ["clinic", "hospital", "medical", "health"], industryId: "clinic" },
   { keywords: ["pharmacy", "medicine", "drug", "chemist", "careplus"], industryId: "pharmacy" },
   { keywords: ["salon", "spa", "beauty"], industryId: "salon-spa" },

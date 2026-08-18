@@ -63,6 +63,10 @@ export const PREVIEW_CARD_VALUES: Partial<Record<DashboardCardId, string>> = {
   "best-selling-books": "Atomic Habits",
   "top-authors": "James Clear",
   "recently-added": "12",
+  "active-sessions": "6",
+  "century-running": "2",
+  "cash-on-hand": "Rs 42.8K",
+  "overdue-credit": "Rs 18.5K",
 };
 
 export type PreviewOrderSlice = { color: string; value: number; label: string };

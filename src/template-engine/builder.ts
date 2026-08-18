@@ -15,17 +15,40 @@ const WORKSPACE_NAV_LABELS: Partial<Record<ModuleId, string>> = {
   "public-catalog": "Public Catalog",
 };
 
+const SNOOKER_NAV_LABELS: Partial<Record<ModuleId, string>> = {
+  tables: "Table Management",
+  pos: "POS Sessions",
+  "billing-pricing": "Billing & Pricing",
+  customers: "Customers",
+  "credit-udhar": "Credit / Udhar",
+  discounts: "Discounts",
+  expenses: "Expenses",
+  shifts: "Daily Opening & Closing",
+  reports: "Reports",
+  staff: "Staff & Access",
+  "audit-logs": "Audit Logs",
+  notifications: "Notifications",
+  branches: "Branches",
+  settings: "Settings",
+  memberships: "Memberships",
+  loyalty: "Loyalty Programme",
+  tournaments: "Tournaments",
+  "table-booking": "Online Booking",
+  subscriptions: "Subscriptions",
+};
+
 export function buildDefaultNavigation(
   modules: ModuleId[],
   labels: IndustryTemplate["labels"],
   industryId?: string,
 ): CustomizedTemplateConfig["navigation"] {
   return modules.map((moduleId) => {
-    const restaurantAlias = industryId === "pharmacy" ? undefined : WORKSPACE_NAV_LABELS[moduleId];
-    let label = restaurantAlias ?? MODULE_CATALOG[moduleId]?.label ?? moduleId;
+    const snookerAlias = industryId === "snooker-pos" ? SNOOKER_NAV_LABELS[moduleId] : undefined;
+    const restaurantAlias = industryId === "pharmacy" || industryId === "snooker-pos" ? undefined : WORKSPACE_NAV_LABELS[moduleId];
+    let label = snookerAlias ?? restaurantAlias ?? MODULE_CATALOG[moduleId]?.label ?? moduleId;
     if (moduleId === "products") label = labels.products;
     if (moduleId === "orders" && labels.orders) label = labels.orders;
-    if (moduleId === "customers" && labels.customers) label = labels.customers;
+    if (moduleId === "customers" && labels.customers && industryId !== "snooker-pos") label = labels.customers;
     if (moduleId === "staff" && industryId === "pharmacy") label = "Staff";
     if (moduleId === "sales" && industryId === "pharmacy") label = labels.orders ?? "Sales";
     return { moduleId, label, visible: true };
@@ -36,6 +59,7 @@ export function createCustomizedConfig(input: {
   businessName: string;
   industry: IndustryTemplate;
   currency?: string;
+  market?: string;
   location?: string;
   branchCount?: number;
   primaryColor?: string;
@@ -59,6 +83,7 @@ export function createCustomizedConfig(input: {
     industryName: input.industry.name,
     family: input.industry.family,
     currency: input.currency ?? "PKR",
+    market: input.market,
     location: input.location ?? "",
     branchCount: input.branchCount ?? 1,
     logoDataUrl: input.logoDataUrl,

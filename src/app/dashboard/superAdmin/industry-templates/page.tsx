@@ -56,6 +56,8 @@ import type {
   ThemeMode,
 } from "@/templates/types";
 import { cn } from "@/lib/utils";
+import { PharmacyCountryPicker } from "@/components/pharmacy/PharmacyCountryPicker";
+import { pharmacyCountryDefaults, type PharmacyMarketCode } from "@/lib/pharmacy-market";
 
 const STEPS: Array<{ id: TemplateBuilderStepId; label: string; description: string }> = [
   { id: "industry", label: "Industry", description: "Pick a blueprint" },
@@ -76,6 +78,7 @@ function IndustryTemplatesContent() {
 
   const [businessName, setBusinessName] = useState("");
   const [currency, setCurrency] = useState("PKR");
+  const [market, setMarket] = useState<PharmacyMarketCode>("PK");
   const [location, setLocation] = useState("");
   const [branchCount, setBranchCount] = useState(1);
   const [themeMode, setThemeMode] = useState<ThemeMode>("light");
@@ -142,10 +145,16 @@ function IndustryTemplatesContent() {
     setDashboardCardOrder([...tpl.dashboardCards]);
     setProductLabel(tpl.labels.product);
     setProductsLabel(tpl.labels.products);
+    if (tpl.id === "pharmacy") {
+      const defaults = pharmacyCountryDefaults("PK");
+      setMarket(defaults.market);
+      setCurrency(defaults.currency);
+      setLocation(defaults.location);
+    }
     setLogoDataUrl(null);
     setExtensions(createDefaultExtensions(tpl.name));
     setNavItems(
-      buildDefaultNavigation(available, labels).map((item) => ({
+      buildDefaultNavigation(available, labels, tpl.id).map((item) => ({
         ...item,
         visible: tpl.modules.includes(item.moduleId),
       })),
@@ -167,7 +176,7 @@ function IndustryTemplatesContent() {
       const available = industry
         ? getAvailableModules(industry.modules, industry.optionalModules)
         : nextEnabled;
-      const rebuilt = buildDefaultNavigation(available, labels);
+      const rebuilt = buildDefaultNavigation(available, labels, industry?.id);
       if (!current.length) {
         return rebuilt.map((r) => ({ ...r, visible: nextEnabled.includes(r.moduleId) }));
       }
@@ -276,6 +285,7 @@ function IndustryTemplatesContent() {
       businessName,
       industry,
       currency,
+      market: industry.id === "pharmacy" ? market : undefined,
       location,
       branchCount,
       primaryColor,
@@ -575,6 +585,42 @@ function IndustryTemplatesContent() {
                     ))}
                   </div>
                 </div>
+                {industry.productScope?.length ? (
+                  <div className="mt-6">
+                    <h4 className="mb-1 text-sm font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
+                      Complete product scope · {industry.productScope.length} modules
+                    </h4>
+                    <p className="mb-3 text-xs text-[#64748b]">
+                      Sidebar combines related areas into {industry.modules.length} workspace modules. Every catalog module is listed below.
+                    </p>
+                    <div className="overflow-hidden rounded-xl border border-[#e2e8f0]">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-[#f8fafc] text-[11px] font-semibold uppercase tracking-wider text-[#94a3b8]">
+                          <tr>
+                            <th className="px-3 py-2">#</th>
+                            <th className="px-3 py-2">Module</th>
+                            <th className="px-3 py-2">Description</th>
+                            <th className="px-3 py-2">Group</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {industry.productScope.map((item) => (
+                            <tr key={item.number} className="border-t border-[#e2e8f0] align-top">
+                              <td className="px-3 py-2 font-semibold text-[#0f172a]">{item.number}</td>
+                              <td className="px-3 py-2 font-medium text-[#0f172a]">{item.name}</td>
+                              <td className="px-3 py-2 text-xs leading-relaxed text-[#64748b]">{item.description}</td>
+                              <td className="px-3 py-2">
+                                <span className="rounded-md border border-[#e2e8f0] bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#64748b]">
+                                  {item.group}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : null}
               </Panel>
               )}
 
@@ -614,6 +660,19 @@ function IndustryTemplatesContent() {
                     </div>
                   </div>
                 </div>
+                {industry.id === "pharmacy" ? (
+                  <div className="mb-4">
+                    <PharmacyCountryPicker
+                      value={market}
+                      onChange={(code) => {
+                        const defaults = pharmacyCountryDefaults(code);
+                        setMarket(defaults.market);
+                        setCurrency(defaults.currency);
+                        setLocation((prev) => (prev.trim() ? prev : defaults.location));
+                      }}
+                    />
+                  </div>
+                ) : null}
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Business name">
                     <input
@@ -627,12 +686,21 @@ function IndustryTemplatesContent() {
                     <input value={industry.name} disabled className="portal-input opacity-70" />
                   </Field>
                   <Field label="Currency">
-                    <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="portal-input">
-                      <option value="PKR">PKR</option>
-                      <option value="USD">USD</option>
-                      <option value="AED">AED</option>
-                      <option value="EUR">EUR</option>
-                    </select>
+                    {industry.id === "pharmacy" ? (
+                      <input
+                        value={`${currency} · ${market === "UK" ? "United Kingdom" : "Pakistan"}`}
+                        disabled
+                        className="portal-input opacity-70"
+                      />
+                    ) : (
+                      <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="portal-input">
+                        <option value="PKR">PKR · Pakistan</option>
+                        <option value="GBP">GBP · United Kingdom</option>
+                        <option value="USD">USD</option>
+                        <option value="AED">AED</option>
+                        <option value="EUR">EUR</option>
+                      </select>
+                    )}
                   </Field>
                   <Field label="Location">
                     <input
@@ -711,6 +779,7 @@ function IndustryTemplatesContent() {
                         checked={checked}
                         locked={!!locked}
                         lockReason={reason}
+                        industryId={industry.id}
                         dragging={dragModuleId === item.moduleId}
                         onToggle={() => toggleModule(item.moduleId)}
                         onDragStart={() => setDragModuleId(item.moduleId)}
@@ -867,6 +936,13 @@ function IndustryTemplatesContent() {
                 <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {[
                     { label: "Industry", value: industry.name },
+                    {
+                      label: "Country",
+                      value:
+                        industry.id === "pharmacy"
+                          ? `${market === "UK" ? "United Kingdom" : "Pakistan"} · ${currency}`
+                          : currency,
+                    },
                     { label: "Modules", value: String(enabledModules.length) },
                     { label: "Dashboard cards", value: String(orderedEnabledDashboardCards.length) },
                     { label: "Theme", value: themeMode },

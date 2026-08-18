@@ -329,6 +329,7 @@ export function BusinessWorkspaceSettings({
               checked={enabledModules.includes(moduleId)}
               locked={locked.has(moduleId)}
               lockReason={getLockReason(industry.id, moduleId, enabledModules, availableModules)}
+              industryId={industry.id}
               onToggle={() => toggleModule(moduleId)}
             />
           ))}

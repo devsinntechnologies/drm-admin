@@ -64,6 +64,10 @@ const MOCK_VALUES: Partial<Record<DashboardCardId, string>> = {
   "best-selling-books": "Atomic Habits",
   "top-authors": "James Clear",
   "recently-added": "24 titles",
+  "active-sessions": "6 live",
+  "century-running": "2 timers",
+  "cash-on-hand": "Rs 42,800",
+  "overdue-credit": "Rs 18,500",
 };
 
 export function getMockDashboardCards(config: CustomizedTemplateConfig) {
@@ -87,6 +91,7 @@ export function getMockProducts(config: CustomizedTemplateConfig) {
     jewellery: ["22K Necklace", "Diamond Ring", "Gold Bangle", "Pearl Set"],
     "auto-parts": ["Oil Filter", "Brake Pads", "Spark Plug", "Air Filter"],
     "book-store": ["Atomic Habits", "Rich Dad Poor Dad", "The Alchemist", "Clean Code"],
+    "snooker-pos": ["Single Game", "Double Game", "Century Hour", "Member Night"],
     manufacturing: ["Finished Unit A", "Finished Unit B", "Assembly Kit", "Spare Housing"],
   };
 
