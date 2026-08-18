@@ -66,12 +66,21 @@ export default function WebsiteOverviewPage() {
   };
 
   const onOpenBuilder = async () => {
+    const popup = window.open("about:blank", "diginizam-builder");
     const toastId = toast.loading("Opening DigiNizam builder...");
     try {
       const session = await openBuilder();
-      window.open(session.url, "_blank", "noopener,noreferrer");
+      if (!session?.url) {
+        throw new Error("Builder URL was not returned");
+      }
+      if (popup) {
+        popup.location.replace(session.url);
+      } else {
+        window.location.assign(session.url);
+      }
       toast.success("Builder opened", { id: toastId });
     } catch (err) {
+      popup?.close();
       toast.error(normalizeErrorMessage(err, "Failed to open builder"), { id: toastId });
     }
   };
