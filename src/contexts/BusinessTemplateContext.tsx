@@ -6,6 +6,7 @@ import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import type { ApiTemplateConfig } from "@/hooks/useIndustryTemplate";
 import { getStoredAuthToken } from "@/lib/utils";
+import { hydrateWorkspaceTemplate } from "@/lib/hydrate-workspace-template";
 import { buildWorkspaceThemeStyle } from "@/templates/modules";
 
 type BusinessTemplateContextValue = {
@@ -64,7 +65,7 @@ export function BusinessTemplateProvider({ children, businessId = null }: Busine
     }
   }, [authToken, businessId, router]);
 
-  const templateConfig = business?.templateConfig ?? null;
+  const templateConfig = hydrateWorkspaceTemplate(business?.templateConfig ?? null);
 
   const value = useMemo<BusinessTemplateContextValue>(() => {
     const primaryColor = templateConfig?.primaryColor ?? DEFAULT_PRIMARY;

@@ -156,11 +156,12 @@ export function BusinessWorkspaceSettings({
 
     const industryChanged = industry.id !== templateConfig?.industryId;
     const navigation = industryChanged
-      ? buildDefaultNavigation(enabledModules, industry.labels)
+      ? buildDefaultNavigation(enabledModules, industry.labels, industry.id)
       : syncNavigationToEnabledModules(
           templateConfig?.navigation,
           enabledModules,
           templateConfig?.labels ?? industry.labels,
+          industry.id,
         );
 
     const payload = {

@@ -22,7 +22,7 @@ export const INDUSTRY_TEMPLATES: IndustryTemplate[] = [
     description: "Medicine catalog with batches, expiry alerts, and prescription intake.",
     family: "high-volume-retail",
     theme: { accent: "green", icon: "pill" },
-    labels: { product: "Medicine", products: "Medicines" },
+    labels: { product: "Medicine", products: "Medicines", customer: "Patient", customers: "Patients", order: "Sale", orders: "Sales" },
     modules: ["dashboard", "pos", "products", "categories", "batches", "expiry", "inventory", "prescriptions", "cdss", "controlled-substances", "purchases", "suppliers", "customers", "sales", "returns", "reports", "accounting", "shifts", "staff", "settings"],
     optionalModules: ["accounting", "multi-branch", "hr"],
     dashboardCards: ["today-sales", "expiring-items", "expired-items", "low-stock", "batch-value", "pending-prescriptions"],

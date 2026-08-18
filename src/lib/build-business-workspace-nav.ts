@@ -2,6 +2,7 @@ import { createElement } from "react";
 import type { ApiTemplateConfig } from "@/hooks/useIndustryTemplate";
 import { isModuleImplemented } from "@/lib/module-implementation";
 import { resolveModuleIcon } from "@/lib/module-icons";
+import { hydrateWorkspaceTemplate } from "@/lib/hydrate-workspace-template";
 import { appendBusinessId, getModuleHref } from "@/lib/module-routes";
 import { MODULE_CATALOG } from "@/templates/modules";
 import type { ModuleId } from "@/templates/types";
@@ -50,13 +51,14 @@ export function buildBusinessWorkspaceNav(
   templateConfig: ApiTemplateConfig,
   businessId?: string | null,
 ): WorkspaceNavTab[] {
-  const enabled = new Set(templateConfig.enabledModules);
+  const config = hydrateWorkspaceTemplate(templateConfig) ?? templateConfig;
+  const enabled = new Set(config.enabledModules);
 
-  return templateConfig.navigation
+  return config.navigation
     .filter((item) => item.visible && enabled.has(item.moduleId as ModuleId))
     .map((item) => {
       const moduleId = item.moduleId as ModuleId;
-      const href = appendBusinessId(getModuleHref(moduleId, templateConfig.industryId), businessId);
+      const href = appendBusinessId(getModuleHref(moduleId, config.industryId), businessId);
       const Icon = resolveModuleIcon(moduleId);
       const inProgress = !isModuleImplemented(moduleId);
       return {
@@ -65,7 +67,7 @@ export function buildBusinessWorkspaceNav(
         href,
         icon: createElement(Icon, { className: "h-5 w-5" }),
         inProgress,
-        description: modulePurpose(moduleId, templateConfig.industryId),
+        description: modulePurpose(moduleId, config.industryId),
       };
     });
 }

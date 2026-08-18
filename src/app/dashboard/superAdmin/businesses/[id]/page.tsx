@@ -26,6 +26,7 @@ import {
   type BusinessProfileConfig,
 } from "@/lib/business-profile";
 import { getIndustryPreviewProfile } from "@/lib/industry-preview-profiles";
+import { hydrateWorkspaceTemplate } from "@/lib/hydrate-workspace-template";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { useWebsite } from "@/hooks/useWebsite";
 import { cn } from "@/lib/utils";
@@ -206,7 +207,7 @@ function BusinessProfileContent() {
           <BusinessWorkspaceSettings
             businessId={id}
             businessName={business.businessName}
-            templateConfig={business.templateConfig}
+            templateConfig={hydrateWorkspaceTemplate(business.templateConfig) ?? business.templateConfig}
             fallbackIndustryId={profile.industryId}
             onDraftChange={(draft) =>
               setProfile((current) =>

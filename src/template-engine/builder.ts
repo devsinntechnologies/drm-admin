@@ -18,12 +18,16 @@ const WORKSPACE_NAV_LABELS: Partial<Record<ModuleId, string>> = {
 export function buildDefaultNavigation(
   modules: ModuleId[],
   labels: IndustryTemplate["labels"],
+  industryId?: string,
 ): CustomizedTemplateConfig["navigation"] {
   return modules.map((moduleId) => {
-    let label = WORKSPACE_NAV_LABELS[moduleId] ?? MODULE_CATALOG[moduleId]?.label ?? moduleId;
+    const restaurantAlias = industryId === "pharmacy" ? undefined : WORKSPACE_NAV_LABELS[moduleId];
+    let label = restaurantAlias ?? MODULE_CATALOG[moduleId]?.label ?? moduleId;
     if (moduleId === "products") label = labels.products;
     if (moduleId === "orders" && labels.orders) label = labels.orders;
     if (moduleId === "customers" && labels.customers) label = labels.customers;
+    if (moduleId === "staff" && industryId === "pharmacy") label = "Staff";
+    if (moduleId === "sales" && industryId === "pharmacy") label = labels.orders ?? "Sales";
     return { moduleId, label, visible: true };
   });
 }
@@ -62,7 +66,7 @@ export function createCustomizedConfig(input: {
     secondaryColor: input.secondaryColor ?? defaults.secondary,
     themeMode: input.themeMode ?? "light",
     enabledModules,
-    navigation: input.navigation ?? buildDefaultNavigation(enabledModules, labels),
+    navigation: input.navigation ?? buildDefaultNavigation(enabledModules, labels, input.industry.id),
     dashboardCards: input.dashboardCards ?? [...input.industry.dashboardCards],
     labels,
   };
@@ -72,8 +76,9 @@ export function syncNavigationToEnabledModules(
   current: CustomizedTemplateConfig["navigation"] | undefined,
   enabledModules: ModuleId[],
   labels: IndustryTemplate["labels"],
+  industryId?: string,
 ): CustomizedTemplateConfig["navigation"] {
-  const rebuilt = buildDefaultNavigation(enabledModules, labels);
+  const rebuilt = buildDefaultNavigation(enabledModules, labels, industryId);
   if (!current?.length) {
     return rebuilt.map((item) => ({ ...item, visible: enabledModules.includes(item.moduleId) }));
   }
