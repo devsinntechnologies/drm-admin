@@ -39,6 +39,7 @@ import {
   usePatchBusinessByIdMutation,
 } from "@/hooks/useBusiness";
 import { saveBusinessProfile, getBusinessProfile } from "@/lib/business-profile";
+import { persistIndustryTemplateForBusiness } from "@/template-engine/persist-template-config";
 import { normalizeErrorMessage } from "@/lib/utils";
 import { INDUSTRY_TEMPLATES } from "@/templates/industries";
 import { colorsFromAccent } from "@/templates/modules";
@@ -229,9 +230,24 @@ function BusinessesContent() {
           primaryColor: colors.primary,
           secondaryColor: colors.secondary,
         });
+        const persist = await persistIndustryTemplateForBusiness({
+          businessId: editingBusinessId,
+          businessName: payload.businessName,
+          industryId: form.industryId,
+          location: payload.address,
+        });
+        if (!persist.persistedToApi) {
+          toast.warning(
+            persist.warning ??
+              "Business updated, but industry modules were not saved to the server. Seed industry templates, then save workspace settings.",
+          );
+        }
         toast.success("Business updated successfully.", { id: toastId });
       } else {
         const created = await createBusiness(payload).unwrap();
+        if (!created.id) {
+          throw new Error("Business created but no ID returned.");
+        }
         const tpl = INDUSTRY_TEMPLATES.find((t) => t.id === form.industryId);
         const colors = tpl ? colorsFromAccent(tpl.theme.accent) : colorsFromAccent("blue");
         saveBusinessProfile(created.id, {
@@ -242,6 +258,19 @@ function BusinessesContent() {
           typography: "Poppins",
           layoutStyle: "comfortable",
         });
+
+        const persist = await persistIndustryTemplateForBusiness({
+          businessId: created.id,
+          businessName: created.businessName || payload.businessName,
+          industryId: form.industryId,
+          location: payload.address,
+        });
+        if (!persist.persistedToApi) {
+          toast.warning(
+            persist.warning ??
+              "Business created, but industry modules were not saved to the server. Open the business and save workspace settings after seeding industry templates.",
+          );
+        }
 
         const emailSent = created.credentialsEmailSent === true;
         const emailError = created.credentialsEmailError;

@@ -16,7 +16,7 @@ const STORAGE_KEY = "diginizam_business_profiles";
 const INDUSTRY_KEYWORDS: Array<{ keywords: string[]; industryId: string }> = [
   { keywords: ["gym", "fitness", "workout"], industryId: "gym" },
   { keywords: ["clinic", "hospital", "medical", "health"], industryId: "clinic" },
-  { keywords: ["pharmacy", "medicine", "drug"], industryId: "pharmacy" },
+  { keywords: ["pharmacy", "medicine", "drug", "chemist", "careplus"], industryId: "pharmacy" },
   { keywords: ["salon", "spa", "beauty"], industryId: "salon-spa" },
   { keywords: ["restaurant", "cafe", "food", "kitchen", "dining"], industryId: "restaurant" },
   { keywords: ["retail", "store", "shop", "mart"], industryId: "retail-store" },

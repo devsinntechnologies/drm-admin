@@ -1,9 +1,13 @@
+import { businessApi } from "@/hooks/useBusiness";
 import type { CreateTemplateConfigPayload } from "@/hooks/useIndustryTemplate";
 import { industryTemplateApi, apiConfigToCustomized, type ApiTemplateConfig } from "@/hooks/useIndustryTemplate";
-import type { CustomizedTemplateConfig } from "@/templates/types";
+import { normalizeErrorMessage } from "@/lib/utils";
+import { store } from "@/lib/store";
+import { createCustomizedConfig } from "@/template-engine/builder";
 import { saveTemplateConfig, loadSavedTemplates } from "@/template-engine/storage";
 import { saveTemplateExtensions, loadTemplateExtensions } from "@/template-engine/template-extensions-storage";
-import { store } from "@/lib/store";
+import { INDUSTRY_TEMPLATES } from "@/templates/industries";
+import type { CustomizedTemplateConfig } from "@/templates/types";
 
 export type PersistTemplateResult = {
   config: CustomizedTemplateConfig;
@@ -58,15 +62,51 @@ export async function persistTemplateConfig(
     };
     saveTemplateConfig(merged);
 
+    if (options?.businessId) {
+      store.dispatch(
+        businessApi.util.invalidateTags([
+          { type: "Business", id: options.businessId },
+          { type: "Business", id: "LIST" },
+        ]),
+      );
+    }
+
     return { config: merged, persistedToApi: true };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "API unavailable";
+    const message = normalizeErrorMessage(error, "API unavailable");
     return {
       config,
       persistedToApi: false,
       warning: `Saved locally. API sync failed: ${message}`,
     };
   }
+}
+
+/** Apply an industry blueprint to a business so workspace nav uses that industry, not a hash/guess. */
+export async function persistIndustryTemplateForBusiness(options: {
+  businessId: string;
+  businessName: string;
+  industryId: string;
+  location?: string;
+}): Promise<PersistTemplateResult> {
+  const industry = INDUSTRY_TEMPLATES.find((item) => item.id === options.industryId);
+  if (!industry) {
+    return {
+      config: createCustomizedConfig({
+        businessName: options.businessName,
+        industry: INDUSTRY_TEMPLATES[0]!,
+      }),
+      persistedToApi: false,
+      warning: `Unknown industry "${options.industryId}".`,
+    };
+  }
+
+  const config = createCustomizedConfig({
+    businessName: options.businessName,
+    industry,
+    location: options.location,
+  });
+  return persistTemplateConfig(config, { businessId: options.businessId });
 }
 
 export function mergeConfigWithExtensions(config: CustomizedTemplateConfig): CustomizedTemplateConfig {

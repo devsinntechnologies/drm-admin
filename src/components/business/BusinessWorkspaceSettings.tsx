@@ -7,14 +7,15 @@ import { toast } from "sonner";
 import { ModuleChip } from "@/components/wizard/TemplateConfigChips";
 import { TemplateThemeFields } from "@/components/wizard/TemplateThemeFields";
 import { businessApi } from "@/hooks/useBusiness";
+import { useAuth } from "@/hooks/useAuth";
 import type { ApiTemplateConfig } from "@/hooks/useIndustryTemplate";
 import {
   useCreateTemplateConfigMutation,
   useUpdateTemplateConfigMutation,
 } from "@/hooks/useIndustryTemplate";
 import { normalizeErrorMessage } from "@/lib/utils";
-import { syncNavigationToEnabledModules } from "@/template-engine/builder";
-import { getIndustryById } from "@/templates/industries";
+import { buildDefaultNavigation, syncNavigationToEnabledModules } from "@/template-engine/builder";
+import { INDUSTRY_TEMPLATES, getIndustryById } from "@/templates/industries";
 import {
   canDisableModule,
   getLockReason,
@@ -22,7 +23,7 @@ import {
   withDependenciesEnabled,
   withDependentsDisabled,
 } from "@/templates/module-dependencies";
-import { ACCENT_COLORS } from "@/templates/modules";
+import { ACCENT_COLORS, colorsFromAccent } from "@/templates/modules";
 import type { AccentColor, ModuleId, ThemeMode } from "@/templates/types";
 
 type DraftChange = {
@@ -49,7 +50,11 @@ export function BusinessWorkspaceSettings({
   onDraftChange,
 }: Props) {
   const dispatch = useDispatch();
-  const industry = getIndustryById(templateConfig?.industryId ?? fallbackIndustryId ?? "");
+  const { role } = useAuth();
+  const canChangeIndustry = role === "super_admin";
+  const initialIndustryId = templateConfig?.industryId ?? fallbackIndustryId ?? "retail-store";
+  const [industryId, setIndustryId] = useState(initialIndustryId);
+  const industry = getIndustryById(industryId);
   const availableModules = useMemo<ModuleId[]>(() => {
     if (!industry) return [];
     return Array.from(new Set([...industry.modules, ...(industry.optionalModules ?? [])]));
@@ -70,12 +75,15 @@ export function BusinessWorkspaceSettings({
   onDraftChangeRef.current = onDraftChange;
 
   useEffect(() => {
+    const nextIndustryId = templateConfig?.industryId ?? fallbackIndustryId ?? "retail-store";
+    setIndustryId(nextIndustryId);
+    const nextIndustry = getIndustryById(nextIndustryId);
     setPrimaryColor(templateConfig?.primaryColor ?? "#001840");
     setSecondaryColor(templateConfig?.secondaryColor ?? "#0050F8");
     setThemeMode(templateConfig?.themeMode ?? "light");
     setLogoUrl(templateConfig?.logoUrl ?? null);
-    setEnabledModules((templateConfig?.enabledModules ?? industry?.modules ?? []) as ModuleId[]);
-  }, [templateConfig, industry?.modules]);
+    setEnabledModules((templateConfig?.enabledModules ?? nextIndustry?.modules ?? []) as ModuleId[]);
+  }, [templateConfig, fallbackIndustryId]);
 
   useEffect(() => {
     onDraftChangeRef.current?.({ primaryColor, secondaryColor, themeMode, logoUrl, enabledModules });
@@ -85,6 +93,16 @@ export function BusinessWorkspaceSettings({
     () => getLockedModules(industry?.id ?? "", enabledModules, availableModules),
     [industry?.id, enabledModules, availableModules],
   );
+
+  const applyIndustry = (nextId: string) => {
+    const next = getIndustryById(nextId);
+    if (!next) return;
+    setIndustryId(nextId);
+    setEnabledModules([...next.modules] as ModuleId[]);
+    const palette = colorsFromAccent(next.theme.accent);
+    setPrimaryColor(palette.primary);
+    setSecondaryColor(palette.secondary);
+  };
 
   const toggleModule = (moduleId: ModuleId) => {
     if (!industry) return;
@@ -136,11 +154,14 @@ export function BusinessWorkspaceSettings({
       return;
     }
 
-    const navigation = syncNavigationToEnabledModules(
-      templateConfig?.navigation,
-      enabledModules,
-      templateConfig?.labels ?? industry.labels,
-    );
+    const industryChanged = industry.id !== templateConfig?.industryId;
+    const navigation = industryChanged
+      ? buildDefaultNavigation(enabledModules, industry.labels)
+      : syncNavigationToEnabledModules(
+          templateConfig?.navigation,
+          enabledModules,
+          templateConfig?.labels ?? industry.labels,
+        );
 
     const payload = {
       businessName: templateConfig?.businessName ?? businessName,
@@ -150,8 +171,10 @@ export function BusinessWorkspaceSettings({
       themeMode,
       enabledModules,
       navigation,
-      dashboardCards: templateConfig?.dashboardCards ?? industry.dashboardCards,
-      labels: templateConfig?.labels ?? industry.labels,
+      dashboardCards: industryChanged
+        ? [...industry.dashboardCards]
+        : (templateConfig?.dashboardCards ?? industry.dashboardCards),
+      labels: industryChanged ? industry.labels : (templateConfig?.labels ?? industry.labels),
       currency: templateConfig?.currency,
       location: templateConfig?.location,
       branchCount: templateConfig?.branchCount,
@@ -167,7 +190,12 @@ export function BusinessWorkspaceSettings({
         await createConfig(payload).unwrap();
       }
       dispatch(businessApi.util.invalidateTags([{ type: "Business", id: businessId }]));
-      toast.success("Theme, logo, and modules saved.", { id: toastId });
+      toast.success(
+        industryChanged
+          ? `${industry.name} modules saved. Reload the workspace if the sidebar still looks old.`
+          : "Theme, logo, and modules saved.",
+        { id: toastId },
+      );
     } catch (error) {
       toast.error(normalizeErrorMessage(error, "Could not save workspace settings."), { id: toastId });
     }
@@ -176,9 +204,25 @@ export function BusinessWorkspaceSettings({
   if (!industry) {
     return (
       <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
-        <p className="text-sm text-[#64748b]">
-          Could not match an industry for this business. Open Industry Templates, pick an industry, then Generate and link it to this business.
+        <p className="mb-3 text-sm text-[#64748b]">
+          Could not match an industry for this business. Choose one and save to load the correct modules.
         </p>
+        {canChangeIndustry ? (
+          <select
+            className="portal-input max-w-sm"
+            value=""
+            onChange={(event) => applyIndustry(event.target.value)}
+          >
+            <option value="" disabled>
+              Select industry
+            </option>
+            {INDUSTRY_TEMPLATES.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
       </section>
     );
   }
@@ -191,8 +235,27 @@ export function BusinessWorkspaceSettings({
           <h2 className="text-sm font-bold text-[var(--text-primary)]">Theme & logo</h2>
         </div>
         <p className="mb-4 text-sm text-[var(--text-muted)]">
-          {industry.name} workspace. Industry stays the same; only colors, logo, and modules can change.
+          {canChangeIndustry
+            ? "Choose the industry this business should run. Saving Pharmacy loads medicines, batches, expiry, and prescriptions instead of salon appointments."
+            : `${industry.name} workspace. Industry stays the same; only colors, logo, and modules can change.`}
         </p>
+
+        {canChangeIndustry ? (
+          <label className="mb-5 grid max-w-sm gap-1.5 text-sm font-medium text-[var(--text-primary)]">
+            Industry
+            <select
+              className="portal-input"
+              value={industryId}
+              onChange={(event) => applyIndustry(event.target.value)}
+            >
+              {INDUSTRY_TEMPLATES.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
         <div className="mb-5 flex flex-wrap items-center gap-4 rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
           <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)]">
