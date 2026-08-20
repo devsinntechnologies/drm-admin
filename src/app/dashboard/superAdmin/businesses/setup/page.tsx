@@ -15,7 +15,7 @@ import { WizardStepper } from "@/components/wizard/WizardStepper";
 import { DashboardCardChip, ModuleChip } from "@/components/wizard/TemplateConfigChips";
 import { TemplateThemeFields } from "@/components/wizard/TemplateThemeFields";
 import { useTemplateBuilder } from "@/hooks/useTemplateBuilder";
-import { useCreateBusinessMutation } from "@/hooks/useBusiness";
+import { useCreateBusinessMutation, useLazyCheckBusinessEmailQuery } from "@/hooks/useBusiness";
 import { useListIndustriesQuery } from "@/hooks/useIndustryTemplate";
 import { useGetPlansQuery } from "@/hooks/usePlan";
 import { saveBusinessProfile } from "@/lib/business-profile";
@@ -26,6 +26,11 @@ import type { DashboardCardId, ModuleId } from "@/templates/types";
 import type { BusinessSetupStepId } from "@/templates/types";
 import { PharmacyCountryPicker } from "@/components/pharmacy/PharmacyCountryPicker";
 import { pharmacyCountryDefaults } from "@/lib/pharmacy-market";
+import {
+  formatE164,
+  validateEmail,
+  validatePhoneNumber,
+} from "@/lib/form-validation";
 import { cn } from "@/lib/utils";
 
 const STEPS = [
@@ -61,8 +66,11 @@ function BusinessSetupContent() {
   const [planId, setPlanId] = useState("");
   const [dragModuleId, setDragModuleId] = useState<ModuleId | null>(null);
   const [dragDashboardCardId, setDragDashboardCardId] = useState<DashboardCardId | null>(null);
+  const [emailHint, setEmailHint] = useState<string | null>(null);
+  const [phoneHint, setPhoneHint] = useState<string | null>(null);
 
   const [createBusiness, { isLoading: creating }] = useCreateBusinessMutation();
+  const [checkBusinessEmail] = useLazyCheckBusinessEmailQuery();
   const { data: apiIndustries } = useListIndustriesQuery();
   const { data: planData, isLoading: plansLoading } = useGetPlansQuery();
   const plans = useMemo(() => {
@@ -102,14 +110,42 @@ function BusinessSetupContent() {
       return;
     }
 
+    const phoneError = validatePhoneNumber(countryCode, phoneNumber);
+    if (phoneError) {
+      setPhoneHint(phoneError);
+      toast.error(phoneError);
+      setStep("business-profile");
+      return;
+    }
+
+    const emailFormatError = validateEmail(email);
+    if (emailFormatError) {
+      setEmailHint(emailFormatError);
+      toast.error(emailFormatError);
+      setStep("business-profile");
+      return;
+    }
+
+    try {
+      const availability = await checkBusinessEmail(email.trim().toLowerCase()).unwrap();
+      if (!availability.available) {
+        setEmailHint("This email is already registered. Use a different owner email.");
+        toast.error("This email is already registered");
+        setStep("business-profile");
+        return;
+      }
+    } catch {
+      // If check fails, still attempt create — server will reject duplicates.
+    }
+
     const toastId = toast.loading("Creating business and applying template...");
     try {
-      const phone = `${countryCode}${phoneNumber.replace(/\D/g, "")}`;
+      const phone = formatE164(countryCode, phoneNumber);
       const created = await createBusiness({
         businessName: builder.businessName.trim(),
         address: address.trim(),
         phone,
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         manager: manager.trim(),
         planId,
       }).unwrap();
@@ -273,34 +309,80 @@ function BusinessSetupContent() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Business name *
+                Business name <span className="text-[#dc2626]">*</span>
                 <input value={builder.businessName} onChange={(e) => builder.setBusinessName(e.target.value)} className="portal-input" />
               </label>
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Manager / Owner *
+                Manager / Owner <span className="text-[#dc2626]">*</span>
                 <input value={manager} onChange={(e) => setManager(e.target.value)} className="portal-input" />
               </label>
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Email *
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="portal-input" />
+                Email <span className="text-[#dc2626]">*</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailHint(null);
+                  }}
+                  onBlur={async () => {
+                    const formatError = validateEmail(email);
+                    if (formatError) {
+                      setEmailHint(formatError);
+                      return;
+                    }
+                    try {
+                      const result = await checkBusinessEmail(email.trim().toLowerCase()).unwrap();
+                      setEmailHint(
+                        result.available
+                          ? "Email is available"
+                          : "This email is already registered. Use a different owner email.",
+                      );
+                    } catch {
+                      setEmailHint(null);
+                    }
+                  }}
+                  className="portal-input"
+                />
+                {emailHint ? (
+                  <span className={emailHint.includes("available") ? "text-xs text-[#15803d]" : "text-xs text-[#b91c1c]"}>
+                    {emailHint}
+                  </span>
+                ) : null}
               </label>
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Phone *
+                Phone <span className="text-[#dc2626]">*</span>
                 <div className="grid grid-cols-[140px_1fr] gap-2">
-                  <select value={countryCode} onChange={(e) => setCountryCode(e.target.value)} className="portal-input">
+                  <select
+                    value={countryCode}
+                    onChange={(e) => {
+                      setCountryCode(e.target.value);
+                      setPhoneHint(validatePhoneNumber(e.target.value, phoneNumber));
+                    }}
+                    className="portal-input"
+                  >
                     {countryOptions.map((c) => (
                       <option key={c.value} value={c.value}>{c.label}</option>
                     ))}
                   </select>
-                  <input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="portal-input" placeholder="3001234567" />
+                  <input
+                    value={phoneNumber}
+                    onChange={(e) => {
+                      setPhoneNumber(e.target.value);
+                      setPhoneHint(validatePhoneNumber(countryCode, e.target.value));
+                    }}
+                    className="portal-input"
+                    placeholder="3001234567"
+                  />
                 </div>
+                {phoneHint ? <span className="text-[#b91c1c] text-xs">{phoneHint}</span> : null}
               </label>
               <label className="grid gap-1.5 text-sm font-medium text-[#374151] md:col-span-2">
-                Address *
+                Address <span className="text-[#dc2626]">*</span>
                 <input value={address} onChange={(e) => setAddress(e.target.value)} className="portal-input" />
               </label>
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Plan *
+                Plan <span className="text-[#dc2626]">*</span>
                 <select value={planId} onChange={(e) => setPlanId(e.target.value)} className="portal-input" disabled={plansLoading}>
                   <option value="">Select plan</option>
                   {plans.map((plan) => (

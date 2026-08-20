@@ -2,6 +2,7 @@
 
 import { Activity } from "lucide-react";
 import { PortalPage, PortalStatCard } from "@/components/admin/PortalPage";
+import { RoleGuideBanner } from "@/components/admin/RoleGuideBanner";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { PREVIEW_CARD_VALUES } from "@/template-engine/dashboard-mock-data";
 import { DASHBOARD_CARD_CATALOG } from "@/templates/modules";
@@ -47,6 +48,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
 
   return (
     <PortalPage className={className}>
+      <RoleGuideBanner />
       {accentCards.length ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {accentCards.map((id, index) => {

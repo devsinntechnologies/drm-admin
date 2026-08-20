@@ -230,7 +230,7 @@ function UsersContent() {
                 </DialogHeader>
                 <form className="space-y-4" onSubmit={onCreateSubmit}>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-[#111827]" htmlFor="name">Name</label>
+                    <label className="text-sm font-medium text-[#111827]" htmlFor="name">Name <span className="text-[#dc2626]">*</span></label>
                     <input
                       id="name"
                       value={createForm.name}
@@ -241,7 +241,7 @@ function UsersContent() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-[#111827]" htmlFor="password">Password</label>
+                    <label className="text-sm font-medium text-[#111827]" htmlFor="password">Password <span className="text-[#dc2626]">*</span></label>
                     <input
                       id="password"
                       type="password"
@@ -253,7 +253,7 @@ function UsersContent() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-[#111827]" htmlFor="category">Category</label>
+                    <label className="text-sm font-medium text-[#111827]" htmlFor="category">Role <span className="text-[#dc2626]">*</span></label>
                     <select
                       id="category"
                       value={createForm.role}
@@ -295,16 +295,19 @@ function UsersContent() {
 
         {/* Search and Filter */}
         <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by name or email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-500 shadow-sm transition focus:border-[#0050F8] focus:outline-none focus:ring-1 focus:ring-[#0050F8]"
-            />
-          </div>
+          <label className="relative block space-y-1.5">
+            <span className="block text-sm font-semibold text-[#64748b]">Search</span>
+            <span className="relative block">
+              <Search className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by name or email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-500 shadow-sm transition focus:border-[#0050F8] focus:outline-none focus:ring-1 focus:ring-[#0050F8]"
+              />
+            </span>
+          </label>
 
           {/* Role Tabs (pills) */}
           <div className="dn-tab-bar !w-auto">

@@ -283,7 +283,7 @@ function TableForm({ title, subtitle, form, setForm, onSubmit, onClose, loading,
 
       <form className="p-8 space-y-6" onSubmit={onSubmit}>
         <div className="space-y-2">
-          <label className="text-sm font-black text-[#111827] uppercase tracking-tighter">Name</label>
+          <label className="text-sm font-black text-[#111827] uppercase tracking-tighter">Name <span className="text-[#dc2626]">*</span></label>
           <input
             value={form.tableNumber}
             onChange={(e) => setForm((p: any) => ({ ...p, tableNumber: e.target.value }))}
@@ -294,7 +294,7 @@ function TableForm({ title, subtitle, form, setForm, onSubmit, onClose, loading,
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-black text-[#111827] uppercase tracking-tighter">Seating Capacity</label>
+          <label className="text-sm font-black text-[#111827] uppercase tracking-tighter">Seating Capacity <span className="text-[#dc2626]">*</span></label>
           <div className="relative">
             <input
               type="number"

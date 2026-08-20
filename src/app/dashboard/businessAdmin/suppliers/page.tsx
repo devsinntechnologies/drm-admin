@@ -7,7 +7,7 @@ import Loading from "@/components/common/Loading";
 import { PharmacyPage } from "@/components/pharmacy/PharmacyPage";
 import { DataTable } from "@/components/workspace/DataTable";
 import { Button } from "@/components/ui/button";
-import { portalInputClass, PortalEmptyState } from "@/components/admin/PortalPage";
+import { FormField, portalInputClass, PortalEmptyState } from "@/components/admin/PortalPage";
 import { apiClient } from "@/lib/api-client";
 import { asList } from "@/lib/api";
 import { usePharmacyAction, usePharmacyQuery } from "@/hooks/usePharmacyQuery";
@@ -37,11 +37,21 @@ function SuppliersContent() {
           reload();
         });
       }}>
-        <input className={portalInputClass} placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-        <input className={portalInputClass} placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-        <input className={portalInputClass} placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        <input className={portalInputClass} placeholder={market.taxIdLabel} value={form.gstin} onChange={(e) => setForm({ ...form, gstin: e.target.value })} />
-        <Button type="submit">Add supplier</Button>
+        <FormField label="Name" required>
+          <input className={portalInputClass} placeholder="Supplier name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+        </FormField>
+        <FormField label="Phone">
+          <input className={portalInputClass} placeholder="Phone number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        </FormField>
+        <FormField label="Email">
+          <input className={portalInputClass} type="email" placeholder="email@vendor.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        </FormField>
+        <FormField label={market.taxIdLabel}>
+          <input className={portalInputClass} placeholder={market.taxIdLabel} value={form.gstin} onChange={(e) => setForm({ ...form, gstin: e.target.value })} />
+        </FormField>
+        <div className="flex items-end">
+          <Button type="submit" className="w-full">Add supplier</Button>
+        </div>
       </form>
       <DataTable columns={[{ key: "name", label: "Supplier" }, { key: "phone", label: "Phone" }, { key: "email", label: "Email" }, { key: "gstin", label: market.taxIdLabel }, { key: "terms", label: "Terms" }]} rows={rows} empty={<PortalEmptyState icon={Truck} title="No suppliers" />} />
       <h2 className="mt-6 text-sm font-semibold text-[#64748b]">Vendor aging</h2>

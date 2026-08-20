@@ -119,13 +119,16 @@ export default function WebsiteDomainPage() {
             ) : null}
           </div>
         ) : (
-          <form onSubmit={onAttach} className="mt-4 flex flex-col gap-3 sm:flex-row">
-            <input
-              value={domain}
-              onChange={(event) => setDomain(event.target.value)}
-              placeholder="www.yourbusiness.com"
-              className="h-11 flex-1 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 text-sm outline-none focus:border-[#0050F8]"
-            />
+          <form onSubmit={onAttach} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="block flex-1 space-y-1.5">
+              <span className="block text-sm font-semibold text-[#64748b]">Domain</span>
+              <input
+                value={domain}
+                onChange={(event) => setDomain(event.target.value)}
+                placeholder="www.yourbusiness.com"
+                className="h-11 w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 text-sm outline-none focus:border-[#0050F8]"
+              />
+            </label>
             <button
               type="submit"
               disabled={actionLoading || !domain.trim()}

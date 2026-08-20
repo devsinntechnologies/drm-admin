@@ -7,7 +7,7 @@ import Loading from "@/components/common/Loading";
 import { PharmacyPage } from "@/components/pharmacy/PharmacyPage";
 import { DataTable, StatusBadge } from "@/components/workspace/DataTable";
 import { Button } from "@/components/ui/button";
-import { portalInputClass } from "@/components/admin/PortalPage";
+import { FormField, portalInputClass } from "@/components/admin/PortalPage";
 import { apiClient } from "@/lib/api-client";
 import { asList } from "@/lib/api";
 import { usePharmacyAction, usePharmacyQuery } from "@/hooks/usePharmacyQuery";
@@ -27,14 +27,24 @@ function CdssContent() {
           reload();
         });
       }}>
-        <input className={portalInputClass} placeholder="Salt A" value={form.saltA} onChange={(e) => setForm({ ...form, saltA: e.target.value })} required />
-        <input className={portalInputClass} placeholder="Salt B" value={form.saltB} onChange={(e) => setForm({ ...form, saltB: e.target.value })} required />
-        <select className={portalInputClass} value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })}>
-          <option value="warning">Warning</option>
-          <option value="high">High / block</option>
-        </select>
-        <input className={portalInputClass} placeholder="Message" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
-        <Button type="submit">Add rule</Button>
+        <FormField label="Salt A" required>
+          <input className={portalInputClass} placeholder="First salt" value={form.saltA} onChange={(e) => setForm({ ...form, saltA: e.target.value })} required />
+        </FormField>
+        <FormField label="Salt B" required>
+          <input className={portalInputClass} placeholder="Second salt" value={form.saltB} onChange={(e) => setForm({ ...form, saltB: e.target.value })} required />
+        </FormField>
+        <FormField label="Severity">
+          <select className={portalInputClass} value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })}>
+            <option value="warning">Warning</option>
+            <option value="high">High / block</option>
+          </select>
+        </FormField>
+        <FormField label="Message">
+          <input className={portalInputClass} placeholder="Alert message" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
+        </FormField>
+        <div className="flex items-end">
+          <Button type="submit" className="w-full">Add rule</Button>
+        </div>
       </form>
       <DataTable
         columns={[{ key: "a", label: "Salt A" }, { key: "b", label: "Salt B" }, { key: "severity", label: "Severity" }, { key: "message", label: "Message" }]}

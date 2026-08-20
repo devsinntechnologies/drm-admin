@@ -8,25 +8,31 @@ export function FilterBar({
   search,
   onSearch,
   placeholder = "Search…",
+  label = "Search",
   children,
 }: {
   search?: string;
   onSearch?: (value: string) => void;
   placeholder?: string;
+  label?: string;
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
       {onSearch ? (
-        <div className="relative w-full md:max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
-          <input
-            value={search}
-            onChange={(event) => onSearch(event.target.value)}
-            placeholder={placeholder}
-            className={portalSearchClass}
-          />
-        </div>
+        <label className="relative block w-full space-y-1.5 md:max-w-sm">
+          <span className="block text-sm font-semibold text-[var(--text-muted,#64748b)]">{label}</span>
+          <span className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
+            <input
+              value={search}
+              onChange={(event) => onSearch(event.target.value)}
+              placeholder={placeholder}
+              className={portalSearchClass}
+              aria-label={label}
+            />
+          </span>
+        </label>
       ) : <div />}
       {children ? <div className="flex flex-wrap items-center gap-2">{children}</div> : null}
     </div>

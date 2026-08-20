@@ -7,7 +7,7 @@ import Loading from "@/components/common/Loading";
 import { PharmacyPage } from "@/components/pharmacy/PharmacyPage";
 import { DataTable, StatusBadge } from "@/components/workspace/DataTable";
 import { Button } from "@/components/ui/button";
-import { portalInputClass } from "@/components/admin/PortalPage";
+import { FormField, portalInputClass } from "@/components/admin/PortalPage";
 import { apiClient } from "@/lib/api-client";
 import { asList } from "@/lib/api";
 import { usePharmacyAction, usePharmacyQuery } from "@/hooks/usePharmacyQuery";
@@ -36,16 +36,24 @@ function PurchasesContent() {
           });
         }}>
           <h3 className="font-semibold">New purchase order</h3>
-          <select className={portalInputClass} value={po.supplierId} onChange={(e) => setPo({ ...po, supplierId: e.target.value })} required>
-            <option value="">Supplier</option>
-            {asList<any>(suppliers).map((row: any) => <option key={row.id} value={row.id}>{row.name}</option>)}
-          </select>
-          <select className={portalInputClass} value={po.productId} onChange={(e) => setPo({ ...po, productId: e.target.value })} required>
-            <option value="">Medicine</option>
-            {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          <input className={portalInputClass} type="number" placeholder="Qty" value={po.qty} onChange={(e) => setPo({ ...po, qty: Number(e.target.value) })} />
-          <input className={portalInputClass} type="number" placeholder="Rate" value={po.rate} onChange={(e) => setPo({ ...po, rate: Number(e.target.value) })} />
+          <FormField label="Supplier" required>
+            <select className={portalInputClass} value={po.supplierId} onChange={(e) => setPo({ ...po, supplierId: e.target.value })} required>
+              <option value="">Select supplier</option>
+              {asList<any>(suppliers).map((row: any) => <option key={row.id} value={row.id}>{row.name}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Medicine" required>
+            <select className={portalInputClass} value={po.productId} onChange={(e) => setPo({ ...po, productId: e.target.value })} required>
+              <option value="">Select medicine</option>
+              {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Quantity">
+            <input className={portalInputClass} type="number" placeholder="0" value={po.qty} onChange={(e) => setPo({ ...po, qty: Number(e.target.value) })} />
+          </FormField>
+          <FormField label="Rate">
+            <input className={portalInputClass} type="number" placeholder="0" value={po.rate} onChange={(e) => setPo({ ...po, rate: Number(e.target.value) })} />
+          </FormField>
           <Button type="submit">Create PO</Button>
         </form>
 
@@ -61,18 +69,30 @@ function PurchasesContent() {
           });
         }}>
           <h3 className="font-semibold">Goods received note</h3>
-          <select className={portalInputClass} value={grn.purchaseOrderId} onChange={(e) => setGrn({ ...grn, purchaseOrderId: e.target.value })} required>
-            <option value="">PO</option>
-            {asList<any>(pos).map((row: any) => <option key={row.id} value={row.id}>{row.poNumber}</option>)}
-          </select>
-          <select className={portalInputClass} value={grn.productId} onChange={(e) => setGrn({ ...grn, productId: e.target.value })} required>
-            <option value="">Medicine</option>
-            {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          <input className={portalInputClass} placeholder="Batch no" value={grn.batchNo} onChange={(e) => setGrn({ ...grn, batchNo: e.target.value })} required />
-          <input className={portalInputClass} type="date" value={grn.expiryDate} onChange={(e) => setGrn({ ...grn, expiryDate: e.target.value })} required />
-          <input className={portalInputClass} type="number" placeholder="Qty" value={grn.qty} onChange={(e) => setGrn({ ...grn, qty: Number(e.target.value) })} />
-          <input className={portalInputClass} type="number" placeholder="Rate" value={grn.rate} onChange={(e) => setGrn({ ...grn, rate: Number(e.target.value) })} />
+          <FormField label="Purchase order" required>
+            <select className={portalInputClass} value={grn.purchaseOrderId} onChange={(e) => setGrn({ ...grn, purchaseOrderId: e.target.value })} required>
+              <option value="">Select PO</option>
+              {asList<any>(pos).map((row: any) => <option key={row.id} value={row.id}>{row.poNumber}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Medicine" required>
+            <select className={portalInputClass} value={grn.productId} onChange={(e) => setGrn({ ...grn, productId: e.target.value })} required>
+              <option value="">Select medicine</option>
+              {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Batch no" required>
+            <input className={portalInputClass} placeholder="Batch number" value={grn.batchNo} onChange={(e) => setGrn({ ...grn, batchNo: e.target.value })} required />
+          </FormField>
+          <FormField label="Expiry date" required>
+            <input className={portalInputClass} type="date" value={grn.expiryDate} onChange={(e) => setGrn({ ...grn, expiryDate: e.target.value })} required />
+          </FormField>
+          <FormField label="Quantity">
+            <input className={portalInputClass} type="number" placeholder="0" value={grn.qty} onChange={(e) => setGrn({ ...grn, qty: Number(e.target.value) })} />
+          </FormField>
+          <FormField label="Rate">
+            <input className={portalInputClass} type="number" placeholder="0" value={grn.rate} onChange={(e) => setGrn({ ...grn, rate: Number(e.target.value) })} />
+          </FormField>
           <Button type="submit">Receive GRN</Button>
         </form>
       </div>

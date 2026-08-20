@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Briefcase, Clock, Loader2, Package, Plus, Search, ShoppingCart, Stethoscope, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { portalInputClass, PortalStatCard } from "@/components/admin/PortalPage";
+import { FormField, portalInputClass, PortalStatCard } from "@/components/admin/PortalPage";
 import { DataTable, StatusBadge } from "@/components/workspace/DataTable";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/api-client";
@@ -109,32 +109,46 @@ export function PharmacyStaffPanel() {
             });
           }}
         >
-          <input className={portalInputClass} placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <input className={portalInputClass} type="email" placeholder="Login email (optional)" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <input className={portalInputClass} type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={6} />
-          <select className={portalInputClass} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as PharmacyStaffRole })}>
-            {PHARMACY_STAFF_ROLES.map((role) => (
-              <option key={role} value={role}>{ROLE_LABEL[role]}</option>
-            ))}
-          </select>
-          <input className={portalInputClass} placeholder={market.staffLicenseLabel} value={form.licenseNumber} onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })} />
-          <Button type="submit" disabled={pending} className="sm:col-span-2 lg:col-span-1">
-            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
-          </Button>
+          <FormField label="Name" required>
+            <input className={portalInputClass} placeholder="Full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+          </FormField>
+          <FormField label="Login email">
+            <input className={portalInputClass} type="email" placeholder="optional@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          </FormField>
+          <FormField label="Password" required>
+            <input className={portalInputClass} type="password" placeholder="Min. 6 characters" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={6} />
+          </FormField>
+          <FormField label="Role" required>
+            <select className={portalInputClass} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as PharmacyStaffRole })}>
+              {PHARMACY_STAFF_ROLES.map((role) => (
+                <option key={role} value={role}>{ROLE_LABEL[role]}</option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label={market.staffLicenseLabel}>
+            <input className={portalInputClass} placeholder={market.staffLicenseLabel} value={form.licenseNumber} onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })} />
+          </FormField>
+          <div className="flex items-end">
+            <Button type="submit" disabled={pending} className="w-full sm:col-span-2 lg:col-span-1">
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
+            </Button>
+          </div>
         </form>
       ) : null}
 
       <div className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-5 w-5 text-[var(--text-muted)]" />
-          <input
-            type="text"
-            placeholder="Search by name or email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={`${portalInputClass} pl-10`}
-          />
-        </div>
+        <FormField label="Search staff">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-5 w-5 text-[var(--text-muted)]" />
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`${portalInputClass} pl-10`}
+            />
+          </div>
+        </FormField>
         <div className="dn-tab-bar !w-auto overflow-x-auto">
           {([
             ["all", "All"],

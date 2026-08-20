@@ -191,3 +191,26 @@ export const portalInputClass =
 
 export const portalSearchClass =
   "h-11 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] pl-10 pr-4 text-sm font-medium text-[var(--text-primary)] outline-none focus:border-[var(--brand-secondary)] focus:ring-2 focus:ring-[var(--brand-secondary)]/20";
+
+/** Visible label wrapper for portal inputs, selects, and textareas. */
+export function FormField({
+  label,
+  children,
+  className,
+  required,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className={cn("block space-y-1.5", className)}>
+      <span className="block text-sm font-semibold text-[var(--text-muted,#64748b)]">
+        {label}
+        {required ? <span className="ml-0.5 text-[#dc2626]">*</span> : null}
+      </span>
+      {children}
+    </label>
+  );
+}

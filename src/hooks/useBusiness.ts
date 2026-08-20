@@ -190,6 +190,21 @@ export const businessApi = createApi({
         normalizeBusinessRecord(response) as CreateBusinessResponse,
       invalidatesTags: [{ type: "Business", id: "LIST" }],
     }),
+    checkBusinessEmail: builder.query<
+      { email: string; available: boolean },
+      string
+    >({
+      query: (email) => ({
+        url: "/business/check-email",
+        params: { email },
+      }),
+      transformResponse: (response: unknown) => {
+        if (response && typeof response === "object" && "data" in response) {
+          return (response as { data: { email: string; available: boolean } }).data;
+        }
+        return response as { email: string; available: boolean };
+      },
+    }),
     getBusinessById: builder.query<BusinessRecord, string>({
       query: (id) => `/business/${id}`,
       transformResponse: (response: unknown) => normalizeBusinessRecord(response),
@@ -220,6 +235,7 @@ export const businessApi = createApi({
 export const {
   useGetBusinessesQuery,
   useCreateBusinessMutation,
+  useLazyCheckBusinessEmailQuery,
   useGetBusinessByIdQuery,
   useLazyGetBusinessByIdQuery,
   usePatchBusinessByIdMutation,

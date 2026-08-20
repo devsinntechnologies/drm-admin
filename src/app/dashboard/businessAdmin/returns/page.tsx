@@ -7,7 +7,7 @@ import Loading from "@/components/common/Loading";
 import { PharmacyPage } from "@/components/pharmacy/PharmacyPage";
 import { DataTable } from "@/components/workspace/DataTable";
 import { Button } from "@/components/ui/button";
-import { portalInputClass } from "@/components/admin/PortalPage";
+import { FormField, portalInputClass } from "@/components/admin/PortalPage";
 import { apiClient } from "@/lib/api-client";
 import { asList } from "@/lib/api";
 import { usePharmacyAction, usePharmacyQuery } from "@/hooks/usePharmacyQuery";
@@ -29,20 +29,30 @@ function ReturnsContent() {
           reload();
         });
       }}>
-        <select className={portalInputClass} value={form.saleId} onChange={(e) => setForm({ ...form, saleId: e.target.value })} required>
-          <option value="">Sale</option>
-          {asList<any>(sales).map((row: any) => <option key={row.id} value={row.id}>{row.id.slice(0, 8)} · {Number(row.total).toFixed(2)}</option>)}
-        </select>
-        <select className={portalInputClass} value={form.batchId} onChange={(e) => setForm({ ...form, batchId: e.target.value })} required>
-          <option value="">Batch</option>
-          {(selected?.items || []).map((item: any) => <option key={item.batchId} value={item.batchId}>{item.product?.name} / {item.batchId.slice(0, 6)}</option>)}
-        </select>
-        <input className={portalInputClass} type="number" value={form.qtyBase} onChange={(e) => setForm({ ...form, qtyBase: Number(e.target.value) })} />
-        <select className={portalInputClass} value={form.disposition} onChange={(e) => setForm({ ...form, disposition: e.target.value })}>
-          <option value="restock">Restock</option>
-          <option value="quarantine">Quarantine</option>
-        </select>
-        <Button type="submit">Refund</Button>
+        <FormField label="Sale" required>
+          <select className={portalInputClass} value={form.saleId} onChange={(e) => setForm({ ...form, saleId: e.target.value })} required>
+            <option value="">Select sale</option>
+            {asList<any>(sales).map((row: any) => <option key={row.id} value={row.id}>{row.id.slice(0, 8)} · {Number(row.total).toFixed(2)}</option>)}
+          </select>
+        </FormField>
+        <FormField label="Batch" required>
+          <select className={portalInputClass} value={form.batchId} onChange={(e) => setForm({ ...form, batchId: e.target.value })} required>
+            <option value="">Select batch</option>
+            {(selected?.items || []).map((item: any) => <option key={item.batchId} value={item.batchId}>{item.product?.name} / {item.batchId.slice(0, 6)}</option>)}
+          </select>
+        </FormField>
+        <FormField label="Quantity">
+          <input className={portalInputClass} type="number" value={form.qtyBase} onChange={(e) => setForm({ ...form, qtyBase: Number(e.target.value) })} />
+        </FormField>
+        <FormField label="Disposition">
+          <select className={portalInputClass} value={form.disposition} onChange={(e) => setForm({ ...form, disposition: e.target.value })}>
+            <option value="restock">Restock</option>
+            <option value="quarantine">Quarantine</option>
+          </select>
+        </FormField>
+        <div className="flex items-end">
+          <Button type="submit" className="w-full">Refund</Button>
+        </div>
       </form>
       <DataTable columns={[{ key: "sale", label: "Sale" }, { key: "qty", label: "Qty" }, { key: "amount", label: "Amount" }, { key: "disposition", label: "Disposition" }]} rows={asList<any>(data).map((row: any) => ({ sale: row.saleId?.slice(0, 8), qty: row.qtyBase, amount: Number(row.amount).toFixed(2), disposition: row.disposition }))} empty={<p className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-muted)] py-10 text-center text-sm text-[var(--text-muted)]">No returns yet</p>} />
     </PharmacyPage>

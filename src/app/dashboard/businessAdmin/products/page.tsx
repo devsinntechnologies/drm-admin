@@ -35,6 +35,7 @@ import {
   PortalEmptyState,
   PortalRefreshFab,
   portalInputClass,
+  FormField,
 } from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
@@ -102,27 +103,36 @@ function VariantsEditor({
       )}
 
       <div className="rounded-2xl border border-[#f1f5f9] bg-white p-4 space-y-3">
-        <input
-          value={vForm.name}
-          onChange={(e) => setVForm(p => ({ ...p, name: e.target.value }))}
-          placeholder="Variant name"
-          className="w-full rounded-xl bg-[#f3f4f6] px-4 py-2.5 text-xs font-medium outline-none"
-        />
+        <label className="block space-y-1.5">
+          <span className="block text-xs font-semibold text-[#64748b]">Variant name</span>
+          <input
+            value={vForm.name}
+            onChange={(e) => setVForm(p => ({ ...p, name: e.target.value }))}
+            placeholder="e.g. Large"
+            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-2.5 text-xs font-medium outline-none"
+          />
+        </label>
         <div className="grid grid-cols-2 gap-3">
-          <input
-            type="number"
-            value={vForm.price}
-            onChange={(e) => setVForm(p => ({ ...p, price: Number(e.target.value) }))}
-            placeholder="Price"
-            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-2.5 text-xs font-medium outline-none"
-          />
-          <input
-            type="number"
-            value={vForm.inStock}
-            onChange={(e) => setVForm(p => ({ ...p, inStock: Number(e.target.value) }))}
-            placeholder="Stock"
-            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-2.5 text-xs font-medium outline-none"
-          />
+          <label className="block space-y-1.5">
+            <span className="block text-xs font-semibold text-[#64748b]">Price</span>
+            <input
+              type="number"
+              value={vForm.price}
+              onChange={(e) => setVForm(p => ({ ...p, price: Number(e.target.value) }))}
+              placeholder="0"
+              className="w-full rounded-xl bg-[#f3f4f6] px-4 py-2.5 text-xs font-medium outline-none"
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="block text-xs font-semibold text-[#64748b]">Stock</span>
+            <input
+              type="number"
+              value={vForm.inStock}
+              onChange={(e) => setVForm(p => ({ ...p, inStock: Number(e.target.value) }))}
+              placeholder="0"
+              className="w-full rounded-xl bg-[#f3f4f6] px-4 py-2.5 text-xs font-medium outline-none"
+            />
+          </label>
         </div>
         <button
           type="button"
@@ -248,6 +258,9 @@ function MenuItemsContent() {
 
   const [createVariants, setCreateVariants] = useState<CreateProductVariantPayload[]>([]);
   const [editVariants, setEditVariants] = useState<CreateProductVariantPayload[]>([]);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [quickCategoryName, setQuickCategoryName] = useState("");
+  const [quickCategorySort, setQuickCategorySort] = useState(0);
 
   const {
     products,
@@ -262,7 +275,37 @@ function MenuItemsContent() {
     refetch,
   } = useProducts({ page: currentPage });
 
-  const { categories } = useCategories({ page: 1, limit: 100 });
+  const { categories, createCategory, actionLoading: categorySaving, fetchCategories } = useCategories({
+    page: 1,
+    limit: 100,
+  });
+
+  const openQuickCategory = () => {
+    setQuickCategoryName("");
+    setQuickCategorySort(0);
+    setCategoryDialogOpen(true);
+  };
+
+  const onQuickCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickCategoryName.trim()) return toast.error("Category name is required");
+    const toastId = toast.loading("Creating category...");
+    try {
+      const created = await createCategory({
+        categoryName: quickCategoryName.trim(),
+        sortOrder: quickCategorySort,
+      });
+      await fetchCategories(1);
+      if (created && typeof created === "object" && "id" in created) {
+        setCreateForm((p) => ({ ...p, categoryId: created.id }));
+        setEditForm((p) => (editOpen ? { ...p, categoryId: created.id } : p));
+      }
+      setCategoryDialogOpen(false);
+      toast.success("Category created", { id: toastId });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create category", { id: toastId });
+    }
+  };
 
   useEffect(() => {
     const storedRole = typeof window !== "undefined" ? localStorage.getItem("roleName") : null;
@@ -329,6 +372,10 @@ function MenuItemsContent() {
     e.preventDefault();
     if (!createForm.categoryId) return toast.error("Category is required");
     if (!createForm.name) return toast.error("Name is required");
+    if (isPharmacy) {
+      if (!createMedicine.genericName.trim()) return toast.error("Generic name is required");
+      if (!createMedicine.saltName.trim()) return toast.error("Salt / composition is required");
+    }
 
     const toastId = toast.loading("Adding product...");
     try {
@@ -410,6 +457,12 @@ function MenuItemsContent() {
   const onEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editId) return;
+    if (!editForm.categoryId) return toast.error("Category is required");
+    if (!editForm.name) return toast.error("Name is required");
+    if (isPharmacy) {
+      if (!editMedicine.genericName.trim()) return toast.error("Generic name is required");
+      if (!editMedicine.saltName.trim()) return toast.error("Salt / composition is required");
+    }
 
     const toastId = toast.loading("Updating product...");
     try {
@@ -513,33 +566,52 @@ function MenuItemsContent() {
               <form className="flex flex-col max-h-[80vh]" onSubmit={onCreateSubmit}>
                 <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold">Category</label>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-sm font-bold">
+                        Category <span className="text-[#dc2626]">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={openQuickCategory}
+                        className="inline-flex items-center gap-1 rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add category
+                      </button>
+                    </div>
                     <select
                       value={createForm.categoryId}
                       onChange={(e) => setCreateForm(p => ({ ...p, categoryId: e.target.value }))}
                       className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                      required
                     >
                       <option value="">Select Category</option>
                       {categories.map(c => <option key={c.id} value={c.id}>{c.CategoryName}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold">Name</label>
+                    <label className="text-sm font-bold">
+                      Name <span className="text-[#dc2626]">*</span>
+                    </label>
                     <input
                       value={createForm.name}
                       onChange={(e) => setCreateForm(p => ({ ...p, name: e.target.value }))}
-                      placeholder="Product Name"
+                      placeholder={isPharmacy ? "Medicine name" : "Product Name"}
                       className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                      required
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-sm font-bold">Price ({currency})</label>
+                      <label className="text-sm font-bold">
+                        Price ({currency}) <span className="text-[#dc2626]">*</span>
+                      </label>
                       <input
                         type="number"
                         value={createForm.price}
                         onChange={(e) => setCreateForm(p => ({ ...p, price: Number(e.target.value) }))}
                         className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                        required
+                        min={0}
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -549,6 +621,7 @@ function MenuItemsContent() {
                         value={createForm.inStock}
                         onChange={(e) => setCreateForm(p => ({ ...p, inStock: Number(e.target.value) }))}
                         className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                        min={0}
                       />
                     </div>
                   </div>
@@ -567,7 +640,7 @@ function MenuItemsContent() {
                 </div>
                 <div className="p-6 pt-4 border-t bg-gray-50 flex flex-col gap-2">
                   <button type="submit" disabled={actionLoading} className="w-full bg-[#001840] text-[#ffffff] py-3.5 rounded-xl font-bold shadow-lg transition hover:bg-[#00122E] flex items-center justify-center gap-2">
-                    <Plus className="h-5 w-5" /> Save Product
+                    <Plus className="h-5 w-5" /> {isPharmacy ? "Save medicine" : "Save Product"}
                   </button>
                   <button type="button" onClick={() => setCreateOpen(false)} className="w-full bg-white border border-gray-200 py-3 rounded-xl font-bold text-[#111827] transition hover:bg-gray-50">
                     Cancel
@@ -578,44 +651,111 @@ function MenuItemsContent() {
           </DialogContent>
         </Dialog>
 
+        <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
+          <DialogContent className="max-w-md rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>Add category</DialogTitle>
+              <DialogDescription>
+                Create a category without leaving this form. It will be selected automatically.
+              </DialogDescription>
+            </DialogHeader>
+            <form className="space-y-4" onSubmit={onQuickCreateCategory}>
+              <FormField label="Category name" required>
+                <input
+                  value={quickCategoryName}
+                  onChange={(e) => setQuickCategoryName(e.target.value)}
+                  placeholder={isPharmacy ? "e.g. Tablets" : "e.g. Starters"}
+                  className={portalInputClass}
+                  required
+                />
+              </FormField>
+              <FormField label="Sort order">
+                <input
+                  type="number"
+                  value={quickCategorySort}
+                  onChange={(e) => setQuickCategorySort(Number(e.target.value))}
+                  className={portalInputClass}
+                />
+              </FormField>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCategoryDialogOpen(false)}
+                  className="flex-1 rounded-xl border border-[#e2e8f0] py-2.5 text-sm font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={categorySaving}
+                  className="flex-1 rounded-xl bg-[#001840] py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  {categorySaving ? "Saving…" : "Save category"}
+                </button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
           <DialogContent className="max-w-xl p-0 overflow-hidden rounded-3xl border-none shadow-2xl">
             <div className="bg-white">
               <div className="p-6 pb-4 border-b">
                 <DialogHeader>
-                  <DialogTitle className="text-2xl font-bold">Update Product</DialogTitle>
+                  <DialogTitle className="text-2xl font-bold">
+                    {isPharmacy ? "Update medicine" : "Update Product"}
+                  </DialogTitle>
                 </DialogHeader>
               </div>
 
               <form className="flex flex-col max-h-[80vh]" onSubmit={onEditSubmit}>
                 <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold">Category</label>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-sm font-bold">
+                        Category <span className="text-[#dc2626]">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={openQuickCategory}
+                        className="inline-flex items-center gap-1 rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add category
+                      </button>
+                    </div>
                     <select
                       value={editForm.categoryId}
                       onChange={(e) => setEditForm(p => ({ ...p, categoryId: e.target.value }))}
                       className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                      required
                     >
                       <option value="">Select Category</option>
                       {categories.map(c => <option key={c.id} value={c.id}>{c.CategoryName}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold">Name</label>
+                    <label className="text-sm font-bold">
+                      Name <span className="text-[#dc2626]">*</span>
+                    </label>
                     <input
                       value={editForm.name}
                       onChange={(e) => setEditForm(p => ({ ...p, name: e.target.value }))}
                       className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                      required
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-sm font-bold">Price ({currency})</label>
+                      <label className="text-sm font-bold">
+                        Price ({currency}) <span className="text-[#dc2626]">*</span>
+                      </label>
                       <input
                         type="number"
                         value={editForm.price}
                         onChange={(e) => setEditForm(p => ({ ...p, price: Number(e.target.value) }))}
                         className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                        required
+                        min={0}
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -625,6 +765,7 @@ function MenuItemsContent() {
                         value={editForm.inStock}
                         onChange={(e) => setEditForm(p => ({ ...p, inStock: Number(e.target.value) }))}
                         className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                        min={0}
                       />
                     </div>
                   </div>

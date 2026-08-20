@@ -817,15 +817,18 @@ function OrdersContent() {
             {/* Left: Products (scrollable) */}
             <div className="flex min-h-[420px] flex-1 flex-col overflow-hidden rounded-[24px] border border-[#e2e8f0] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.06)] xl:min-h-0 xl:w-[58%] xl:flex-none">
               <div className="shrink-0 space-y-3 border-b border-[#edf2f7] px-4 py-3 sm:px-5">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
-                  <input
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search products..."
-                    className="h-11 w-full rounded-full border border-[#e2e8f0] bg-[#f8fafc] pl-10 pr-4 text-sm font-medium outline-none focus:border-[#0050F8] focus:ring-2 focus:ring-[#0050F8]/20"
-                  />
-                </div>
+                <label className="relative block space-y-1.5">
+                  <span className="block text-sm font-semibold text-[#64748b]">Search</span>
+                  <span className="relative block">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
+                    <input
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Search products..."
+                      className="h-11 w-full rounded-full border border-[#e2e8f0] bg-[#f8fafc] pl-10 pr-4 text-sm font-medium outline-none focus:border-[#0050F8] focus:ring-2 focus:ring-[#0050F8]/20"
+                    />
+                  </span>
+                </label>
 
                 <div className="dn-tab-bar !rounded-2xl !gap-2 !py-2 overflow-x-auto no-scrollbar">
                   <button

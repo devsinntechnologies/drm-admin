@@ -7,7 +7,7 @@ import Loading from "@/components/common/Loading";
 import { PharmacyPage } from "@/components/pharmacy/PharmacyPage";
 import { ControlledSaleGate, GstBreakdown, InteractionAlertList } from "@/components/pharmacy/ClinicalAlerts";
 import { Button } from "@/components/ui/button";
-import { portalInputClass } from "@/components/admin/PortalPage";
+import { FormField, portalInputClass } from "@/components/admin/PortalPage";
 import { apiClient } from "@/lib/api-client";
 import { asList } from "@/lib/api";
 import { usePharmacyAction, usePharmacyQuery } from "@/hooks/usePharmacyQuery";
@@ -400,7 +400,8 @@ function PosContent() {
     >
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)]">
         <section className="space-y-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 sm:p-5">
-          <div ref={searchBoxRef} className="relative">
+          <FormField label="Search medicine">
+            <div ref={searchBoxRef} className="relative">
             <input
               autoFocus
               value={query}
@@ -487,7 +488,8 @@ function PosContent() {
                 )}
               </div>
             ) : null}
-          </div>
+            </div>
+          </FormField>
           <div className="overflow-x-auto rounded-xl border border-[var(--border-subtle)]">
             <table className="w-full min-w-[28rem] text-sm">
               <thead className="bg-[#f8fafc] text-left text-[#64748b]">
@@ -578,35 +580,43 @@ function PosContent() {
               Open a shift before charging customers.
             </p>
           )}
-          <select className={portalInputClass} value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
-            <option value="">Walk-in customer</option>
-            {asList<any>(customers).map((customer: any) => (
-              <option key={customer.id} value={customer.id}>
-                {customer.name} {customer.phone ? `(${customer.phone})` : ""}
-              </option>
-            ))}
-          </select>
-          <select className={portalInputClass} value={prescriptionId} onChange={(event) => setPrescriptionId(event.target.value)}>
-            <option value="">No linked prescription</option>
-            {asList<any>(prescriptions).map((rx: any) => (
-              <option key={rx.id} value={rx.id}>
-                {(rx.customer?.name || "Patient")} · {rx.doctorName || "Rx"} · {rx.channel || rx.status}
-              </option>
-            ))}
-          </select>
-          {needsRx ? (
-            <select className={portalInputClass} value={prescriptionChannel} onChange={(event) => setPrescriptionChannel(event.target.value)}>
-              {market.prescriptionChannels.map((channel) => (
-                <option key={channel.id} value={channel.id}>{channel.label}</option>
+          <FormField label="Customer">
+            <select className={portalInputClass} value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
+              <option value="">Walk-in customer</option>
+              {asList<any>(customers).map((customer: any) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.name} {customer.phone ? `(${customer.phone})` : ""}
+                </option>
               ))}
             </select>
+          </FormField>
+          <FormField label="Prescription">
+            <select className={portalInputClass} value={prescriptionId} onChange={(event) => setPrescriptionId(event.target.value)}>
+              <option value="">No linked prescription</option>
+              {asList<any>(prescriptions).map((rx: any) => (
+                <option key={rx.id} value={rx.id}>
+                  {(rx.customer?.name || "Patient")} · {rx.doctorName || "Rx"} · {rx.channel || rx.status}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          {needsRx ? (
+            <FormField label="Rx channel">
+              <select className={portalInputClass} value={prescriptionChannel} onChange={(event) => setPrescriptionChannel(event.target.value)}>
+                {market.prescriptionChannels.map((channel) => (
+                  <option key={channel.id} value={channel.id}>{channel.label}</option>
+                ))}
+              </select>
+            </FormField>
           ) : null}
           {market.code === "UK" && needsRx ? (
-            <select className={portalInputClass} value={nhsExemptionCode} onChange={(event) => setNhsExemptionCode(event.target.value)}>
-              {market.exemptionOptions.map((option) => (
-                <option key={option.code} value={option.code}>{option.label}</option>
-              ))}
-            </select>
+            <FormField label="NHS exemption">
+              <select className={portalInputClass} value={nhsExemptionCode} onChange={(event) => setNhsExemptionCode(event.target.value)}>
+                {market.exemptionOptions.map((option) => (
+                  <option key={option.code} value={option.code}>{option.label}</option>
+                ))}
+              </select>
+            </FormField>
           ) : null}
           {needsControlled || needsRx ? (
             <ControlledSaleGate
@@ -618,13 +628,15 @@ function PosContent() {
               patientLabel={market.patientIdLabel}
             />
           ) : null}
-          <input
-            className={portalInputClass}
-            type="number"
-            placeholder="Discount"
-            value={discount || ""}
-            onChange={(e) => setDiscount(Number(e.target.value))}
-          />
+          <FormField label="Discount">
+            <input
+              className={portalInputClass}
+              type="number"
+              placeholder="0"
+              value={discount || ""}
+              onChange={(e) => setDiscount(Number(e.target.value))}
+            />
+          </FormField>
           <div className={`grid gap-2 ${walletMethod ? "grid-cols-3" : "grid-cols-2"}`}>
             <label className="text-xs font-semibold text-[#64748b]">
               Cash

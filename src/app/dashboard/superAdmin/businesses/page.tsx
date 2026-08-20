@@ -35,6 +35,7 @@ import {
   useCreateBusinessMutation,
   useDeleteBusinessByIdMutation,
   useGetBusinessesQuery,
+  useLazyCheckBusinessEmailQuery,
   useLazyGetBusinessByIdQuery,
   usePatchBusinessByIdMutation,
 } from "@/hooks/useBusiness";
@@ -45,6 +46,11 @@ import { INDUSTRY_TEMPLATES } from "@/templates/industries";
 import { colorsFromAccent } from "@/templates/modules";
 import { PharmacyCountryPicker } from "@/components/pharmacy/PharmacyCountryPicker";
 import { pharmacyCountryDefaults, type PharmacyMarketCode } from "@/lib/pharmacy-market";
+import {
+  formatE164,
+  validateEmail,
+  validatePhoneNumber,
+} from "@/lib/form-validation";
 
 type BusinessItem = {
   id: string;
@@ -114,6 +120,9 @@ function BusinessesContent() {
   });
   const [countryCode, setCountryCode] = useState("+92");
   const [pharmacyCountry, setPharmacyCountry] = useState<PharmacyMarketCode>("PK");
+  const [emailStatus, setEmailStatus] = useState<"idle" | "checking" | "ok" | "taken" | "invalid">("idle");
+  const [emailHint, setEmailHint] = useState<string | null>(null);
+  const [phoneHint, setPhoneHint] = useState<string | null>(null);
 
 
   const { data: planData, isLoading: isLoadingPlans } = useGetPlansQuery();
@@ -127,6 +136,7 @@ function BusinessesContent() {
   const [loadBusinessById, { isFetching: isLoadingBusinessById }] =
     useLazyGetBusinessByIdQuery();
   const [createBusiness, { isLoading: isCreatingBusiness }] = useCreateBusinessMutation();
+  const [checkBusinessEmail] = useLazyCheckBusinessEmailQuery();
   const [patchBusinessById, { isLoading: isPatchingBusiness }] = usePatchBusinessByIdMutation();
   const [deleteBusinessById, { isLoading: isDeletingBusiness }] = useDeleteBusinessByIdMutation();
 
@@ -197,7 +207,41 @@ function BusinessesContent() {
     });
     setCountryCode("+92");
     setPharmacyCountry("PK");
+    setEmailStatus("idle");
+    setEmailHint(null);
+    setPhoneHint(null);
     setFormError(null);
+  };
+
+  const verifyBusinessEmail = async (rawEmail: string) => {
+    const formatError = validateEmail(rawEmail);
+    if (formatError) {
+      setEmailStatus("invalid");
+      setEmailHint(formatError);
+      return false;
+    }
+    if (editingBusinessId) {
+      setEmailStatus("ok");
+      setEmailHint(null);
+      return true;
+    }
+    setEmailStatus("checking");
+    setEmailHint("Checking email…");
+    try {
+      const result = await checkBusinessEmail(rawEmail.trim().toLowerCase()).unwrap();
+      if (!result.available) {
+        setEmailStatus("taken");
+        setEmailHint("This email is already registered. Use a different owner email.");
+        return false;
+      }
+      setEmailStatus("ok");
+      setEmailHint("Email is available");
+      return true;
+    } catch {
+      setEmailStatus("idle");
+      setEmailHint("Could not verify email right now. You can still try to save.");
+      return true;
+    }
   };
 
   const handleCreateBusiness = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -207,10 +251,18 @@ function BusinessesContent() {
     const toastId = toast.loading(editingBusinessId ? "Updating business..." : "Creating business...");
 
     try {
-      const phoneDigits = form.phoneNumber.replace(/\D/g, "");
-      if (!phoneDigits) {
-        throw new Error("Enter a valid phone number.");
+      const phoneError = validatePhoneNumber(countryCode, form.phoneNumber);
+      if (phoneError) {
+        setPhoneHint(phoneError);
+        throw new Error(phoneError);
       }
+      setPhoneHint(null);
+
+      const emailOk = await verifyBusinessEmail(form.email);
+      if (!emailOk) {
+        throw new Error("Email is already registered or invalid.");
+      }
+
       if (!form.planId) {
         throw new Error("Select a plan.");
       }
@@ -218,8 +270,8 @@ function BusinessesContent() {
       const payload = {
         businessName: form.businessName.trim(),
         address: form.address.trim(),
-        phone: `${countryCode}${phoneDigits}`,
-        email: form.email.trim(),
+        phone: formatE164(countryCode, form.phoneNumber),
+        email: form.email.trim().toLowerCase(),
         manager: form.manager.trim(),
         planId: form.planId,
       };
@@ -407,7 +459,7 @@ function BusinessesContent() {
                 </div>
               ) : null}
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Business Name
+                Business Name <span className="text-[#dc2626]">*</span>
                 <input
                   type="text"
                   required
@@ -418,7 +470,7 @@ function BusinessesContent() {
               </label>
 
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Address
+                Address <span className="text-[#dc2626]">*</span>
                 <input
                   type="text"
                   required
@@ -429,11 +481,14 @@ function BusinessesContent() {
               </label>
 
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Phone
+                Phone <span className="text-[#dc2626]">*</span>
                 <div className="grid grid-cols-[180px_1fr] gap-2">
                   <select
                     value={countryCode}
-                    onChange={(event) => setCountryCode(event.target.value)}
+                    onChange={(event) => {
+                      setCountryCode(event.target.value);
+                      setPhoneHint(validatePhoneNumber(event.target.value, form.phoneNumber));
+                    }}
                     className="h-11 rounded-xl border border-[#d7dbe4] px-2 outline-none focus:border-[#5e5df2]"
                   >
                     {countryOptions.map((country) => (
@@ -446,26 +501,50 @@ function BusinessesContent() {
                     type="tel"
                     required
                     value={form.phoneNumber}
-                    onChange={(event) => handleFormChange("phoneNumber", event.target.value)}
+                    onChange={(event) => {
+                      handleFormChange("phoneNumber", event.target.value);
+                      setPhoneHint(validatePhoneNumber(countryCode, event.target.value));
+                    }}
                     className="h-11 rounded-xl border border-[#d7dbe4] px-3 outline-none focus:border-[#5e5df2]"
                     placeholder="3001234567"
                   />
                 </div>
+                {phoneHint ? <span className="text-xs text-[#b91c1c]">{phoneHint}</span> : null}
               </label>
 
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Email
+                Email <span className="text-[#dc2626]">*</span>
                 <input
                   type="email"
                   required
                   value={form.email}
-                  onChange={(event) => handleFormChange("email", event.target.value)}
+                  onChange={(event) => {
+                    handleFormChange("email", event.target.value);
+                    setEmailStatus("idle");
+                    setEmailHint(null);
+                  }}
+                  onBlur={() => {
+                    void verifyBusinessEmail(form.email);
+                  }}
                   className="h-11 rounded-xl border border-[#d7dbe4] px-3 outline-none focus:border-[#5e5df2]"
                 />
+                {emailHint ? (
+                  <span
+                    className={
+                      emailStatus === "ok"
+                        ? "text-xs text-[#15803d]"
+                        : emailStatus === "checking"
+                          ? "text-xs text-[#64748b]"
+                          : "text-xs text-[#b91c1c]"
+                    }
+                  >
+                    {emailHint}
+                  </span>
+                ) : null}
               </label>
 
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Industry Template
+                Industry Template <span className="text-[#dc2626]">*</span>
                 <select
                   value={form.industryId}
                   onChange={(event) => {
@@ -509,7 +588,7 @@ function BusinessesContent() {
               ) : null}
 
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Manager
+                Manager <span className="text-[#dc2626]">*</span>
                 <input
                   type="text"
                   required
@@ -520,8 +599,7 @@ function BusinessesContent() {
               </label>
 
               <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Plan
-                <select
+                Plan <span className="text-[#dc2626]">*</span>                <select
                   required
                   value={form.planId}
                   onChange={(event) => handleFormChange("planId", event.target.value)}
@@ -594,7 +672,7 @@ function BusinessesContent() {
         </section>
       ) : null}
 
-      <section className="mb-5 grid w-full grid-cols-1 gap-3 rounded-3xl border border-[#e5edf5] bg-white/85 p-4 shadow-[0_10px_26px_rgba(7,16,34,0.08)] lg:grid-cols-3">
+      <section className="mb-5 grid w-full grid-cols-1 gap-3 rounded-3xl border border-[#e5edf5] bg-white/85 p-4 shadow-[0_10px_26px_rgba(7,16,34,0.08)] lg:grid-cols-3 lg:items-end">
         {showSkeleton ? (
           <>
             <div className="h-11 animate-pulse rounded-xl bg-[#edf2f7]" />
@@ -603,13 +681,16 @@ function BusinessesContent() {
           </>
         ) : (
           <>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search businesses..."
-              className="h-11 rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-4 text-sm text-[#677084] outline-none focus:ring-2 focus:ring-[#001840]/25"
-            />
+            <label className="block space-y-1.5">
+              <span className="block text-sm font-semibold text-[#64748b]">Search</span>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search businesses..."
+                className="h-11 rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-4 text-sm text-[#677084] outline-none focus:ring-2 focus:ring-[#001840]/25"
+              />
+            </label>
             <div className="relative">
               <button
                 type="button"

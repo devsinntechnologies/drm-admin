@@ -172,17 +172,20 @@ function IngredientsContent() {
             </DialogHeader>
 
             <form onSubmit={handleSave} className="space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1">
-                  <Box className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-[#ef4444]" />
-                  <input
-                    value={form.name}
-                    onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
-                    placeholder="Ingredient Name (English or ..."
-                    className="w-full rounded-[24px] bg-[#f8fafc] py-4 pl-14 pr-4 font-medium outline-none transition focus:ring-2 focus:ring-[#ef4444]/20"
-                  />
-                </div>
-                <div className="flex flex-col items-center gap-1">
+              <div className="flex items-end gap-4">
+                <label className="relative block flex-1 space-y-1.5">
+                  <span className="block text-sm font-semibold text-[#64748b]">Ingredient name <span className="text-[#dc2626]">*</span></span>
+                  <span className="relative block">
+                    <Box className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-[#ef4444]" />
+                    <input
+                      value={form.name}
+                      onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
+                      placeholder="English or local name"
+                      className="w-full rounded-[24px] bg-[#f8fafc] py-4 pl-14 pr-4 font-medium outline-none transition focus:ring-2 focus:ring-[#ef4444]/20"
+                    />
+                  </span>
+                </label>
+                <div className="flex flex-col items-center gap-1 pb-1">
                   <button type="button" className="rounded-full border-2 border-[#001840] p-3 text-[#ef4444] transition hover:bg-[#fff5f5]">
                     <Mic className="h-6 w-6" />
                   </button>
@@ -191,36 +194,41 @@ function IngredientsContent() {
               </div>
 
                 <div className="grid grid-cols-[1fr_1.4fr] gap-4">
-                  <div className="relative">
-                    <Scale className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-[#ef4444]" />
-                    <input
-                      type="number"
-                      value={form.quantity}
-                      onChange={(e) => setForm(p => ({ ...p, quantity: Number(e.target.value) }))}
-                      placeholder="Quantity"
-                      className="w-full rounded-[24px] bg-[#f8fafc] py-4 pl-14 pr-4 font-medium outline-none"
-                    />
-                  </div>
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                      <Package className="h-5 w-5 text-[#ef4444]" />
-                    </div>
-                    <select
-                      value={form.unit}
-                      onChange={(e) => setForm(p => ({ ...p, unit: e.target.value }))}
-                      className="w-full appearance-none rounded-[24px] bg-[#f8fafc] py-4 pl-12 pr-10 text-sm font-bold outline-none cursor-pointer"
-                    >
-                      {units.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.en} — {u.ur}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
-                      <ChevronDown className="h-4 w-4 text-gray-400" />
-                    </div>
-                    <label className="absolute -top-2 left-4 bg-white px-1 text-[10px] font-bold text-gray-400">Unit</label>
-                  </div>
+                  <label className="relative block space-y-1.5">
+                    <span className="block text-sm font-semibold text-[#64748b]">Quantity</span>
+                    <span className="relative block">
+                      <Scale className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-[#ef4444]" />
+                      <input
+                        type="number"
+                        value={form.quantity}
+                        onChange={(e) => setForm(p => ({ ...p, quantity: Number(e.target.value) }))}
+                        placeholder="0"
+                        className="w-full rounded-[24px] bg-[#f8fafc] py-4 pl-14 pr-4 font-medium outline-none"
+                      />
+                    </span>
+                  </label>
+                  <label className="relative block space-y-1.5">
+                    <span className="block text-sm font-semibold text-[#64748b]">Unit</span>
+                    <span className="relative block">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        <Package className="h-5 w-5 text-[#ef4444]" />
+                      </div>
+                      <select
+                        value={form.unit}
+                        onChange={(e) => setForm(p => ({ ...p, unit: e.target.value }))}
+                        className="w-full appearance-none rounded-[24px] bg-[#f8fafc] py-4 pl-12 pr-10 text-sm font-bold outline-none cursor-pointer"
+                      >
+                        {units.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.en} — {u.ur}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
+                        <ChevronDown className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </span>
+                  </label>
                 </div>
 
               <div className="grid grid-cols-2 gap-4 pt-4">

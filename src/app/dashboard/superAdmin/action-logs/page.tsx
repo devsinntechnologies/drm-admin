@@ -343,74 +343,98 @@ export default function ActionLogsPage() {
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-          <input
-            value={filters.userId}
-            onChange={(event) => updateFilter("userId", event.target.value)}
-            placeholder="User ID"
-            className="rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm outline-none focus:border-[#7dd3fc]"
-          />
-          <input
-            value={filters.username}
-            onChange={(event) => updateFilter("username", event.target.value)}
-            placeholder="Username"
-            className="rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm outline-none focus:border-[#7dd3fc]"
-          />
-          <input
-            value={filters.actionType}
-            onChange={(event) => updateFilter("actionType", event.target.value)}
-            placeholder="Action type (AUTH, READ...)"
-            className="rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm outline-none focus:border-[#7dd3fc]"
-          />
-          <input
-            value={filters.module}
-            onChange={(event) => updateFilter("module", event.target.value)}
-            placeholder="Module"
-            className="rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm outline-none focus:border-[#7dd3fc]"
-          />
-
-          <select
-            value={filters.status}
-            onChange={(event) => updateFilter("status", event.target.value as "" | LogStatus)}
-            className="rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm outline-none focus:border-[#7dd3fc]"
-          >
-            <option value="">Status: all</option>
-            <option value="success">Success</option>
-            <option value="failure">Failure</option>
-          </select>
-
-          <label className="flex items-center gap-2 rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm text-[#64748b]">
-            <CalendarDays className="h-4 w-4" />
+          <label className="block space-y-1.5">
+            <span className="block text-sm font-semibold text-[#64748b]">User ID</span>
             <input
-              type="datetime-local"
-              value={filters.startDate}
-              onChange={(event) => updateFilter("startDate", event.target.value)}
-              className="w-full bg-transparent outline-none"
+              value={filters.userId}
+              onChange={(event) => updateFilter("userId", event.target.value)}
+              placeholder="User ID"
+              className="rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm outline-none focus:border-[#7dd3fc]"
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="block text-sm font-semibold text-[#64748b]">Username</span>
+            <input
+              value={filters.username}
+              onChange={(event) => updateFilter("username", event.target.value)}
+              placeholder="Username"
+              className="rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm outline-none focus:border-[#7dd3fc]"
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="block text-sm font-semibold text-[#64748b]">Action type</span>
+            <input
+              value={filters.actionType}
+              onChange={(event) => updateFilter("actionType", event.target.value)}
+              placeholder="Action type (AUTH, READ...)"
+              className="rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm outline-none focus:border-[#7dd3fc]"
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="block text-sm font-semibold text-[#64748b]">Module</span>
+            <input
+              value={filters.module}
+              onChange={(event) => updateFilter("module", event.target.value)}
+              placeholder="Module"
+              className="rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm outline-none focus:border-[#7dd3fc]"
             />
           </label>
 
-          <label className="flex items-center gap-2 rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm text-[#64748b]">
-            <CalendarDays className="h-4 w-4" />
-            <input
-              type="datetime-local"
-              value={filters.endDate}
-              onChange={(event) => updateFilter("endDate", event.target.value)}
-              className="w-full bg-transparent outline-none"
-            />
-          </label>
-
-          <div className="flex items-center gap-2">
+          <label className="block space-y-1.5">
+            <span className="block text-sm font-semibold text-[#64748b]">Status</span>
             <select
-              value={filters.limit}
-              onChange={(event) => updateFilter("limit", Number(event.target.value))}
-              className="h-full w-full rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm outline-none focus:border-[#7dd3fc]"
+              value={filters.status}
+              onChange={(event) => updateFilter("status", event.target.value as "" | LogStatus)}
+              className="rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm outline-none focus:border-[#7dd3fc]"
             >
-              {[25, 50, 100].map((n) => (
-                <option key={n} value={n}>
-                  Limit {n}
-                </option>
-              ))}
+              <option value="">Status: all</option>
+              <option value="success">Success</option>
+              <option value="failure">Failure</option>
             </select>
-            <label className="inline-flex h-full min-w-44 items-center justify-center gap-2 rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm font-medium text-[#334155]">
+          </label>
+
+          <label className="block space-y-1.5">
+            <span className="block text-sm font-semibold text-[#64748b]">From</span>
+            <span className="flex items-center gap-2 rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm text-[#64748b]">
+              <CalendarDays className="h-4 w-4" />
+              <input
+                type="datetime-local"
+                value={filters.startDate}
+                onChange={(event) => updateFilter("startDate", event.target.value)}
+                className="w-full bg-transparent outline-none"
+              />
+            </span>
+          </label>
+
+          <label className="block space-y-1.5">
+            <span className="block text-sm font-semibold text-[#64748b]">To</span>
+            <span className="flex items-center gap-2 rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm text-[#64748b]">
+              <CalendarDays className="h-4 w-4" />
+              <input
+                type="datetime-local"
+                value={filters.endDate}
+                onChange={(event) => updateFilter("endDate", event.target.value)}
+                className="w-full bg-transparent outline-none"
+              />
+            </span>
+          </label>
+
+          <div className="flex items-end gap-2">
+            <label className="block h-full min-w-0 flex-1 space-y-1.5">
+              <span className="block text-sm font-semibold text-[#64748b]">Limit</span>
+              <select
+                value={filters.limit}
+                onChange={(event) => updateFilter("limit", Number(event.target.value))}
+                className="h-[42px] w-full rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm outline-none focus:border-[#7dd3fc]"
+              >
+                {[25, 50, 100].map((n) => (
+                  <option key={n} value={n}>
+                    Limit {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="inline-flex h-[42px] min-w-44 items-center justify-center gap-2 rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm font-medium text-[#334155]">
               <input
                 type="checkbox"
                 checked={filters.includeNormalized}
@@ -421,16 +445,19 @@ export default function ActionLogsPage() {
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex w-full items-center gap-3 rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-3 py-2 text-sm text-[#6b7280] lg:max-w-xl">
-            <Search className="h-4 w-4" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search loaded rows..."
-              className="w-full bg-transparent outline-none"
-            />
-          </div>
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
+          <label className="block w-full space-y-1.5 lg:max-w-xl">
+            <span className="block text-sm font-semibold text-[#64748b]">Search</span>
+            <span className="flex w-full items-center gap-3 rounded-xl border border-[#dde5f0] bg-[#f8fbff] px-3 py-2 text-sm text-[#6b7280]">
+              <Search className="h-4 w-4" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search loaded rows..."
+                className="w-full bg-transparent outline-none"
+              />
+            </span>
+          </label>
           <div className="flex items-center gap-2">
             <button
               onClick={resetFilters}

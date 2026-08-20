@@ -301,34 +301,40 @@ export default function PublicCatalogPreviewPage() {
               ) : null}
             </div>
 
-            <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
-              <div className="relative min-w-0 flex-1 lg:min-w-[220px]">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
-                <input
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") applySearch();
+            <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+              <label className="block min-w-0 flex-1 space-y-1.5 lg:min-w-[220px]">
+                <span className="block text-sm font-semibold text-[#64748b]">Search</span>
+                <span className="relative block">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
+                  <input
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") applySearch();
+                    }}
+                    placeholder="Search published products..."
+                    className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] py-2.5 pl-10 pr-3 text-sm outline-none"
+                  />
+                </span>
+              </label>
+              <label className="block space-y-1.5">
+                <span className="block text-sm font-semibold text-[#64748b]">Category</span>
+                <select
+                  value={categoryId}
+                  onChange={(e) => {
+                    setCurrentPage(1);
+                    setCategoryId(e.target.value);
                   }}
-                  placeholder="Search published products..."
-                  className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] py-2.5 pl-10 pr-3 text-sm outline-none"
-                />
-              </div>
-              <select
-                value={categoryId}
-                onChange={(e) => {
-                  setCurrentPage(1);
-                  setCategoryId(e.target.value);
-                }}
-                className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2.5 text-sm outline-none lg:w-48"
-              >
-                <option value="">All categories</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+                  className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2.5 text-sm outline-none lg:w-48"
+                >
+                  <option value="">All categories</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2.5 text-sm font-medium text-[#334155]">
                 <input
                   type="checkbox"

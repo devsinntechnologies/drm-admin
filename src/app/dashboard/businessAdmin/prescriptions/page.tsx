@@ -7,7 +7,7 @@ import Loading from "@/components/common/Loading";
 import { PharmacyPage } from "@/components/pharmacy/PharmacyPage";
 import { DataTable, StatusBadge } from "@/components/workspace/DataTable";
 import { Button } from "@/components/ui/button";
-import { portalInputClass } from "@/components/admin/PortalPage";
+import { FormField, portalInputClass } from "@/components/admin/PortalPage";
 import { apiClient } from "@/lib/api-client";
 import { asList } from "@/lib/api";
 import { usePharmacyAction, usePharmacyQuery } from "@/hooks/usePharmacyQuery";
@@ -50,35 +50,57 @@ function PrescriptionsContent() {
           reload();
         });
       }}>
-        <select className={portalInputClass} value={form.customerId} onChange={(e) => setForm({ ...form, customerId: e.target.value })}>
-          <option value="">Patient</option>
-          {asList(customers).map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <input className={portalInputClass} placeholder="Doctor" value={form.doctorName} onChange={(e) => setForm({ ...form, doctorName: e.target.value })} />
-        <input className={portalInputClass} placeholder={market.doctorLicenseLabel} value={form.doctorLicense} onChange={(e) => setForm({ ...form, doctorLicense: e.target.value })} />
-        <select className={portalInputClass} value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}>
-          <option value="">Channel</option>
-          {market.prescriptionChannels.map((channel) => (
-            <option key={channel.id} value={channel.id}>{channel.label}</option>
-          ))}
-        </select>
-        {market.exemptionOptions.length ? (
-          <select className={portalInputClass} value={form.exemptionCode} onChange={(e) => setForm({ ...form, exemptionCode: e.target.value })}>
-            <option value="">Exemption</option>
-            {market.exemptionOptions.map((option) => (
-              <option key={option.code} value={option.code}>{option.label}</option>
+        <FormField label="Patient" required>
+          <select className={portalInputClass} value={form.customerId} onChange={(e) => setForm({ ...form, customerId: e.target.value })}>
+            <option value="">Select patient</option>
+            {asList(customers).map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </FormField>
+        <FormField label="Doctor">
+          <input className={portalInputClass} placeholder="Doctor name" value={form.doctorName} onChange={(e) => setForm({ ...form, doctorName: e.target.value })} />
+        </FormField>
+        <FormField label={market.doctorLicenseLabel}>
+          <input className={portalInputClass} placeholder={market.doctorLicenseLabel} value={form.doctorLicense} onChange={(e) => setForm({ ...form, doctorLicense: e.target.value })} />
+        </FormField>
+        <FormField label="Channel">
+          <select className={portalInputClass} value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}>
+            <option value="">Select channel</option>
+            {market.prescriptionChannels.map((channel) => (
+              <option key={channel.id} value={channel.id}>{channel.label}</option>
             ))}
           </select>
+        </FormField>
+        {market.exemptionOptions.length ? (
+          <FormField label="Exemption">
+            <select className={portalInputClass} value={form.exemptionCode} onChange={(e) => setForm({ ...form, exemptionCode: e.target.value })}>
+              <option value="">Select exemption</option>
+              {market.exemptionOptions.map((option) => (
+                <option key={option.code} value={option.code}>{option.label}</option>
+              ))}
+            </select>
+          </FormField>
         ) : null}
-        <select className={portalInputClass} value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })} required>
-          <option value="">Medicine</option>
-          {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-        <input className={portalInputClass} type="number" placeholder="Qty" value={form.qtyPrescribed} onChange={(e) => setForm({ ...form, qtyPrescribed: Number(e.target.value) })} />
-        <input className={portalInputClass} placeholder="Dosage" value={form.dosage} onChange={(e) => setForm({ ...form, dosage: e.target.value })} />
-        <input className={portalInputClass} type="date" value={form.refillDate} onChange={(e) => setForm({ ...form, refillDate: e.target.value })} />
-        <input type="file" accept="image/*" onChange={(e) => setImage(e.target.files?.[0] || null)} />
-        <Button type="submit">Save Rx</Button>
+        <FormField label="Medicine" required>
+          <select className={portalInputClass} value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })} required>
+            <option value="">Select medicine</option>
+            {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </FormField>
+        <FormField label="Quantity">
+          <input className={portalInputClass} type="number" placeholder="0" value={form.qtyPrescribed} onChange={(e) => setForm({ ...form, qtyPrescribed: Number(e.target.value) })} />
+        </FormField>
+        <FormField label="Dosage">
+          <input className={portalInputClass} placeholder="e.g. 1 tab BD" value={form.dosage} onChange={(e) => setForm({ ...form, dosage: e.target.value })} />
+        </FormField>
+        <FormField label="Refill date">
+          <input className={portalInputClass} type="date" value={form.refillDate} onChange={(e) => setForm({ ...form, refillDate: e.target.value })} />
+        </FormField>
+        <FormField label="Rx image">
+          <input className={portalInputClass} type="file" accept="image/*" onChange={(e) => setImage(e.target.files?.[0] || null)} />
+        </FormField>
+        <div className="flex items-end">
+          <Button type="submit" className="w-full">Save Rx</Button>
+        </div>
       </form>
       <DataTable
         columns={[{ key: "patient", label: "Patient" }, { key: "doctor", label: "Doctor" }, { key: "status", label: "Status" }, { key: "items", label: "Lines" }, { key: "actions", label: "" }]}

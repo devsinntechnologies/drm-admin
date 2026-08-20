@@ -7,7 +7,7 @@ import Loading from "@/components/common/Loading";
 import { PharmacyPage } from "@/components/pharmacy/PharmacyPage";
 import { DataTable, FilterBar } from "@/components/workspace/DataTable";
 import { Button } from "@/components/ui/button";
-import { portalInputClass, PortalEmptyState } from "@/components/admin/PortalPage";
+import { FormField, portalInputClass, PortalEmptyState } from "@/components/admin/PortalPage";
 import { apiClient } from "@/lib/api-client";
 import { asList } from "@/lib/api";
 import { usePharmacyAction, usePharmacyQuery } from "@/hooks/usePharmacyQuery";
@@ -29,7 +29,7 @@ function CustomersContent() {
 
   return (
     <PharmacyPage moduleId="customers" icon={Users} title="Patients & loyalty" subtitle={`${market.patientIdLabel}, allergies, and loyalty points`} loading={loading} error={error}>
-      <FilterBar search={search} onSearch={setSearch} placeholder="Search patients" />
+      <FilterBar search={search} onSearch={setSearch} placeholder="Search patients" label="Search patients" />
       <form className="mt-4 grid gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-4 md:grid-cols-5" onSubmit={(e) => {
         e.preventDefault();
         run(async () => {
@@ -43,11 +43,21 @@ function CustomersContent() {
           reload();
         });
       }}>
-        <input className={portalInputClass} placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-        <input className={portalInputClass} placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-        <input className={portalInputClass} placeholder={market.patientIdHint} value={form.patientIdNumber} onChange={(e) => setForm({ ...form, patientIdNumber: e.target.value })} />
-        <input className={portalInputClass} placeholder="Allergy (salt)" value={form.allergen} onChange={(e) => setForm({ ...form, allergen: e.target.value })} />
-        <Button type="submit">Add patient</Button>
+        <FormField label="Name" required>
+          <input className={portalInputClass} placeholder="Patient name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+        </FormField>
+        <FormField label="Phone">
+          <input className={portalInputClass} placeholder="Phone number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        </FormField>
+        <FormField label={market.patientIdLabel}>
+          <input className={portalInputClass} placeholder={market.patientIdHint} value={form.patientIdNumber} onChange={(e) => setForm({ ...form, patientIdNumber: e.target.value })} />
+        </FormField>
+        <FormField label="Allergy (salt)">
+          <input className={portalInputClass} placeholder="e.g. Penicillin" value={form.allergen} onChange={(e) => setForm({ ...form, allergen: e.target.value })} />
+        </FormField>
+        <div className="flex items-end">
+          <Button type="submit" className="w-full">Add patient</Button>
+        </div>
       </form>
       <DataTable columns={[{ key: "name", label: "Name" }, { key: "phone", label: "Phone" }, { key: "id", label: market.patientIdLabel }, { key: "allergies", label: "Allergies" }, { key: "points", label: "Points" }]} rows={rows} empty={<PortalEmptyState icon={Users} title="No patients yet" />} />
     </PharmacyPage>

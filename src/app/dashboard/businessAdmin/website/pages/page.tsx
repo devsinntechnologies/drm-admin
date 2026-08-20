@@ -81,13 +81,16 @@ export default function WebsitePagesPage() {
 
   return (
     <div className="space-y-5">
-      <form onSubmit={onCreate} className="flex flex-col gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-5 sm:flex-row">
-        <input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="New page name, e.g. About Us"
-          className="h-11 flex-1 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 text-sm outline-none focus:border-[#0050F8]"
-        />
+      <form onSubmit={onCreate} className="flex flex-col gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-5 sm:flex-row sm:items-end">
+        <label className="block flex-1 space-y-1.5">
+          <span className="block text-sm font-semibold text-[#64748b]">Page name</span>
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="e.g. About Us"
+            className="h-11 w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 text-sm outline-none focus:border-[#0050F8]"
+          />
+        </label>
         <button
           type="submit"
           disabled={busy || !name.trim()}

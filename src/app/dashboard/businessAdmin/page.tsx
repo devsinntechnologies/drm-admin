@@ -23,6 +23,7 @@ import {
   PortalStatCard,
   PortalCard,
 } from "@/components/admin/PortalPage";
+import { RoleGuideBanner } from "@/components/admin/RoleGuideBanner";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { useOrders } from "@/hooks/useOrders";
 import { useProducts } from "@/hooks/useProducts";
@@ -167,6 +168,7 @@ function DashboardLegacy() {
   return (
     <AdminShell activeTab="dashboard">
       <PortalPage>
+        <RoleGuideBanner />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <article className="portal-accent-card min-h-[200px] flex flex-col justify-between">
             <div className="relative z-10 flex items-start justify-between">

@@ -203,22 +203,25 @@ export default function PublicDataCategoriesPage() {
           <h3 className="text-xl font-bold text-[#0f172a]">Public Categories</h3>
           <p className="text-sm text-[#64748b]">Create manual categories or manage synchronized ones</p>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <div className="relative min-w-[240px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
-            <input
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  setCurrentPage(1);
-                  setSearch(searchInput.trim());
-                }
-              }}
-              placeholder="Search categories..."
-              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] py-2.5 pl-10 pr-3 text-sm outline-none"
-            />
-          </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <label className="block min-w-[240px] space-y-1.5">
+            <span className="block text-sm font-semibold text-[#64748b]">Search</span>
+            <span className="relative block">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
+              <input
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    setCurrentPage(1);
+                    setSearch(searchInput.trim());
+                  }
+                }}
+                placeholder="Search categories..."
+                className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] py-2.5 pl-10 pr-3 text-sm outline-none"
+              />
+            </span>
+          </label>
           <button
             type="button"
             onClick={() => {
@@ -363,27 +366,37 @@ export default function PublicDataCategoriesPage() {
             <DialogDescription>Adds a manual public-only category.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onCreate} className="space-y-4">
-            <input
-              value={createForm.name}
-              onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))}
-              placeholder="Category name"
-              className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-            />
-            <textarea
-              value={createForm.description}
-              onChange={(e) => setCreateForm((p) => ({ ...p, description: e.target.value }))}
-              placeholder="Description"
-              rows={3}
-              className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-            />
-            <input
-              type="number"
-              min={0}
-              value={createForm.sortOrder}
-              onChange={(e) => setCreateForm((p) => ({ ...p, sortOrder: Number(e.target.value) }))}
-              placeholder="Sort order"
-              className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-            />
+            <label className="block space-y-1.5">
+              <span className="block text-sm font-semibold text-[#64748b]">Category name <span className="text-[#dc2626]">*</span></span>
+              <input
+                value={createForm.name}
+                onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder="Category name"
+                required
+                className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+              />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="block text-sm font-semibold text-[#64748b]">Description</span>
+              <textarea
+                value={createForm.description}
+                onChange={(e) => setCreateForm((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Description"
+                rows={3}
+                className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+              />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="block text-sm font-semibold text-[#64748b]">Sort order</span>
+              <input
+                type="number"
+                min={0}
+                value={createForm.sortOrder}
+                onChange={(e) => setCreateForm((p) => ({ ...p, sortOrder: Number(e.target.value) }))}
+                placeholder="Sort order"
+                className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+              />
+            </label>
             <label className="flex items-center gap-2 text-sm font-medium text-[#334155]">
               <input
                 type="checkbox"
@@ -392,12 +405,15 @@ export default function PublicDataCategoriesPage() {
               />
               Published
             </label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => setCreateForm((p) => ({ ...p, image: e.target.files?.[0] ?? null }))}
-              className="w-full text-sm"
-            />
+            <label className="block space-y-1.5">
+              <span className="block text-sm font-semibold text-[#64748b]">Image</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => setCreateForm((p) => ({ ...p, image: e.target.files?.[0] ?? null }))}
+                className="w-full text-sm"
+              />
+            </label>
             <button
               type="submit"
               disabled={actionLoading}
@@ -419,27 +435,37 @@ export default function PublicDataCategoriesPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={onEdit} className="space-y-4">
-            <input
-              value={editForm.name}
-              onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
-              placeholder="Category name"
-              className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-            />
-            <textarea
-              value={editForm.description}
-              onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
-              placeholder="Description"
-              rows={3}
-              className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-            />
-            <input
-              type="number"
-              min={0}
-              value={editForm.sortOrder}
-              onChange={(e) => setEditForm((p) => ({ ...p, sortOrder: Number(e.target.value) }))}
-              placeholder="Sort order"
-              className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-            />
+            <label className="block space-y-1.5">
+              <span className="block text-sm font-semibold text-[#64748b]">Category name <span className="text-[#dc2626]">*</span></span>
+              <input
+                value={editForm.name}
+                onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder="Category name"
+                required
+                className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+              />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="block text-sm font-semibold text-[#64748b]">Description</span>
+              <textarea
+                value={editForm.description}
+                onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Description"
+                rows={3}
+                className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+              />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="block text-sm font-semibold text-[#64748b]">Sort order</span>
+              <input
+                type="number"
+                min={0}
+                value={editForm.sortOrder}
+                onChange={(e) => setEditForm((p) => ({ ...p, sortOrder: Number(e.target.value) }))}
+                placeholder="Sort order"
+                className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+              />
+            </label>
             <label className="flex items-center gap-2 text-sm font-medium text-[#334155]">
               <input
                 type="checkbox"
@@ -448,12 +474,15 @@ export default function PublicDataCategoriesPage() {
               />
               Published
             </label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => setEditForm((p) => ({ ...p, image: e.target.files?.[0] ?? null }))}
-              className="w-full text-sm"
-            />
+            <label className="block space-y-1.5">
+              <span className="block text-sm font-semibold text-[#64748b]">Image</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => setEditForm((p) => ({ ...p, image: e.target.files?.[0] ?? null }))}
+                className="w-full text-sm"
+              />
+            </label>
             <button
               type="submit"
               disabled={actionLoading}

@@ -236,7 +236,7 @@ function CategoriesContent() {
                 
                 <form className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar" onSubmit={editId ? onEditSubmit : onCreateSubmit}>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-[#64748b]">Category Name</label>
+                    <label className="text-sm font-bold text-[#64748b]">Category Name <span className="text-[#dc2626]">*</span></label>
                     <input
                       value={editId ? editForm.categoryName : createForm.categoryName}
                       onChange={(e) => editId ? setEditForm(p => ({ ...p, categoryName: e.target.value })) : setCreateForm(p => ({ ...p, categoryName: e.target.value }))}

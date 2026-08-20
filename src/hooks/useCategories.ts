@@ -204,12 +204,14 @@ export function useCategories(options: UseCategoriesOptions = {}) {
         throw new Error(detail);
       }
 
+      const body = await response.json().catch(() => null);
+      const created = (body?.data ?? body) as CategoryRecord | undefined;
       await fetchCategories(pagination.page);
-      return true;
+      return created?.id ? created : true;
     } finally {
       setActionLoading(false);
     }
-  }, [fetchCategories, pagination.page, activeBusinessId]);
+  }, [fetchCategories, pagination.page, activeBusinessId, reduxToken]);
 
   const updateCategory = useCallback(async (id: string, payload: { categoryName: string; sortOrder: number; image?: File | null }) => {
     const token = getAuthToken(reduxToken);

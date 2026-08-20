@@ -7,7 +7,7 @@ import Loading from "@/components/common/Loading";
 import { PharmacyPage } from "@/components/pharmacy/PharmacyPage";
 import { DataTable, StatusBadge } from "@/components/workspace/DataTable";
 import { Button } from "@/components/ui/button";
-import { portalInputClass, PortalEmptyState } from "@/components/admin/PortalPage";
+import { FormField, portalInputClass, PortalEmptyState } from "@/components/admin/PortalPage";
 import { apiClient } from "@/lib/api-client";
 import { asList } from "@/lib/api";
 import { usePharmacyAction, usePharmacyQuery } from "@/hooks/usePharmacyQuery";
@@ -49,19 +49,35 @@ function BatchesContent() {
           });
         }}
       >
-        <select className={portalInputClass} value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })} required>
-          <option value="">Medicine</option>
-          {products.map((product) => (
-            <option key={product.id} value={product.id}>{product.name}</option>
-          ))}
-        </select>
-        <input className={portalInputClass} placeholder="Batch no" value={form.batchNo} onChange={(e) => setForm({ ...form, batchNo: e.target.value })} required />
-        <input className={portalInputClass} type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} required />
-        <input className={portalInputClass} type="number" placeholder="Qty (base)" value={form.qtyBase} onChange={(e) => setForm({ ...form, qtyBase: Number(e.target.value) })} />
-        <input className={portalInputClass} placeholder="Rack" value={form.rack} onChange={(e) => setForm({ ...form, rack: e.target.value })} />
-        <input className={portalInputClass} placeholder="Shelf" value={form.shelf} onChange={(e) => setForm({ ...form, shelf: e.target.value })} />
-        <input className={portalInputClass} type="number" placeholder="MRP" value={form.mrp} onChange={(e) => setForm({ ...form, mrp: Number(e.target.value) })} />
-        <Button type="submit">Add batch</Button>
+        <FormField label="Medicine" required>
+          <select className={portalInputClass} value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })} required>
+            <option value="">Select medicine</option>
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>{product.name}</option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label="Batch no" required>
+          <input className={portalInputClass} placeholder="Batch number" value={form.batchNo} onChange={(e) => setForm({ ...form, batchNo: e.target.value })} required />
+        </FormField>
+        <FormField label="Expiry date" required>
+          <input className={portalInputClass} type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} required />
+        </FormField>
+        <FormField label="Qty (base)">
+          <input className={portalInputClass} type="number" placeholder="0" value={form.qtyBase} onChange={(e) => setForm({ ...form, qtyBase: Number(e.target.value) })} />
+        </FormField>
+        <FormField label="Rack">
+          <input className={portalInputClass} placeholder="Rack" value={form.rack} onChange={(e) => setForm({ ...form, rack: e.target.value })} />
+        </FormField>
+        <FormField label="Shelf">
+          <input className={portalInputClass} placeholder="Shelf" value={form.shelf} onChange={(e) => setForm({ ...form, shelf: e.target.value })} />
+        </FormField>
+        <FormField label="MRP">
+          <input className={portalInputClass} type="number" placeholder="0" value={form.mrp} onChange={(e) => setForm({ ...form, mrp: Number(e.target.value) })} />
+        </FormField>
+        <div className="flex items-end">
+          <Button type="submit" className="w-full">Add batch</Button>
+        </div>
       </form>
       <DataTable
         columns={[
