@@ -50,7 +50,7 @@ export function IndustryPickerCard({
               : { backgroundColor: `${accentColor}14`, color: accentColor }
           }
         >
-          <IndustryIcon name={icon} className="h-5 w-5" strokeWidth={2} />
+          <IndustryIcon name={icon} className="h-5 w-5" />
         </div>
 
         <div className="min-w-0 pr-4">
