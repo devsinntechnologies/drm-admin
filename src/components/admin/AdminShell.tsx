@@ -10,7 +10,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { buildBusinessWorkspaceNav, type WorkspaceNavTab } from "@/lib/build-business-workspace-nav";
-import { pathnameToModuleId } from "@/lib/module-routes";
+import { appendBusinessId, pathnameToModuleId } from "@/lib/module-routes";
 import {
   canAccessWorkspacePage,
   filterPharmacyNavForRole,
@@ -353,7 +353,13 @@ export default function AdminShell({
     const shouldShowBusinessTabs = isBusinessAdminRoute || isImpersonating || resolvedRole === "business_admin";
 
     if (shouldShowBusinessTabs && templateConfig && businessId) {
-      const workspaceTabs = buildBusinessWorkspaceNav(templateConfig, businessId);
+      const websiteTab: WorkspaceNavTab = {
+        key: "website",
+        label: "Website",
+        href: appendBusinessId("/dashboard/businessAdmin/website", businessId),
+        icon: <AppWindow className="h-5 w-5" />,
+      };
+      const workspaceTabs = [...buildBusinessWorkspaceNav(templateConfig, businessId), websiteTab];
       if (templateConfig.industryId === "pharmacy") {
         return filterPharmacyNavForRole(workspaceTabs, resolvedRole);
       }

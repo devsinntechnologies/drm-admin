@@ -193,12 +193,12 @@ function BusinessProfileContent() {
                 <p className="mt-1 text-sm text-[#64748b]">
                   {website
                     ? `${website.status} · ${website.publicUrl}`
-                    : "No website yet. Open the workspace to create one."}
+                    : "No website yet. Create one to get started."}
                 </p>
               </div>
             </div>
             <Link
-              href={`/dashboard/businessAdmin/website?businessId=${id}`}
+              href={`/dashboard/superAdmin/businesses/${id}/website`}
               className="dn-btn dn-btn-primary inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm"
             >
               Manage website <ExternalLink className="h-4 w-4" />
