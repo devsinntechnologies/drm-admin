@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { ExternalLink, Globe2, Loader2, RefreshCw, X } from "lucide-react";
+import { ExternalLink, Globe2, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import { useWebsite } from "@/hooks/useWebsite";
@@ -35,7 +34,6 @@ export function WebsiteOverviewContent({ businessId }: { businessId?: string } =
     updateWebsite,
     openBuilder,
   } = useWebsite(businessId);
-  const [builderUrl, setBuilderUrl] = useState<string | null>(null);
 
   const onRetry = async () => {
     const toastId = toast.loading("Retrying website setup...");
@@ -58,6 +56,10 @@ export function WebsiteOverviewContent({ businessId }: { businessId?: string } =
   };
 
   const onOpenBuilder = async () => {
+    // Open the tab synchronously, in direct response to the click, so
+    // popup blockers don't treat it as an unsolicited popup once the
+    // async work below finishes.
+    const popup = window.open("about:blank", "diginizam-builder");
     const toastId = toast.loading(website ? "Opening DigiNizam builder..." : "Creating your DigiNizam website...");
     try {
       let current = website;
@@ -79,9 +81,18 @@ export function WebsiteOverviewContent({ businessId }: { businessId?: string } =
       if (!session?.url) {
         throw new Error("Builder URL was not returned");
       }
-      setBuilderUrl(session.url);
-      toast.success("Builder opened", { id: toastId });
+      // The website builder needs to be its own top-level browsing context
+      // (window.top === window.self) — Odoo's editor assumes this and
+      // throws a same-origin-policy error when run inside a cross-origin
+      // iframe like this admin portal, so it can't be embedded inline.
+      if (popup) {
+        popup.location.replace(session.url);
+      } else {
+        window.open(session.url, "diginizam-builder");
+      }
+      toast.success("Builder opened in a new tab", { id: toastId });
     } catch (err) {
+      popup?.close();
       toast.error(normalizeErrorMessage(err, "Failed to open builder"), { id: toastId });
     }
   };
@@ -118,31 +129,6 @@ export function WebsiteOverviewContent({ businessId }: { businessId?: string } =
   }
 
   const canEdit = website.status === "ready" || website.status === "published" || website.status === "unpublished";
-
-  if (builderUrl) {
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-white">
-        <div className="flex items-center justify-between border-b border-[#e2e8f0] px-4 py-2.5">
-          <span className="text-sm font-semibold text-[#0f172a]">
-            DigiNizam Website Builder · {website.name}
-          </span>
-          <button
-            type="button"
-            onClick={() => setBuilderUrl(null)}
-            className="dn-btn dn-btn-outline inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs"
-          >
-            <X className="h-3.5 w-3.5" />
-            Close
-          </button>
-        </div>
-        <iframe
-          src={builderUrl}
-          title="DigiNizam Website Builder"
-          className="h-full w-full flex-1 border-0"
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-5">
