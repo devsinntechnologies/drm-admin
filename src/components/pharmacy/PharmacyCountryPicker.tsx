@@ -12,10 +12,8 @@ export function PharmacyCountryPicker({
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-[#374151]">Pharmacy country *</p>
-      <p className="text-xs text-[#64748b]">
-        POS, tax, patient IDs, prescriptions, and controlled-drug rules follow this market.
-      </p>
+      <p className="wizard-label">Country</p>
+      <p className="wizard-help">Tax and prescription rules follow this market.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         {PHARMACY_COUNTRY_OPTIONS.map((option) => {
           const selected = value === option.code;
@@ -25,14 +23,16 @@ export function PharmacyCountryPicker({
               type="button"
               onClick={() => onChange(option.code)}
               className={cn(
-                "rounded-2xl border px-4 py-4 text-left transition",
+                "wizard-card wizard-card-surface px-4 py-4 text-left",
                 selected
-                  ? "border-[#16a34a] bg-[#f0fdf4] ring-2 ring-[#16a34a]/30"
-                  : "border-[#e2e8f0] bg-white hover:border-[#86efac]",
+                  ? "border-[var(--brand-secondary)] bg-white ring-2 ring-[var(--brand-secondary)]/20"
+                  : "hover:border-[#cbd5e1]",
               )}
             >
-              <span className="block text-sm font-semibold text-[#0f172a]">{option.label}</span>
-              <span className="mt-1 block text-xs text-[#64748b]">{option.hint}</span>
+              <span className={cn("block text-sm font-semibold", selected ? "text-[#475569]" : "text-[#64748b]")}>
+                {option.label}
+              </span>
+              <span className="mt-1 block text-xs text-[#94a3b8]">{option.hint}</span>
             </button>
           );
         })}

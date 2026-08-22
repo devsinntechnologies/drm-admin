@@ -96,7 +96,7 @@ export function ConfigChip({
             >
               {selected ? "✓" : ""}
             </span>
-            <p className="truncate text-sm font-semibold text-[#0f172a]">{title}</p>
+            <p className={cn("truncate text-sm font-semibold", selected ? "text-[#475569]" : "text-[#64748b]")}>{title}</p>
             {trailing}
           </div>
           {description ? (
@@ -141,8 +141,7 @@ export function DashboardCardChip({
       dragLabel={`Reorder ${meta?.label ?? id}`}
       toggleTitle={checked ? "Hide card" : "Show card"}
       title={meta?.label ?? id}
-      description={meta?.description}
-      footer={checked ? "Enabled · shown on dashboard" : "Off · hidden from dashboard"}
+      footer={checked ? "On" : "Off"}
       onToggle={onToggle}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
@@ -187,15 +186,14 @@ export function ModuleChip({
       dragLabel={`Reorder ${displayLabel}`}
       toggleTitle={locked ? lockReason ?? "Locked" : checked ? "Disable module" : "Enable module"}
       title={displayLabel}
-      description={meta?.description}
       footer={
         locked
           ? lockReason ?? "Always on"
           : inProgress
-            ? "In Progress · workspace screen not built yet"
+            ? "Coming soon"
           : checked
-            ? "Enabled · unselect clears linked modules"
-            : "Off · enable pulls required linked modules"
+            ? "On"
+            : "Off"
       }
       trailing={
         locked ? (

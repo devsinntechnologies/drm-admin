@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { readLogoAsDataUrl, validateLogoFile } from "@/lib/logo-upload";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { PortalPage } from "@/components/admin/PortalPage";
@@ -313,22 +314,15 @@ function IndustryTemplatesContent() {
   function handleLogoUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file (PNG, JPG, or SVG).");
+    const error = validateLogoFile(file);
+    if (error) {
+      toast.error(error);
       return;
     }
-    if (file.size > 512 * 1024) {
-      toast.error("Logo must be smaller than 512 KB.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setLogoDataUrl(reader.result);
-        toast.success("Logo added to template preview");
-      }
-    };
-    reader.readAsDataURL(file);
+    void readLogoAsDataUrl(file).then((dataUrl) => {
+      setLogoDataUrl(dataUrl);
+      toast.success("Logo added to template preview");
+    });
     event.target.value = "";
   }
 
@@ -393,7 +387,7 @@ function IndustryTemplatesContent() {
   return (
     <AdminShell activeTab="industry-templates">
       <PortalPage>
-      <div className="mb-5 rounded-xl border border-[#e2e8f0] bg-[#fafbfc] px-4 py-4 sm:px-5">
+      <div className="mb-5 rounded-xl border border-[#e2e8f0] bg-white px-4 py-4 sm:px-5">
         <WizardStepper
           steps={STEPS}
           currentStepId={step}

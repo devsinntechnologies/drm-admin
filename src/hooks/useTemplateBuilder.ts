@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { readLogoAsDataUrl, validateLogoFile } from "@/lib/logo-upload";
 import { createCustomizedConfig, buildDefaultNavigation } from "@/template-engine/builder";
 import { persistTemplateConfig } from "@/template-engine/persist-template-config";
 import { createDefaultExtensions } from "@/template-engine/template-extensions-storage";
@@ -340,19 +341,12 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
   const handleLogoUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file (PNG, JPG, or SVG).");
+    const error = validateLogoFile(file);
+    if (error) {
+      toast.error(error);
       return;
     }
-    if (file.size > 512 * 1024) {
-      toast.error("Logo must be smaller than 512 KB.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") setLogoDataUrl(reader.result);
-    };
-    reader.readAsDataURL(file);
+    void readLogoAsDataUrl(file).then(setLogoDataUrl);
   }, []);
 
   const gptPreviewConfig = useMemo(

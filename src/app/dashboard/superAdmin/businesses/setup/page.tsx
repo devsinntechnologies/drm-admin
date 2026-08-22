@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, ImagePlus, X, CheckCircle2 } from "lucide-react";
+import { Globe2, ImagePlus, LayoutDashboard, Settings2, X, CheckCircle2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
@@ -12,6 +12,9 @@ import { IndustryIcon } from "@/components/templates/IndustryIcon";
 import { GptPreviewDrawer } from "@/components/wizard/GptPreviewDrawer";
 import { WizardLayout } from "@/components/wizard/WizardLayout";
 import { WizardStepper } from "@/components/wizard/WizardStepper";
+import { IndustryPickerCard } from "@/components/wizard/IndustryPickerCard";
+import { BusinessMarketPicker, marketFromPhonePrefix, type BusinessMarketCode } from "@/components/wizard/BusinessMarketPicker";
+import { WizardFormField, WizardFormSection } from "@/components/wizard/WizardFormField";
 import { DashboardCardChip, ModuleChip } from "@/components/wizard/TemplateConfigChips";
 import { TemplateThemeFields } from "@/components/wizard/TemplateThemeFields";
 import { useTemplateBuilder } from "@/hooks/useTemplateBuilder";
@@ -24,38 +27,31 @@ import { INDUSTRY_TEMPLATES } from "@/templates/industries";
 import { colorsFromAccent } from "@/templates/modules";
 import type { DashboardCardId, ModuleId } from "@/templates/types";
 import type { BusinessSetupStepId } from "@/templates/types";
-import { PharmacyCountryPicker } from "@/components/pharmacy/PharmacyCountryPicker";
 import { pharmacyCountryDefaults } from "@/lib/pharmacy-market";
 import {
   formatE164,
+  resolveBusinessApiError,
+  validateBusinessProfileFields,
   validateEmail,
   validatePhoneNumber,
 } from "@/lib/form-validation";
 import { cn } from "@/lib/utils";
 
 const STEPS = [
-  { id: "select-template", label: "Template", description: "Pick your industry" },
-  { id: "business-profile", label: "Profile", description: "Business details" },
-  { id: "theme", label: "Theme", description: "Colors & branding" },
-  { id: "modules", label: "Modules", description: "Enable features" },
-  { id: "dashboard", label: "Dashboard", description: "KPI cards" },
-  { id: "review", label: "Review", description: "Confirm setup" },
-  { id: "generate", label: "Done", description: "Create business" },
+  { id: "select-template", label: "Industry", description: "Pick a business type" },
+  { id: "business-profile", label: "Details", description: "Name and contact" },
+  { id: "theme", label: "Look", description: "Colours and labels" },
+  { id: "modules", label: "Menu", description: "Turn features on or off" },
+  { id: "dashboard", label: "Stats", description: "Home screen numbers" },
+  { id: "review", label: "Check", description: "Then create" },
+  { id: "generate", label: "Done", description: "All set" },
 ] as const;
-
-const countryOptions = [
-  { label: "Pakistan (+92)", value: "+92" },
-  { label: "United Kingdom (+44)", value: "+44" },
-  { label: "United States (+1)", value: "+1" },
-  { label: "United Arab Emirates (+971)", value: "+971" },
-];
 
 function BusinessSetupContent() {
   const router = useRouter();
   const builder = useTemplateBuilder();
   const [step, setStep] = useState<BusinessSetupStepId>("select-template");
   const [gptOpen, setGptOpen] = useState(false);
-  const [savedTemplateId, setSavedTemplateId] = useState<string | null>(null);
   const [createdBusinessId, setCreatedBusinessId] = useState<string | null>(null);
 
   const [manager, setManager] = useState("");
@@ -68,6 +64,7 @@ function BusinessSetupContent() {
   const [dragDashboardCardId, setDragDashboardCardId] = useState<DashboardCardId | null>(null);
   const [emailHint, setEmailHint] = useState<string | null>(null);
   const [phoneHint, setPhoneHint] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   const [createBusiness, { isLoading: creating }] = useCreateBusinessMutation();
   const [checkBusinessEmail] = useLazyCheckBusinessEmailQuery();
@@ -102,26 +99,99 @@ function BusinessSetupContent() {
     if (prev) setStep(prev.id as BusinessSetupStepId);
   }
 
-  async function handleGenerateBusiness() {
-    if (!builder.industry) return;
-    if (!builder.businessName.trim() || !email.trim() || !address.trim() || !manager.trim() || !planId) {
-      toast.error("Complete all required business fields before generating");
-      setStep("business-profile");
+  function applyProfileFieldErrors(
+    errors: NonNullable<ReturnType<typeof validateBusinessProfileFields>>,
+  ) {
+    setProfileError(null);
+    setEmailHint(errors.email ?? null);
+    setPhoneHint(errors.phone ?? null);
+
+    const firstError =
+      errors.businessName ||
+      errors.manager ||
+      errors.email ||
+      errors.phone ||
+      errors.address ||
+      errors.planId;
+
+    if (firstError) {
+      toast.error(firstError);
+    }
+  }
+
+  function applyMarket(market: BusinessMarketCode) {
+    if (market === "UK") {
+      setCountryCode("+44");
+      builder.setCurrency("GBP");
+    } else {
+      setCountryCode("+92");
+      builder.setCurrency("PKR");
+    }
+
+    if (builder.industry?.id === "pharmacy") {
+      builder.applyPharmacyCountry(market);
+      const defaults = pharmacyCountryDefaults(market);
+      if (!address.trim()) setAddress(defaults.location);
+    }
+  }
+
+  async function validateAndContinueFromProfile() {
+    const errors = validateBusinessProfileFields({
+      businessName: builder.businessName,
+      manager,
+      email,
+      countryCode,
+      phoneNumber,
+      address,
+      planId,
+    });
+
+    if (errors) {
+      applyProfileFieldErrors(errors);
       return;
     }
 
-    const phoneError = validatePhoneNumber(countryCode, phoneNumber);
-    if (phoneError) {
-      setPhoneHint(phoneError);
-      toast.error(phoneError);
-      setStep("business-profile");
-      return;
-    }
+    setProfileError(null);
+    setPhoneHint(null);
 
     const emailFormatError = validateEmail(email);
     if (emailFormatError) {
       setEmailHint(emailFormatError);
       toast.error(emailFormatError);
+      return;
+    }
+
+    try {
+      const availability = await checkBusinessEmail(email.trim().toLowerCase()).unwrap();
+      if (!availability.available) {
+        const taken = "This email is already registered. Use a different owner email.";
+        setEmailHint(taken);
+        toast.error(taken);
+        return;
+      }
+      setEmailHint("Email is available");
+    } catch {
+      setEmailHint(null);
+    }
+
+    goNext();
+  }
+
+  async function handleGenerateBusiness() {
+    if (!builder.industry) return;
+
+    const profileErrors = validateBusinessProfileFields({
+      businessName: builder.businessName,
+      manager,
+      email,
+      countryCode,
+      phoneNumber,
+      address,
+      planId,
+    });
+
+    if (profileErrors) {
+      applyProfileFieldErrors(profileErrors);
       setStep("business-profile");
       return;
     }
@@ -154,8 +224,7 @@ function BusinessSetupContent() {
         throw new Error("Business created but no ID returned");
       }
 
-      const config = await builder.saveConfig(created.id);
-      if (config) setSavedTemplateId(config.id);
+      await builder.saveConfig(created.id);
 
       saveBusinessProfile(created.id, {
         industryId: builder.industry.id,
@@ -169,15 +238,26 @@ function BusinessSetupContent() {
       setCreatedBusinessId(created.id);
       setStep("generate");
       toast.success("Business created with template configuration", { id: toastId });
-    } catch {
-      toast.error("Failed to create business. Please try again.", { id: toastId });
+    } catch (err) {
+      const { message, field } = resolveBusinessApiError(err);
+      if (field === "phone") {
+        setPhoneHint(message);
+        setProfileError(null);
+      } else if (field === "email") {
+        setEmailHint(message);
+        setProfileError(null);
+      } else {
+        setProfileError(message);
+      }
+      setStep("business-profile");
+      toast.error(message, { id: toastId });
     }
   }
 
   return (
     <AdminShell activeTab="businesses">
       <PortalPage>
-        <div className="mb-5 rounded-xl border border-[#e2e8f0] bg-[#fafbfc] px-4 py-4 sm:px-5">
+        <div className="mb-5 rounded-xl border border-[#e2e8f0] bg-white px-4 py-4 sm:px-5">
           <WizardStepper
             steps={[...STEPS]}
             currentStepId={step}
@@ -192,8 +272,9 @@ function BusinessSetupContent() {
 
         {step === "select-template" && (
           <WizardLayout
-            title="Select industry template"
-            subtitle="Choose the industry blueprint that defines modules, navigation, and dashboard defaults"
+            title="Pick an industry"
+            subtitle="Sets the menu and features for this business."
+            accentBlue
             isFirstStep
             onNext={() => {
               if (!builder.selectedId) {
@@ -205,7 +286,7 @@ function BusinessSetupContent() {
             onOpenGptPreview={() => setGptOpen(true)}
           >
             <div className="mb-6">
-              <h3 className="mb-3 text-sm font-semibold text-[#0f172a]">Saved templates</h3>
+              <h3 className="wizard-section-title mb-3">Saved setups</h3>
               {savedConfigs.length ? (
                 <div className="grid gap-2 sm:grid-cols-2">
                   {savedConfigs.slice(0, 4).map((config) => (
@@ -213,46 +294,31 @@ function BusinessSetupContent() {
                       key={config.id}
                       type="button"
                       onClick={() => builder.loadFromConfig(config)}
-                      className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3 text-left hover:border-[#0050F8]"
+                      className="wizard-card wizard-card-surface p-3 text-left hover:border-[var(--brand-secondary)] hover:shadow-[0_2px_10px_rgba(15,23,42,0.06)]"
                     >
-                      <p className="font-semibold text-[#0f172a]">{config.businessName}</p>
-                      <p className="text-xs text-[#64748b]">{config.industryName}</p>
+                      <p className="font-semibold text-[#64748b]">{config.businessName}</p>
+                      <p className="text-xs text-[#94a3b8]">{config.industryName}</p>
                     </button>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-[#64748b]">No saved templates yet — pick an industry below.</p>
+                <p className="wizard-help">No saved setups — pick one below.</p>
               )}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {industriesForPicker.map((tpl) => {
                 const colors = colorsFromAccent(tpl.theme.accent);
-                const active = builder.selectedId === tpl.id;
                 return (
-                  <button
+                  <IndustryPickerCard
                     key={tpl.id}
-                    type="button"
+                    name={tpl.name}
+                    icon={tpl.theme.icon}
+                    featureCount={tpl.modules.length}
+                    accentColor={colors.secondary}
+                    selected={builder.selectedId === tpl.id}
                     onClick={() => builder.selectIndustry(tpl.id)}
-                    className={cn(
-                      "rounded-xl border p-4 text-left transition",
-                      active ? "border-[#001840] bg-[#001840] text-white" : "border-[#e2e8f0] bg-white hover:border-[#0050F8]",
-                    )}
-                  >
-                    <div className="mb-3 flex items-center gap-3">
-                      <div
-                        className="grid h-10 w-10 place-items-center rounded-lg"
-                        style={{ backgroundColor: active ? "rgba(255,255,255,0.15)" : `${colors.secondary}18`, color: active ? "#fff" : colors.secondary }}
-                      >
-                        <IndustryIcon name={tpl.theme.icon} />
-                      </div>
-                      <div>
-                        <p className="font-semibold">{tpl.name}</p>
-                        <p className={cn("text-xs", active ? "text-white/75" : "text-[#64748b]")}>{tpl.modules.length} modules</p>
-                      </div>
-                    </div>
-                    <p className={cn("text-sm", active ? "text-white/80" : "text-[#64748b]")}>{tpl.description}</p>
-                  </button>
+                  />
                 );
               })}
             </div>
@@ -261,158 +327,223 @@ function BusinessSetupContent() {
 
         {step === "business-profile" && builder.industry && (
           <WizardLayout
-            title="Business profile"
-            subtitle="Enter the business information required to create the tenant"
+            title="Business details"
+            subtitle="Owner name, email, phone and plan."
+            accentBlue
             onBack={goBack}
-            onNext={goNext}
-            nextDisabled={!builder.businessName.trim() || !email.trim() || !manager.trim() || !planId}
+            onNext={validateAndContinueFromProfile}
             onOpenGptPreview={() => setGptOpen(true)}
           >
-            <div className="mb-4 flex flex-wrap items-center gap-4 rounded-xl border border-dashed border-[#cbd5e1] bg-[#fafbfc] p-4">
-              <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
-                {builder.logoDataUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={builder.logoDataUrl} alt="" className="h-full w-full object-contain p-1" />
-                ) : (
-                  <IndustryIcon name={builder.industry.theme.icon} className="h-8 w-8 text-[#94a3b8]" />
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-[#0f172a]">Business logo</p>
-                <div className="mt-2 flex gap-2">
-                  <label className="dn-btn dn-btn-ghost inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold">
-                    <ImagePlus className="h-4 w-4" /> Upload
-                    <input type="file" accept="image/*" className="hidden" onChange={builder.handleLogoUpload} />
-                  </label>
-                  {builder.logoDataUrl ? (
-                    <button type="button" onClick={() => builder.setLogoDataUrl(null)} className="rounded-lg border px-3 py-2 text-xs font-semibold text-[#dc2626]">
-                      <X className="inline h-3.5 w-3.5" /> Remove
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-
-            {builder.industry.id === "pharmacy" ? (
-              <div className="mb-4">
-                <PharmacyCountryPicker
-                  value={builder.market === "UK" ? "UK" : "PK"}
-                  onChange={(code) => {
-                    builder.applyPharmacyCountry(code);
-                    const defaults = pharmacyCountryDefaults(code);
-                    setCountryCode(defaults.phonePrefix);
-                    if (!address.trim()) setAddress(defaults.location);
-                  }}
-                />
-              </div>
+            {profileError ? (
+              <p className="mb-4 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm font-medium text-[#dc2626]">
+                {profileError}
+              </p>
             ) : null}
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Business name <span className="text-[#dc2626]">*</span>
-                <input value={builder.businessName} onChange={(e) => builder.setBusinessName(e.target.value)} className="portal-input" />
-              </label>
-              <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Manager / Owner <span className="text-[#dc2626]">*</span>
-                <input value={manager} onChange={(e) => setManager(e.target.value)} className="portal-input" />
-              </label>
-              <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Email <span className="text-[#dc2626]">*</span>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setEmailHint(null);
-                  }}
-                  onBlur={async () => {
-                    const formatError = validateEmail(email);
-                    if (formatError) {
-                      setEmailHint(formatError);
-                      return;
-                    }
-                    try {
-                      const result = await checkBusinessEmail(email.trim().toLowerCase()).unwrap();
-                      setEmailHint(
-                        result.available
-                          ? "Email is available"
-                          : "This email is already registered. Use a different owner email.",
-                      );
-                    } catch {
-                      setEmailHint(null);
-                    }
-                  }}
-                  className="portal-input"
-                />
-                {emailHint ? (
-                  <span className={emailHint.includes("available") ? "text-xs text-[#15803d]" : "text-xs text-[#b91c1c]"}>
-                    {emailHint}
-                  </span>
-                ) : null}
-              </label>
-              <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Phone <span className="text-[#dc2626]">*</span>
-                <div className="grid grid-cols-[140px_1fr] gap-2">
-                  <select
-                    value={countryCode}
-                    onChange={(e) => {
-                      setCountryCode(e.target.value);
-                      setPhoneHint(validatePhoneNumber(e.target.value, phoneNumber));
-                    }}
-                    className="portal-input"
-                  >
-                    {countryOptions.map((c) => (
-                      <option key={c.value} value={c.value}>{c.label}</option>
-                    ))}
-                  </select>
-                  <input
-                    value={phoneNumber}
-                    onChange={(e) => {
-                      setPhoneNumber(e.target.value);
-                      setPhoneHint(validatePhoneNumber(countryCode, e.target.value));
-                    }}
-                    className="portal-input"
-                    placeholder="3001234567"
-                  />
+            <div className="wizard-form-stack">
+              <WizardFormSection>
+                <div className="wizard-logo-row">
+                  <div className="wizard-logo-preview">
+                    {builder.logoDataUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={builder.logoDataUrl} alt="" className="h-full w-full object-contain p-1" />
+                    ) : (
+                      <IndustryIcon name={builder.industry.theme.icon} className="h-8 w-8 text-[#94a3b8]" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="wizard-form-section-title">Logo</p>
+                    <p className="wizard-form-section-desc">Optional — PNG or JPG, up to 2 MB.</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-3 text-sm font-medium text-[#64748b] hover:border-[#cbd5e1]">
+                        <ImagePlus className="h-4 w-4" /> Upload
+                        <input type="file" accept="image/*" className="hidden" onChange={builder.handleLogoUpload} />
+                      </label>
+                      {builder.logoDataUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => builder.setLogoDataUrl(null)}
+                          className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#fecaca] bg-white px-3 text-sm font-medium text-[#dc2626]"
+                        >
+                          <X className="h-3.5 w-3.5" /> Remove
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
-                {phoneHint ? <span className="text-[#b91c1c] text-xs">{phoneHint}</span> : null}
-              </label>
-              <label className="grid gap-1.5 text-sm font-medium text-[#374151] md:col-span-2">
-                Address <span className="text-[#dc2626]">*</span>
-                <input value={address} onChange={(e) => setAddress(e.target.value)} className="portal-input" />
-              </label>
-              <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Plan <span className="text-[#dc2626]">*</span>
-                <select value={planId} onChange={(e) => setPlanId(e.target.value)} className="portal-input" disabled={plansLoading}>
-                  <option value="">Select plan</option>
-                  {plans.map((plan) => (
-                    <option key={plan.id} value={plan.id}>{plan.displayName || plan.planName}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-1.5 text-sm font-medium text-[#374151]">
-                Currency
-                {builder.industry.id === "pharmacy" ? (
-                  <input
-                    value={`${builder.currency} · ${builder.market === "UK" ? "United Kingdom" : "Pakistan"}`}
-                    disabled
-                    className="portal-input opacity-70"
-                  />
-                ) : (
-                  <select value={builder.currency} onChange={(e) => builder.setCurrency(e.target.value)} className="portal-input">
-                    <option value="PKR">PKR · Pakistan</option>
-                    <option value="GBP">GBP · United Kingdom</option>
-                    <option value="USD">USD</option>
-                    <option value="AED">AED</option>
-                  </select>
-                )}
-              </label>
+              </WizardFormSection>
+
+              <div className="wizard-form-divider" />
+
+              <WizardFormSection>
+                <BusinessMarketPicker
+                  value={marketFromPhonePrefix(countryCode)}
+                  onChange={applyMarket}
+                />
+              </WizardFormSection>
+
+              <div className="wizard-form-divider" />
+
+              <WizardFormSection>
+                <div className="wizard-form-grid">
+                  <WizardFormField label="Business name" required>
+                    <input
+                      value={builder.businessName}
+                      onChange={(e) => {
+                        builder.setBusinessName(e.target.value);
+                        setProfileError(null);
+                      }}
+                      className="wizard-input"
+                      placeholder="Your business name"
+                    />
+                  </WizardFormField>
+
+                  <WizardFormField label="Owner name" required>
+                    <input
+                      value={manager}
+                      onChange={(e) => {
+                        setManager(e.target.value);
+                        setProfileError(null);
+                      }}
+                      className="wizard-input"
+                      placeholder="Full name"
+                    />
+                  </WizardFormField>
+
+                  <WizardFormField
+                    label="Email"
+                    required
+                    hint={emailHint || "Owner login email"}
+                    hintTone={
+                      emailHint?.includes("available")
+                        ? "success"
+                        : emailHint && !emailHint.includes("available")
+                          ? "error"
+                          : "default"
+                    }
+                  >
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setEmailHint(null);
+                        setProfileError(null);
+                      }}
+                      onBlur={async () => {
+                        const formatError = validateEmail(email);
+                        if (formatError) {
+                          setEmailHint(formatError);
+                          return;
+                        }
+                        try {
+                          const result = await checkBusinessEmail(email.trim().toLowerCase()).unwrap();
+                          setEmailHint(
+                            result.available
+                              ? "Email is available"
+                              : "This email is already registered",
+                          );
+                        } catch {
+                          setEmailHint(null);
+                        }
+                      }}
+                      className="wizard-input"
+                      placeholder="owner@business.com"
+                    />
+                  </WizardFormField>
+
+                  <WizardFormField
+                    label="Phone"
+                    required
+                    hint={phoneHint || "No leading 0"}
+                    hintTone={phoneHint ? "error" : "default"}
+                  >
+                    <div className="wizard-input-group">
+                      <span className="wizard-input-prefix">{countryCode}</span>
+                      <input
+                        value={phoneNumber}
+                        onChange={(e) => {
+                          setPhoneNumber(e.target.value);
+                          setPhoneHint(validatePhoneNumber(countryCode, e.target.value));
+                          setProfileError(null);
+                        }}
+                        className="wizard-input wizard-input--attached"
+                        placeholder={countryCode === "+44" ? "7123456789" : "3001234567"}
+                        inputMode="tel"
+                      />
+                    </div>
+                  </WizardFormField>
+
+                  <WizardFormField label="Address" required className="wizard-form-grid--full-row">
+                    <input
+                      value={address}
+                      onChange={(e) => {
+                        setAddress(e.target.value);
+                        setProfileError(null);
+                      }}
+                      className="wizard-input"
+                      placeholder="Street, city"
+                    />
+                  </WizardFormField>
+
+                  <WizardFormField label="Plan" required>
+                    <select
+                      value={planId}
+                      onChange={(e) => {
+                        setPlanId(e.target.value);
+                        setProfileError(null);
+                      }}
+                      className="wizard-input"
+                      disabled={plansLoading}
+                    >
+                      <option value="">Select plan</option>
+                      {plans.map((plan) => (
+                        <option key={plan.id} value={plan.id}>
+                          {plan.displayName || plan.planName}
+                        </option>
+                      ))}
+                    </select>
+                  </WizardFormField>
+
+                  <WizardFormField label="Currency" hint="Based on country above">
+                    {builder.industry.id === "pharmacy" ? (
+                      <input
+                        value={`${builder.currency} · ${builder.market === "UK" ? "United Kingdom" : "Pakistan"}`}
+                        disabled
+                        className="wizard-input"
+                      />
+                    ) : (
+                      <select
+                        value={builder.currency}
+                        onChange={(e) => {
+                          builder.setCurrency(e.target.value);
+                          if (e.target.value === "GBP") setCountryCode("+44");
+                          else if (e.target.value === "PKR") setCountryCode("+92");
+                        }}
+                        className="wizard-input"
+                      >
+                        <option value="PKR">PKR · Pakistan</option>
+                        <option value="GBP">GBP · United Kingdom</option>
+                        <option value="USD">USD</option>
+                        <option value="AED">AED</option>
+                      </select>
+                    )}
+                  </WizardFormField>
+                </div>
+              </WizardFormSection>
             </div>
           </WizardLayout>
         )}
 
         {step === "theme" && builder.industry && (
-          <WizardLayout title="Theme & branding" subtitle="Configure colours and interface mode" onBack={goBack} onNext={goNext} onOpenGptPreview={() => setGptOpen(true)}>
+          <WizardLayout
+            title="Look & feel"
+            subtitle="Choose light or dark mode and a colour theme."
+            accentBlue
+            onBack={goBack}
+            onNext={goNext}
+            onOpenGptPreview={() => setGptOpen(true)}
+          >
             <TemplateThemeFields
               themeMode={builder.themeMode}
               onThemeModeChange={builder.setThemeMode}
@@ -429,12 +560,17 @@ function BusinessSetupContent() {
         )}
 
         {step === "modules" && builder.industry && (
-          <WizardLayout title="Modules & navigation" subtitle="Enable modules and review navigation order" onBack={goBack} onNext={goNext} onOpenGptPreview={() => setGptOpen(true)}>
-            <p className="mb-2 text-sm text-[#64748b]">
-              Build a fully custom dashboard. Toggle any module on/off, and drag cards to set sidebar order. Only Dashboard and Settings stay locked.
-            </p>
+          <WizardLayout
+            title="Menu items"
+            subtitle="Switch features on or off. Drag to reorder."
+            accentBlue
+            onBack={goBack}
+            onNext={goNext}
+            onOpenGptPreview={() => setGptOpen(true)}
+          >
+            <p className="wizard-help mb-4">Dashboard and Settings always stay on.</p>
             {builder.modulePlan ? (
-              <p className="mb-4 rounded-xl bg-[#f8fafc] px-3 py-2 text-xs text-[#64748b]">
+              <p className="wizard-help mb-4 rounded-xl bg-white px-3 py-2">
                 {builder.modulePlan.summary}
               </p>
             ) : null}
@@ -470,10 +606,15 @@ function BusinessSetupContent() {
         )}
 
         {step === "dashboard" && builder.industry && (
-          <WizardLayout title="Dashboard configuration" subtitle="Choose KPI cards for the business dashboard" onBack={goBack} onNext={goNext} onOpenGptPreview={() => setGptOpen(true)}>
-            <p className="mb-4 text-sm text-[#64748b]">
-              Choose KPI cards for the business dashboard. Toggle cards on or off and drag to set display order.
-            </p>
+          <WizardLayout
+            title="Home screen"
+            subtitle="Pick the stats shown on the dashboard."
+            accentBlue
+            onBack={goBack}
+            onNext={goNext}
+            onOpenGptPreview={() => setGptOpen(true)}
+          >
+            <p className="wizard-help mb-4">Toggle on or off. Drag to change order.</p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {builder.dashboardCardOrder.map((cardId) => {
                 const selected = builder.dashboardCards.includes(cardId);
@@ -501,37 +642,38 @@ function BusinessSetupContent() {
 
         {step === "review" && builder.industry && (
           <WizardLayout
-            title="Review & generate"
-            subtitle="Confirm business setup before creation"
+            title="Final check"
+            subtitle="Create the business when ready."
+            accentBlue
             onBack={goBack}
             isLastStep
-            finishLabel={creating ? "Creating…" : "Generate Business"}
+            finishLabel={creating ? "Creating…" : "Create business"}
             finishDisabled={creating}
             onFinish={handleGenerateBusiness}
             onOpenGptPreview={() => setGptOpen(true)}
           >
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
-                <h4 className="font-semibold text-[#0f172a]">Business</h4>
-                <ul className="mt-2 space-y-1 text-sm text-[#64748b]">
+              <div className="wizard-review-card">
+                <h4>Business</h4>
+                <ul className="mt-2 space-y-1">
                   <li>{builder.businessName}</li>
                   <li>{email}</li>
                   <li>{manager}</li>
                   <li>{address}</li>
                 </ul>
               </div>
-              <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
-                <h4 className="font-semibold text-[#0f172a]">Template</h4>
-                <ul className="mt-2 space-y-1 text-sm text-[#64748b]">
+              <div className="wizard-review-card">
+                <h4>Setup</h4>
+                <ul className="mt-2 space-y-1">
                   <li>{builder.industry.name}</li>
                   {builder.industry.id === "pharmacy" ? (
                     <li>{builder.market === "UK" ? "United Kingdom" : "Pakistan"} · {builder.currency}</li>
                   ) : (
                     <li>{builder.currency}</li>
                   )}
-                  <li>{builder.enabledModules.length} modules</li>
-                  <li>{builder.dashboardCards.length} dashboard cards</li>
-                  <li>{builder.themeMode} theme</li>
+                  <li>{builder.enabledModules.length} menu items on</li>
+                  <li>{builder.dashboardCards.length} stats on home</li>
+                  <li>{builder.themeMode} mode</li>
                 </ul>
               </div>
             </div>
@@ -539,44 +681,78 @@ function BusinessSetupContent() {
         )}
 
         {step === "generate" && createdBusinessId ? (
-          <section className="rounded-xl border border-[#bbf7d0] bg-[#ecfdf5] p-6">
-            <div className="flex items-start gap-4">
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#059669] text-white">
-                <CheckCircle2 className="h-6 w-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-xl font-semibold text-[#065f46]">Business created successfully</h2>
-                <p className="mt-2 text-sm text-[#047857]">
-                  {builder.businessName} is ready with the configured industry template
-                  {savedTemplateId ? ` (config ${savedTemplateId.slice(0, 8)}…)` : ""}.
-                </p>
+          <section className="wizard-form-stack">
+            <div className="rounded-xl border border-[#bbf7d0] bg-[#ecfdf5] p-6">
+              <div className="flex items-start gap-4">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#059669] text-white">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-xl font-semibold text-[#065f46]">{builder.businessName} is ready</h2>
+                  <p className="mt-2 text-sm text-[#047857]">
+                    Your {builder.industry?.name.toLowerCase() ?? "business"} is set up. Choose where to go next.
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link href={`/dashboard/superAdmin/businesses/${createdBusinessId}`} className="dn-btn dn-btn-primary rounded-xl px-4 py-2.5 text-sm">
-                View business profile
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Link
+                href={`/dashboard/superAdmin/businesses/${createdBusinessId}/website`}
+                className="group rounded-xl border-2 border-[#e8edf3] bg-white p-5 text-left transition-all hover:border-[var(--brand-secondary)] hover:shadow-[0_4px_16px_rgba(0,80,248,0.1)]"
+              >
+                <span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]">
+                  <Globe2 className="h-5 w-5" />
+                </span>
+                <p className="mt-4 text-base font-semibold text-[#0f172a]">Website</p>
+                <p className="mt-1 text-sm text-[#64748b]">Set up pages, theme and your public storefront.</p>
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[var(--brand-secondary)]">
+                  Manage website <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
               </Link>
+
+              <Link
+                href={`/dashboard/superAdmin/businesses/${createdBusinessId}/portal`}
+                className="group rounded-xl border-2 border-[#e8edf3] bg-white p-5 text-left transition-all hover:border-[var(--brand-secondary)] hover:shadow-[0_4px_16px_rgba(0,80,248,0.1)]"
+              >
+                <span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]">
+                  <LayoutDashboard className="h-5 w-5" />
+                </span>
+                <p className="mt-4 text-base font-semibold text-[#0f172a]">Portal</p>
+                <p className="mt-1 text-sm text-[#64748b]">Run daily work — stock, sales, orders and team.</p>
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[var(--brand-secondary)]">
+                  Manage portal <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </Link>
+
+              <Link
+                href={`/dashboard/superAdmin/businesses/${createdBusinessId}`}
+                className="group rounded-xl border-2 border-[#e8edf3] bg-white p-5 text-left transition-all hover:border-[var(--brand-secondary)] hover:shadow-[0_4px_16px_rgba(0,80,248,0.1)]"
+              >
+                <span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]">
+                  <Settings2 className="h-5 w-5" />
+                </span>
+                <p className="mt-4 text-base font-semibold text-[#0f172a]">Manage business profile</p>
+                <p className="mt-1 text-sm text-[#64748b]">Plan, contact details, theme and workspace settings.</p>
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[var(--brand-secondary)]">
+                  View profile <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </Link>
+            </div>
+
+            <div className="flex justify-center pt-2">
               <button
                 type="button"
-                onClick={() =>
-                  window.open(
-                    `${window.location.origin}/dashboard/businessAdmin?businessId=${createdBusinessId}`,
-                    "_blank",
-                    "noopener,noreferrer",
-                  )
-                }
-                className="dn-btn dn-btn-outline inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm"
+                onClick={() => router.push("/dashboard/superAdmin/businesses")}
+                className="text-sm font-medium text-[#64748b] hover:text-[#0f172a]"
               >
-                Open workspace <ExternalLink className="h-4 w-4" />
-              </button>
-              <button type="button" onClick={() => router.push("/dashboard/superAdmin/businesses")} className="dn-btn dn-btn-ghost rounded-xl px-4 py-2.5 text-sm">
-                Back to businesses
+                Back to all businesses
               </button>
             </div>
           </section>
         ) : step === "generate" ? (
           <section className="rounded-xl border border-[#e2e8f0] bg-white p-6 text-center">
-            <p className="text-sm text-[#64748b]">Complete the review step and click &quot;Generate Business&quot; to create your business.</p>
+            <p className="wizard-help">Go to review and tap create business.</p>
             <button type="button" onClick={() => setStep("review")} className="dn-btn dn-btn-primary mt-4 rounded-xl px-4 py-2.5 text-sm">
               Go to review
             </button>

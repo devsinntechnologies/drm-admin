@@ -35,7 +35,7 @@ const PATH_PAGE_TITLES: Record<string, string> = {
   "/dashboard/superAdmin": "DigiNizam Platform Console",
   "/dashboard/businessAdmin": "Dashboard",
   "/dashboard/superAdmin/businesses": "Business Management",
-  "/dashboard/superAdmin/businesses/setup": "Business Setup Wizard",
+  "/dashboard/superAdmin/businesses/setup": "New business",
   "/dashboard/superAdmin/subscriptions": "Subscription Management",
   "/dashboard/superAdmin/industry-templates": "Industry Templates",
   "/dashboard/superAdmin/action-logs": "Action Logs",
@@ -59,7 +59,7 @@ function resolvePageTitle(
   profileBusinessName?: string,
   templateNavLabel?: string,
 ): string {
-  if (pathname.includes("/businesses/setup")) return "Business Setup Wizard";
+  if (pathname.includes("/businesses/setup")) return "New business";
 
   if (profileBusinessName && /\/superAdmin\/businesses\/[^/]+$/.test(pathname)) {
     return profileBusinessName;

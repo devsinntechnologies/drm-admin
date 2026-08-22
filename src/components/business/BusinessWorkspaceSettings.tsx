@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { ImagePlus, Loader2, Palette, Shapes, X } from "lucide-react";
 import { toast } from "sonner";
+import { readLogoAsDataUrl, validateLogoFile } from "@/lib/logo-upload";
 import { ModuleChip } from "@/components/wizard/TemplateConfigChips";
 import { TemplateThemeFields } from "@/components/wizard/TemplateThemeFields";
 import { businessApi } from "@/hooks/useBusiness";
@@ -137,15 +138,12 @@ export function BusinessWorkspaceSettings({
 
   const handleLogoUpload = (file?: File | null) => {
     if (!file) return;
-    if (file.size > 1.5 * 1024 * 1024) {
-      toast.error("Logo must be 1.5 MB or smaller.");
+    const error = validateLogoFile(file);
+    if (error) {
+      toast.error(error);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") setLogoUrl(reader.result);
-    };
-    reader.readAsDataURL(file);
+    void readLogoAsDataUrl(file).then(setLogoUrl);
   };
 
   const save = async () => {

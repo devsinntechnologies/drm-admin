@@ -33,18 +33,21 @@ export function WizardStepper({
   return (
     <nav aria-label="Setup progress" className={cn("w-full", className)}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#94a3b8]">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--brand-secondary)]">
           Step {currentIndex + 1} of {steps.length}
         </p>
-        <p className="text-base font-semibold text-[#0f172a]">{currentStep?.label}</p>
+        <p className="text-xs text-[#64748b]">
+          {currentIndex + 1}/{steps.length}
+        </p>
       </div>
 
+      <h2 className="mt-1 text-lg font-semibold text-[#64748b]">{currentStep?.label}</h2>
       {currentStep?.description ? (
-        <p className="mt-1 text-sm text-[#64748b]">{currentStep.description}</p>
+        <p className="mt-0.5 text-sm text-[#94a3b8]">{currentStep.description}</p>
       ) : null}
 
       <div
-        className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[#e2e8f0]"
+        className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-[#e2e8f0]"
         role="progressbar"
         aria-valuenow={currentIndex + 1}
         aria-valuemin={1}
@@ -52,55 +55,61 @@ export function WizardStepper({
         aria-label={`Step ${currentIndex + 1} of ${steps.length}`}
       >
         <div
-          className="h-full rounded-full bg-[#0050F8] transition-all duration-300 ease-out"
+          className="h-full rounded-full bg-[var(--brand-secondary)] transition-all duration-300"
           style={{ width: `${progress}%` }}
         />
       </div>
 
-      <ol className="mt-4 flex items-center justify-between gap-1">
+      <ol className="mt-4 grid grid-cols-7 gap-1">
         {steps.map((step, index) => {
           const isActive = step.id === currentStepId;
           const isCompleted = completedStepIds.includes(step.id) || index < currentIndex;
           const canJump = allowJumpToCompleted && isCompleted && !isActive && onStepClick;
 
           return (
-            <li key={step.id} className="flex flex-1 flex-col items-center gap-1.5">
+            <li key={step.id} className="min-w-0">
               <button
                 type="button"
-                disabled={!canJump}
+                disabled={!canJump && !isActive}
                 title={step.label}
                 aria-label={`${step.label}${isCompleted ? ", completed" : ""}${isActive ? ", current" : ""}`}
                 aria-current={isActive ? "step" : undefined}
                 onClick={() => canJump && onStepClick?.(step.id)}
                 className={cn(
-                  "grid h-8 w-8 place-items-center rounded-full text-xs font-bold transition",
-                  isActive && "bg-[#001840] text-white ring-4 ring-[#001840]/15",
-                  isCompleted && !isActive && "bg-[#059669] text-white",
-                  !isActive && !isCompleted && "border-2 border-[#e2e8f0] bg-white text-[#94a3b8]",
-                  canJump && "cursor-pointer hover:scale-105 hover:ring-2 hover:ring-[#059669]/30",
-                  !canJump && "cursor-default",
+                  "flex w-full flex-col items-center gap-1.5 rounded-lg px-0.5 py-1 transition",
+                  canJump && "cursor-pointer hover:bg-[var(--brand-primary-soft)]",
+                  !canJump && !isActive && "cursor-default",
                 )}
               >
-                {isCompleted && !isActive ? <Check className="h-4 w-4" strokeWidth={2.5} /> : index + 1}
+                <span
+                  className={cn(
+                    "grid h-7 w-7 place-items-center rounded-full text-[11px] font-bold",
+                    isActive && "bg-[var(--brand-secondary)] text-white",
+                    isCompleted && !isActive && "bg-[#059669] text-white",
+                    !isActive && !isCompleted && "border border-[#e2e8f0] bg-white text-[#94a3b8]",
+                  )}
+                >
+                  {isCompleted && !isActive ? (
+                    <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  ) : (
+                    index + 1
+                  )}
+                </span>
+                <span
+                  className={cn(
+                    "w-full truncate text-center text-[10px] font-medium leading-tight sm:text-[11px]",
+                    isActive && "text-[var(--brand-secondary)]",
+                    isCompleted && !isActive && "text-[#059669]",
+                    !isActive && !isCompleted && "text-[#94a3b8]",
+                  )}
+                >
+                  {step.label}
+                </span>
               </button>
-              <span
-                className={cn(
-                  "hidden max-w-[4.5rem] truncate text-center text-[10px] font-medium sm:block",
-                  isActive ? "text-[#001840]" : isCompleted ? "text-[#059669]" : "text-[#94a3b8]",
-                )}
-              >
-                {step.label}
-              </span>
             </li>
           );
         })}
       </ol>
-
-      {allowJumpToCompleted && completedStepIds.length > 0 ? (
-        <p className="mt-3 text-center text-xs text-[#94a3b8]">
-          Tap a completed step to go back and edit
-        </p>
-      ) : null}
     </nav>
   );
 }

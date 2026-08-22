@@ -6,5 +6,5 @@ import { WebsiteOverviewContent } from "@/components/business/website/WebsiteOve
 export default function SuperAdminWebsiteOverviewPage() {
   const params = useParams();
   const businessId = typeof params.id === "string" ? params.id : "";
-  return <WebsiteOverviewContent businessId={businessId} />;
+  return <WebsiteOverviewContent businessId={businessId} websiteBasePath={`/dashboard/superAdmin/businesses/${businessId}/website`} />;
 }

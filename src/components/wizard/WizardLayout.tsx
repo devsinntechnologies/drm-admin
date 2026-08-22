@@ -23,6 +23,7 @@ type WizardLayoutProps = {
   showGptPreview?: boolean;
   onOpenGptPreview?: () => void;
   className?: string;
+  accentBlue?: boolean;
 };
 
 export function WizardLayout({
@@ -35,7 +36,7 @@ export function WizardLayout({
   onFinish,
   backLabel = "Back",
   nextLabel = "Continue",
-  finishLabel = "Generate",
+  finishLabel = "Create business",
   isFirstStep,
   isLastStep,
   nextDisabled,
@@ -43,13 +44,18 @@ export function WizardLayout({
   showGptPreview = true,
   onOpenGptPreview,
   className,
+  accentBlue = false,
 }: WizardLayoutProps) {
+  const continueClass = accentBlue
+    ? "wizard-btn-continue"
+    : "wizard-btn-continue !border-[var(--brand-primary)] !bg-[var(--brand-primary)] !shadow-[0_8px_20px_rgba(0,24,64,0.2)] hover:!bg-[var(--brand-primary-hover)]";
+
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("wizard-shell space-y-5", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-[#0f172a] lg:text-xl">{title}</h2>
-          {subtitle ? <p className="mt-1 text-sm text-[#64748b]">{subtitle}</p> : null}
+          <h2 className="wizard-heading">{title}</h2>
+          {subtitle ? <p className="wizard-subheading">{subtitle}</p> : null}
         </div>
         {showGptPreview && onOpenGptPreview ? (
           <GptPreviewButton onClick={onOpenGptPreview} />
@@ -58,16 +64,17 @@ export function WizardLayout({
 
       {preview ? <div>{preview}</div> : null}
 
-      <div className="rounded-xl border border-[#e2e8f0] bg-white p-5">{children}</div>
+      <div className="wizard-panel">{children}</div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <footer className="wizard-actions">
         <button
           type="button"
           onClick={onBack}
           disabled={isFirstStep || !onBack}
-          className="dn-btn dn-btn-ghost inline-flex items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-4 py-2.5 text-sm font-semibold disabled:opacity-40"
+          className="wizard-btn-back"
         >
-          <ArrowLeft className="h-4 w-4" /> {backLabel}
+          <ArrowLeft className="h-4 w-4" />
+          {backLabel}
         </button>
 
         {isLastStep ? (
@@ -75,21 +82,23 @@ export function WizardLayout({
             type="button"
             onClick={onFinish}
             disabled={finishDisabled}
-            className="dn-btn dn-btn-primary inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
+            className={continueClass}
           >
-            {finishLabel} <ArrowRight className="h-4 w-4" />
+            {finishLabel}
+            <ArrowRight className="h-5 w-5" />
           </button>
         ) : (
           <button
             type="button"
             onClick={onNext}
             disabled={nextDisabled}
-            className="dn-btn dn-btn-primary inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
+            className={continueClass}
           >
-            {nextLabel} <ArrowRight className="h-4 w-4" />
+            {nextLabel}
+            <ArrowRight className="h-5 w-5" />
           </button>
         )}
-      </div>
+      </footer>
     </div>
   );
 }
