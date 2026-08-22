@@ -61,6 +61,11 @@ function BusinessProfileContent() {
     [profile],
   );
 
+  const workspaceTemplateConfig = useMemo(
+    () => hydrateWorkspaceTemplate(business?.templateConfig) ?? business?.templateConfig ?? null,
+    [business?.templateConfig],
+  );
+
   if (!id) {
     return (
       <AdminShell activeTab="businesses">
@@ -207,7 +212,7 @@ function BusinessProfileContent() {
           <BusinessWorkspaceSettings
             businessId={id}
             businessName={business.businessName}
-            templateConfig={hydrateWorkspaceTemplate(business.templateConfig) ?? business.templateConfig}
+            templateConfig={workspaceTemplateConfig}
             fallbackIndustryId={profile.industryId}
             onDraftChange={(draft) =>
               setProfile((current) =>
