@@ -37,16 +37,6 @@ export function WebsiteOverviewContent({ businessId }: { businessId?: string } =
   } = useWebsite(businessId);
   const [builderUrl, setBuilderUrl] = useState<string | null>(null);
 
-  const onCreate = async () => {
-    const toastId = toast.loading("Creating DigiNizam website...");
-    try {
-      await createWebsite();
-      toast.success("Website created", { id: toastId });
-    } catch (err) {
-      toast.error(normalizeErrorMessage(err, "Failed to create website"), { id: toastId });
-    }
-  };
-
   const onRetry = async () => {
     const toastId = toast.loading("Retrying website setup...");
     try {
@@ -68,8 +58,23 @@ export function WebsiteOverviewContent({ businessId }: { businessId?: string } =
   };
 
   const onOpenBuilder = async () => {
-    const toastId = toast.loading("Opening DigiNizam builder...");
+    const toastId = toast.loading(website ? "Opening DigiNizam builder..." : "Creating your DigiNizam website...");
     try {
+      let current = website;
+      if (!current) {
+        current = await createWebsite();
+      } else if (current.status === "failed" || current.status === "provisioning") {
+        current = await retryWebsite();
+      }
+
+      if (
+        !current ||
+        !(current.status === "ready" || current.status === "published" || current.status === "unpublished")
+      ) {
+        throw new Error(current?.lastError || "Website is not ready yet. Try again in a moment.");
+      }
+
+      toast.loading("Opening DigiNizam builder...", { id: toastId });
       const session = await openBuilder();
       if (!session?.url) {
         throw new Error("Builder URL was not returned");
@@ -100,12 +105,12 @@ export function WebsiteOverviewContent({ businessId }: { businessId?: string } =
           {error ? <p className="mt-3 text-sm text-[#dc2626]">{error}</p> : null}
           <button
             type="button"
-            onClick={onCreate}
+            onClick={onOpenBuilder}
             disabled={actionLoading}
             className="dn-btn dn-btn-primary mt-6 inline-flex h-11 items-center gap-2 rounded-xl px-5"
           >
             {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe2 className="h-4 w-4" />}
-            Create website
+            Open builder
           </button>
         </div>
       </section>
@@ -168,25 +173,24 @@ export function WebsiteOverviewContent({ businessId }: { businessId?: string } =
               </button>
             ) : null}
             {canEdit ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => onPublish(website.status !== "published")}
-                  disabled={actionLoading}
-                  className="dn-btn dn-btn-outline h-10 rounded-xl px-4 text-sm"
-                >
-                  {website.status === "published" ? "Unpublish" : "Publish"}
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenBuilder}
-                  disabled={actionLoading}
-                  className="dn-btn dn-btn-primary inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm"
-                >
-                  Open builder
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={() => onPublish(website.status !== "published")}
+                disabled={actionLoading}
+                className="dn-btn dn-btn-outline h-10 rounded-xl px-4 text-sm"
+              >
+                {website.status === "published" ? "Unpublish" : "Publish"}
+              </button>
             ) : null}
+            <button
+              type="button"
+              onClick={onOpenBuilder}
+              disabled={actionLoading}
+              className="dn-btn dn-btn-primary inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm"
+            >
+              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Open builder
+            </button>
           </div>
         </div>
       </section>
