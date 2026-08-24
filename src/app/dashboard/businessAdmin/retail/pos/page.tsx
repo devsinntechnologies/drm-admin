@@ -17,6 +17,7 @@ import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { apiClient } from "@/lib/api-client";
 import { getStoredAuthToken } from "@/lib/utils";
 import { NumberInput } from "@/components/common/NumberInput";
+import { useDashboardRefresh } from "@/contexts/DashboardRefreshContext";
 
 type CartLine = {
   lineKey: string;
@@ -70,6 +71,7 @@ function PosContent() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const businessId = useActiveBusinessId();
   const token = reduxToken || getStoredAuthToken();
+  const { bumpDashboardRefresh } = useDashboardRefresh();
 
   const { products, loading: productsLoading } = useProducts({ limit: 200 });
   const { items: customers } = useRetailResource<RetailCustomer>("/retail/customers");
@@ -207,6 +209,7 @@ function PosContent() {
       setDiscountAmount(0);
       setTaxAmount(0);
       setCustomerId("");
+      bumpDashboardRefresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Checkout failed", { id: toastId });
     } finally {

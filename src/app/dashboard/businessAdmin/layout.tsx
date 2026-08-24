@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Loading from "@/components/common/Loading";
 import { BusinessTemplateProvider, useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
+import { DashboardRefreshProvider } from "@/contexts/DashboardRefreshContext";
 import { cn } from "@/lib/utils";
 
 const LOAD_TIMEOUT_MS = 12000;
@@ -71,7 +72,9 @@ function BusinessAdminLayoutContent({ children }: { children: React.ReactNode })
 
   return (
     <BusinessTemplateProvider businessId={businessId}>
-      <ThemedWorkspace>{children}</ThemedWorkspace>
+      <DashboardRefreshProvider>
+        <ThemedWorkspace>{children}</ThemedWorkspace>
+      </DashboardRefreshProvider>
     </BusinessTemplateProvider>
   );
 }

@@ -13,6 +13,7 @@ import { useRetailResource } from "@/hooks/useRetailResource";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { apiClient } from "@/lib/api-client";
 import { getStoredAuthToken } from "@/lib/utils";
+import { useDashboardRefresh } from "@/contexts/DashboardRefreshContext";
 
 interface SaleItem {
   id: string;
@@ -45,6 +46,7 @@ function ReturnsContent() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const businessId = useActiveBusinessId();
   const token = reduxToken || getStoredAuthToken();
+  const { bumpDashboardRefresh } = useDashboardRefresh();
 
   const { items: sales } = useRetailResource<Sale>("/retail/pos/sales");
   const { items: returns, loading, error, refresh } = useRetailResource<ReturnRecord>("/retail/returns");
@@ -100,6 +102,7 @@ function ReturnsContent() {
       setQuantities({});
       setReason("");
       await refresh(1);
+      bumpDashboardRefresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to process return", { id: toastId });
     } finally {
@@ -176,7 +179,7 @@ function ReturnsContent() {
             </form>
           </div>
 
-          <div className="rounded-3xl border border-[var(--border-subtle)] bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 shadow-sm">
             <h3 className="mb-4 text-lg font-bold">Recent Returns</h3>
             {loading ? (
               <Loading size="sm" />

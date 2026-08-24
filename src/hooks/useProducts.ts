@@ -8,6 +8,7 @@ export interface ProductVariant {
   name: string;
   price: number;
   inStock: number;
+  costPrice?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -69,6 +70,7 @@ export interface CreateProductVariantPayload {
   name?: string;
   price?: number;
   inStock?: number;
+  costPrice?: number;
   action?: "add" | "update" | "delete";
 }
 

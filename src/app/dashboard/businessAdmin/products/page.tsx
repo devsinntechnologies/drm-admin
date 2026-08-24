@@ -53,6 +53,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
+import { useDashboardRefresh } from "@/contexts/DashboardRefreshContext";
 import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { apiClient } from "@/lib/api-client";
 import { EMPTY_MEDICINE_PROFILE, MedicineProfileFields, profileToPayload, type MedicineProfileForm } from "@/components/pharmacy/MedicineProfileFields";
@@ -64,19 +65,21 @@ function ErrorAlert({ message }: { message: unknown }) {
 }
 
 type VariantFormItem = Required<Pick<CreateProductVariantPayload, "name" | "price" | "inStock">> &
-  Pick<CreateProductVariantPayload, "id">;
+  Pick<CreateProductVariantPayload, "id" | "costPrice">;
 
 function VariantsEditor({
   variants,
   setVariants,
   onRemoveVariant,
+  showCostPrice = false,
 }: {
   variants: VariantFormItem[];
   setVariants: React.Dispatch<React.SetStateAction<VariantFormItem[]>>;
   onRemoveVariant?: (variant: VariantFormItem) => void;
+  showCostPrice?: boolean;
 }) {
   const { currency } = usePharmacyMarket();
-  const [vForm, setVForm] = useState<VariantFormItem>({ name: "", price: 0, inStock: 0 });
+  const [vForm, setVForm] = useState<VariantFormItem>({ name: "", price: 0, inStock: 0, costPrice: 0 });
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const onAddOrUpdateVariant = () => {
@@ -92,32 +95,38 @@ function VariantsEditor({
     } else {
       setVariants((prev) => [...prev, { ...vForm, name: vForm.name.trim() }]);
     }
-    setVForm({ name: "", price: 0, inStock: 0 });
+    setVForm({ name: "", price: 0, inStock: 0, costPrice: 0 });
   };
 
   const startEdit = (index: number) => {
     const variant = variants[index];
-    setVForm({ name: variant.name, price: variant.price, inStock: variant.inStock });
+    setVForm({
+      name: variant.name,
+      price: variant.price,
+      inStock: variant.inStock,
+      costPrice: variant.costPrice ?? 0,
+    });
     setEditingIndex(index);
   };
 
   const cancelEdit = () => {
     setEditingIndex(null);
-    setVForm({ name: "", price: 0, inStock: 0 });
+    setVForm({ name: "", price: 0, inStock: 0, costPrice: 0 });
   };
 
   return (
     <div className="space-y-3">
-      <label className="text-sm font-bold text-[#111827]">Variants</label>
+      <label className="text-sm font-bold text-[var(--text-primary)]">Variants</label>
 
       {variants.length > 0 && (
         <div className="space-y-2">
           {variants.map((v, i) => (
-            <div key={v.id ?? `new-${i}`} className="flex items-center justify-between rounded-xl border border-[#f1f5f9] bg-white p-3 shadow-sm">
+            <div key={v.id ?? `new-${i}`} className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-3 shadow-sm">
               <div>
-                <p className="text-sm font-bold text-[#111827]">{v.name}</p>
-                <p className="text-xs text-[#6b7280]">
+                <p className="text-sm font-bold text-[var(--text-primary)]">{v.name}</p>
+                <p className="text-xs text-[var(--text-muted)]">
                   {currency} {v.price} • {v.inStock} in stock
+                  {showCostPrice && v.costPrice != null && v.costPrice > 0 ? ` • cost ${currency} ${v.costPrice}` : ""}
                   {v.id ? " • saved" : " • new"}
                 </p>
               </div>
@@ -146,35 +155,46 @@ function VariantsEditor({
         </div>
       )}
 
-      <div className="rounded-2xl border border-[#f1f5f9] bg-white p-4 space-y-3">
+      <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4 space-y-3">
         <label className="block space-y-1.5">
-          <span className="block text-xs font-semibold text-[#64748b]">
+          <span className="block text-xs font-semibold text-[var(--text-muted)]">
             {editingIndex != null ? "Edit variant" : "Variant name"}
           </span>
           <input
             value={vForm.name}
             onChange={(e) => setVForm((p) => ({ ...p, name: e.target.value }))}
             placeholder="e.g. Large, Red, 500ml"
-            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-2.5 text-xs font-medium outline-none"
+            className={portalInputClass}
           />
         </label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className={cn("grid gap-3", showCostPrice ? "grid-cols-3" : "grid-cols-2")}>
           <label className="block space-y-1.5">
-            <span className="block text-xs font-semibold text-[#64748b]">Price</span>
+            <span className="block text-xs font-semibold text-[var(--text-muted)]">Price</span>
             <NumberInput
               value={vForm.price}
               onChange={(price) => setVForm((p) => ({ ...p, price }))}
               placeholder="0"
-              className="w-full rounded-xl bg-[#f3f4f6] px-4 py-2.5 text-xs font-medium outline-none"
+              className={portalInputClass}
             />
           </label>
+          {showCostPrice ? (
+            <label className="block space-y-1.5">
+              <span className="block text-xs font-semibold text-[var(--text-muted)]">Cost price</span>
+              <NumberInput
+                value={vForm.costPrice ?? 0}
+                onChange={(costPrice) => setVForm((p) => ({ ...p, costPrice }))}
+                placeholder="0"
+                className={portalInputClass}
+              />
+            </label>
+          ) : null}
           <label className="block space-y-1.5">
-            <span className="block text-xs font-semibold text-[#64748b]">Stock</span>
+            <span className="block text-xs font-semibold text-[var(--text-muted)]">Stock</span>
             <NumberInput
               value={vForm.inStock}
               onChange={(inStock) => setVForm((p) => ({ ...p, inStock }))}
               placeholder="0"
-              className="w-full rounded-xl bg-[#f3f4f6] px-4 py-2.5 text-xs font-medium outline-none"
+              className={portalInputClass}
             />
           </label>
         </div>
@@ -274,6 +294,7 @@ function MenuItemsContent() {
   const router = useRouter();
   const { token, role } = useAuth();
   const { templateConfig } = useBusinessTemplate();
+  const { bumpDashboardRefresh } = useDashboardRefresh();
   const { market, currency } = usePharmacyMarket();
   const isPharmacy = templateConfig?.industryId === "pharmacy";
   const isRetail = templateConfig?.industryId === "retail-store";
@@ -465,6 +486,7 @@ function MenuItemsContent() {
       setCreateOpen(false);
       resetCreateForm();
       refetch();
+      bumpDashboardRefresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add product", { id: toastId });
     }
@@ -494,6 +516,7 @@ function MenuItemsContent() {
           name: v.name,
           price: v.price,
           inStock: v.inStock,
+          costPrice: v.costPrice ?? 0,
         })) || [],
       );
       if (isPharmacy) {
@@ -546,8 +569,19 @@ function MenuItemsContent() {
         variants: [
           ...editVariants.map((v) =>
             v.id
-              ? { id: v.id, name: v.name, price: v.price, inStock: v.inStock }
-              : { name: v.name, price: v.price, inStock: v.inStock },
+              ? {
+                  id: v.id,
+                  name: v.name,
+                  price: v.price,
+                  inStock: v.inStock,
+                  ...(isRetail ? { costPrice: v.costPrice } : {}),
+                }
+              : {
+                  name: v.name,
+                  price: v.price,
+                  inStock: v.inStock,
+                  ...(isRetail ? { costPrice: v.costPrice } : {}),
+                },
           ),
           ...deletedVariantIds.map((id) => ({ id, action: "delete" as const })),
         ],
@@ -559,6 +593,7 @@ function MenuItemsContent() {
       setEditOpen(false);
       resetEditForm();
       refetch();
+      bumpDashboardRefresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update product", { id: toastId });
     }
@@ -726,7 +761,7 @@ function MenuItemsContent() {
                       </label>
                     </div>
                   ) : null}
-                  <VariantsEditor variants={createVariants} setVariants={setCreateVariants} />
+                  <VariantsEditor variants={createVariants} setVariants={setCreateVariants} showCostPrice={isRetail} />
                   {isPharmacy ? <MedicineProfileFields value={createMedicine} onChange={setCreateMedicine} /> : null}
                   <div className="space-y-2">
                     <label className="text-sm font-bold">Image</label>
@@ -892,6 +927,7 @@ function MenuItemsContent() {
                   <VariantsEditor
                     variants={editVariants}
                     setVariants={setEditVariants}
+                    showCostPrice={isRetail}
                     onRemoveVariant={(variant) => {
                       if (variant.id) {
                         setDeletedVariantIds((prev) =>

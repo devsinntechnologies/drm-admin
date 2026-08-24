@@ -931,6 +931,73 @@ a {
   color: var(--text-primary);
 }
 
+/* Dark theme — workspace-wide surfaces, forms, and tables */
+.business-workspace-dark .portal-error {
+  border-color: #7f1d1d;
+  background: #450a0a;
+  color: #fecaca;
+}
+
+.business-workspace-dark .portal-stat-card,
+.business-workspace-dark .portal-card,
+.business-workspace-dark .portal-header,
+.business-workspace-dark .portal-metric-row {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.business-workspace-dark .portal-card-header {
+  background: color-mix(in srgb, var(--surface-muted) 88%, var(--brand-primary) 12%);
+}
+
+.business-workspace-dark select,
+.business-workspace-dark textarea,
+.business-workspace-dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+  color: var(--text-primary);
+  background-color: var(--input-bg);
+  border-color: var(--border-subtle);
+}
+
+.business-workspace-dark select option {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.business-workspace-dark ::placeholder {
+  color: color-mix(in srgb, var(--text-muted) 85%, transparent);
+}
+
+.business-workspace-dark .admin-shell-nav a:not([data-active="true"]) {
+  color: var(--text-muted);
+}
+
+.business-workspace-dark .admin-shell-nav a:not([data-active="true"]):hover {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.business-workspace-dark [class*="shadow-sm"],
+.business-workspace-dark [class*="shadow-inner"] {
+  --tw-shadow-color: rgba(0, 0, 0, 0.35);
+}
+
+.business-workspace-dark .portal-surface {
+  border-color: var(--border-subtle);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.28);
+}
+
+.business-workspace-dark .portal-empty {
+  border-color: var(--border-subtle);
+  background: var(--surface-muted);
+}
+
+.business-workspace-dark .portal-refresh-fab {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+
+.business-workspace-dark ::selection {
+  background: color-mix(in srgb, var(--brand-secondary) 35%, transparent);
+}
+
 .industry-shell-preview[data-theme="dark"] {
   background: #0b1220;
   border-color: #243044;

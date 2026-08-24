@@ -21,7 +21,7 @@ interface Supplier {
   address?: string | null;
 }
 
-const emptyForm = { name: "", contactPerson: "", phone: "", email: "", address: "" };
+const emptyForm = { name: "", phone: "", email: "", address: "" };
 
 function SuppliersContent() {
   const router = useRouter();
@@ -67,7 +67,6 @@ function SuppliersContent() {
     try {
       const payload = {
         name: form.name.trim(),
-        contactPerson: form.contactPerson.trim() || undefined,
         phone: form.phone.trim() || undefined,
         email: form.email.trim() || undefined,
         address: form.address.trim() || undefined,
@@ -85,7 +84,6 @@ function SuppliersContent() {
     setEditId(supplier.id);
     setForm({
       name: supplier.name,
-      contactPerson: supplier.contactPerson ?? "",
       phone: supplier.phone ?? "",
       email: supplier.email ?? "",
       address: supplier.address ?? "",
@@ -123,18 +121,12 @@ function SuppliersContent() {
                   placeholder="Metro Wholesale"
                 />
               </FormField>
-              <FormField label="Contact person">
-                <input
-                  className={portalInputClass}
-                  value={form.contactPerson}
-                  onChange={(e) => setForm((p) => ({ ...p, contactPerson: e.target.value }))}
-                />
-              </FormField>
-              <FormField label="Phone">
+              <FormField label="Contact number">
                 <input
                   className={portalInputClass}
                   value={form.phone}
                   onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                  placeholder="+92 300 1234567"
                 />
               </FormField>
               <FormField label="Email">
@@ -156,7 +148,7 @@ function SuppliersContent() {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="rounded-2xl border-2 border-[var(--border-subtle)] bg-white py-3 text-sm font-bold"
+                  className="rounded-2xl border-2 border-[var(--border-subtle)] bg-[var(--surface)] py-3 text-sm font-bold text-[var(--text-primary)]"
                 >
                   Reset
                 </button>
@@ -172,7 +164,7 @@ function SuppliersContent() {
             </form>
           </div>
 
-          <div className="rounded-3xl border border-[var(--border-subtle)] bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 shadow-sm">
             <h3 className="mb-4 text-lg font-bold">Supplier List</h3>
             {loading ? (
               <Loading size="sm" />
@@ -190,7 +182,7 @@ function SuppliersContent() {
                     <div>
                       <p className="text-sm font-bold">{supplier.name}</p>
                       <p className="text-xs text-[var(--text-muted)]">
-                        {[supplier.contactPerson, supplier.phone, supplier.email].filter(Boolean).join(" · ") || "No contact info"}
+                        {[supplier.phone, supplier.email].filter(Boolean).join(" · ") || "No contact info"}
                       </p>
                     </div>
                     <div className="flex gap-2">

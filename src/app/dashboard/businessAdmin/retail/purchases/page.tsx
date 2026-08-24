@@ -15,6 +15,7 @@ import { apiClient } from "@/lib/api-client";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { getStoredAuthToken } from "@/lib/utils";
 import { NumberInput } from "@/components/common/NumberInput";
+import { useDashboardRefresh } from "@/contexts/DashboardRefreshContext";
 
 interface Supplier {
   id: string;
@@ -49,6 +50,7 @@ function PurchasesContent() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const businessId = useActiveBusinessId();
   const token = reduxToken || getStoredAuthToken();
+  const { bumpDashboardRefresh } = useDashboardRefresh();
 
   const { items: suppliers } = useRetailResource<Supplier>("/retail/suppliers");
   const { products } = useProducts({ limit: 200 });
@@ -136,6 +138,7 @@ function PurchasesContent() {
       setSupplierId("");
       setLines([{ productId: "", variantId: "", quantity: 1, unitCost: 0 }]);
       await refresh(1);
+      bumpDashboardRefresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create purchase order", { id: toastId });
     } finally {
@@ -150,6 +153,7 @@ function PurchasesContent() {
       await apiClient.patch(`/retail/purchases/${id}/receive`, {}, token, businessId);
       toast.success("Stock received and inventory updated", { id: toastId });
       await refresh(1);
+      bumpDashboardRefresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to receive purchase order", { id: toastId });
     } finally {
