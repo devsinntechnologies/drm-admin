@@ -8,6 +8,7 @@ import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { PortalPage, PortalPageHeader, FormField, portalInputClass } from "@/components/admin/PortalPage";
 import { DeleteConfirmDialog } from "@/components/common/DeleteConfirmDialog";
+import { NumberInput } from "@/components/common/NumberInput";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { useRetailResource } from "@/hooks/useRetailResource";
@@ -28,7 +29,7 @@ const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "mobile_wallet", "othe
 const emptyForm = {
   category: "rent",
   title: "",
-  amount: "",
+  amount: 0,
   paymentMethod: "cash",
   expenseDate: new Date().toISOString().slice(0, 10),
   description: "",
@@ -65,7 +66,7 @@ function ExpensesContent() {
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!form.title.trim() || !form.amount) {
+    if (!form.title.trim() || form.amount <= 0) {
       toast.error("Title and amount are required");
       return;
     }
@@ -73,7 +74,7 @@ function ExpensesContent() {
       category: form.category,
       title: form.title.trim(),
       description: form.description.trim() || undefined,
-      amount: Number(form.amount),
+      amount: form.amount,
       paymentMethod: form.paymentMethod,
       expenseDate: form.expenseDate,
     };
@@ -98,7 +99,7 @@ function ExpensesContent() {
     setForm({
       category: expense.category,
       title: expense.title,
-      amount: String(expense.amount),
+      amount: Number(expense.amount),
       paymentMethod: expense.paymentMethod,
       expenseDate: expense.expenseDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
       description: expense.description ?? "",
@@ -152,12 +153,11 @@ function ExpensesContent() {
                 />
               </FormField>
               <FormField label="Amount" required>
-                <input
-                  type="number"
+                <NumberInput
                   min={0}
                   className={portalInputClass}
                   value={form.amount}
-                  onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
+                  onChange={(amount) => setForm((p) => ({ ...p, amount }))}
                 />
               </FormField>
               <FormField label="Payment method">

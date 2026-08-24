@@ -16,6 +16,7 @@ import { useRetailResource } from "@/hooks/useRetailResource";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { apiClient } from "@/lib/api-client";
 import { getStoredAuthToken } from "@/lib/utils";
+import { NumberInput } from "@/components/common/NumberInput";
 
 type CartLine = {
   lineKey: string;
@@ -75,8 +76,8 @@ function PosContent() {
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [discountAmount, setDiscountAmount] = useState("0");
-  const [taxAmount, setTaxAmount] = useState("0");
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [taxAmount, setTaxAmount] = useState(0);
   const [customerId, setCustomerId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [receipt, setReceipt] = useState<RetailSaleReceipt | null>(null);
@@ -173,7 +174,7 @@ function PosContent() {
   const removeLine = (key: string) => setCart((prev) => prev.filter((line) => line.lineKey !== key));
 
   const subtotal = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
-  const total = Math.max(0, subtotal - (Number(discountAmount) || 0) + (Number(taxAmount) || 0));
+  const total = Math.max(0, subtotal - discountAmount + taxAmount);
 
   const checkout = async () => {
     if (!cart.length) {
@@ -192,8 +193,8 @@ function PosContent() {
             quantity: line.quantity,
             unitPrice: line.unitPrice,
           })),
-          discountAmount: Number(discountAmount) || 0,
-          taxAmount: Number(taxAmount) || 0,
+          discountAmount,
+          taxAmount,
           paymentMethod,
           ...(customerId ? { customerId } : {}),
         },
@@ -203,8 +204,8 @@ function PosContent() {
       toast.success(`Sale ${sale.saleNumber} completed`, { id: toastId });
       setReceipt(sale);
       setCart([]);
-      setDiscountAmount("0");
-      setTaxAmount("0");
+      setDiscountAmount(0);
+      setTaxAmount(0);
       setCustomerId("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Checkout failed", { id: toastId });
@@ -326,22 +327,20 @@ function PosContent() {
               </div>
               <div className="flex items-center justify-between">
                 <label className="text-sm font-semibold">Discount</label>
-                <input
-                  type="number"
+                <NumberInput
                   min={0}
                   className="w-24 rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-sm"
                   value={discountAmount}
-                  onChange={(e) => setDiscountAmount(e.target.value)}
+                  onChange={setDiscountAmount}
                 />
               </div>
               <div className="flex items-center justify-between">
                 <label className="text-sm font-semibold">Tax</label>
-                <input
-                  type="number"
+                <NumberInput
                   min={0}
                   className="w-24 rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-sm"
                   value={taxAmount}
-                  onChange={(e) => setTaxAmount(e.target.value)}
+                  onChange={setTaxAmount}
                 />
               </div>
               <div className="flex items-center justify-between">

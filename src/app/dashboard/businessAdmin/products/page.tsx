@@ -56,25 +56,53 @@ import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { apiClient } from "@/lib/api-client";
 import { EMPTY_MEDICINE_PROFILE, MedicineProfileFields, profileToPayload, type MedicineProfileForm } from "@/components/pharmacy/MedicineProfileFields";
+import { NumberInput } from "@/components/common/NumberInput";
 
 function ErrorAlert({ message }: { message: unknown }) {
   const errorMessage = normalizeErrorMessage(message, "Error loading items");
   return <PortalErrorAlert title="Error loading items" message={errorMessage} />;
 }
 
+type VariantFormItem = Required<Pick<CreateProductVariantPayload, "name" | "price" | "inStock">> &
+  Pick<CreateProductVariantPayload, "id">;
+
 function VariantsEditor({
   variants,
   setVariants,
+  onRemoveVariant,
 }: {
-  variants: CreateProductVariantPayload[];
-  setVariants: React.Dispatch<React.SetStateAction<CreateProductVariantPayload[]>>;
+  variants: VariantFormItem[];
+  setVariants: React.Dispatch<React.SetStateAction<VariantFormItem[]>>;
+  onRemoveVariant?: (variant: VariantFormItem) => void;
 }) {
   const { currency } = usePharmacyMarket();
-  const [vForm, setVForm] = useState<CreateProductVariantPayload>({ name: "", price: 0, inStock: 0 });
+  const [vForm, setVForm] = useState<VariantFormItem>({ name: "", price: 0, inStock: 0 });
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
-  const onAddVariant = () => {
-    if (!vForm.name.trim()) return;
-    setVariants((prev) => [...prev, { ...vForm }]);
+  const onAddOrUpdateVariant = () => {
+    if (!vForm.name.trim()) {
+      toast.error("Variant name is required");
+      return;
+    }
+    if (editingIndex != null) {
+      setVariants((prev) =>
+        prev.map((item, index) => (index === editingIndex ? { ...item, ...vForm, name: vForm.name.trim() } : item)),
+      );
+      setEditingIndex(null);
+    } else {
+      setVariants((prev) => [...prev, { ...vForm, name: vForm.name.trim() }]);
+    }
+    setVForm({ name: "", price: 0, inStock: 0 });
+  };
+
+  const startEdit = (index: number) => {
+    const variant = variants[index];
+    setVForm({ name: variant.name, price: variant.price, inStock: variant.inStock });
+    setEditingIndex(index);
+  };
+
+  const cancelEdit = () => {
+    setEditingIndex(null);
     setVForm({ name: "", price: 0, inStock: 0 });
   };
 
@@ -85,18 +113,34 @@ function VariantsEditor({
       {variants.length > 0 && (
         <div className="space-y-2">
           {variants.map((v, i) => (
-            <div key={i} className="flex items-center justify-between rounded-xl border border-[#f1f5f9] bg-white p-3 shadow-sm">
+            <div key={v.id ?? `new-${i}`} className="flex items-center justify-between rounded-xl border border-[#f1f5f9] bg-white p-3 shadow-sm">
               <div>
                 <p className="text-sm font-bold text-[#111827]">{v.name}</p>
-                <p className="text-xs text-[#6b7280]">{currency} {v.price} • {v.inStock} in stock</p>
+                <p className="text-xs text-[#6b7280]">
+                  {currency} {v.price} • {v.inStock} in stock
+                  {v.id ? " • saved" : " • new"}
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setVariants(variants.filter((_, idx) => idx !== i))}
-                className="rounded-full p-1.5 text-[#ef4444] transition hover:bg-[#fff1f1]"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => startEdit(i)}
+                  className="rounded-full p-1.5 text-[#0050F8] transition hover:bg-[#eef3ff]"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRemoveVariant?.(v);
+                    setVariants(variants.filter((_, idx) => idx !== i));
+                    if (editingIndex === i) cancelEdit();
+                  }}
+                  className="rounded-full p-1.5 text-[#ef4444] transition hover:bg-[#fff1f1]"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -104,43 +148,54 @@ function VariantsEditor({
 
       <div className="rounded-2xl border border-[#f1f5f9] bg-white p-4 space-y-3">
         <label className="block space-y-1.5">
-          <span className="block text-xs font-semibold text-[#64748b]">Variant name</span>
+          <span className="block text-xs font-semibold text-[#64748b]">
+            {editingIndex != null ? "Edit variant" : "Variant name"}
+          </span>
           <input
             value={vForm.name}
-            onChange={(e) => setVForm(p => ({ ...p, name: e.target.value }))}
-            placeholder="e.g. Large"
+            onChange={(e) => setVForm((p) => ({ ...p, name: e.target.value }))}
+            placeholder="e.g. Large, Red, 500ml"
             className="w-full rounded-xl bg-[#f3f4f6] px-4 py-2.5 text-xs font-medium outline-none"
           />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block space-y-1.5">
             <span className="block text-xs font-semibold text-[#64748b]">Price</span>
-            <input
-              type="number"
+            <NumberInput
               value={vForm.price}
-              onChange={(e) => setVForm(p => ({ ...p, price: Number(e.target.value) }))}
+              onChange={(price) => setVForm((p) => ({ ...p, price }))}
               placeholder="0"
               className="w-full rounded-xl bg-[#f3f4f6] px-4 py-2.5 text-xs font-medium outline-none"
             />
           </label>
           <label className="block space-y-1.5">
             <span className="block text-xs font-semibold text-[#64748b]">Stock</span>
-            <input
-              type="number"
+            <NumberInput
               value={vForm.inStock}
-              onChange={(e) => setVForm(p => ({ ...p, inStock: Number(e.target.value) }))}
+              onChange={(inStock) => setVForm((p) => ({ ...p, inStock }))}
               placeholder="0"
               className="w-full rounded-xl bg-[#f3f4f6] px-4 py-2.5 text-xs font-medium outline-none"
             />
           </label>
         </div>
-        <button
-          type="button"
-          onClick={onAddVariant}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-[#001840] py-3.5 text-sm font-bold text-[#ffffff] transition hover:bg-[#00122E]"
-        >
-          <Plus className="h-5 w-5" /> Add Variant
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onAddOrUpdateVariant}
+            className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#001840] py-3.5 text-sm font-bold text-[#ffffff] transition hover:bg-[#00122E]"
+          >
+            <Plus className="h-5 w-5" /> {editingIndex != null ? "Update variant" : "Add variant"}
+          </button>
+          {editingIndex != null ? (
+            <button
+              type="button"
+              onClick={cancelEdit}
+              className="rounded-full border px-4 py-3.5 text-sm font-bold"
+            >
+              Cancel
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -262,8 +317,9 @@ function MenuItemsContent() {
     image: null as File | null,
   });
 
-  const [createVariants, setCreateVariants] = useState<CreateProductVariantPayload[]>([]);
-  const [editVariants, setEditVariants] = useState<CreateProductVariantPayload[]>([]);
+  const [createVariants, setCreateVariants] = useState<VariantFormItem[]>([]);
+  const [editVariants, setEditVariants] = useState<VariantFormItem[]>([]);
+  const [deletedVariantIds, setDeletedVariantIds] = useState<string[]>([]);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [quickCategoryName, setQuickCategoryName] = useState("");
   const [quickCategorySort, setQuickCategorySort] = useState(0);
@@ -374,6 +430,7 @@ function MenuItemsContent() {
       image: null,
     });
     setEditVariants([]);
+    setDeletedVariantIds([]);
     setEditMedicine(EMPTY_MEDICINE_PROFILE);
     setEditId(null);
   };
@@ -418,6 +475,7 @@ function MenuItemsContent() {
     try {
       const product = await getProductById(id);
       setEditId(id);
+      setDeletedVariantIds([]);
       setEditForm({
         name: product.name,
         price: product.price,
@@ -432,10 +490,11 @@ function MenuItemsContent() {
       });
       setEditVariants(
         product.variants?.map((v) => ({
+          id: v.id,
           name: v.name,
           price: v.price,
           inStock: v.inStock,
-        })) || []
+        })) || [],
       );
       if (isPharmacy) {
         try {
@@ -484,7 +543,14 @@ function MenuItemsContent() {
         ...editForm,
         isStockEnabled: isRetail ? editForm.isStockEnabled : undefined,
         costPrice: isRetail ? editForm.costPrice : undefined,
-        variants: editVariants,
+        variants: [
+          ...editVariants.map((v) =>
+            v.id
+              ? { id: v.id, name: v.name, price: v.price, inStock: v.inStock }
+              : { name: v.name, price: v.price, inStock: v.inStock },
+          ),
+          ...deletedVariantIds.map((id) => ({ id, action: "delete" as const })),
+        ],
       });
       if (isPharmacy) {
         await apiClient.put(`/pharmacy-catalog/products/${editId}/profile`, profileToPayload(editMedicine), token, impersonatedBusinessId);
@@ -621,10 +687,9 @@ function MenuItemsContent() {
                       <label className="text-sm font-bold">
                         Price ({currency}) <span className="text-[#dc2626]">*</span>
                       </label>
-                      <input
-                        type="number"
+                      <NumberInput
                         value={createForm.price}
-                        onChange={(e) => setCreateForm(p => ({ ...p, price: Number(e.target.value) }))}
+                        onChange={(price) => setCreateForm((p) => ({ ...p, price }))}
                         className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
                         required
                         min={0}
@@ -632,10 +697,9 @@ function MenuItemsContent() {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-sm font-bold">Stock</label>
-                      <input
-                        type="number"
+                      <NumberInput
                         value={createForm.inStock}
-                        onChange={(e) => setCreateForm(p => ({ ...p, inStock: Number(e.target.value) }))}
+                        onChange={(inStock) => setCreateForm((p) => ({ ...p, inStock }))}
                         className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
                         min={0}
                       />
@@ -645,12 +709,11 @@ function MenuItemsContent() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-sm font-bold">Cost price ({currency})</label>
-                        <input
-                          type="number"
-                          min={0}
+                        <NumberInput
                           value={createForm.costPrice}
-                          onChange={(e) => setCreateForm((p) => ({ ...p, costPrice: Number(e.target.value) }))}
+                          onChange={(costPrice) => setCreateForm((p) => ({ ...p, costPrice }))}
                           className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                          min={0}
                         />
                       </div>
                       <label className="flex items-center gap-2 self-end rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm font-semibold">
@@ -787,10 +850,9 @@ function MenuItemsContent() {
                       <label className="text-sm font-bold">
                         Price ({currency}) <span className="text-[#dc2626]">*</span>
                       </label>
-                      <input
-                        type="number"
+                      <NumberInput
                         value={editForm.price}
-                        onChange={(e) => setEditForm(p => ({ ...p, price: Number(e.target.value) }))}
+                        onChange={(price) => setEditForm((p) => ({ ...p, price }))}
                         className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
                         required
                         min={0}
@@ -798,10 +860,9 @@ function MenuItemsContent() {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-sm font-bold">Stock</label>
-                      <input
-                        type="number"
+                      <NumberInput
                         value={editForm.inStock}
-                        onChange={(e) => setEditForm(p => ({ ...p, inStock: Number(e.target.value) }))}
+                        onChange={(inStock) => setEditForm((p) => ({ ...p, inStock }))}
                         className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
                         min={0}
                       />
@@ -811,12 +872,11 @@ function MenuItemsContent() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-sm font-bold">Cost price ({currency})</label>
-                        <input
-                          type="number"
-                          min={0}
+                        <NumberInput
                           value={editForm.costPrice}
-                          onChange={(e) => setEditForm((p) => ({ ...p, costPrice: Number(e.target.value) }))}
+                          onChange={(costPrice) => setEditForm((p) => ({ ...p, costPrice }))}
                           className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                          min={0}
                         />
                       </div>
                       <label className="flex items-center gap-2 self-end rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm font-semibold">
@@ -829,7 +889,17 @@ function MenuItemsContent() {
                       </label>
                     </div>
                   ) : null}
-                  <VariantsEditor variants={editVariants} setVariants={setEditVariants} />
+                  <VariantsEditor
+                    variants={editVariants}
+                    setVariants={setEditVariants}
+                    onRemoveVariant={(variant) => {
+                      if (variant.id) {
+                        setDeletedVariantIds((prev) =>
+                          prev.includes(variant.id!) ? prev : [...prev, variant.id!],
+                        );
+                      }
+                    }}
+                  />
                   {isPharmacy ? <MedicineProfileFields value={editMedicine} onChange={setEditMedicine} /> : null}
                   <div className="space-y-2">
                     <label className="text-sm font-bold">Image</label>

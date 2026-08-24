@@ -65,9 +65,11 @@ function getAuthToken(reduxToken: string | null) {
 }
 
 export interface CreateProductVariantPayload {
-  name: string;
-  price: number;
-  inStock: number;
+  id?: string;
+  name?: string;
+  price?: number;
+  inStock?: number;
+  action?: "add" | "update" | "delete";
 }
 
 export interface CreateProductPayload {
@@ -84,7 +86,9 @@ export interface CreateProductPayload {
   image?: File | null;
 }
 
-export interface UpdateProductPayload extends CreateProductPayload { }
+export interface UpdateProductPayload extends Omit<CreateProductPayload, "variants"> {
+  variants?: CreateProductVariantPayload[];
+}
 
 export function useProducts(options: UseProductsOptions = {}) {
   const { page = 1, limit = 30 } = options;

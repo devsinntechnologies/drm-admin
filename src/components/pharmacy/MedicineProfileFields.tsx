@@ -1,6 +1,7 @@
 "use client";
 
 import { FormField, portalInputClass } from "@/components/admin/PortalPage";
+import { NumberInput } from "@/components/common/NumberInput";
 import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 
 export type MedicineProfileForm = {
@@ -59,10 +60,10 @@ export function MedicineProfileFields({
           <input className={portalInputClass} placeholder={market.productCodeHint} value={value.hsnCode} onChange={(e) => set({ hsnCode: e.target.value })} />
         </FormField>
         <FormField label={`${market.taxName} %`}>
-          <input className={portalInputClass} type="number" placeholder="0" value={value.gstRate} onChange={(e) => set({ gstRate: Number(e.target.value) })} />
+          <NumberInput className={portalInputClass} placeholder="0" value={value.gstRate} onChange={(gstRate) => set({ gstRate })} />
         </FormField>
         <FormField label="Reorder level">
-          <input className={portalInputClass} type="number" placeholder="0" value={value.reorderLevel} onChange={(e) => set({ reorderLevel: Number(e.target.value) })} />
+          <NumberInput className={portalInputClass} placeholder="0" value={value.reorderLevel} onChange={(reorderLevel) => set({ reorderLevel })} />
         </FormField>
         <FormField label="Controlled schedule">
           <select
@@ -84,10 +85,10 @@ export function MedicineProfileFields({
           Rx / POM required
         </label>
         <FormField label="Tablets per strip">
-          <input className={portalInputClass} type="number" placeholder="10" value={value.stripToTablet} onChange={(e) => set({ stripToTablet: Number(e.target.value) })} />
+          <NumberInput className={portalInputClass} placeholder="10" value={value.stripToTablet} onChange={(stripToTablet) => set({ stripToTablet })} />
         </FormField>
         <FormField label="Strips per box">
-          <input className={portalInputClass} type="number" placeholder="10" value={value.boxToStrip} onChange={(e) => set({ boxToStrip: Number(e.target.value) })} />
+          <NumberInput className={portalInputClass} placeholder="10" value={value.boxToStrip} onChange={(boxToStrip) => set({ boxToStrip })} />
         </FormField>
       </div>
     </div>

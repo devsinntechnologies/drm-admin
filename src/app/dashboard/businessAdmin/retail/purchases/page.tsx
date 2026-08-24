@@ -14,6 +14,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { apiClient } from "@/lib/api-client";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { getStoredAuthToken } from "@/lib/utils";
+import { NumberInput } from "@/components/common/NumberInput";
 
 interface Supplier {
   id: string;
@@ -38,7 +39,7 @@ interface PurchaseOrder {
   items: PurchaseOrderItem[];
 }
 
-type Line = { productId: string; variantId: string; quantity: string; unitCost: string };
+type Line = { productId: string; variantId: string; quantity: number; unitCost: number };
 
 function PurchasesContent() {
   const router = useRouter();
@@ -59,7 +60,7 @@ function PurchasesContent() {
   } = useRetailResource<PurchaseOrder>("/retail/purchases");
 
   const [supplierId, setSupplierId] = useState("");
-  const [lines, setLines] = useState<Line[]>([{ productId: "", variantId: "", quantity: "1", unitCost: "" }]);
+  const [lines, setLines] = useState<Line[]>([{ productId: "", variantId: "", quantity: 1, unitCost: 0 }]);
   const [submitting, setSubmitting] = useState(false);
   const [receivingId, setReceivingId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -79,7 +80,7 @@ function PurchasesContent() {
     setIsAuthorized(true);
   }, [role, router, impersonatedBusinessId]);
 
-  const addLine = () => setLines((prev) => [...prev, { productId: "", variantId: "", quantity: "1", unitCost: "" }]);
+  const addLine = () => setLines((prev) => [...prev, { productId: "", variantId: "", quantity: 1, unitCost: 0 }]);
   const removeLine = (index: number) => setLines((prev) => prev.filter((_, i) => i !== index));
   const updateLine = (index: number, patch: Partial<Line>) =>
     setLines((prev) =>
@@ -101,7 +102,7 @@ function PurchasesContent() {
       toast.error("Select a supplier");
       return;
     }
-    const validLines = lines.filter((line) => line.productId && Number(line.quantity) > 0 && line.unitCost !== "");
+    const validLines = lines.filter((line) => line.productId && line.quantity > 0 && line.unitCost >= 0);
     if (!validLines.length) {
       toast.error("Add at least one valid line item");
       return;
@@ -124,8 +125,8 @@ function PurchasesContent() {
           items: validLines.map((line) => ({
             productId: line.productId,
             ...(line.variantId ? { variantId: line.variantId } : {}),
-            quantity: Number(line.quantity),
-            unitCost: Number(line.unitCost),
+            quantity: line.quantity,
+            unitCost: line.unitCost,
           })),
         },
         token,
@@ -133,7 +134,7 @@ function PurchasesContent() {
       );
       toast.success("Purchase order created", { id: toastId });
       setSupplierId("");
-      setLines([{ productId: "", variantId: "", quantity: "1", unitCost: "" }]);
+      setLines([{ productId: "", variantId: "", quantity: 1, unitCost: 0 }]);
       await refresh(1);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create purchase order", { id: toastId });
@@ -211,21 +212,19 @@ function PurchasesContent() {
                         </option>
                       ))}
                     </select>
-                    <input
-                      type="number"
+                    <NumberInput
                       min={1}
                       className={portalInputClass}
                       placeholder="Qty"
                       value={line.quantity}
-                      onChange={(e) => updateLine(index, { quantity: e.target.value })}
+                      onChange={(quantity) => updateLine(index, { quantity: Math.max(1, quantity) })}
                     />
-                    <input
-                      type="number"
+                    <NumberInput
                       min={0}
                       className={portalInputClass}
                       placeholder="Cost/unit"
                       value={line.unitCost}
-                      onChange={(e) => updateLine(index, { unitCost: e.target.value })}
+                      onChange={(unitCost) => updateLine(index, { unitCost })}
                     />
                     <button
                       type="button"
