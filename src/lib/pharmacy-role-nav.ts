@@ -66,6 +66,32 @@ export const PHARMACY_ROLE_NAV: Record<string, string[]> = {
     "suppliers",
     "reports",
   ],
+  store_manager: [
+    "dashboard",
+    "pos",
+    "products",
+    "categories",
+    "inventory",
+    "purchases",
+    "suppliers",
+    "customers",
+    "returns",
+    "sales",
+    "invoices",
+    "expenses",
+    "reports",
+    "staff",
+    "users",
+  ],
+  inventory_clerk: [
+    "dashboard",
+    "products",
+    "categories",
+    "inventory",
+    "purchases",
+    "suppliers",
+    "reports",
+  ],
 };
 
 export function isPharmacyStaffRole(role: string | null | undefined): boolean {

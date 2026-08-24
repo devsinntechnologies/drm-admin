@@ -38,6 +38,22 @@ const PHARMACY_MODULE_HREF: Partial<Record<ModuleId, string>> = {
   staff: `${BUSINESS_ADMIN_BASE}/users`,
 };
 
+const RETAIL_MODULE_IDS = [
+  "pos",
+  "purchases",
+  "suppliers",
+  "customers",
+  "returns",
+  "expenses",
+  "reports",
+  "staff",
+] as const;
+
+const RETAIL_MODULE_HREF: Partial<Record<ModuleId, string>> = {
+  ...Object.fromEntries(RETAIL_MODULE_IDS.map((id) => [id, `${BUSINESS_ADMIN_BASE}/retail/${id}`])),
+  inventory: `${BUSINESS_ADMIN_BASE}/products`,
+} as Partial<Record<ModuleId, string>>;
+
 const SNOOKER_MODULE_IDS = [
   "tables",
   "pos",
@@ -73,6 +89,10 @@ export function getModuleHref(moduleId: ModuleId | string, industryId?: string |
     const snookerHref = SNOOKER_MODULE_HREF[moduleId as ModuleId];
     if (snookerHref) return snookerHref;
   }
+  if (industryId === "retail-store") {
+    const retailHref = RETAIL_MODULE_HREF[moduleId as ModuleId];
+    if (retailHref) return retailHref;
+  }
   return MODULE_HREF[moduleId as ModuleId] ?? `${BUSINESS_ADMIN_BASE}/modules/${moduleId}`;
 }
 
@@ -94,6 +114,9 @@ export function pathnameToModuleId(pathname: string): string | null {
 
   const snookerMatch = path.match(/\/businessAdmin\/snooker\/([^/]+)/);
   if (snookerMatch?.[1]) return snookerMatch[1];
+
+  const retailMatch = path.match(/\/businessAdmin\/retail\/([^/]+)/);
+  if (retailMatch?.[1]) return retailMatch[1];
 
   const pharmacyMatch: Array<[string, string]> = [
     [`${BUSINESS_ADMIN_BASE}/inventory`, "inventory"],
@@ -140,5 +163,6 @@ export function pathnameToModuleId(pathname: string): string | null {
 export function isDedicatedModuleRoute(moduleId: string, industryId?: string | null): boolean {
   if (industryId === "pharmacy" && PHARMACY_MODULE_HREF[moduleId as ModuleId]) return true;
   if (industryId === "snooker-pos" && SNOOKER_MODULE_HREF[moduleId as ModuleId]) return true;
+  if (industryId === "retail-store" && RETAIL_MODULE_HREF[moduleId as ModuleId]) return true;
   return Boolean(MODULE_HREF[moduleId as ModuleId]);
 }

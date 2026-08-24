@@ -32,7 +32,9 @@ export function useActiveBusinessId() {
         role === "cashier" ||
         role === "inventory_manager" ||
         role === "pharmacy_manager" ||
-        role === "shift_incharge";
+        role === "shift_incharge" ||
+        role === "store_manager" ||
+        role === "inventory_clerk";
       if (isStaff) {
         const storedId = localStorage.getItem("businessId");
         return storedId ? storedId.trim() : null;

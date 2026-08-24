@@ -97,6 +97,13 @@ export const apiClient = {
     });
     return parseResponse<T>(response);
   },
+  delete: async <T>(path: string, token?: string | null, businessId?: string | null) => {
+    const response = await fetch(buildApiUrl(withBusinessId(path, businessId)), {
+      method: "DELETE",
+      headers: authHeaders(token),
+    });
+    return parseResponse<T>(response);
+  },
 };
 
 export { BASE_URL };
