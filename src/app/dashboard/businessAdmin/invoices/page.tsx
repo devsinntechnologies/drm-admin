@@ -75,6 +75,7 @@ function InvoicesContent() {
   const { role } = useAuth();
   const { templateConfig, currency } = useBusinessTemplate();
   const isPharmacy = templateConfig?.industryId === "pharmacy";
+  const isRetail = templateConfig?.industryId === "retail-store";
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -91,6 +92,12 @@ function InvoicesContent() {
   });
 
   useEffect(() => {
+    if (isRetail) {
+      const suffix = impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : "";
+      router.replace(`/dashboard/businessAdmin/retail/sales${suffix}`);
+      return;
+    }
+
     const storedRole = typeof window !== "undefined" ? localStorage.getItem("roleName") : null;
     const currentRole = role ?? storedRole;
 
@@ -105,7 +112,7 @@ function InvoicesContent() {
     }
 
     setIsAuthorized(true);
-  }, [role, router, impersonatedBusinessId]);
+  }, [role, router, impersonatedBusinessId, isRetail]);
 
   const rows = useMemo<InvoiceRow[]>(() => {
     return invoices.map((invoice) => ({

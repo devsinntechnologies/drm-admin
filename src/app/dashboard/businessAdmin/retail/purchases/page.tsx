@@ -38,7 +38,7 @@ interface PurchaseOrder {
   items: PurchaseOrderItem[];
 }
 
-type Line = { productId: string; quantity: string; unitCost: string };
+type Line = { productId: string; variantId: string; quantity: string; unitCost: string };
 
 function PurchasesContent() {
   const router = useRouter();
@@ -59,9 +59,10 @@ function PurchasesContent() {
   } = useRetailResource<PurchaseOrder>("/retail/purchases");
 
   const [supplierId, setSupplierId] = useState("");
-  const [lines, setLines] = useState<Line[]>([{ productId: "", quantity: "1", unitCost: "" }]);
+  const [lines, setLines] = useState<Line[]>([{ productId: "", variantId: "", quantity: "1", unitCost: "" }]);
   const [submitting, setSubmitting] = useState(false);
   const [receivingId, setReceivingId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     const storedRole = typeof window !== "undefined" ? localStorage.getItem("roleName") : null;
@@ -78,10 +79,21 @@ function PurchasesContent() {
     setIsAuthorized(true);
   }, [role, router, impersonatedBusinessId]);
 
-  const addLine = () => setLines((prev) => [...prev, { productId: "", quantity: "1", unitCost: "" }]);
+  const addLine = () => setLines((prev) => [...prev, { productId: "", variantId: "", quantity: "1", unitCost: "" }]);
   const removeLine = (index: number) => setLines((prev) => prev.filter((_, i) => i !== index));
   const updateLine = (index: number, patch: Partial<Line>) =>
-    setLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
+    setLines((prev) =>
+      prev.map((line, i) => {
+        if (i !== index) return line;
+        const next = { ...line, ...patch };
+        if (patch.productId !== undefined && patch.productId !== line.productId) {
+          next.variantId = "";
+        }
+        return next;
+      }),
+    );
+
+  const productById = (id: string) => products.find((product) => product.id === id);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -94,6 +106,13 @@ function PurchasesContent() {
       toast.error("Add at least one valid line item");
       return;
     }
+    for (const line of validLines) {
+      const product = productById(line.productId);
+      if ((product?.variants?.length ?? 0) > 0 && !line.variantId) {
+        toast.error(`Select a variant for "${product?.name ?? "product"}"`);
+        return;
+      }
+    }
 
     const toastId = toast.loading("Creating purchase order...");
     setSubmitting(true);
@@ -104,6 +123,7 @@ function PurchasesContent() {
           supplierId,
           items: validLines.map((line) => ({
             productId: line.productId,
+            ...(line.variantId ? { variantId: line.variantId } : {}),
             quantity: Number(line.quantity),
             unitCost: Number(line.unitCost),
           })),
@@ -113,7 +133,7 @@ function PurchasesContent() {
       );
       toast.success("Purchase order created", { id: toastId });
       setSupplierId("");
-      setLines([{ productId: "", quantity: "1", unitCost: "" }]);
+      setLines([{ productId: "", variantId: "", quantity: "1", unitCost: "" }]);
       await refresh(1);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create purchase order", { id: toastId });
@@ -133,6 +153,20 @@ function PurchasesContent() {
       toast.error(err instanceof Error ? err.message : "Failed to receive purchase order", { id: toastId });
     } finally {
       setReceivingId(null);
+    }
+  };
+
+  const cancelOrder = async (id: string) => {
+    const toastId = toast.loading("Cancelling order...");
+    setCancellingId(id);
+    try {
+      await apiClient.patch(`/retail/purchases/${id}/cancel`, {}, token, businessId);
+      toast.success("Purchase order cancelled", { id: toastId });
+      await refresh(1);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel purchase order", { id: toastId });
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -159,8 +193,12 @@ function PurchasesContent() {
 
               <div className="space-y-3">
                 <span className="block text-sm font-semibold text-[var(--text-muted,#64748b)]">Items</span>
-                {lines.map((line, index) => (
-                  <div key={index} className="grid grid-cols-[2fr_1fr_1fr_auto] gap-2">
+                {lines.map((line, index) => {
+                  const selectedProduct = productById(line.productId);
+                  const variants = selectedProduct?.variants ?? [];
+                  return (
+                  <div key={index} className="space-y-2 rounded-xl border border-[var(--border-subtle)] p-3">
+                    <div className="grid grid-cols-[2fr_1fr_1fr_auto] gap-2">
                     <select
                       className={portalInputClass}
                       value={line.productId}
@@ -196,8 +234,23 @@ function PurchasesContent() {
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
+                    </div>
+                    {variants.length > 0 ? (
+                      <select
+                        className={portalInputClass}
+                        value={line.variantId}
+                        onChange={(e) => updateLine(index, { variantId: e.target.value })}
+                      >
+                        <option value="">Select variant</option>
+                        {variants.map((variant) => (
+                          <option key={variant.id} value={variant.id}>
+                            {variant.name} · stock {variant.inStock}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
                   </div>
-                ))}
+                );})}
                 <button
                   type="button"
                   onClick={addLine}
@@ -249,13 +302,22 @@ function PurchasesContent() {
                       </div>
                     </div>
                     {order.status !== "received" && order.status !== "cancelled" ? (
-                      <button
-                        onClick={() => receiveOrder(order.id)}
-                        disabled={receivingId === order.id}
-                        className="mt-3 rounded-xl bg-[#0050F8] px-4 py-2 text-xs font-bold text-white disabled:opacity-60"
-                      >
-                        {receivingId === order.id ? "Receiving..." : "Mark as received"}
-                      </button>
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          onClick={() => receiveOrder(order.id)}
+                          disabled={receivingId === order.id}
+                          className="rounded-xl bg-[#0050F8] px-4 py-2 text-xs font-bold text-white disabled:opacity-60"
+                        >
+                          {receivingId === order.id ? "Receiving..." : "Mark as received"}
+                        </button>
+                        <button
+                          onClick={() => cancelOrder(order.id)}
+                          disabled={cancellingId === order.id}
+                          className="rounded-xl border border-red-200 px-4 py-2 text-xs font-bold text-red-600 disabled:opacity-60"
+                        >
+                          {cancellingId === order.id ? "Cancelling..." : "Cancel"}
+                        </button>
+                      </div>
                     ) : null}
                   </div>
                 ))}

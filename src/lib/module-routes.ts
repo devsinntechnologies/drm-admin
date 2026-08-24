@@ -51,6 +51,7 @@ const RETAIL_MODULE_IDS = [
 
 const RETAIL_MODULE_HREF: Partial<Record<ModuleId, string>> = {
   ...Object.fromEntries(RETAIL_MODULE_IDS.map((id) => [id, `${BUSINESS_ADMIN_BASE}/retail/${id}`])),
+  sales: `${BUSINESS_ADMIN_BASE}/retail/sales`,
   inventory: `${BUSINESS_ADMIN_BASE}/products`,
 } as Partial<Record<ModuleId, string>>;
 

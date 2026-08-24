@@ -28,6 +28,9 @@ export interface Product {
   categoryId?: string;
   category?: ProductCategory | null;
   isKitchen: boolean;
+  isStockEnabled?: boolean;
+  costPrice?: number | null;
+  stockCount?: number | null;
   variants: ProductVariant[];
   createdAt: string;
   updatedAt: string;
@@ -75,6 +78,8 @@ export interface CreateProductPayload {
   status: "ACTIVE" | "INACTIVE";
   categoryId: string;
   isKitchen: boolean;
+  isStockEnabled?: boolean;
+  costPrice?: number | null;
   variants: CreateProductVariantPayload[];
   image?: File | null;
 }
@@ -208,6 +213,12 @@ export function useProducts(options: UseProductsOptions = {}) {
       formData.append("status", payload.status);
       formData.append("categoryId", payload.categoryId);
       formData.append("isKitchen", String(payload.isKitchen));
+      if (payload.isStockEnabled !== undefined) {
+        formData.append("isStockEnabled", String(payload.isStockEnabled));
+      }
+      if (payload.costPrice !== undefined && payload.costPrice !== null) {
+        formData.append("costPrice", String(payload.costPrice));
+      }
       if (payload.image) {
         formData.append("image", payload.image);
       }
@@ -301,6 +312,12 @@ export function useProducts(options: UseProductsOptions = {}) {
       formData.append("status", payload.status);
       formData.append("categoryId", payload.categoryId);
       formData.append("isKitchen", String(payload.isKitchen));
+      if (payload.isStockEnabled !== undefined) {
+        formData.append("isStockEnabled", String(payload.isStockEnabled));
+      }
+      if (payload.costPrice !== undefined && payload.costPrice !== null) {
+        formData.append("costPrice", String(payload.costPrice));
+      }
       if (payload.image) {
         formData.append("image", payload.image);
       }

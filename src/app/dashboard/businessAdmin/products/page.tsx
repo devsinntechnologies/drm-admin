@@ -221,6 +221,8 @@ function MenuItemsContent() {
   const { templateConfig } = useBusinessTemplate();
   const { market, currency } = usePharmacyMarket();
   const isPharmacy = templateConfig?.industryId === "pharmacy";
+  const isRetail = templateConfig?.industryId === "retail-store";
+  const productLabel = isPharmacy ? "Medicine" : isRetail ? "Product" : "Menu Item";
   const [createMedicine, setCreateMedicine] = useState<MedicineProfileForm>(EMPTY_MEDICINE_PROFILE);
   const [editMedicine, setEditMedicine] = useState<MedicineProfileForm>(EMPTY_MEDICINE_PROFILE);
   const searchParams = useSearchParams();
@@ -242,6 +244,8 @@ function MenuItemsContent() {
     status: "ACTIVE" as "ACTIVE" | "INACTIVE",
     categoryId: "",
     isKitchen: true,
+    isStockEnabled: true,
+    costPrice: 0,
     image: null as File | null,
   });
 
@@ -253,6 +257,8 @@ function MenuItemsContent() {
     status: "ACTIVE" as "ACTIVE" | "INACTIVE",
     categoryId: "",
     isKitchen: true,
+    isStockEnabled: true,
+    costPrice: 0,
     image: null as File | null,
   });
 
@@ -346,6 +352,8 @@ function MenuItemsContent() {
       status: "ACTIVE",
       categoryId: "",
       isKitchen: true,
+      isStockEnabled: true,
+      costPrice: 0,
       image: null,
     });
     setCreateVariants([]);
@@ -361,6 +369,8 @@ function MenuItemsContent() {
       status: "ACTIVE",
       categoryId: "",
       isKitchen: true,
+      isStockEnabled: true,
+      costPrice: 0,
       image: null,
     });
     setEditVariants([]);
@@ -381,7 +391,9 @@ function MenuItemsContent() {
     try {
       await createProduct({
         ...createForm,
-        isKitchen: isPharmacy ? false : createForm.isKitchen,
+        isKitchen: isPharmacy || isRetail ? false : createForm.isKitchen,
+        isStockEnabled: isRetail ? createForm.isStockEnabled : undefined,
+        costPrice: isRetail ? createForm.costPrice : undefined,
         variants: createVariants,
       });
       if (isPharmacy) {
@@ -414,6 +426,8 @@ function MenuItemsContent() {
         status: product.status as "ACTIVE" | "INACTIVE",
         categoryId: product.categoryId || "",
         isKitchen: product.isKitchen || true,
+        isStockEnabled: product.isStockEnabled ?? true,
+        costPrice: product.costPrice ?? 0,
         image: null,
       });
       setEditVariants(
@@ -468,6 +482,8 @@ function MenuItemsContent() {
     try {
       await updateProduct(editId, {
         ...editForm,
+        isStockEnabled: isRetail ? editForm.isStockEnabled : undefined,
+        costPrice: isRetail ? editForm.costPrice : undefined,
         variants: editVariants,
       });
       if (isPharmacy) {
@@ -506,7 +522,7 @@ function MenuItemsContent() {
   return (
     <AdminShell
       activeTab="products"
-      pageTitle={isPharmacy ? "Medicines" : "Menu Items"}
+      pageTitle={isPharmacy ? "Medicines" : isRetail ? "Products" : "Menu Items"}
       pageSubtitle={isPharmacy ? market.catalogSubtitle : undefined}
     >
       <PortalPage>
@@ -532,7 +548,7 @@ function MenuItemsContent() {
           )}
         </div>
 
-        <PortalMetricRow label={isPharmacy ? "Total medicines" : "Total Items"} value={pagination.total} icon={Box} />
+        <PortalMetricRow label={isPharmacy ? "Total medicines" : isRetail ? "Total products" : "Total Items"} value={pagination.total} icon={Box} />
 
         {error ? <ErrorAlert message={error} /> : null}
 
@@ -625,6 +641,28 @@ function MenuItemsContent() {
                       />
                     </div>
                   </div>
+                  {isRetail ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-bold">Cost price ({currency})</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={createForm.costPrice}
+                          onChange={(e) => setCreateForm((p) => ({ ...p, costPrice: Number(e.target.value) }))}
+                          className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                        />
+                      </div>
+                      <label className="flex items-center gap-2 self-end rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm font-semibold">
+                        <input
+                          type="checkbox"
+                          checked={createForm.isStockEnabled}
+                          onChange={(e) => setCreateForm((p) => ({ ...p, isStockEnabled: e.target.checked }))}
+                        />
+                        Track inventory on sales
+                      </label>
+                    </div>
+                  ) : null}
                   <VariantsEditor variants={createVariants} setVariants={setCreateVariants} />
                   {isPharmacy ? <MedicineProfileFields value={createMedicine} onChange={setCreateMedicine} /> : null}
                   <div className="space-y-2">
@@ -769,6 +807,28 @@ function MenuItemsContent() {
                       />
                     </div>
                   </div>
+                  {isRetail ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-bold">Cost price ({currency})</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={editForm.costPrice}
+                          onChange={(e) => setEditForm((p) => ({ ...p, costPrice: Number(e.target.value) }))}
+                          className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                        />
+                      </div>
+                      <label className="flex items-center gap-2 self-end rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm font-semibold">
+                        <input
+                          type="checkbox"
+                          checked={editForm.isStockEnabled}
+                          onChange={(e) => setEditForm((p) => ({ ...p, isStockEnabled: e.target.checked }))}
+                        />
+                        Track inventory on sales
+                      </label>
+                    </div>
+                  ) : null}
                   <VariantsEditor variants={editVariants} setVariants={setEditVariants} />
                   {isPharmacy ? <MedicineProfileFields value={editMedicine} onChange={setEditMedicine} /> : null}
                   <div className="space-y-2">

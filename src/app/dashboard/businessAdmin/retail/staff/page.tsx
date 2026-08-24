@@ -2,11 +2,12 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, UserCog } from "lucide-react";
+import { KeyRound, Loader2, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { PortalPage, PortalPageHeader, FormField, portalInputClass } from "@/components/admin/PortalPage";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { useRetailResource } from "@/hooks/useRetailResource";
@@ -30,6 +31,8 @@ function StaffContent() {
   const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [passwordMember, setPasswordMember] = useState<StaffMember | null>(null);
+  const [newPassword, setNewPassword] = useState("");
 
   const { items, loading, actionLoading, error, create, patch } =
     useRetailResource<StaffMember>("/retail/staff");
@@ -77,6 +80,22 @@ function StaffContent() {
       toast.success("Status updated", { id: toastId });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update status", { id: toastId });
+    }
+  };
+
+  const resetPassword = async () => {
+    if (!passwordMember || newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    const toastId = toast.loading("Updating password...");
+    try {
+      await patch(`${passwordMember.id}/password`, { password: newPassword });
+      toast.success("Password updated", { id: toastId });
+      setPasswordMember(null);
+      setNewPassword("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update password", { id: toastId });
     }
   };
 
@@ -140,14 +159,26 @@ function StaffContent() {
                       <p className="text-sm font-bold">{member.name}</p>
                       <p className="text-xs capitalize text-[var(--text-muted)]">{member.role?.replace("_", " ")} · {member.email}</p>
                     </div>
-                    <button
-                      onClick={() => toggleStatus(member)}
-                      className={`rounded-xl px-3 py-1.5 text-xs font-bold ${
-                        member.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {member.status === "active" ? "Active" : "Inactive"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setPasswordMember(member);
+                          setNewPassword("");
+                        }}
+                        className="rounded-xl border px-3 py-1.5 text-xs font-bold text-[#0050F8]"
+                      >
+                        <KeyRound className="mr-1 inline h-3 w-3" />
+                        Reset pwd
+                      </button>
+                      <button
+                        onClick={() => toggleStatus(member)}
+                        className={`rounded-xl px-3 py-1.5 text-xs font-bold ${
+                          member.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {member.status === "active" ? "Active" : "Inactive"}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -155,6 +186,31 @@ function StaffContent() {
           </div>
         </div>
       </PortalPage>
+
+      <Dialog open={!!passwordMember} onOpenChange={(open) => !open && setPasswordMember(null)}>
+        <DialogContent className="max-w-md">
+          <DialogTitle>Reset password — {passwordMember?.name}</DialogTitle>
+          <div className="mt-4 space-y-4">
+            <FormField label="New password" required>
+              <input
+                type="password"
+                className={portalInputClass}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                minLength={6}
+              />
+            </FormField>
+            <button
+              type="button"
+              onClick={resetPassword}
+              disabled={actionLoading}
+              className="w-full rounded-2xl bg-[#001840] py-3 text-sm font-bold text-white disabled:opacity-60"
+            >
+              {actionLoading ? "Saving..." : "Update password"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 }

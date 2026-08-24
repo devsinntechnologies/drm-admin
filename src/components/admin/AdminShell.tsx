@@ -360,7 +360,7 @@ export default function AdminShell({
         icon: <AppWindow className="h-5 w-5" />,
       };
       const workspaceTabs = [...buildBusinessWorkspaceNav(templateConfig, businessId), websiteTab];
-      if (templateConfig.industryId === "pharmacy") {
+      if (templateConfig.industryId === "pharmacy" || templateConfig.industryId === "retail-store") {
         return filterPharmacyNavForRole(workspaceTabs, resolvedRole);
       }
       return workspaceTabs;

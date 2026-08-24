@@ -43,8 +43,9 @@ function ExpensesContent() {
   const [form, setForm] = useState(emptyForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
 
-  const { items, loading, actionLoading, error, create, remove } =
+  const { items, loading, actionLoading, error, create, update, remove } =
     useRetailResource<Expense>("/expenses");
 
   useEffect(() => {
@@ -68,21 +69,40 @@ function ExpensesContent() {
       toast.error("Title and amount are required");
       return;
     }
-    const toastId = toast.loading("Recording expense...");
+    const payload = {
+      category: form.category,
+      title: form.title.trim(),
+      description: form.description.trim() || undefined,
+      amount: Number(form.amount),
+      paymentMethod: form.paymentMethod,
+      expenseDate: form.expenseDate,
+    };
+    const toastId = toast.loading(editId ? "Updating expense..." : "Recording expense...");
     try {
-      await create({
-        category: form.category,
-        title: form.title.trim(),
-        description: form.description.trim() || undefined,
-        amount: Number(form.amount),
-        paymentMethod: form.paymentMethod,
-        expenseDate: form.expenseDate,
-      });
-      toast.success("Expense recorded", { id: toastId });
+      if (editId) {
+        await update(editId, payload);
+        toast.success("Expense updated", { id: toastId });
+        setEditId(null);
+      } else {
+        await create(payload);
+        toast.success("Expense recorded", { id: toastId });
+      }
       setForm({ ...emptyForm, expenseDate: form.expenseDate });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to record expense", { id: toastId });
+      toast.error(err instanceof Error ? err.message : "Failed to save expense", { id: toastId });
     }
+  };
+
+  const startEdit = (expense: Expense) => {
+    setEditId(expense.id);
+    setForm({
+      category: expense.category,
+      title: expense.title,
+      amount: String(expense.amount),
+      paymentMethod: expense.paymentMethod,
+      expenseDate: expense.expenseDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+      description: expense.description ?? "",
+    });
   };
 
   const confirmDelete = async () => {
@@ -108,7 +128,7 @@ function ExpensesContent() {
         <PortalPageHeader icon={Receipt} title="Expenses" subtitle={`Rs ${totalShown.toLocaleString()} recorded on this page`} />
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.4fr]">
           <div className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-muted,#f8fafc)] p-6">
-            <h3 className="mb-6 text-lg font-bold">Record Expense</h3>
+            <h3 className="mb-6 text-lg font-bold">{editId ? "Edit Expense" : "Record Expense"}</h3>
             <form className="space-y-5" onSubmit={onSubmit}>
               <FormField label="Category" required>
                 <select
@@ -175,8 +195,20 @@ function ExpensesContent() {
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#001840] py-3 text-sm font-bold text-white disabled:opacity-60"
               >
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Save Expense
+                {editId ? "Update Expense" : "Save Expense"}
               </button>
+              {editId ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditId(null);
+                    setForm(emptyForm);
+                  }}
+                  className="w-full rounded-2xl border py-3 text-sm font-bold"
+                >
+                  Cancel edit
+                </button>
+              ) : null}
             </form>
           </div>
 
@@ -203,6 +235,12 @@ function ExpensesContent() {
                     </div>
                     <div className="flex items-center gap-4">
                       <p className="text-sm font-bold">Rs {Number(expense.amount).toLocaleString()}</p>
+                      <button
+                        onClick={() => startEdit(expense)}
+                        className="text-sm font-semibold text-[#0050F8]"
+                      >
+                        Edit
+                      </button>
                       <button
                         onClick={() => {
                           setDeleteId(expense.id);

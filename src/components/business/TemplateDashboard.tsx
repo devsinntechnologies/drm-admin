@@ -16,22 +16,75 @@ type TemplateDashboardProps = {
   className?: string;
 };
 
+type RetailDashboard = {
+  todaySales: number;
+  totalTransactions: number;
+  grossProfit: number;
+  lowStockCount: number;
+  pendingPurchases: number;
+};
+
+type TopProduct = {
+  productName: string;
+  quantitySold: number;
+};
+
 export function TemplateDashboard({ cards, className }: TemplateDashboardProps) {
   const { primaryColor, secondaryColor, templateConfig } = useBusinessTemplate();
   const { money } = usePharmacyMarket();
-  const isPharmacy = templateConfig?.industryId === "pharmacy";
-  const { data: live } = usePharmacyQuery<Record<string, number>>(isPharmacy ? "/pharmacy-reports/dashboard" : null);
+  const industryId = templateConfig?.industryId;
+  const isPharmacy = industryId === "pharmacy";
+  const isRetail = industryId === "retail-store";
+
+  const { data: pharmacyLive } = usePharmacyQuery<Record<string, number>>(
+    isPharmacy ? "/pharmacy-reports/dashboard" : null,
+  );
+  const { data: retailLive } = usePharmacyQuery<RetailDashboard>(
+    isRetail ? "/retail/reports/dashboard" : null,
+  );
+
+  const today = new Date().toISOString().slice(0, 10);
+  const needsTopProduct = isRetail && cards.includes("top-products");
+  const { data: topProducts } = usePharmacyQuery<TopProduct[]>(
+    needsTopProduct ? `/retail/reports/top-products?fromDate=${today}&toDate=${today}&limit=1` : null,
+  );
 
   const formatValue = (id: DashboardCardId) => {
-    if (isPharmacy && live && live[id] != null) {
-      const raw = live[id];
+    if (isPharmacy && pharmacyLive && pharmacyLive[id] != null) {
+      const raw = pharmacyLive[id];
       if (id === "today-sales" || id === "batch-value") {
         return money(Number(raw));
       }
       return String(raw);
     }
+
+    if (isRetail && retailLive) {
+      switch (id) {
+        case "today-sales":
+          return money(Number(retailLive.todaySales));
+        case "total-transactions":
+          return String(retailLive.totalTransactions);
+        case "gross-profit":
+          return money(Number(retailLive.grossProfit));
+        case "low-stock":
+          return String(retailLive.lowStockCount);
+        case "pending-purchases":
+          return String(retailLive.pendingPurchases);
+        case "top-products":
+          return topProducts?.[0]?.productName ?? "—";
+        default:
+          break;
+      }
+    }
+
     return PREVIEW_CARD_VALUES[id] ?? "—";
   };
+
+  const liveLabel = isPharmacy
+    ? " Values below are live pharmacy KPIs."
+    : isRetail
+      ? " Values below are live retail KPIs."
+      : " Live data integration will replace sample values.";
 
   if (!cards.length) {
     return (
@@ -99,7 +152,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
         <h3 className="text-sm font-semibold text-[var(--text-primary)]">Configured KPI cards</h3>
         <p className="mt-1 text-sm text-[var(--text-muted)]">
           Dashboard layout follows your industry template.
-          {isPharmacy ? " Values below are live pharmacy KPIs." : " Live data integration will replace sample values."}
+          {(isPharmacy || isRetail) ? liveLabel : " Live data integration will replace sample values."}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {cards.map((id) => (
