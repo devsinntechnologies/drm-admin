@@ -245,7 +245,7 @@ function PosContent() {
       <PortalPage>
         <PortalPageHeader icon={ShoppingCart} title="Point of Sale" subtitle="Search products, pick variants, and check out" />
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.4fr_1fr]">
-          <div className="rounded-3xl border border-[var(--border-subtle)] bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 shadow-sm">
             <div className="relative mb-4">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
               <input
@@ -271,7 +271,7 @@ function PosContent() {
                       {productStockLabel(product)}
                     </span>
                     {(product.variants?.length ?? 0) > 0 ? (
-                      <span className="mt-2 text-[10px] font-semibold text-[#0050F8]">Tap to choose variant</span>
+                      <span className="mt-2 text-[10px] font-semibold text-[var(--brand-secondary)]">Tap to choose variant</span>
                     ) : null}
                   </button>
                 ))}
@@ -286,11 +286,11 @@ function PosContent() {
                 <p className="py-10 text-center text-sm text-[var(--text-muted)]">Cart is empty</p>
               ) : (
                 cart.map((line) => (
-                  <div key={line.lineKey} className="flex items-center justify-between rounded-xl bg-white p-3">
+                  <div key={line.lineKey} className="flex items-center justify-between rounded-xl bg-[var(--surface)] p-3">
                     <div>
                       <p className="text-sm font-semibold">{line.name}</p>
                       {line.variantName ? (
-                        <p className="text-xs text-[#0050F8]">{line.variantName}</p>
+                        <p className="text-xs text-[var(--brand-secondary)]">{line.variantName}</p>
                       ) : null}
                       <p className="text-xs text-[var(--text-muted)]">Rs {line.unitPrice.toLocaleString()} each</p>
                     </div>
@@ -362,7 +362,7 @@ function PosContent() {
               <button
                 onClick={checkout}
                 disabled={submitting || !cart.length}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#001840] py-3.5 text-sm font-bold text-white disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand-primary)] py-3.5 text-sm font-bold text-white disabled:opacity-60"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Complete Sale
@@ -376,7 +376,7 @@ function PosContent() {
         <DialogContent className="max-w-md">
           <DialogTitle className="flex items-center justify-between">
             <span>Choose variant — {variantPicker?.name}</span>
-            <button type="button" onClick={() => setVariantPicker(null)} className="rounded-full p-1 hover:bg-[#f1f5f9]">
+            <button type="button" onClick={() => setVariantPicker(null)} className="rounded-full p-1 hover:bg-[var(--surface-muted)]">
               <X className="h-4 w-4" />
             </button>
           </DialogTitle>

@@ -155,7 +155,7 @@ function SuppliersContent() {
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="flex items-center justify-center gap-2 rounded-2xl bg-[#001840] py-3 text-sm font-bold text-white disabled:opacity-60"
+                  className="flex items-center justify-center gap-2 rounded-2xl bg-[var(--brand-primary)] py-3 text-sm font-bold text-white disabled:opacity-60"
                 >
                   {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   Save
@@ -186,7 +186,7 @@ function SuppliersContent() {
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => onEdit(supplier)} className="text-sm font-semibold text-[#0050F8]">
+                      <button onClick={() => onEdit(supplier)} className="text-sm font-semibold text-[var(--brand-secondary)]">
                         Edit
                       </button>
                       <button

@@ -6,7 +6,7 @@ import { BarChart3, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
-import { PortalPage, PortalPageHeader, FormField, portalInputClass } from "@/components/admin/PortalPage";
+import { PortalPage, PortalPageHeader, FormField, portalInputClass, portalPanelClass, portalPanelMutedClass, portalBtnPrimaryClass } from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
@@ -17,6 +17,7 @@ interface Dashboard {
   todaySales: number;
   totalTransactions: number;
   grossProfit: number;
+  linesWithoutCost?: number;
   lowStockCount: number;
   lowStockProducts: Array<{ productId: string; productName: string; inStock: number }>;
   pendingPurchases: number;
@@ -32,9 +33,9 @@ interface ProfitAndLoss {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-[var(--border-subtle)] bg-white p-5">
+    <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-5">
       <p className="text-xs font-semibold uppercase text-[var(--text-muted)]">{label}</p>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
+      <p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">{value}</p>
     </div>
   );
 }
@@ -116,19 +117,24 @@ function ReportsContent() {
           <StatCard label="Today's Sales" value={`Rs ${Number(dashboard?.todaySales ?? 0).toLocaleString()}`} />
           <StatCard label="Transactions" value={String(dashboard?.totalTransactions ?? 0)} />
           <StatCard label="Gross Profit" value={`Rs ${Number(dashboard?.grossProfit ?? 0).toLocaleString()}`} />
+          {dashboard?.linesWithoutCost ? (
+            <p className="col-span-full text-xs text-[var(--text-muted)]">
+              {dashboard.linesWithoutCost} sale line(s) today excluded from gross profit (no cost price set).
+            </p>
+          ) : null}
           <StatCard label="Low Stock Items" value={String(dashboard?.lowStockCount ?? 0)} />
           <StatCard label="Pending Purchases" value={String(dashboard?.pendingPurchases ?? 0)} />
         </div>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.4fr]">
-          <div className="rounded-3xl border border-[var(--border-subtle)] bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-lg font-bold">Low Stock Products</h3>
+          <div className={portalPanelClass}>
+            <h3 className="mb-4 text-lg font-bold text-[var(--text-primary)]">Low Stock Products</h3>
             {dashboard?.lowStockProducts?.length ? (
               <div className="space-y-2">
                 {dashboard.lowStockProducts.map((product) => (
-                  <div key={product.productId} className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] p-3">
-                    <p className="text-sm font-semibold">{product.productName}</p>
-                    <p className="text-sm font-bold text-amber-600">{product.inStock} left</p>
+                  <div key={product.productId} className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">{product.productName}</p>
+                    <p className="text-sm font-bold text-amber-500">{product.inStock} left</p>
                   </div>
                 ))}
               </div>
@@ -147,18 +153,17 @@ function ReportsContent() {
                 <input type="date" className={portalInputClass} value={toDate} onChange={(e) => setToDate(e.target.value)} />
               </FormField>
             </div>
-            <button
-              onClick={loadPnl}
-              disabled={loading}
-              className="mb-4 flex items-center justify-center gap-2 rounded-2xl bg-[#001840] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60"
-            >
+            <button onClick={loadPnl} disabled={loading} className={`mb-4 ${portalBtnPrimaryClass} !w-auto px-5 py-2.5`}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Refresh
             </button>
             {pnl ? (
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between"><span>Revenue</span><span className="font-bold">Rs {Number(pnl.revenue).toLocaleString()}</span></div>
+              <div className="space-y-2 text-sm text-[var(--text-primary)]">
+                <div className="flex justify-between"><span>Revenue (net of refunds)</span><span className="font-bold">Rs {Number(pnl.revenue).toLocaleString()}</span></div>
                 <div className="flex justify-between"><span>Gross Profit</span><span className="font-bold">Rs {Number(pnl.grossProfit).toLocaleString()}</span></div>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Gross profit includes only lines with an assigned cost price. Variant sales use variant cost only.
+                </p>
                 <div className="flex justify-between"><span>Total Expenses</span><span className="font-bold text-red-600">-Rs {Number(pnl.totalExpenses).toLocaleString()}</span></div>
                 <div className="flex justify-between border-t border-[var(--border-subtle)] pt-2 text-base"><span className="font-bold">Net Profit</span><span className="font-bold">Rs {Number(pnl.netProfit).toLocaleString()}</span></div>
                 {pnl.expensesByCategory?.length ? (

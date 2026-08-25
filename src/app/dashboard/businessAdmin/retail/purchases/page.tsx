@@ -2,11 +2,21 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, PackagePlus, Plus, Trash2 } from "lucide-react";
+import { Loader2, PackagePlus, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
-import { PortalPage, PortalPageHeader, FormField, portalInputClass } from "@/components/admin/PortalPage";
+import {
+  PortalPage,
+  PortalPageHeader,
+  FormField,
+  portalInputClass,
+  portalPanelClass,
+  portalPanelMutedClass,
+  portalBtnPrimaryClass,
+  portalBtnSecondaryClass,
+  portalLinkClass,
+} from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { useRetailResource } from "@/hooks/useRetailResource";
@@ -24,6 +34,8 @@ interface Supplier {
 
 interface PurchaseOrderItem {
   id: string;
+  productId?: string;
+  variantId?: string | null;
   productName: string;
   quantity: number;
   unitCost: number;
@@ -36,11 +48,14 @@ interface PurchaseOrder {
   status: string;
   totalAmount: number;
   createdAt: string;
+  supplierId?: string;
   supplier?: Supplier;
   items: PurchaseOrderItem[];
 }
 
 type Line = { productId: string; variantId: string; quantity: number; unitCost: number };
+
+const emptyLine = (): Line => ({ productId: "", variantId: "", quantity: 1, unitCost: 0 });
 
 function PurchasesContent() {
   const router = useRouter();
@@ -62,7 +77,8 @@ function PurchasesContent() {
   } = useRetailResource<PurchaseOrder>("/retail/purchases");
 
   const [supplierId, setSupplierId] = useState("");
-  const [lines, setLines] = useState<Line[]>([{ productId: "", variantId: "", quantity: 1, unitCost: 0 }]);
+  const [lines, setLines] = useState<Line[]>([emptyLine()]);
+  const [editId, setEditId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [receivingId, setReceivingId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -82,7 +98,7 @@ function PurchasesContent() {
     setIsAuthorized(true);
   }, [role, router, impersonatedBusinessId]);
 
-  const addLine = () => setLines((prev) => [...prev, { productId: "", variantId: "", quantity: 1, unitCost: 0 }]);
+  const addLine = () => setLines((prev) => [...prev, emptyLine()]);
   const removeLine = (index: number) => setLines((prev) => prev.filter((_, i) => i !== index));
   const updateLine = (index: number, patch: Partial<Line>) =>
     setLines((prev) =>
@@ -98,6 +114,55 @@ function PurchasesContent() {
 
   const productById = (id: string) => products.find((product) => product.id === id);
 
+  const resetForm = () => {
+    setEditId(null);
+    setSupplierId("");
+    setLines([emptyLine()]);
+  };
+
+  const resolveLineProductIds = (order: PurchaseOrder): Line[] => {
+    if (!order.items?.length) return [emptyLine()];
+    return order.items.map((item) => {
+      const product =
+        products.find((p) => p.id === item.productId) ??
+        products.find((p) => item.productName.startsWith(p.name));
+      const variant =
+        product?.variants?.find((v) => v.id === item.variantId) ??
+        product?.variants?.find((v) => item.productName.includes(`(${v.name})`));
+      return {
+        productId: product?.id ?? item.productId ?? "",
+        variantId: variant?.id ?? item.variantId ?? "",
+        quantity: item.quantity,
+        unitCost: Number(item.unitCost),
+      };
+    });
+  };
+
+  const startEdit = (order: PurchaseOrder) => {
+    setEditId(order.id);
+    setSupplierId(order.supplierId ?? order.supplier?.id ?? "");
+    setLines(resolveLineProductIds(order));
+  };
+
+  const validateLines = (validLines: Line[]) => {
+    for (const line of validLines) {
+      const product = productById(line.productId);
+      if ((product?.variants?.length ?? 0) > 0 && !line.variantId) {
+        toast.error(`Select a variant for "${product?.name ?? "product"}"`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const buildPayloadItems = (validLines: Line[]) =>
+    validLines.map((line) => ({
+      productId: line.productId,
+      ...(line.variantId ? { variantId: line.variantId } : {}),
+      quantity: line.quantity,
+      unitCost: line.unitCost,
+    }));
+
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!supplierId) {
@@ -109,38 +174,27 @@ function PurchasesContent() {
       toast.error("Add at least one valid line item");
       return;
     }
-    for (const line of validLines) {
-      const product = productById(line.productId);
-      if ((product?.variants?.length ?? 0) > 0 && !line.variantId) {
-        toast.error(`Select a variant for "${product?.name ?? "product"}"`);
-        return;
-      }
-    }
+    if (!validateLines(validLines)) return;
 
-    const toastId = toast.loading("Creating purchase order...");
+    const toastId = toast.loading(editId ? "Updating purchase order..." : "Creating purchase order...");
     setSubmitting(true);
     try {
-      await apiClient.post(
-        "/retail/purchases",
-        {
-          supplierId,
-          items: validLines.map((line) => ({
-            productId: line.productId,
-            ...(line.variantId ? { variantId: line.variantId } : {}),
-            quantity: line.quantity,
-            unitCost: line.unitCost,
-          })),
-        },
-        token,
-        businessId,
-      );
-      toast.success("Purchase order created", { id: toastId });
-      setSupplierId("");
-      setLines([{ productId: "", variantId: "", quantity: 1, unitCost: 0 }]);
+      const payload = {
+        supplierId,
+        items: buildPayloadItems(validLines),
+      };
+      if (editId) {
+        await apiClient.patch(`/retail/purchases/${editId}`, payload, token, businessId);
+        toast.success("Purchase order updated", { id: toastId });
+      } else {
+        await apiClient.post("/retail/purchases", payload, token, businessId);
+        toast.success("Purchase order created", { id: toastId });
+      }
+      resetForm();
       await refresh(1);
       bumpDashboardRefresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create purchase order", { id: toastId });
+      toast.error(err instanceof Error ? err.message : "Failed to save purchase order", { id: toastId });
     } finally {
       setSubmitting(false);
     }
@@ -167,7 +221,9 @@ function PurchasesContent() {
     try {
       await apiClient.patch(`/retail/purchases/${id}/cancel`, {}, token, businessId);
       toast.success("Purchase order cancelled", { id: toastId });
+      if (editId === id) resetForm();
       await refresh(1);
+      bumpDashboardRefresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to cancel purchase order", { id: toastId });
     } finally {
@@ -182,8 +238,17 @@ function PurchasesContent() {
       <PortalPage>
         <PortalPageHeader icon={PackagePlus} title="Purchase Orders" subtitle="Restock your store and track pending orders" />
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.4fr]">
-          <div className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-muted,#f8fafc)] p-6">
-            <h3 className="mb-6 text-lg font-bold">New Purchase Order</h3>
+          <div className={portalPanelMutedClass}>
+            <div className="mb-6 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                {editId ? "Edit Purchase Order" : "New Purchase Order"}
+              </h3>
+              {editId ? (
+                <button type="button" onClick={resetForm} className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--surface)]">
+                  <X className="h-5 w-5" />
+                </button>
+              ) : null}
+            </div>
             <form className="space-y-5" onSubmit={onSubmit}>
               <FormField label="Supplier" required>
                 <select className={portalInputClass} value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
@@ -197,129 +262,164 @@ function PurchasesContent() {
               </FormField>
 
               <div className="space-y-3">
-                <span className="block text-sm font-semibold text-[var(--text-muted,#64748b)]">Items</span>
+                <span className="block text-sm font-semibold text-[var(--text-muted)]">Items</span>
                 {lines.map((line, index) => {
                   const selectedProduct = productById(line.productId);
                   const variants = selectedProduct?.variants ?? [];
+                  const lineTotal = line.quantity * line.unitCost;
                   return (
-                  <div key={index} className="space-y-2 rounded-xl border border-[var(--border-subtle)] p-3">
-                    <div className="grid grid-cols-[2fr_1fr_1fr_auto] gap-2">
-                    <select
-                      className={portalInputClass}
-                      value={line.productId}
-                      onChange={(e) => updateLine(index, { productId: e.target.value })}
-                    >
-                      <option value="">Product</option>
-                      {products.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.name}
-                        </option>
-                      ))}
-                    </select>
-                    <NumberInput
-                      min={1}
-                      className={portalInputClass}
-                      placeholder="Qty"
-                      value={line.quantity}
-                      onChange={(quantity) => updateLine(index, { quantity: Math.max(1, quantity) })}
-                    />
-                    <NumberInput
-                      min={0}
-                      className={portalInputClass}
-                      placeholder="Cost/unit"
-                      value={line.unitCost}
-                      onChange={(unitCost) => updateLine(index, { unitCost })}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeLine(index)}
-                      className="flex items-center justify-center rounded-xl border border-[var(--border-subtle)] px-3 text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div key={index} className="space-y-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-3">
+                      <div className="grid grid-cols-[2fr_1fr_1fr_auto] gap-2">
+                        <select
+                          className={portalInputClass}
+                          value={line.productId}
+                          onChange={(e) => updateLine(index, { productId: e.target.value })}
+                        >
+                          <option value="">Product</option>
+                          {products.map((product) => (
+                            <option key={product.id} value={product.id}>
+                              {product.name}
+                            </option>
+                          ))}
+                        </select>
+                        <NumberInput
+                          min={1}
+                          className={portalInputClass}
+                          placeholder="Qty"
+                          value={line.quantity}
+                          onChange={(quantity) => updateLine(index, { quantity: Math.max(1, quantity) })}
+                        />
+                        <NumberInput
+                          min={0}
+                          className={portalInputClass}
+                          placeholder="Cost/unit"
+                          value={line.unitCost}
+                          onChange={(unitCost) => updateLine(index, { unitCost })}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeLine(index)}
+                          className="flex items-center justify-center rounded-xl border border-[var(--border-subtle)] px-3 text-red-500 hover:bg-red-500/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                      {variants.length > 0 ? (
+                        <select
+                          className={portalInputClass}
+                          value={line.variantId}
+                          onChange={(e) => updateLine(index, { variantId: e.target.value })}
+                        >
+                          <option value="">Select variant</option>
+                          {variants.map((variant) => (
+                            <option key={variant.id} value={variant.id}>
+                              {variant.name} · stock {variant.inStock}
+                              {variant.costPrice != null ? ` · cost ${variant.costPrice}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
+                      {line.productId ? (
+                        <p className="text-xs text-[var(--text-muted)]">
+                          Line total: Rs {lineTotal.toLocaleString()}
+                        </p>
+                      ) : null}
                     </div>
-                    {variants.length > 0 ? (
-                      <select
-                        className={portalInputClass}
-                        value={line.variantId}
-                        onChange={(e) => updateLine(index, { variantId: e.target.value })}
-                      >
-                        <option value="">Select variant</option>
-                        {variants.map((variant) => (
-                          <option key={variant.id} value={variant.id}>
-                            {variant.name} · stock {variant.inStock}
-                          </option>
-                        ))}
-                      </select>
-                    ) : null}
-                  </div>
-                );})}
-                <button
-                  type="button"
-                  onClick={addLine}
-                  className="flex items-center gap-1 text-sm font-semibold text-[#0050F8]"
-                >
+                  );
+                })}
+                <button type="button" onClick={addLine} className={`flex items-center gap-1 ${portalLinkClass}`}>
                   <Plus className="h-4 w-4" /> Add item
                 </button>
               </div>
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#001840] py-3 text-sm font-bold text-white disabled:opacity-60"
-              >
+              <p className="text-sm font-semibold text-[var(--text-primary)]">
+                Order total: Rs{" "}
+                {lines
+                  .reduce((sum, line) => sum + line.quantity * line.unitCost, 0)
+                  .toLocaleString()}
+              </p>
+
+              <button type="submit" disabled={submitting} className={portalBtnPrimaryClass}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Create Purchase Order
+                {editId ? "Save Changes" : "Create Purchase Order"}
               </button>
             </form>
           </div>
 
-          <div className="rounded-3xl border border-[var(--border-subtle)] bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-lg font-bold">Purchase Orders</h3>
+          <div className={portalPanelClass}>
+            <h3 className="mb-4 text-lg font-bold text-[var(--text-primary)]">Purchase Orders</h3>
             {loading ? (
               <Loading size="sm" />
             ) : error ? (
-              <p className="text-sm text-red-600">{error}</p>
+              <p className="text-sm text-red-500">{error}</p>
             ) : orders.length === 0 ? (
               <p className="py-10 text-center text-sm text-[var(--text-muted)]">No purchase orders yet</p>
             ) : (
               <div className="space-y-3">
                 {orders.map((order) => (
-                  <div key={order.id} className="rounded-2xl border border-[var(--border-subtle)] p-4">
-                    <div className="flex items-center justify-between">
+                  <div key={order.id} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
+                    <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-bold">{order.poNumber}</p>
+                        <p className="text-sm font-bold text-[var(--text-primary)]">{order.poNumber}</p>
                         <p className="text-xs text-[var(--text-muted)]">
                           {order.supplier?.name ?? "Supplier"} · {order.items?.length ?? 0} item(s)
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold">Rs {Number(order.totalAmount).toLocaleString()}</p>
+                        <p className="text-sm font-bold text-[var(--text-primary)]">
+                          Rs {Number(order.totalAmount).toLocaleString()}
+                        </p>
                         <span
                           className={`text-xs font-semibold capitalize ${
-                            order.status === "received" ? "text-emerald-600" : "text-amber-600"
+                            order.status === "received"
+                              ? "text-emerald-500"
+                              : order.status === "cancelled"
+                                ? "text-[var(--text-muted)]"
+                                : "text-amber-500"
                           }`}
                         >
                           {order.status}
                         </span>
                       </div>
                     </div>
-                    {order.status !== "received" && order.status !== "cancelled" ? (
-                      <div className="mt-3 flex gap-2">
+                    {order.items?.length ? (
+                      <ul className="mt-2 space-y-1 text-xs text-[var(--text-muted)]">
+                        {order.items.map((item) => (
+                          <li key={item.id}>
+                            {item.productName} × {item.quantity} @ Rs {Number(item.unitCost).toLocaleString()}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {order.status !== "cancelled" ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
                         <button
-                          onClick={() => receiveOrder(order.id)}
-                          disabled={receivingId === order.id}
-                          className="rounded-xl bg-[#0050F8] px-4 py-2 text-xs font-bold text-white disabled:opacity-60"
+                          type="button"
+                          onClick={() => startEdit(order)}
+                          className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--surface)]"
                         >
-                          {receivingId === order.id ? "Receiving..." : "Mark as received"}
+                          <Pencil className="h-3.5 w-3.5" /> Edit
                         </button>
-                        <button
-                          onClick={() => cancelOrder(order.id)}
-                          disabled={cancellingId === order.id}
-                          className="rounded-xl border border-red-200 px-4 py-2 text-xs font-bold text-red-600 disabled:opacity-60"
-                        >
-                          {cancellingId === order.id ? "Cancelling..." : "Cancel"}
-                        </button>
+                        {order.status !== "received" ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => receiveOrder(order.id)}
+                              disabled={receivingId === order.id}
+                              className={portalBtnSecondaryClass}
+                            >
+                              {receivingId === order.id ? "Receiving..." : "Mark as received"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => cancelOrder(order.id)}
+                              disabled={cancellingId === order.id}
+                              className="rounded-xl border border-red-500/30 px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-500/10 disabled:opacity-60"
+                            >
+                              {cancellingId === order.id ? "Cancelling..." : "Cancel"}
+                            </button>
+                          </>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>

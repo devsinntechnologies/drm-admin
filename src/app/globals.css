@@ -998,6 +998,39 @@ a {
   background: color-mix(in srgb, var(--brand-secondary) 35%, transparent);
 }
 
+.business-workspace-dark table {
+  color: var(--text-primary);
+}
+
+.business-workspace-dark thead th {
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+.business-workspace-dark tbody tr {
+  border-color: var(--border-subtle);
+}
+
+.business-workspace-dark tbody tr:hover {
+  background: color-mix(in srgb, var(--surface-muted) 70%, transparent);
+}
+
+.business-workspace-dark button.rounded-2xl.border,
+.business-workspace-dark button.rounded-xl.border {
+  border-color: var(--border-subtle);
+}
+
+.business-workspace-dark h1,
+.business-workspace-dark h2,
+.business-workspace-dark h3,
+.business-workspace-dark h4 {
+  color: var(--text-primary);
+}
+
+.business-workspace-dark label span {
+  color: var(--text-muted);
+}
+
 .industry-shell-preview[data-theme="dark"] {
   background: #0b1220;
   border-color: #243044;

@@ -128,14 +128,14 @@ function CustomersContent() {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="rounded-2xl border-2 border-[var(--border-subtle)] bg-white py-3 text-sm font-bold"
+                  className="rounded-2xl border-2 border-[var(--border-subtle)] bg-[var(--surface)] py-3 text-sm font-bold"
                 >
                   Reset
                 </button>
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="flex items-center justify-center gap-2 rounded-2xl bg-[#001840] py-3 text-sm font-bold text-white disabled:opacity-60"
+                  className="flex items-center justify-center gap-2 rounded-2xl bg-[var(--brand-primary)] py-3 text-sm font-bold text-white disabled:opacity-60"
                 >
                   {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   Save
@@ -144,7 +144,7 @@ function CustomersContent() {
             </form>
           </div>
 
-          <div className="rounded-3xl border border-[var(--border-subtle)] bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 shadow-sm">
             <h3 className="mb-4 text-lg font-bold">Customer List</h3>
             {loading ? (
               <Loading size="sm" />
@@ -171,7 +171,7 @@ function CustomersContent() {
                           setEditId(customer.id);
                           setForm({ name: customer.name, phone: customer.phone ?? "", email: customer.email ?? "" });
                         }}
-                        className="text-sm font-semibold text-[#0050F8]"
+                        className="text-sm font-semibold text-[var(--brand-secondary)]"
                       >
                         Edit
                       </button>

@@ -192,6 +192,35 @@ export const portalInputClass =
 export const portalSearchClass =
   "h-11 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] pl-10 pr-4 text-sm font-medium text-[var(--text-primary)] outline-none focus:border-[var(--brand-secondary)] focus:ring-2 focus:ring-[var(--brand-secondary)]/20";
 
+export const portalPanelClass =
+  "rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 shadow-sm";
+
+export const portalPanelMutedClass =
+  "rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-6";
+
+export const portalBtnPrimaryClass =
+  "dn-btn dn-btn-primary flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold disabled:opacity-60";
+
+export const portalBtnSecondaryClass =
+  "dn-btn dn-btn-secondary rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-60";
+
+export const portalBtnOutlineClass =
+  "rounded-2xl border-2 border-[var(--border-subtle)] bg-[var(--surface)] py-3 text-sm font-bold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]";
+
+export const portalLinkClass = "text-sm font-semibold text-[var(--brand-secondary)] hover:underline";
+
+export const portalTableWrapClass =
+  "overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)]";
+
+export const portalTableHeadClass =
+  "bg-[var(--surface-muted)] text-left text-xs uppercase text-[var(--text-muted)]";
+
+export const portalListRowClass =
+  "rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3 transition hover:border-[var(--brand-secondary)]/40";
+
+export const portalCartRowClass =
+  "flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-3";
+
 /** Visible label wrapper for portal inputs, selects, and textareas. */
 export function FormField({
   label,

@@ -192,7 +192,7 @@ function ExpensesContent() {
               <button
                 type="submit"
                 disabled={actionLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#001840] py-3 text-sm font-bold text-white disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand-primary)] py-3 text-sm font-bold text-white disabled:opacity-60"
               >
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {editId ? "Update Expense" : "Save Expense"}
@@ -212,7 +212,7 @@ function ExpensesContent() {
             </form>
           </div>
 
-          <div className="rounded-3xl border border-[var(--border-subtle)] bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 shadow-sm">
             <h3 className="mb-4 text-lg font-bold">Recent Expenses</h3>
             {loading ? (
               <Loading size="sm" />
@@ -237,7 +237,7 @@ function ExpensesContent() {
                       <p className="text-sm font-bold">Rs {Number(expense.amount).toLocaleString()}</p>
                       <button
                         onClick={() => startEdit(expense)}
-                        className="text-sm font-semibold text-[#0050F8]"
+                        className="text-sm font-semibold text-[var(--brand-secondary)]"
                       >
                         Edit
                       </button>

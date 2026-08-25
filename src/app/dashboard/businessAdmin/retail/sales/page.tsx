@@ -131,9 +131,9 @@ function SalesContent() {
         ) : error ? (
           <p className="text-sm text-red-600">{error}</p>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-white">
+          <div className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)]">
             <table className="w-full text-sm">
-              <thead className="bg-[#f8fafc] text-left text-xs uppercase text-[var(--text-muted)]">
+              <thead className="bg-[var(--surface-muted)] text-left text-xs uppercase text-[var(--text-muted)]">
                 <tr>
                   <th className="px-4 py-3">Sale #</th>
                   <th className="px-4 py-3">Date</th>
@@ -161,7 +161,7 @@ function SalesContent() {
                           type="button"
                           onClick={() => openReceipt(sale.id)}
                           disabled={loadingDetail}
-                          className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-[#f8fafc]"
+                          className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-[var(--surface-muted)]"
                         >
                           {loadingDetail ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
                           View
@@ -178,7 +178,7 @@ function SalesContent() {
         <button
           type="button"
           onClick={() => refresh()}
-          className="mt-4 text-sm font-semibold text-[#0050F8]"
+          className="mt-4 text-sm font-semibold text-[var(--brand-secondary)]"
         >
           Refresh list
         </button>

@@ -135,7 +135,7 @@ function StaffContent() {
               <button
                 type="submit"
                 disabled={actionLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#001840] py-3 text-sm font-bold text-white disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand-primary)] py-3 text-sm font-bold text-white disabled:opacity-60"
               >
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Create Account
@@ -143,7 +143,7 @@ function StaffContent() {
             </form>
           </div>
 
-          <div className="rounded-3xl border border-[var(--border-subtle)] bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 shadow-sm">
             <h3 className="mb-4 text-lg font-bold">Team</h3>
             {loading ? (
               <Loading size="sm" />
@@ -165,7 +165,7 @@ function StaffContent() {
                           setPasswordMember(member);
                           setNewPassword("");
                         }}
-                        className="rounded-xl border px-3 py-1.5 text-xs font-bold text-[#0050F8]"
+                        className="rounded-xl border px-3 py-1.5 text-xs font-bold text-[var(--brand-secondary)]"
                       >
                         <KeyRound className="mr-1 inline h-3 w-3" />
                         Reset pwd
@@ -204,7 +204,7 @@ function StaffContent() {
               type="button"
               onClick={resetPassword}
               disabled={actionLoading}
-              className="w-full rounded-2xl bg-[#001840] py-3 text-sm font-bold text-white disabled:opacity-60"
+              className="w-full rounded-2xl bg-[var(--brand-primary)] py-3 text-sm font-bold text-white disabled:opacity-60"
             >
               {actionLoading ? "Saving..." : "Update password"}
             </button>
