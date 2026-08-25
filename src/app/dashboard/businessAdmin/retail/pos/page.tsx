@@ -18,6 +18,15 @@ import { apiClient } from "@/lib/api-client";
 import { getStoredAuthToken } from "@/lib/utils";
 import { NumberInput } from "@/components/common/NumberInput";
 import { useDashboardRefresh } from "@/contexts/DashboardRefreshContext";
+import {
+  buildCartQtyMap,
+  formatStockLabel,
+  getRemainingStock,
+  isProductSellable,
+  isVariantSellable,
+  isStockTracked,
+  hasVariants,
+} from "@/lib/retail-stock";
 
 type CartLine = {
   lineKey: string;
@@ -73,7 +82,7 @@ function PosContent() {
   const token = reduxToken || getStoredAuthToken();
   const { bumpDashboardRefresh } = useDashboardRefresh();
 
-  const { products, loading: productsLoading } = useProducts({ limit: 200 });
+  const { products, loading: productsLoading, refetch: refetchProducts } = useProducts({ limit: 200 });
   const { items: customers } = useRetailResource<RetailCustomer>("/retail/customers");
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -105,6 +114,8 @@ function PosContent() {
     [products],
   );
 
+  const cartQtyByKey = useMemo(() => buildCartQtyMap(cart), [cart]);
+
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return activeProducts;
@@ -112,30 +123,44 @@ function PosContent() {
   }, [activeProducts, search]);
 
   const addToCart = (product: Product, variant?: ProductVariant) => {
-    const activeVariants = (product.variants ?? []).filter((v) => v.inStock > 0 || v.inStock == null);
-    if (activeVariants.length > 0 && !variant) {
+    if (!isProductSellable(product, cartQtyByKey) && !variant) {
+      toast.error("Out of stock");
+      return;
+    }
+
+    if (hasVariants(product) && !variant) {
+      if (!isProductSellable(product, cartQtyByKey)) {
+        toast.error("Out of stock");
+        return;
+      }
       setVariantPicker(product);
+      return;
+    }
+
+    if (variant && !isVariantSellable(product, variant, cartQtyByKey)) {
+      toast.error("Out of stock");
       return;
     }
 
     const variantId = variant?.id;
     const key = lineKey(product.id, variantId);
     const unitPrice = Number(variant?.price ?? product.price) || 0;
-    const maxStock = variant?.inStock ?? product.inStock;
-    const displayName = variant ? product.name : product.name;
-    const variantName = variant?.name;
+    const remaining = getRemainingStock(product, cartQtyByKey, variant);
+    const maxStock = isStockTracked(product) ? remaining : null;
 
     setCart((prev) => {
+      const qtyMap = buildCartQtyMap(prev);
+      const available = getRemainingStock(product, qtyMap, variant);
       const existing = prev.find((line) => line.lineKey === key);
       if (existing) {
         const nextQty = existing.quantity + 1;
-        if (maxStock != null && nextQty > maxStock) {
-          toast.error(`Only ${maxStock} in stock`);
+        if (isStockTracked(product) && available != null && nextQty > available) {
+          toast.error(available > 0 ? `Only ${available} more available` : "Out of stock");
           return prev;
         }
-        return prev.map((line) => (line.lineKey === key ? { ...line, quantity: nextQty } : line));
+        return prev.map((line) => (line.lineKey === key ? { ...line, quantity: nextQty, maxStock: available ?? line.maxStock } : line));
       }
-      if (maxStock != null && maxStock < 1) {
+      if (isStockTracked(product) && (available == null || available < 1)) {
         toast.error("Out of stock");
         return prev;
       }
@@ -145,11 +170,11 @@ function PosContent() {
           lineKey: key,
           productId: product.id,
           variantId,
-          name: displayName,
-          variantName,
+          name: product.name,
+          variantName: variant?.name,
           unitPrice,
           quantity: 1,
-          maxStock,
+          maxStock: maxStock ?? undefined,
         },
       ];
     });
@@ -157,20 +182,36 @@ function PosContent() {
   };
 
   const updateQuantity = (key: string, delta: number) => {
-    setCart((prev) =>
-      prev
+    setCart((prev) => {
+      const qtyMap = buildCartQtyMap(prev);
+      return prev
         .map((line) => {
           if (line.lineKey !== key) return line;
           const nextQty = line.quantity + delta;
           if (nextQty <= 0) return line;
-          if (line.maxStock != null && nextQty > line.maxStock) {
+          const product = activeProducts.find((p) => p.id === line.productId);
+          const variant = product?.variants?.find((v) => v.id === line.variantId);
+          if (product && isStockTracked(product)) {
+            const withoutThisLine = { ...qtyMap, [key]: 0 };
+            const onHand = variant
+              ? (variant.inStock ?? 0)
+              : (product.inStock ?? 0);
+            const otherInCart = Object.entries(withoutThisLine)
+              .filter(([k]) => k.startsWith(`${product.id}:`) && k !== key)
+              .reduce((sum, [, q]) => sum + q, 0);
+            const maxAllowed = Math.max(0, onHand - otherInCart);
+            if (nextQty > maxAllowed) {
+              toast.error(maxAllowed > 0 ? `Only ${maxAllowed} available` : "Out of stock");
+              return line;
+            }
+          } else if (line.maxStock != null && nextQty > line.maxStock) {
             toast.error(`Only ${line.maxStock} in stock`);
             return line;
           }
           return { ...line, quantity: nextQty };
         })
-        .filter((line) => line.quantity > 0),
-    );
+        .filter((line) => line.quantity > 0);
+    });
   };
 
   const removeLine = (key: string) => setCart((prev) => prev.filter((line) => line.lineKey !== key));
@@ -210,6 +251,7 @@ function PosContent() {
       setTaxAmount(0);
       setCustomerId("");
       bumpDashboardRefresh();
+      await refetchProducts(1);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Checkout failed", { id: toastId });
     } finally {
@@ -218,12 +260,16 @@ function PosContent() {
   };
 
   const productStockLabel = (product: Product) => {
-    const variants = product.variants ?? [];
-    if (variants.length > 0) {
-      const total = variants.reduce((sum, v) => sum + (Number(v.inStock) || 0), 0);
-      return `${variants.length} variant${variants.length === 1 ? "" : "s"} · ${total} in stock`;
+    const remaining = getRemainingStock(product, cartQtyByKey);
+    if (!isStockTracked(product)) return "Stock not tracked";
+    if (remaining != null && remaining <= 0) return "Out of stock";
+    if (hasVariants(product)) {
+      const sellableCount = (product.variants ?? []).filter((v) =>
+        isVariantSellable(product, v, cartQtyByKey),
+      ).length;
+      return `${sellableCount} variant${sellableCount === 1 ? "" : "s"} available · ${remaining ?? 0} units`;
     }
-    return product.inStock != null ? `${product.inStock} in stock` : "No stock tracking";
+    return remaining != null ? `${remaining} available` : formatStockLabel(product);
   };
 
   const productPriceLabel = (product: Product) => {
@@ -259,22 +305,34 @@ function PosContent() {
               <Loading size="sm" />
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {filteredProducts.map((product) => (
+                {filteredProducts.map((product) => {
+                  const sellable = isProductSellable(product, cartQtyByKey);
+                  return (
                   <button
                     key={product.id}
-                    onClick={() => addToCart(product)}
-                    className="flex flex-col items-start rounded-2xl border border-[var(--border-subtle)] p-4 text-left transition hover:border-[#0050F8] hover:shadow-sm"
+                    type="button"
+                    disabled={!sellable}
+                    onClick={() => sellable && addToCart(product)}
+                    className={`flex flex-col items-start rounded-2xl border p-4 text-left transition ${
+                      sellable
+                        ? "border-[var(--border-subtle)] hover:border-[var(--brand-secondary)] hover:shadow-sm cursor-pointer"
+                        : "cursor-not-allowed border-[var(--border-subtle)] bg-[var(--surface-muted)] opacity-55"
+                    }`}
                   >
-                    <span className="text-sm font-bold">{product.name}</span>
+                    <span className="text-sm font-bold text-[var(--text-primary)]">{product.name}</span>
                     <span className="mt-1 text-xs text-[var(--text-muted)]">{productPriceLabel(product)}</span>
-                    <span className="mt-1 text-[10px] font-semibold uppercase text-[var(--text-muted)]">
+                    <span
+                      className={`mt-1 text-[10px] font-semibold uppercase ${
+                        sellable ? "text-[var(--text-muted)]" : "text-red-500"
+                      }`}
+                    >
                       {productStockLabel(product)}
                     </span>
-                    {(product.variants?.length ?? 0) > 0 ? (
+                    {sellable && hasVariants(product) ? (
                       <span className="mt-2 text-[10px] font-semibold text-[var(--brand-secondary)]">Tap to choose variant</span>
                     ) : null}
                   </button>
-                ))}
+                );})}
               </div>
             )}
           </div>
@@ -299,7 +357,13 @@ function PosContent() {
                         <Minus className="h-3 w-3" />
                       </button>
                       <span className="w-6 text-center text-sm font-bold">{line.quantity}</span>
-                      <button onClick={() => updateQuantity(line.lineKey, 1)} className="rounded-full border p-1">
+                      <button
+                        onClick={() => updateQuantity(line.lineKey, 1)}
+                        disabled={
+                          line.maxStock != null && line.quantity >= line.maxStock
+                        }
+                        className="rounded-full border p-1 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
                         <Plus className="h-3 w-3" />
                       </button>
                       <button onClick={() => removeLine(line.lineKey)} className="ml-1 text-red-600">
@@ -381,21 +445,34 @@ function PosContent() {
             </button>
           </DialogTitle>
           <div className="mt-4 space-y-2">
-            {(variantPicker?.variants ?? []).map((variant) => (
+            {(variantPicker?.variants ?? []).map((variant) => {
+              const sellable = variantPicker ? isVariantSellable(variantPicker, variant, cartQtyByKey) : false;
+              const remaining = variantPicker
+                ? getRemainingStock(variantPicker, cartQtyByKey, variant)
+                : 0;
+              return (
               <button
                 key={variant.id}
                 type="button"
-                onClick={() => variantPicker && addToCart(variantPicker, variant)}
-                disabled={variant.inStock != null && variant.inStock < 1}
-                className="flex w-full items-center justify-between rounded-xl border border-[var(--border-subtle)] px-4 py-3 text-left transition hover:border-[#0050F8] disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => variantPicker && sellable && addToCart(variantPicker, variant)}
+                disabled={!sellable}
+                className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition ${
+                  sellable
+                    ? "border-[var(--border-subtle)] hover:border-[var(--brand-secondary)]"
+                    : "cursor-not-allowed border-[var(--border-subtle)] bg-[var(--surface-muted)] opacity-55"
+                }`}
               >
-                <span className="font-semibold">{variant.name}</span>
-                <span className="text-sm text-[var(--text-muted)]">
+                <span className="font-semibold text-[var(--text-primary)]">{variant.name}</span>
+                <span className={`text-sm ${sellable ? "text-[var(--text-muted)]" : "text-red-500"}`}>
                   Rs {Number(variant.price).toLocaleString()}
-                  {variant.inStock != null ? ` · ${variant.inStock} left` : ""}
+                  {variantPicker && isStockTracked(variantPicker)
+                    ? sellable
+                      ? ` · ${remaining} left`
+                      : " · Out of stock"
+                    : ""}
                 </span>
               </button>
-            ))}
+            );})}
           </div>
         </DialogContent>
       </Dialog>
