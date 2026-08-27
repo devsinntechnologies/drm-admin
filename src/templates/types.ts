@@ -310,5 +310,6 @@ export type BusinessSetupStepId =
   | "theme"
   | "modules"
   | "dashboard"
+  | "roles"
   | "review"
   | "generate";

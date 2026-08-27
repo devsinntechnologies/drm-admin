@@ -313,7 +313,10 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
   ]);
 
   const saveConfig = useCallback(
-    async (businessId?: string) => {
+    async (
+      businessId?: string,
+      moduleSettings?: Record<string, Record<string, unknown>>,
+    ) => {
       if (!industry) return null;
       if (!businessName.trim()) {
         toast.error("Business name is required");
@@ -324,7 +327,7 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
       if (!base) return null;
 
       const config: CustomizedTemplateConfig = { ...base, extensions };
-      const result = await persistTemplateConfig(config, { businessId });
+      const result = await persistTemplateConfig(config, { businessId, moduleSettings });
       setLastSavedId(result.config.id);
 
       if (result.persistedToApi) {

@@ -4,6 +4,7 @@ import { planApi } from "@/hooks/usePlan";
 import { businessApi } from "@/hooks/useBusiness";
 import { industryTemplateApi } from "@/hooks/useIndustryTemplate";
 import { actionLogsApi } from "@/hooks/useActionLogs";
+import { mobileSyncApi } from "@/hooks/useMobileSync";
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     [businessApi.reducerPath]: businessApi.reducer,
     [industryTemplateApi.reducerPath]: industryTemplateApi.reducer,
     [actionLogsApi.reducerPath]: actionLogsApi.reducer,
+    [mobileSyncApi.reducerPath]: mobileSyncApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -19,6 +21,7 @@ export const store = configureStore({
       businessApi.middleware,
       industryTemplateApi.middleware,
       actionLogsApi.middleware,
+      mobileSyncApi.middleware,
     ),
 });
 

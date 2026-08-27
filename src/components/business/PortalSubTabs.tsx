@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Monitor, Paintbrush } from "lucide-react";
+import { LayoutDashboard, Monitor } from "lucide-react";
 
 type PortalSubTabsProps = {
   businessId: string;
@@ -12,10 +12,14 @@ export function PortalSubTabs({ businessId }: PortalSubTabsProps) {
   const pathname = usePathname();
   const base = `/dashboard/superAdmin/businesses/${businessId}/portal`;
 
+  // "Appearance" used to live here as its own form (BusinessWorkspaceSettings)
+  // editing the exact same template-config record that Software & Mobile ->
+  // Control also edits -- two forms over one record, which is exactly the kind
+  // of duplicate control surface this was merged out of. Theme/logo/module
+  // settings now live in one place: Software & Mobile -> Control.
   const tabs = [
     { key: "preview", label: "Preview", href: `${base}/preview`, icon: Monitor, match: () => pathname.startsWith(`${base}/preview`) },
     { key: "features", label: "Features", href: `${base}/features`, icon: LayoutDashboard, match: () => pathname.startsWith(`${base}/features`) },
-    { key: "settings", label: "Appearance", href: `${base}/settings`, icon: Paintbrush, match: () => pathname.startsWith(`${base}/settings`) },
   ];
 
   return (

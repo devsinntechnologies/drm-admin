@@ -1,36 +1,15 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useParams } from "next/navigation";
-import { BusinessWorkspaceSettings } from "@/components/business/BusinessWorkspaceSettings";
-import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
-import { hydrateWorkspaceTemplate } from "@/lib/hydrate-workspace-template";
-import { getBusinessProfile } from "@/lib/business-profile";
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
 
-export default function PortalSettingsPage() {
-  const params = useParams();
-  const businessId = typeof params.id === "string" ? params.id : "";
-  const { data: business } = useGetBusinessByIdQuery(businessId, { skip: !businessId });
-
-  if (!business) return null;
-
-  const profile = business.templateConfig
-    ? { industryId: business.templateConfig.industryId }
-    : getBusinessProfile(businessId, business.businessName);
-
-  const templateConfig = hydrateWorkspaceTemplate(business.templateConfig) ?? business.templateConfig;
-
-  return (
-    <section>
-      <h2 className="mb-1 text-sm font-semibold text-[#475569]">Portal appearance & features</h2>
-      <p className="mb-4 text-sm text-[#64748b]">
-        Logo, colours, dark mode, and which menu items staff can see in the portal.
-      </p>
-      <BusinessWorkspaceSettings
-        businessId={businessId}
-        businessName={business.businessName}
-        templateConfig={templateConfig}
-        fallbackIndustryId={profile.industryId}
-      />
-    </section>
-  );
+// Portal "Appearance" (BusinessWorkspaceSettings) edited the same
+// template-config record as Software & Mobile -> Control, just through a
+// smaller, separate form -- two UIs mutating one record, which is the exact
+// duplication this was merged out of. Redirects into Control, which covers
+// everything this page did plus more, on the same underlying data.
+export default async function PortalSettingsRedirect({ params }: PageProps) {
+  const { id } = await params;
+  redirect(`/dashboard/superAdmin/businesses/${id}/software/control`);
 }

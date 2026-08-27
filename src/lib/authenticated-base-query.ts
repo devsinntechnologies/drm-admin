@@ -5,9 +5,14 @@ import {
   type FetchBaseQueryError,
 } from "@reduxjs/toolkit/query/react";
 import { BASE_URL } from "@/lib/constant";
+import {
+  businessInactiveMessage,
+  isBusinessInactiveError,
+} from "@/lib/business-session";
 import { logout } from "@/lib/features/auth/authSlice";
 import { getStoredAuthToken } from "@/lib/utils";
 import type { RootState } from "@/lib/store";
+import { toast } from "sonner";
 
 function resolveAuthToken(state: RootState): string | null {
   return state.auth?.token || getStoredAuthToken();
@@ -40,6 +45,13 @@ export const authenticatedBaseQueryWithReauth: BaseQueryFn<
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
   const result = await authenticatedBaseQuery(args, api, extraOptions);
+
+  if (result.error?.status === 403 && isBusinessInactiveError(result.error)) {
+    api.dispatch(logout());
+    toast.error(businessInactiveMessage(result.error));
+    redirectToLogin();
+    return result;
+  }
 
   if (result.error?.status === 401) {
     api.dispatch(logout());

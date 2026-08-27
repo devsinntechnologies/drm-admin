@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import { BusinessEntitlements } from "@/components/business/BusinessEntitlements";
 import { PortalFeaturesContent } from "@/components/business/PortalFeaturesContent";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { hydrateWorkspaceTemplate } from "@/lib/hydrate-workspace-template";
@@ -20,11 +21,14 @@ export default function PortalFeaturesPage() {
   const templateConfig = hydrateWorkspaceTemplate(business.templateConfig) ?? business.templateConfig;
 
   return (
-    <PortalFeaturesContent
-      businessId={businessId}
-      businessName={business.businessName}
-      templateConfig={templateConfig}
-      industryId={profile.industryId}
-    />
+    <div className="space-y-5">
+      <BusinessEntitlements templateConfig={templateConfig} industryId={profile.industryId} />
+      <PortalFeaturesContent
+        businessId={businessId}
+        businessName={business.businessName}
+        templateConfig={templateConfig}
+        industryId={profile.industryId}
+      />
+    </div>
   );
 }

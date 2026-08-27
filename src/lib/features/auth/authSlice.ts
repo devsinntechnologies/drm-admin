@@ -90,8 +90,34 @@ export const loginUser = createAsyncThunk<
       .catch(() => ({ message: "Unable to parse login response." }));
 
     if (!response.ok) {
+      const inactiveMessage =
+        response.status === 403 &&
+        typeof payload === "object" &&
+        payload !== null &&
+        (
+          (payload as { code?: string }).code === "BUSINESS_INACTIVE" ||
+          (typeof (payload as { message?: unknown }).message === "object" &&
+            (payload as { message?: { code?: string } }).message?.code ===
+              "BUSINESS_INACTIVE") ||
+          String((payload as { message?: unknown }).message ?? "")
+            .toLowerCase()
+            .includes("deactivated")
+        );
+
+      if (inactiveMessage) {
+        const nested = (payload as { message?: { message?: string } }).message;
+        const text =
+          (typeof nested === "object" && nested?.message) ||
+          (typeof (payload as { message?: string }).message === "string"
+            ? (payload as { message: string }).message
+            : "This business has been deactivated. Please contact your administrator.");
+        return rejectWithValue(text);
+      }
+
       return rejectWithValue(
-        payload.message || payload.error || "Invalid email or password.",
+        (typeof payload.message === "string" && payload.message) ||
+          payload.error ||
+          "Invalid email or password.",
       );
     }
 

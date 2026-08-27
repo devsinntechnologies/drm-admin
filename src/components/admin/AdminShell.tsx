@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { Activity, AppWindow, Building2, Crown, CreditCard, Globe2, LayoutGrid, LayoutTemplate, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Receipt, Bell, Shapes, ShoppingCart, Store, Users, UtensilsCrossed, X } from "lucide-react";
+import { Activity, AppWindow, Building2, Crown, CreditCard, Globe2, LayoutGrid, LayoutTemplate, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Receipt, Bell, Shapes, ShoppingCart, Smartphone, Store, Users, UtensilsCrossed, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -168,6 +168,12 @@ const tabs: Array<WorkspaceNavTab> = [
     label: "Website",
     href: "/dashboard/businessAdmin/website",
     icon: <AppWindow className="h-5 w-5" />,
+  },
+  {
+    key: "software",
+    label: "Software & Mobile",
+    href: "/dashboard/businessAdmin/software",
+    icon: <Smartphone className="h-5 w-5" />,
   },
   {
     key: "tables",
@@ -359,7 +365,13 @@ export default function AdminShell({
         href: appendBusinessId("/dashboard/businessAdmin/website", businessId),
         icon: <AppWindow className="h-5 w-5" />,
       };
-      const workspaceTabs = [...buildBusinessWorkspaceNav(templateConfig, businessId), websiteTab];
+      const softwareTab: WorkspaceNavTab = {
+        key: "software",
+        label: "Software & Mobile",
+        href: appendBusinessId("/dashboard/businessAdmin/software", businessId),
+        icon: <Smartphone className="h-5 w-5" />,
+      };
+      const workspaceTabs = [...buildBusinessWorkspaceNav(templateConfig, businessId), websiteTab, softwareTab];
       if (templateConfig.industryId === "pharmacy" || templateConfig.industryId === "retail-store") {
         return filterPharmacyNavForRole(workspaceTabs, resolvedRole);
       }
@@ -375,7 +387,7 @@ export default function AdminShell({
       }
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "pos" || tab.key === "products");
     } else if (shouldShowBusinessTabs) {
-      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "public-data" || tab.key === "website" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
+      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "public-data" || tab.key === "website" || tab.key === "software" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
     } else {
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "industry-templates" || tab.key === "action-logs");
       // Force Super Admin dashboard link to the superAdmin route

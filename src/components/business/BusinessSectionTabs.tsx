@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Globe2, LayoutDashboard, Settings2 } from "lucide-react";
+import { Globe2, LayoutDashboard, Settings2, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type BusinessSection = "website" | "portal" | "profile";
+export type BusinessSection = "website" | "portal" | "software" | "profile";
 
 type BusinessSectionTabsProps = {
   businessId: string;
@@ -20,6 +20,7 @@ const TABS: Array<{
 }> = [
   { key: "website", label: "Website", icon: Globe2, href: (base) => `${base}/website` },
   { key: "portal", label: "Portal", icon: LayoutDashboard, href: (base) => `${base}/portal` },
+  { key: "software", label: "Software & Mobile", icon: Smartphone, href: (base) => `${base}/software` },
   { key: "profile", label: "Profile", icon: Settings2, href: (base) => base },
 ];
 

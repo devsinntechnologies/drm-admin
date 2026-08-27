@@ -18,6 +18,7 @@ export type PersistTemplateResult = {
 function configToApiPayload(
   config: CustomizedTemplateConfig,
   businessId?: string,
+  moduleSettings?: Record<string, Record<string, unknown>>,
 ): CreateTemplateConfigPayload {
   return {
     businessName: config.businessName,
@@ -35,13 +36,14 @@ function configToApiPayload(
     branchCount: config.branchCount,
     businessId,
     logoUrl: config.logoDataUrl || undefined,
+    ...(moduleSettings ? { moduleSettings } : {}),
   };
 }
 
 /** Save to API when available, always mirror to localStorage for offline/resume. */
 export async function persistTemplateConfig(
   config: CustomizedTemplateConfig,
-  options?: { businessId?: string },
+  options?: { businessId?: string; moduleSettings?: Record<string, Record<string, unknown>> },
 ): Promise<PersistTemplateResult> {
   if (config.extensions) {
     saveTemplateExtensions(config.id, config.extensions);
@@ -51,7 +53,7 @@ export async function persistTemplateConfig(
   void localSaved;
 
   try {
-    const payload = configToApiPayload(config, options?.businessId);
+    const payload = configToApiPayload(config, options?.businessId, options?.moduleSettings);
     const result = await store
       .dispatch(industryTemplateApi.endpoints.createTemplateConfig.initiate(payload))
       .unwrap();

@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Calendar } from "lucide-react";
+import { ArrowLeft, Calendar, Globe2, LayoutDashboard, Smartphone } from "lucide-react";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { BusinessBasicInfoForm } from "@/components/business/BusinessBasicInfoForm";
@@ -102,6 +102,33 @@ function BusinessProfileContent() {
       <div className="mb-6">
         <BusinessSectionTabs businessId={id} active="profile" />
       </div>
+
+      <section className="mb-6 grid gap-3 sm:grid-cols-3">
+        <Link
+          href={`/dashboard/superAdmin/businesses/${id}/website`}
+          className="group rounded-xl border border-[#e2e8f0] bg-white p-4 transition-all hover:border-[var(--brand-secondary)] hover:shadow-sm"
+        >
+          <Globe2 className="h-5 w-5 text-[var(--brand-secondary)]" />
+          <p className="mt-2 font-semibold text-[#0f172a]">Website</p>
+          <p className="text-sm text-[#64748b]">Pages, theme and domain</p>
+        </Link>
+        <Link
+          href={`/dashboard/superAdmin/businesses/${id}/portal`}
+          className="group rounded-xl border border-[#e2e8f0] bg-white p-4 transition-all hover:border-[var(--brand-secondary)] hover:shadow-sm"
+        >
+          <LayoutDashboard className="h-5 w-5 text-[var(--brand-secondary)]" />
+          <p className="mt-2 font-semibold text-[#0f172a]">Portal</p>
+          <p className="text-sm text-[#64748b]">Staff workspace and operations</p>
+        </Link>
+        <Link
+          href={`/dashboard/superAdmin/businesses/${id}/software`}
+          className="group rounded-xl border border-[#e2e8f0] bg-white p-4 transition-all hover:border-[var(--brand-secondary)] hover:shadow-sm"
+        >
+          <Smartphone className="h-5 w-5 text-[var(--brand-secondary)]" />
+          <p className="mt-2 font-semibold text-[#0f172a]">Software & Mobile</p>
+          <p className="text-sm text-[#64748b]">Flutter app features and roles</p>
+        </Link>
+      </section>
 
       <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
         <h2 className="mb-1 text-sm font-semibold text-[#475569]">Update business information</h2>

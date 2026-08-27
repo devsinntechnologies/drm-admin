@@ -28,6 +28,11 @@ export type ApiTemplateConfig = {
   enabledModules: ModuleId[];
   navigation: CustomizedTemplateConfig["navigation"];
   dashboardCards: DashboardCardId[];
+  // null = unrestricted (every industry-available module can be toggled by
+  // the business admin) — set by a super_admin to grant a narrower subset.
+  entitledModules?: ModuleId[] | null;
+  // Free-form per-module display settings, e.g. { orders: { viewType: "grid" } }.
+  moduleSettings?: Record<string, Record<string, unknown>>;
   createdAt: string;
   updatedAt?: string;
 };
@@ -48,6 +53,7 @@ export type CreateTemplateConfigPayload = {
   branchCount?: number;
   logoUrl?: string;
   businessId?: string;
+  moduleSettings?: Record<string, Record<string, unknown>>;
 };
 
 export type ApiModuleCatalog = Record<
@@ -179,6 +185,26 @@ export const industryTemplateApi = createApi({
       query: (id) => ({ url: `/industry-template/${id}`, method: "DELETE" }),
       invalidatesTags: [{ type: "TemplateConfig", id: "LIST" }],
     }),
+    updateEntitlements: builder.mutation<
+      CustomizedTemplateConfig,
+      { id: string; entitledModules: ModuleId[] }
+    >({
+      query: ({ id, entitledModules }) => ({
+        url: `/industry-template/${id}/entitlements`,
+        method: "PATCH",
+        body: { entitledModules },
+      }),
+      transformResponse: (response: unknown) => apiConfigToCustomized(unwrapData<ApiTemplateConfig>(response)),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "TemplateConfig", id },
+        { type: "TemplateConfig", id: "LIST" },
+      ],
+    }),
+    getMobileConfigPreview: builder.query<ApiTemplateConfig, string>({
+      query: (businessId) =>
+        `/industry-template/mobile-config?businessId=${encodeURIComponent(businessId)}`,
+      transformResponse: (response: unknown) => unwrapData<ApiTemplateConfig>(response),
+    }),
   }),
 });
 
@@ -194,4 +220,6 @@ export const {
   useCreateTemplateConfigMutation,
   useUpdateTemplateConfigMutation,
   useDeleteTemplateConfigMutation,
+  useUpdateEntitlementsMutation,
+  useGetMobileConfigPreviewQuery,
 } = industryTemplateApi;

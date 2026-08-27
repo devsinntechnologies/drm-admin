@@ -78,9 +78,10 @@ async function fetchRoleUsers(endpoint: string, authToken: string, activeBusines
   }
 }
 
-export function useUsers() {
+export function useUsers(overrideBusinessId?: string | null) {
   const { token } = useAuth();
-  const activeBusinessId = useActiveBusinessId();
+  const contextBusinessId = useActiveBusinessId();
+  const activeBusinessId = overrideBusinessId ?? contextBusinessId;
 
   const [waiters, setWaiters] = useState<StaffUser[]>([]);
   const [kitchens, setKitchens] = useState<StaffUser[]>([]);

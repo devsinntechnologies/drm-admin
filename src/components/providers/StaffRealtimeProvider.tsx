@@ -5,6 +5,9 @@ import { io, type Socket } from "socket.io-client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { BASE_URL } from "@/lib/constant";
+import { BUSINESS_INACTIVE_MESSAGE } from "@/lib/business-session";
+import { logout } from "@/lib/features/auth/authSlice";
+import { useAppDispatch } from "@/lib/hooks";
 import { emitStaffRealtime, STAFF_REALTIME_EVENTS } from "@/lib/staff-realtime";
 
 type NotificationPayload = {
@@ -22,11 +25,21 @@ function namespaceForRole(role: string | null) {
   return null;
 }
 
+function redirectToLogin() {
+  if (typeof window === "undefined") return;
+  const returnTo = `${window.location.pathname}${window.location.search}`;
+  const loginUrl = `/login?returnTo=${encodeURIComponent(returnTo)}`;
+  if (!window.location.pathname.startsWith("/login")) {
+    window.location.href = loginUrl;
+  }
+}
+
 export default function StaffRealtimeProvider({
   children,
 }: {
   children: ReactNode;
 }) {
+  const dispatch = useAppDispatch();
   const { token, role } = useAuth();
 
   useEffect(() => {
@@ -57,18 +70,25 @@ export default function StaffRealtimeProvider({
       toast.warning(payload.message || "Table order rejected");
       emitStaffRealtime(STAFF_REALTIME_EVENTS.SELF_ORDERS_CHANGED, payload);
     };
+    const onBusinessDeactivated = (payload: NotificationPayload) => {
+      toast.error(payload.message || BUSINESS_INACTIVE_MESSAGE);
+      dispatch(logout());
+      redirectToLogin();
+    };
 
     socket.on("self_order:requested", onRequested);
     socket.on("self_order:approved", onApproved);
     socket.on("self_order:rejected", onRejected);
+    socket.on("business:deactivated", onBusinessDeactivated);
 
     return () => {
       socket.off("self_order:requested", onRequested);
       socket.off("self_order:approved", onApproved);
       socket.off("self_order:rejected", onRejected);
+      socket.off("business:deactivated", onBusinessDeactivated);
       socket.disconnect();
     };
-  }, [role, token]);
+  }, [dispatch, role, token]);
 
   return <>{children}</>;
 }
