@@ -47,6 +47,7 @@ const RETAIL_MODULE_IDS = [
   "expenses",
   "reports",
   "staff",
+  "settings",
 ] as const;
 
 const RETAIL_MODULE_HREF: Partial<Record<ModuleId, string>> = {
