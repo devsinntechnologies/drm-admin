@@ -362,7 +362,7 @@ function MenuItemsContent() {
     updateProduct,
     deleteProduct,
     refetch,
-  } = useProducts({ page: currentPage });
+  } = useProducts({ page: currentPage, limit: isRetail ? 100 : undefined });
 
   const { categories, createCategory, actionLoading: categorySaving, fetchCategories } = useCategories({
     page: 1,
