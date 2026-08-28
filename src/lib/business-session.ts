@@ -14,13 +14,14 @@ function readMessageField(value: unknown): string {
   return "";
 }
 
-export function isBusinessInactiveError(error: FetchBaseQueryError | undefined): boolean {
-  if (!error || error.status !== 403) return false;
+/** Detects the "business paused/deactivated" error shape from any raw {status, data} pair. */
+export function isBusinessInactivePayload(status: number | undefined, data: unknown): boolean {
+  if (status !== 403) return false;
 
-  const data = error.data as Record<string, unknown> | undefined;
-  if (!data) return false;
+  const record = data as Record<string, unknown> | undefined;
+  if (!record) return false;
 
-  const messageField = data.message;
+  const messageField = record.message;
   if (
     messageField &&
     typeof messageField === "object" &&
@@ -29,17 +30,26 @@ export function isBusinessInactiveError(error: FetchBaseQueryError | undefined):
     return true;
   }
 
-  if (data.code === BUSINESS_INACTIVE_CODE) return true;
+  if (record.code === BUSINESS_INACTIVE_CODE) return true;
 
-  const text = readMessageField(messageField) || readMessageField(data);
+  const text = readMessageField(messageField) || readMessageField(record);
   return text.toLowerCase().includes("deactivated");
 }
 
-export function businessInactiveMessage(error: FetchBaseQueryError | undefined): string {
-  const data = error?.data as Record<string, unknown> | undefined;
-  if (!data) return BUSINESS_INACTIVE_MESSAGE;
+export function businessInactivePayloadMessage(data: unknown): string {
+  const record = data as Record<string, unknown> | undefined;
+  if (!record) return BUSINESS_INACTIVE_MESSAGE;
 
-  const messageField = data.message;
+  const messageField = record.message;
   const text = readMessageField(messageField);
   return text || BUSINESS_INACTIVE_MESSAGE;
+}
+
+export function isBusinessInactiveError(error: FetchBaseQueryError | undefined): boolean {
+  if (!error) return false;
+  return isBusinessInactivePayload(error.status as number | undefined, error.data);
+}
+
+export function businessInactiveMessage(error: FetchBaseQueryError | undefined): string {
+  return businessInactivePayloadMessage(error?.data);
 }

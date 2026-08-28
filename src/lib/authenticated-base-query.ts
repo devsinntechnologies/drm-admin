@@ -30,7 +30,7 @@ export const authenticatedBaseQuery = fetchBaseQuery({
   },
 });
 
-function redirectToLogin() {
+export function redirectToLogin() {
   if (typeof window === "undefined") return;
   const returnTo = `${window.location.pathname}${window.location.search}`;
   const loginUrl = `/login?returnTo=${encodeURIComponent(returnTo)}`;

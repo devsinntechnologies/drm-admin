@@ -1,6 +1,11 @@
+import { toast } from "sonner";
 import { BASE_URL } from "@/lib/constant";
 import { buildApiUrl, unwrapApiData } from "@/lib/api";
 import { getStoredAuthToken, normalizeErrorMessage } from "@/lib/utils";
+import { isBusinessInactivePayload, businessInactivePayloadMessage } from "@/lib/business-session";
+import { redirectToLogin } from "@/lib/authenticated-base-query";
+import { logout } from "@/lib/features/auth/authSlice";
+import { store } from "@/lib/store";
 
 export class ApiClientError extends Error {
   status: number;
@@ -11,6 +16,15 @@ export class ApiClientError extends Error {
     this.status = status;
     this.payload = payload;
   }
+}
+
+/** Ends the session and sends the user to /login when the backend reports it's no longer valid. */
+function handleInvalidSession(status: number, payload: unknown) {
+  store.dispatch(logout());
+  if (isBusinessInactivePayload(status, payload)) {
+    toast.error(businessInactivePayloadMessage(payload));
+  }
+  redirectToLogin();
 }
 
 function authHeaders(token?: string | null): HeadersInit {
@@ -31,6 +45,9 @@ function withBusinessId(path: string, businessId?: string | null) {
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
+    if (response.status === 401 || isBusinessInactivePayload(response.status, payload)) {
+      handleInvalidSession(response.status, payload);
+    }
     throw new ApiClientError(
       normalizeErrorMessage(payload, `Request failed (${response.status})`),
       response.status,

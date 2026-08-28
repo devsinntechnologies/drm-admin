@@ -87,6 +87,10 @@ function VariantsEditor({
       toast.error("Variant name is required");
       return;
     }
+    if (showCostPrice && !vForm.costPrice) {
+      toast.error("Variant cost price is required");
+      return;
+    }
     if (editingIndex != null) {
       setVariants((prev) =>
         prev.map((item, index) => (index === editingIndex ? { ...item, ...vForm, name: vForm.name.trim() } : item)),
@@ -179,7 +183,9 @@ function VariantsEditor({
           </label>
           {showCostPrice ? (
             <label className="block space-y-1.5">
-              <span className="block text-xs font-semibold text-[var(--text-muted)]">Cost price</span>
+              <span className="block text-xs font-semibold text-[var(--text-muted)]">
+                Cost price <span className="text-[#dc2626]">*</span>
+              </span>
               <NumberInput
                 value={vForm.costPrice ?? 0}
                 onChange={(costPrice) => setVForm((p) => ({ ...p, costPrice }))}
@@ -743,11 +749,14 @@ function MenuItemsContent() {
                   {isRetail ? (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-sm font-bold">Cost price ({currency})</label>
+                        <label className="text-sm font-bold">
+                          Cost price ({currency}) <span className="text-[#dc2626]">*</span>
+                        </label>
                         <NumberInput
                           value={createForm.costPrice}
                           onChange={(costPrice) => setCreateForm((p) => ({ ...p, costPrice }))}
                           className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                          required
                           min={0}
                         />
                       </div>
@@ -906,11 +915,14 @@ function MenuItemsContent() {
                   {isRetail ? (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-sm font-bold">Cost price ({currency})</label>
+                        <label className="text-sm font-bold">
+                          Cost price ({currency}) <span className="text-[#dc2626]">*</span>
+                        </label>
                         <NumberInput
                           value={editForm.costPrice}
                           onChange={(costPrice) => setEditForm((p) => ({ ...p, costPrice }))}
                           className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                          required
                           min={0}
                         />
                       </div>
