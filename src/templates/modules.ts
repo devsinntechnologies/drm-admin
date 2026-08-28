@@ -7,7 +7,7 @@ export const MODULE_CATALOG: Record<
   dashboard: { id: "dashboard", label: "Dashboard", description: "Live KPIs and operational overview", category: "Core" },
   pos: { id: "pos", label: "POS", description: "Point of sale / billing", category: "Sales" },
   orders: { id: "orders", label: "Orders", description: "Order queue and status tracking", category: "Sales" },
-  sales: { id: "sales", label: "Sales", description: "Sales history and receipts", category: "Sales" },
+  sales: { id: "sales", label: "Invoices", description: "Sales history, receipts, and invoices", category: "Sales" },
   products: { id: "products", label: "Products", description: "Catalog of sellable items", category: "Catalog" },
   categories: { id: "categories", label: "Categories", description: "Product grouping", category: "Catalog" },
   inventory: { id: "inventory", label: "Inventory", description: "Stock levels and adjustments", category: "Inventory" },

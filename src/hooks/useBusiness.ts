@@ -229,6 +229,17 @@ export const businessApi = createApi({
       }),
       invalidatesTags: [{ type: "Business", id: "LIST" }],
     }),
+    activateBusinessById: builder.mutation<BusinessRecord, string>({
+      query: (id) => ({
+        url: `/business/${id}/activate`,
+        method: "PATCH",
+      }),
+      transformResponse: (response: unknown) => normalizeBusinessRecord(response),
+      invalidatesTags: (_result, _error, id) => [
+        { type: "Business", id },
+        { type: "Business", id: "LIST" },
+      ],
+    }),
   }),
 });
 
@@ -240,4 +251,5 @@ export const {
   useLazyGetBusinessByIdQuery,
   usePatchBusinessByIdMutation,
   useDeleteBusinessByIdMutation,
+  useActivateBusinessByIdMutation,
 } = businessApi;

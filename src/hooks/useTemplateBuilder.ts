@@ -327,15 +327,13 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
       if (!base) return null;
 
       const config: CustomizedTemplateConfig = { ...base, extensions };
-      const result = await persistTemplateConfig(config, { businessId, moduleSettings });
+      const result = await persistTemplateConfig(config, {
+        businessId,
+        moduleSettings,
+        requireApi: Boolean(businessId),
+      });
       setLastSavedId(result.config.id);
-
-      if (result.persistedToApi) {
-        toast.success("Template saved to platform");
-      } else {
-        toast.success(result.warning ?? "Template saved locally");
-      }
-
+      toast.success("Template saved to platform");
       return result.config;
     },
     [industry, businessName, buildConfig, extensions],

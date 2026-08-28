@@ -4,6 +4,8 @@ import { isModuleImplemented } from "@/lib/module-implementation";
 import { resolveModuleIcon } from "@/lib/module-icons";
 import { hydrateWorkspaceTemplate } from "@/lib/hydrate-workspace-template";
 import { appendBusinessId, getModuleHref } from "@/lib/module-routes";
+import { parseRoleAccess, normalizePortalRole } from "@/lib/role-access";
+import { allowedModulesForRole } from "@/lib/software-role-defaults";
 import { MODULE_CATALOG } from "@/templates/modules";
 import type { ModuleId } from "@/templates/types";
 
@@ -76,12 +78,25 @@ function modulePurpose(moduleId: ModuleId, industryId?: string | null) {
 export function buildBusinessWorkspaceNav(
   templateConfig: ApiTemplateConfig,
   businessId?: string | null,
+  role?: string | null,
 ): WorkspaceNavTab[] {
   const config = hydrateWorkspaceTemplate(templateConfig) ?? templateConfig;
-  const enabled = new Set(config.enabledModules);
+  const enabled = new Set(config.enabledModules as ModuleId[]);
+  const roleAccess = parseRoleAccess(config.moduleSettings);
+  const allowed = allowedModulesForRole(
+    roleAccess,
+    normalizePortalRole(role),
+    Array.from(enabled),
+  );
+  const allowedSet = allowed ? new Set(allowed) : null;
 
   return config.navigation
-    .filter((item) => item.visible && enabled.has(item.moduleId as ModuleId))
+    .filter((item) => {
+      const moduleId = item.moduleId as ModuleId;
+      if (!item.visible || !enabled.has(moduleId)) return false;
+      if (allowedSet && !allowedSet.has(moduleId)) return false;
+      return true;
+    })
     .map((item) => {
       const moduleId = item.moduleId as ModuleId;
       const href = appendBusinessId(getModuleHref(moduleId, config.industryId), businessId);
@@ -96,4 +111,24 @@ export function buildBusinessWorkspaceNav(
         description: modulePurpose(moduleId, config.industryId),
       };
     });
+}
+
+/** True when the logged-in role may open this module (enabled + roleAccess). */
+export function canAccessWorkspaceModule(
+  templateConfig: ApiTemplateConfig | null | undefined,
+  role: string | null | undefined,
+  moduleId: string,
+): boolean {
+  if (!templateConfig) return true;
+  const config = hydrateWorkspaceTemplate(templateConfig) ?? templateConfig;
+  const enabled = new Set((config.enabledModules ?? []) as ModuleId[]);
+  if (!enabled.has(moduleId as ModuleId)) return false;
+  const roleAccess = parseRoleAccess(config.moduleSettings);
+  const allowed = allowedModulesForRole(
+    roleAccess,
+    normalizePortalRole(role),
+    Array.from(enabled),
+  );
+  if (!allowed) return true;
+  return allowed.includes(moduleId as ModuleId);
 }

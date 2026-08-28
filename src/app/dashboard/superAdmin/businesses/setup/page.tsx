@@ -36,8 +36,8 @@ import {
   validateEmail,
   validatePhoneNumber,
 } from "@/lib/form-validation";
-import { type RoleAccessMap } from "@/lib/role-access";
-import { mobileModulesFromEnabled, serializeResolvedRoleAccess } from "@/lib/software-role-defaults";
+import { softwareRoleKeysForIndustry, type RoleAccessMap } from "@/lib/role-access";
+import { roleModulesFromEnabled, serializeResolvedRoleAccess } from "@/lib/software-role-defaults";
 import { isSoftwareSupportedModule } from "@/lib/software-supported-modules";
 import { moduleLabel } from "@/templates/module-dependencies";
 import { cn } from "@/lib/utils";
@@ -96,8 +96,8 @@ function BusinessSetupContent() {
   const stepIndex = STEPS.findIndex((s) => s.id === step);
   const completedSteps = STEPS.slice(0, stepIndex).map((s) => s.id);
 
-  const wizardMobileModules = useMemo(
-    () => mobileModulesFromEnabled(builder.enabledModules),
+  const wizardRoleModules = useMemo(
+    () => roleModulesFromEnabled(builder.enabledModules as ModuleId[]),
     [builder.enabledModules],
   );
 
@@ -242,7 +242,11 @@ function BusinessSetupContent() {
       }
 
       await builder.saveConfig(created.id, {
-        roleAccess: serializeResolvedRoleAccess(wizardMobileModules, wizardRoleAccess),
+        roleAccess: serializeResolvedRoleAccess(
+          roleModulesFromEnabled(builder.enabledModules as ModuleId[]),
+          wizardRoleAccess,
+          builder.industry.id,
+        ),
       });
 
       saveBusinessProfile(created.id, {
@@ -670,18 +674,19 @@ function BusinessSetupContent() {
           >
             <div className="mb-4 rounded-xl border border-[#dbeafe] bg-[#eff6ff] px-4 py-3 text-sm text-[#1e40af]">
               <Shield className="mr-1 inline h-4 w-4" />
-              Only modules marked <strong>Mobile</strong> in the previous step appear here. Staff see changes
-              after they log in to the Flutter app.
+              Assign which enabled modules each role can open in the portal and Flutter app. Staff see changes
+              after they log in or refresh.
             </div>
-            {wizardMobileModules.length === 0 ? (
+            {wizardRoleModules.length === 0 ? (
               <p className="wizard-help">
-                No mobile modules are enabled. Go back and turn on at least one module with a Mobile badge, or
-                continue — owner will get portal access and you can configure the app later.
+                No modules are enabled. Go back and turn on at least one module, or continue — you can configure
+                access later in Software Control.
               </p>
             ) : (
               <SoftwareRoleMatrix
                 businessName={builder.businessName || builder.industry.name}
-                mobileModules={wizardMobileModules}
+                modules={builder.enabledModules as ModuleId[]}
+                roleKeys={softwareRoleKeysForIndustry(builder.industry.id)}
                 roleAccess={wizardRoleAccess}
                 onChange={setWizardRoleAccess}
                 moduleLabel={wizardModuleLabel}

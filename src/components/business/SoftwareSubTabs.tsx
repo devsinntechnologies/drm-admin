@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Monitor, SlidersHorizontal } from "lucide-react";
+import { Monitor, ScrollText, SlidersHorizontal } from "lucide-react";
 import { appendBusinessId } from "@/lib/module-routes";
 
 type SoftwareSubTabsProps = {
@@ -40,6 +40,13 @@ export function SoftwareSubTabs({ businessId, basePath, appendBusinessQuery }: S
         pathname.includes(`${base}/features`) ||
         pathname.includes(`${base}/roles`) ||
         pathname.includes(`${base}/settings`),
+    },
+    {
+      key: "logs",
+      label: "Logs",
+      href: hrefFor("logs"),
+      icon: ScrollText,
+      match: () => pathname.includes(`${base}/logs`) || pathname.endsWith("/software/logs"),
     },
   ];
 

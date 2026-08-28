@@ -1,16 +1,30 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { KeyRound, Loader2, Mail, UserCog, Users, UtensilsCrossed } from "lucide-react";
+import { KeyRound, Loader2, Mail, Plus, UserCog, Users } from "lucide-react";
+import { toast } from "sonner";
 import { PortalStatCard } from "@/components/admin/PortalPage";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import type { BusinessRecord } from "@/hooks/useBusiness";
-import { useUsers } from "@/hooks/useUsers";
+import { useStaffAccounts } from "@/hooks/useStaffAccounts";
+import { manageUsersHrefForIndustry, staffRoleLabel } from "@/lib/staff-role-catalog";
 import { appendBusinessId } from "@/lib/module-routes";
-import { cn } from "@/lib/utils";
+import { cn, normalizeErrorMessage } from "@/lib/utils";
+import type { ModuleId } from "@/templates/types";
 
 type SoftwareStaffOverviewProps = {
   businessId: string;
   business: BusinessRecord;
+  industryId?: string | null;
+  enabledModules?: ModuleId[] | string[] | null;
   manageUsersHref?: string;
 };
 
@@ -22,12 +36,73 @@ function formatDate(iso: string) {
 export function SoftwareStaffOverview({
   businessId,
   business,
+  industryId,
+  enabledModules,
   manageUsersHref,
 }: SoftwareStaffOverviewProps) {
-  const { users, waiters, kitchens, loading, error } = useUsers(businessId);
+  const resolvedIndustryId = industryId ?? business.templateConfig?.industryId ?? null;
+  const {
+    creatableRoles,
+    users,
+    byRole,
+    loading,
+    error,
+    actionLoading,
+    createStaff,
+  } = useStaffAccounts(businessId, resolvedIndustryId, enabledModules);
+
+  const defaultRole = creatableRoles[0]?.key ?? "waiter";
   const activeCount = users.filter((user) => user.status.toLowerCase() === "active").length;
   const usersLink =
-    manageUsersHref ?? appendBusinessId("/dashboard/businessAdmin/users", businessId);
+    manageUsersHref ??
+    manageUsersHrefForIndustry(resolvedIndustryId, businessId) ??
+    appendBusinessId("/dashboard/businessAdmin/users", businessId);
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    password: "",
+    email: "",
+    role: defaultRole,
+  });
+
+  const roleOptions = useMemo(() => creatableRoles, [creatableRoles]);
+
+  const onCreateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const name = createForm.name.trim();
+    const password = createForm.password.trim();
+    const role = createForm.role || defaultRole;
+
+    if (!name || !password) {
+      toast.error("Name and password are required.");
+      return;
+    }
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters.");
+      return;
+    }
+    if (!roleOptions.some((r) => r.key === role)) {
+      toast.error("Select a valid role for this business.");
+      return;
+    }
+
+    const toastId = toast.loading("Creating staff…");
+    try {
+      await createStaff({
+        name,
+        password,
+        role,
+        email: createForm.email.trim() || undefined,
+      });
+      toast.success(`${staffRoleLabel(role)} created successfully.`, { id: toastId });
+      setCreateForm({ name: "", password: "", email: "", role: defaultRole });
+      setCreateOpen(false);
+    } catch (err) {
+      toast.error(normalizeErrorMessage(err, "Failed to create staff."), { id: toastId });
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -36,15 +111,137 @@ export function SoftwareStaffOverview({
           <div>
             <h2 className="text-base font-semibold text-[#0f172a]">Mobile app logins</h2>
             <p className="mt-1 text-sm text-[#64748b]">
-              Owner and staff accounts that can sign in to the Flutter app for {business.businessName}.
+              Owner and staff accounts for {business.businessName}. Roles follow this business template.
             </p>
           </div>
-          <Link
-            href={usersLink}
-            className="dn-btn dn-btn-outline inline-flex h-9 items-center rounded-lg px-3 text-sm"
-          >
-            Manage users in portal
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Dialog
+              open={createOpen}
+              onOpenChange={(open) => {
+                setCreateOpen(open);
+                if (!open) {
+                  setCreateForm({ name: "", password: "", email: "", role: defaultRole });
+                } else {
+                  setCreateForm((prev) => ({ ...prev, role: prev.role || defaultRole }));
+                }
+              }}
+            >
+              <DialogTrigger asChild>
+                <button
+                  type="button"
+                  className="dn-btn dn-btn-primary inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm"
+                  disabled={roleOptions.length === 0}
+                >
+                  <Plus className="h-4 w-4" />
+                  Create staff
+                </button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create staff</DialogTitle>
+                  <DialogDescription>
+                    Roles available for this industry template. They can sign in with the generated or provided login.
+                  </DialogDescription>
+                </DialogHeader>
+                <form className="space-y-4" onSubmit={(event) => void onCreateSubmit(event)}>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-[#111827]" htmlFor="software-staff-name">
+                      Name <span className="text-[#dc2626]">*</span>
+                    </label>
+                    <input
+                      id="software-staff-name"
+                      value={createForm.name}
+                      onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
+                      className="w-full rounded-xl border border-[#e0e0e0] bg-[#f8f8f8] px-4 py-3 text-sm outline-none focus:border-[#001840]"
+                      placeholder="Enter name"
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-[#111827]" htmlFor="software-staff-password">
+                      Password <span className="text-[#dc2626]">*</span>
+                    </label>
+                    <input
+                      id="software-staff-password"
+                      type="password"
+                      value={createForm.password}
+                      onChange={(event) => setCreateForm((prev) => ({ ...prev, password: event.target.value }))}
+                      className="w-full rounded-xl border border-[#e0e0e0] bg-[#f8f8f8] px-4 py-3 text-sm outline-none focus:border-[#001840]"
+                      placeholder="Min. 6 characters"
+                      autoComplete="new-password"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-[#111827]" htmlFor="software-staff-email">
+                      Email (optional)
+                    </label>
+                    <input
+                      id="software-staff-email"
+                      type="email"
+                      value={createForm.email}
+                      onChange={(event) => setCreateForm((prev) => ({ ...prev, email: event.target.value }))}
+                      className="w-full rounded-xl border border-[#e0e0e0] bg-[#f8f8f8] px-4 py-3 text-sm outline-none focus:border-[#001840]"
+                      placeholder="optional@email.com"
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium text-[#111827]">Role</span>
+                    <div className="flex flex-wrap gap-2">
+                      {roleOptions.map((role) => (
+                        <button
+                          key={role.key}
+                          type="button"
+                          onClick={() => setCreateForm((prev) => ({ ...prev, role: role.key }))}
+                          className={cn(
+                            "rounded-lg border px-3 py-2 text-sm font-medium",
+                            createForm.role === role.key
+                              ? "border-[var(--brand-secondary)] bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]"
+                              : "border-[#e2e8f0] bg-white text-[#64748b]",
+                          )}
+                        >
+                          {role.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      className="dn-btn dn-btn-outline h-9 rounded-lg px-3 text-sm"
+                      onClick={() => setCreateOpen(false)}
+                      disabled={actionLoading}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="dn-btn dn-btn-primary h-9 rounded-lg px-3 text-sm"
+                      disabled={actionLoading}
+                    >
+                      {actionLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Creating…
+                        </>
+                      ) : (
+                        "Create staff"
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+            <Link
+              href={usersLink}
+              className="dn-btn dn-btn-outline inline-flex h-9 items-center rounded-lg px-3 text-sm"
+            >
+              Manage users in portal
+            </Link>
+          </div>
         </div>
 
         <div className="grid gap-3 lg:grid-cols-2">
@@ -73,11 +270,7 @@ export function SoftwareStaffOverview({
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-[#94a3b8]">Passwords</p>
                 <p className="mt-1 text-sm text-[#475569]">
-                  Owner password is sent by email when the business is created. Staff passwords are set when you add
-                  waiters or kitchen users in the portal.
-                </p>
-                <p className="mt-2 text-xs text-[#64748b]">
-                  Passwords are not stored in plain text — reset them from the Users page if needed.
+                  Staff passwords are set when you create accounts here. Reset them from the users page if needed.
                 </p>
               </div>
             </div>
@@ -86,16 +279,27 @@ export function SoftwareStaffOverview({
       </section>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <PortalStatCard label="Waiters" value={waiters.length} icon={Users} tone="primary" />
-        <PortalStatCard label="Kitchen" value={kitchens.length} icon={UtensilsCrossed} tone="secondary" />
+        {roleOptions.slice(0, 3).map((role) => (
+          <PortalStatCard
+            key={role.key}
+            label={role.label}
+            value={byRole[role.key] ?? 0}
+            icon={Users}
+            tone="primary"
+          />
+        ))}
         <PortalStatCard label="Active staff" value={activeCount} icon={Users} tone="accent" />
-        <PortalStatCard label="Total mobile users" value={users.length + 1} icon={Users} tone="neutral" />
+        {roleOptions.length <= 2 ? (
+          <PortalStatCard label="Total staff" value={users.length} icon={Users} tone="neutral" />
+        ) : null}
       </div>
 
       <section className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
         <div className="border-b border-[#e2e8f0] px-5 py-4">
           <h3 className="text-sm font-semibold text-[#0f172a]">Staff accounts</h3>
-          <p className="text-sm text-[#64748b]">Waiter and kitchen logins for the mobile app (owner shown above).</p>
+          <p className="text-sm text-[#64748b]">
+            Logins for this template ({roleOptions.map((r) => r.label).join(", ") || "none"}).
+          </p>
         </div>
 
         {loading ? (
@@ -106,10 +310,15 @@ export function SoftwareStaffOverview({
           <p className="px-5 py-8 text-sm text-[#dc2626]">{error}</p>
         ) : users.length === 0 ? (
           <div className="px-5 py-10 text-center">
-            <p className="text-sm text-[#64748b]">No waiter or kitchen users yet.</p>
-            <Link href={usersLink} className="mt-3 inline-flex text-sm font-semibold text-[var(--brand-secondary)] hover:underline">
-              Create staff in portal
-            </Link>
+            <p className="text-sm text-[#64748b]">No staff users yet.</p>
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              className="mt-3 inline-flex text-sm font-semibold text-[var(--brand-secondary)] hover:underline"
+              disabled={roleOptions.length === 0}
+            >
+              Create staff
+            </button>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -127,8 +336,8 @@ export function SoftwareStaffOverview({
                 {users.map((user) => (
                   <tr key={user.id} className="text-[#334155]">
                     <td className="px-5 py-3 font-medium text-[#0f172a]">{user.name}</td>
-                    <td className="px-5 py-3 font-mono text-xs">{user.email}</td>
-                    <td className="px-5 py-3 capitalize">{user.role}</td>
+                    <td className="px-5 py-3 font-mono text-xs">{user.email || "—"}</td>
+                    <td className="px-5 py-3">{staffRoleLabel(user.role)}</td>
                     <td className="px-5 py-3">
                       <span
                         className={cn(

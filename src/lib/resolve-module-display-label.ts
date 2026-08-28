@@ -24,6 +24,10 @@ export function resolveModuleDisplayLabel(
 
   if (id === "orders" && labels?.orders?.trim()) return labels.orders.trim();
 
+  // Role matrix / Control clarity — canonical ids → operator-facing names
+  if (id === "sales") return "Invoices";
+  if (id === "categories") return "Categories";
+
   const relatedNav = navigation?.find((item) => item.moduleId === id);
   if (relatedNav?.label?.trim()) return relatedNav.label.trim();
 

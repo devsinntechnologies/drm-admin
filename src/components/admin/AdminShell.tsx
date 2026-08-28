@@ -9,7 +9,7 @@ import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { usePathname, useRouter } from "next/navigation";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
-import { buildBusinessWorkspaceNav, type WorkspaceNavTab } from "@/lib/build-business-workspace-nav";
+import { buildBusinessWorkspaceNav, canAccessWorkspaceModule, type WorkspaceNavTab } from "@/lib/build-business-workspace-nav";
 import { appendBusinessId, pathnameToModuleId } from "@/lib/module-routes";
 import {
   canAccessWorkspacePage,
@@ -17,6 +17,7 @@ import {
   isPharmacyStaffRole,
   workspaceHomePath,
 } from "@/lib/pharmacy-role-nav";
+import { normalizePortalRole } from "@/lib/role-access";
 import { toast } from "sonner";
 import { resolveMediaUrl, businessInitials } from "@/lib/media-url";
 
@@ -345,6 +346,19 @@ export default function AdminShell({
     router.replace(workspaceHomePath(resolvedRole, businessId));
   }, [isMounted, resolvedRole, pathname, templateConfig?.industryId, businessId, router]);
 
+  useEffect(() => {
+    if (!isMounted || !resolvedRole || !templateConfig) return;
+    if (resolvedRole === "super_admin") return;
+    if (!pathname.includes("/businessAdmin")) return;
+    const moduleId = pathnameToModuleId(pathname);
+    if (!moduleId || moduleId === "website" || moduleId === "software") return;
+    if (canAccessWorkspaceModule(templateConfig, resolvedRole, moduleId)) return;
+    const home =
+      workspaceHomePath(normalizePortalRole(resolvedRole), businessId) ||
+      appendBusinessId("/dashboard/businessAdmin", businessId);
+    router.replace(home);
+  }, [isMounted, resolvedRole, pathname, templateConfig, businessId, router]);
+
   const visibleTabs = useMemo(() => {
     // During SSR and first paint, we MUST return a static set of tabs that match the server
     if (!isMounted) {
@@ -371,7 +385,12 @@ export default function AdminShell({
         href: appendBusinessId("/dashboard/businessAdmin/software", businessId),
         icon: <Smartphone className="h-5 w-5" />,
       };
-      const workspaceTabs = [...buildBusinessWorkspaceNav(templateConfig, businessId), websiteTab, softwareTab];
+      const workspaceTabs = [
+        ...buildBusinessWorkspaceNav(templateConfig, businessId, resolvedRole),
+        websiteTab,
+        softwareTab,
+      ];
+      // Soft layer: pharmacy/retail hardcoded map still applies for legacy staff roles.
       if (templateConfig.industryId === "pharmacy" || templateConfig.industryId === "retail-store") {
         return filterPharmacyNavForRole(workspaceTabs, resolvedRole);
       }
@@ -380,10 +399,16 @@ export default function AdminShell({
 
     let baseTabs;
     if (resolvedRole === "waiter" || resolvedRole === "kitchen") {
+      if (templateConfig && businessId) {
+        return buildBusinessWorkspaceNav(templateConfig, businessId, resolvedRole);
+      }
       baseTabs = tabs.filter((tab) => tab.key === "orders");
     } else if (isPharmacyStaffRole(resolvedRole)) {
       if (templateConfig && businessId) {
-        return filterPharmacyNavForRole(buildBusinessWorkspaceNav(templateConfig, businessId), resolvedRole);
+        return filterPharmacyNavForRole(
+          buildBusinessWorkspaceNav(templateConfig, businessId, resolvedRole),
+          resolvedRole,
+        );
       }
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "pos" || tab.key === "products");
     } else if (shouldShowBusinessTabs) {

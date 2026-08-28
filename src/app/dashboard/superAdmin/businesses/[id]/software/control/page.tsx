@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import Loading from "@/components/common/Loading";
-import { BusinessEntitlements } from "@/components/business/BusinessEntitlements";
 import { SoftwareControlContent } from "@/components/business/SoftwareControlContent";
 import { SoftwareStaffOverview } from "@/components/business/SoftwareStaffOverview";
 import { SoftwareSyncStatusPanel } from "@/components/business/SoftwareSyncStatusPanel";
 import { SoftwareTemplateNotConfigured } from "@/components/business/SoftwareTemplateNotConfigured";
-import { useAuth } from "@/hooks/useAuth";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { hydrateWorkspaceTemplate } from "@/lib/hydrate-workspace-template";
 import { getBusinessProfile } from "@/lib/business-profile";
@@ -17,7 +15,6 @@ import { getIndustryById } from "@/templates/industries";
 export default function SoftwareControlPage() {
   const params = useParams();
   const businessId = typeof params.id === "string" ? params.id : "";
-  const { role } = useAuth();
   const { data: business, isLoading, isError } = useGetBusinessByIdQuery(businessId, {
     skip: !businessId,
   });
@@ -54,12 +51,18 @@ export default function SoftwareControlPage() {
 
   return (
     <div className="space-y-6">
-      <SoftwareStaffOverview businessId={businessId} business={business} />
+      <SoftwareStaffOverview
+        businessId={businessId}
+        business={business}
+        industryId={industryId}
+        enabledModules={templateConfig?.enabledModules}
+      />
 
-      {!hasTemplate ? <SoftwareTemplateNotConfigured businessId={businessId} /> : null}
-
-      {role === "super_admin" && templateConfig ? (
-        <BusinessEntitlements templateConfig={templateConfig} industryId={industryId} />
+      {!hasTemplate ? (
+        <SoftwareTemplateNotConfigured
+          businessId={businessId}
+          businessName={business.businessName}
+        />
       ) : null}
 
       {hasTemplate ? (

@@ -1,31 +1,163 @@
 import type { ModuleId } from "@/templates/types";
 import {
-  SOFTWARE_ROLE_KEYS,
   serializeRoleAccess,
+  softwareRoleKeysForIndustry,
+  type RoleAccessEntry,
   type RoleAccessMap,
   type SoftwareRoleKey,
 } from "@/lib/role-access";
-import { isSoftwareSupportedModule } from "@/lib/software-supported-modules";
+import {
+  isSoftwareControlModule,
+  isSoftwareSupportedModule,
+  industryUsesMobileOrders,
+} from "@/lib/software-supported-modules";
 
-export const DEFAULT_ROLE_MODULES: Record<SoftwareRoleKey, ModuleId[]> = {
+const DEFAULT_ROLE_MODULES: Record<string, ModuleId[]> = {
   waiter: ["orders"],
   kitchen: ["kitchen"],
-  business_admin: ["dashboard", "orders", "kitchen", "sales", "menu", "tables", "staff", "inventory"],
+  business_admin: [
+    "dashboard",
+    "orders",
+    "kitchen",
+    "sales",
+    "menu",
+    "tables",
+    "staff",
+    "inventory",
+    "pos",
+    "products",
+    "categories",
+  ],
+  store_manager: [
+    "dashboard",
+    "orders",
+    "sales",
+    "products",
+    "categories",
+  ],
+  cashier: ["orders", "sales", "products", "categories"],
+  inventory_clerk: ["products", "categories", "inventory", "purchases"],
+  pharmacy_manager: [
+    "dashboard",
+    "pos",
+    "sales",
+    "products",
+    "categories",
+    "inventory",
+    "staff",
+    "reports",
+  ],
+  pharmacist: ["pos", "prescriptions", "products", "categories", "sales"],
+  shift_incharge: ["pos", "shifts", "sales"],
+  inventory_manager: ["products", "inventory", "purchases", "batches", "expiry"],
 };
 
-export const DEFAULT_ROLE_LANDING: Record<SoftwareRoleKey, ModuleId> = {
+const DEFAULT_ROLE_LANDING: Record<string, ModuleId> = {
   waiter: "orders",
   kitchen: "kitchen",
   business_admin: "dashboard",
+  store_manager: "dashboard",
+  cashier: "orders",
+  inventory_clerk: "inventory",
+  pharmacy_manager: "dashboard",
+  pharmacist: "pos",
+  shift_incharge: "pos",
+  inventory_manager: "inventory",
 };
+
+export { DEFAULT_ROLE_MODULES, DEFAULT_ROLE_LANDING };
 
 export function mobileModulesFromEnabled(enabledModules: ModuleId[]): ModuleId[] {
   return enabledModules.filter((id) => isSoftwareSupportedModule(id));
 }
 
-/** All enabled modules — used for role access (no platform blocking). */
+/** Preserve portal-only module grants when saving mobile-only Software Control. */
+export function mergeRoleAccessPreservingPortal(
+  existing: RoleAccessMap,
+  mobileRoleAccess: RoleAccessMap,
+  mobileModules: ModuleId[],
+  allEnabledModules: ModuleId[],
+  industryId?: string | null,
+): RoleAccessMap {
+  const keys = softwareRoleKeysForIndustry(industryId);
+  const merged: RoleAccessMap = { ...existing };
+
+  for (const role of keys) {
+    const mobileEntry = resolveRoleEntry(mobileRoleAccess, role, mobileModules);
+    const portalModules = (existing[role]?.modules ?? []).filter(
+      (id) => !isSoftwareControlModule(id) && allEnabledModules.includes(id),
+    );
+    const modules = [
+      ...portalModules,
+      ...mobileEntry.modules.filter((id) => mobileModules.includes(id)),
+    ];
+
+    if (!modules.length) {
+      delete merged[role];
+      continue;
+    }
+
+    merged[role] = normalizeRoleEntry(
+      {
+        modules,
+        defaultModule:
+          mobileEntry.defaultModule && modules.includes(mobileEntry.defaultModule)
+            ? mobileEntry.defaultModule
+            : modules[0],
+      },
+      allEnabledModules,
+    );
+  }
+
+  return merged;
+}
+
+export function mergeEnabledModulesPreservingPortal(
+  mobileEnabled: ModuleId[],
+  templateEnabled: ModuleId[] | undefined,
+): ModuleId[] {
+  const portalOnly = (templateEnabled ?? []).filter((id) => !isSoftwareControlModule(id));
+  return [...new Set([...mobileEnabled, ...portalOnly])];
+}
+
+/** Strip role matrix state to mobile modules only (for Software Control UI). */
+export function mobileRoleAccessView(
+  roleAccess: RoleAccessMap,
+  mobileModules: ModuleId[],
+  industryId?: string | null,
+): RoleAccessMap {
+  const keys = softwareRoleKeysForIndustry(industryId);
+  const view: RoleAccessMap = {};
+
+  for (const role of keys) {
+    const entry = resolveRoleEntry(roleAccess, role, mobileModules);
+    if (entry.modules.length) {
+      view[role] = entry;
+    }
+  }
+
+  return view;
+}
+
+/** All enabled modules — used for role access (portal + mobile). */
 export function roleModulesFromEnabled(enabledModules: ModuleId[]): ModuleId[] {
   return [...enabledModules];
+}
+
+export function normalizeRoleEntry(
+  entry: RoleAccessEntry,
+  enabledModules: ModuleId[],
+): RoleAccessEntry {
+  const enabledSet = new Set(enabledModules);
+  const modules = (entry.modules ?? []).filter((id) => enabledSet.has(id));
+  if (!modules.length) {
+    return { modules: [] };
+  }
+  const defaultModule =
+    entry.defaultModule && modules.includes(entry.defaultModule)
+      ? entry.defaultModule
+      : modules[0];
+  return { modules, defaultModule };
 }
 
 export function resolveRoleEntry(
@@ -34,28 +166,121 @@ export function resolveRoleEntry(
   enabledModules: ModuleId[],
 ) {
   const existing = roleAccess[role];
-  if (existing?.modules?.length) return existing;
-  const defaults = DEFAULT_ROLE_MODULES[role].filter((id) => enabledModules.includes(id));
-  return {
-    modules: defaults.length ? defaults : [...enabledModules],
-    defaultModule: DEFAULT_ROLE_LANDING[role],
-  };
+  if (existing?.modules?.length) {
+    return normalizeRoleEntry(existing, enabledModules);
+  }
+  const defaults = (DEFAULT_ROLE_MODULES[role] ?? []).filter((id) => enabledModules.includes(id));
+  const modules = defaults.length ? defaults : [...enabledModules];
+  const landing = DEFAULT_ROLE_LANDING[role] ?? modules[0];
+  return normalizeRoleEntry(
+    {
+      modules,
+      defaultModule: landing && modules.includes(landing) ? landing : modules[0],
+    },
+    enabledModules,
+  );
 }
 
-/** Build full role access map from defaults when wizard/admin state is still empty. */
-export function buildDefaultRoleAccessMap(enabledModules: ModuleId[]): RoleAccessMap {
+export function buildDefaultRoleAccessMap(
+  enabledModules: ModuleId[],
+  industryId?: string | null,
+): RoleAccessMap {
+  const keys = softwareRoleKeysForIndustry(industryId);
   const map: RoleAccessMap = {};
-  for (const role of SOFTWARE_ROLE_KEYS) {
-    const entry = resolveRoleEntry({}, role, enabledModules);
-    map[role] = entry;
+  for (const role of keys) {
+    map[role] = resolveRoleEntry({}, role, enabledModules);
   }
   return map;
 }
 
-export function serializeResolvedRoleAccess(enabledModules: ModuleId[], roleAccess: RoleAccessMap) {
+export function normalizeRoleAccessForModules(
+  roleAccess: RoleAccessMap,
+  enabledModules: ModuleId[],
+  industryId?: string | null,
+): RoleAccessMap {
+  const keys = new Set([
+    ...Object.keys(roleAccess),
+    ...softwareRoleKeysForIndustry(industryId),
+  ]);
+  const next: RoleAccessMap = {};
+  for (const role of keys) {
+    const entry = roleAccess[role];
+    if (!entry) continue;
+    const normalized = normalizeRoleEntry(entry, enabledModules);
+    if (normalized.modules.length) {
+      next[role] = normalized;
+    }
+  }
+  return next;
+}
+
+export function serializeResolvedRoleAccess(
+  enabledModules: ModuleId[],
+  roleAccess: RoleAccessMap,
+  industryId?: string | null,
+) {
+  const keys = softwareRoleKeysForIndustry(industryId);
   const resolved: RoleAccessMap = {};
-  for (const role of SOFTWARE_ROLE_KEYS) {
+  for (const role of keys) {
     resolved[role] = resolveRoleEntry(roleAccess, role, enabledModules);
   }
   return serializeRoleAccess(resolved);
+}
+
+/** Grant Orders to retail sell roles when Orders is enabled for the business. */
+export function ensureRetailRoleOrdersAccess(
+  roleAccess: RoleAccessMap,
+  enabledModules: ModuleId[],
+  industryId?: string | null,
+): RoleAccessMap {
+  if (!industryUsesMobileOrders(industryId) || !enabledModules.includes("orders")) {
+    return roleAccess;
+  }
+
+  const sellRoles: SoftwareRoleKey[] = ["store_manager", "cashier", "business_admin"];
+  const next: RoleAccessMap = { ...roleAccess };
+
+  for (const role of sellRoles) {
+    const entry = resolveRoleEntry(next, role, enabledModules);
+    if (entry.modules.includes("orders")) {
+      next[role] = entry;
+      continue;
+    }
+    const modules = entry.modules.filter((id) => id !== "inventory");
+    if (!modules.includes("orders")) modules.push("orders");
+    next[role] = normalizeRoleEntry(
+      {
+        modules,
+        defaultModule:
+          entry.defaultModule === "inventory" ? "orders" : entry.defaultModule,
+      },
+      enabledModules,
+    );
+  }
+
+  return next;
+}
+
+/** Modules allowed for a logged-in portal role (null = unrestricted). */
+export function allowedModulesForRole(
+  roleAccess: RoleAccessMap,
+  role: string | null | undefined,
+  enabledModules: ModuleId[],
+): ModuleId[] | null {
+  const normalized = String(role ?? "")
+    .toLowerCase()
+    .trim();
+  if (!normalized || normalized === "super_admin") return null;
+  if (normalized === "businessadmin" || normalized === "admin") {
+    const entry = roleAccess.business_admin;
+    if (!entry?.modules?.length) return null;
+    return normalizeRoleEntry(entry, enabledModules).modules;
+  }
+  const entry = roleAccess[normalized];
+  if (!entry?.modules?.length) {
+    if (normalized === "business_admin") return null;
+    const defaults = resolveRoleEntry({}, normalized, enabledModules).modules;
+    return defaults.length ? defaults : [];
+  }
+  return normalizeRoleEntry(entry, enabledModules).modules;
 }

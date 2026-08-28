@@ -18,7 +18,7 @@ export default function SoftwarePreviewPage() {
   const templateConfig = hydrateWorkspaceTemplate(business.templateConfig) ?? business.templateConfig;
 
   if (!templateConfig?.id) {
-    return <SoftwareTemplateNotConfigured businessId={businessId} />;
+    return <SoftwareTemplateNotConfigured businessId={businessId} businessName={business.businessName} />;
   }
 
   return (

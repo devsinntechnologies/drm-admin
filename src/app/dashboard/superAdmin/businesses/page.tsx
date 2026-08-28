@@ -38,6 +38,7 @@ import {
   useLazyCheckBusinessEmailQuery,
   useLazyGetBusinessByIdQuery,
   usePatchBusinessByIdMutation,
+  useActivateBusinessByIdMutation,
 } from "@/hooks/useBusiness";
 import { saveBusinessProfile, getBusinessProfile } from "@/lib/business-profile";
 import { persistIndustryTemplateForBusiness } from "@/template-engine/persist-template-config";
@@ -63,7 +64,7 @@ type BusinessItem = {
   orders: string;
   users: string;
   active: boolean;
-  status: "Active" | "Inactive" | "Expired";
+  status: "Active" | "Paused" | "Expired";
   plan: "Enterprise" | "Premium" | "Basic";
   background: string;
   thumb: string;
@@ -97,7 +98,7 @@ function BusinessesContent() {
   const [editingBusinessId, setEditingBusinessId] = useState<string | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
-  const [deleteTargetBusiness, setDeleteTargetBusiness] = useState<BusinessItem | null>(null);
+  const [pauseTargetBusiness, setPauseTargetBusiness] = useState<BusinessItem | null>(null);
   const [createdCredentials, setCreatedCredentials] = useState<{
     email: string;
     password: string;
@@ -127,7 +128,11 @@ function BusinessesContent() {
 
   const { data: planData, isLoading: isLoadingPlans } = useGetPlansQuery();
   const statusQueryParam: BusinessStatus | undefined =
-    statusFilter === "All Status" ? undefined : (statusFilter.toLowerCase() as BusinessStatus);
+    statusFilter === "All Status"
+      ? undefined
+      : statusFilter === "Paused"
+        ? "inactive"
+        : (statusFilter.toLowerCase() as BusinessStatus);
   const { data: businessData, isLoading: isLoadingBusinesses, isFetching: isFetchingBusinesses, isError: isBusinessesError, error: businessesError, refetch } = useGetBusinessesQuery({
     search: searchTerm || undefined,
     status: statusQueryParam,
@@ -138,7 +143,8 @@ function BusinessesContent() {
   const [createBusiness, { isLoading: isCreatingBusiness }] = useCreateBusinessMutation();
   const [checkBusinessEmail] = useLazyCheckBusinessEmailQuery();
   const [patchBusinessById, { isLoading: isPatchingBusiness }] = usePatchBusinessByIdMutation();
-  const [deleteBusinessById, { isLoading: isDeletingBusiness }] = useDeleteBusinessByIdMutation();
+  const [deleteBusinessById, { isLoading: isPausingBusiness }] = useDeleteBusinessByIdMutation();
+  const [activateBusinessById, { isLoading: isResumingBusiness }] = useActivateBusinessByIdMutation();
 
   const mappedBusinesses = useMemo<BusinessItem[]>(() => {
     const rows = Array.isArray(businessData?.data) ? businessData.data : [];
@@ -153,7 +159,7 @@ function BusinessesContent() {
         item.status === "active"
           ? "Active"
           : item.status === "inactive"
-            ? "Inactive"
+            ? "Paused"
             : "Expired";
 
       const image = businessImages[index % businessImages.length];
@@ -299,11 +305,12 @@ function BusinessesContent() {
           businessId: editingBusinessId,
           businessName: payload.businessName,
           ...templatePayload,
+          requireApi: false,
         });
         if (!persist.persistedToApi) {
           toast.warning(
             persist.warning ??
-              "Business updated, but industry modules were not saved to the server. Seed industry templates, then save workspace settings.",
+              "Business updated, but industry modules were not saved to the server. Open Software control and save again.",
           );
         }
         toast.success("Business updated successfully.", { id: toastId });
@@ -323,17 +330,11 @@ function BusinessesContent() {
           layoutStyle: "comfortable",
         });
 
-        const persist = await persistIndustryTemplateForBusiness({
+        await persistIndustryTemplateForBusiness({
           businessId: created.id,
           businessName: created.businessName || payload.businessName,
           ...templatePayload,
         });
-        if (!persist.persistedToApi) {
-          toast.warning(
-            persist.warning ??
-              "Business created, but industry modules were not saved to the server. Open the business and save workspace settings after seeding industry templates.",
-          );
-        }
 
         const emailSent = created.credentialsEmailSent === true;
         const emailError = created.credentialsEmailError;
@@ -405,15 +406,32 @@ function BusinessesContent() {
     }
   };
 
-  const handleDeleteBusiness = async (id: string) => {
-    const toastId = toast.loading("Processing...");
+  const handlePauseBusiness = async (id: string) => {
+    const toastId = toast.loading("Pausing business...");
     try {
       await deleteBusinessById(id).unwrap();
-      toast.success("Business status updated successfully.", { id: toastId });
+      toast.success("Business paused. Staff are signed out and cannot log in until you resume.", {
+        id: toastId,
+      });
       void refetch();
-      setDeleteTargetBusiness(null);
+      setPauseTargetBusiness(null);
     } catch (err) {
-      toast.error(normalizeErrorMessage(err, "Failed to update business status. Please try again."), { id: toastId });
+      toast.error(normalizeErrorMessage(err, "Failed to pause business. Please try again."), {
+        id: toastId,
+      });
+    }
+  };
+
+  const handleResumeBusiness = async (id: string) => {
+    const toastId = toast.loading("Resuming business...");
+    try {
+      await activateBusinessById(id).unwrap();
+      toast.success("Business resumed. Staff can sign in again.", { id: toastId });
+      void refetch();
+    } catch (err) {
+      toast.error(normalizeErrorMessage(err, "Failed to resume business. Please try again."), {
+        id: toastId,
+      });
     }
   };
 
@@ -704,7 +722,7 @@ function BusinessesContent() {
               </button>
               {statusOpen && (
                 <div className="absolute left-0 top-13 z-20 w-full rounded-xl border border-[#e2e5ee] bg-white p-2 shadow-[0_12px_30px_rgba(15,23,42,0.12)]">
-                  {['All Status', 'Active', 'Inactive', 'Expired'].map((item) => (
+                  {['All Status', 'Active', 'Paused', 'Expired'].map((item) => (
                     <button
                       key={item}
                       type="button"
@@ -807,7 +825,7 @@ function BusinessesContent() {
               />
               <div className="absolute inset-0 bg-[rgba(15,23,42,0.45)]" />
               <div className="absolute right-4 top-3 z-2 flex gap-2">
-                <span className={`inline-flex h-7 items-center rounded-xl px-3 text-xs font-bold text-[#ffffff] ${business.status === "Active" ? "bg-[#07c357]" : business.status === "Inactive" ? "bg-[#7d8593]" : "bg-[#ff3649]"}`}>
+                <span className={`inline-flex h-7 items-center rounded-xl px-3 text-xs font-bold text-[#ffffff] ${business.status === "Active" ? "bg-[#07c357]" : business.status === "Paused" ? "bg-[#7d8593]" : "bg-[#ff3649]"}`}>
                   {business.status}
                 </span>
                 <span className={`inline-flex h-7 items-center rounded-xl px-3 text-xs font-bold text-[#ffffff] ${planColor[business.plan]}`}>
@@ -857,19 +875,28 @@ function BusinessesContent() {
                 </button>
                 <button
                   type="button"
-                  disabled={isDeletingBusiness || business.status !== "Active"}
+                  disabled={isPausingBusiness || isResumingBusiness}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (business.status !== "Active") return;
-                    setDeleteTargetBusiness(business);
+                    if (business.status === "Active") {
+                      setPauseTargetBusiness(business);
+                      return;
+                    }
+                    void handleResumeBusiness(business.id);
                   }}
                   className={`inline-flex h-10 items-center justify-center rounded-xl border-2 text-sm font-semibold ${
                     business.status === "Active"
                       ? "border-[#ff9097] text-[#f2202f] hover:bg-red-50"
                       : "border-[#67db94] text-[#0ca94f] hover:bg-green-50"
-                  } ${business.status !== "Active" ? "cursor-not-allowed opacity-50" : ""}`}
+                  }`}
                 >
-                  {business.status === "Active" ? "Deactivate" : "Activate"}
+                  {business.status === "Active"
+                    ? isPausingBusiness
+                      ? "Pausing..."
+                      : "Pause"
+                    : isResumingBusiness
+                      ? "Resuming..."
+                      : "Resume"}
                 </button>
               </div>
             </div>
@@ -914,41 +941,41 @@ function BusinessesContent() {
       ) : null}
 
       <Dialog
-        open={Boolean(deleteTargetBusiness)}
+        open={Boolean(pauseTargetBusiness)}
         onOpenChange={(open) => {
           if (!open) {
-            setDeleteTargetBusiness(null);
+            setPauseTargetBusiness(null);
           }
         }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Deactivate business?</DialogTitle>
+            <DialogTitle>Pause business?</DialogTitle>
             <DialogDescription>
-              {deleteTargetBusiness
-                ? `Are you sure you want to deactivate ${deleteTargetBusiness.name}? This action cannot be undone.`
-                : "Are you sure you want to deactivate this business? This action cannot be undone."}
+              {pauseTargetBusiness
+                ? `Pause ${pauseTargetBusiness.name}? Staff will be signed out immediately and cannot log in until you resume the business.`
+                : "Pause this business? Staff will be signed out and cannot log in until you resume it."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="mt-4 flex items-center justify-end gap-2">
             <button
               type="button"
-              onClick={() => setDeleteTargetBusiness(null)}
+              onClick={() => setPauseTargetBusiness(null)}
               className="inline-flex h-10 items-center rounded-xl border border-[#d7dbe4] px-4 text-sm font-semibold text-[#374151]"
             >
               Cancel
             </button>
             <button
               type="button"
-              disabled={isDeletingBusiness || !deleteTargetBusiness}
+              disabled={isPausingBusiness || !pauseTargetBusiness}
               onClick={() => {
-                if (!deleteTargetBusiness) return;
-                void handleDeleteBusiness(deleteTargetBusiness.id);
+                if (!pauseTargetBusiness) return;
+                void handlePauseBusiness(pauseTargetBusiness.id);
               }}
               className="inline-flex h-10 items-center rounded-xl bg-[#f2202f] px-4 text-sm font-semibold text-[#ffffff] disabled:opacity-60"
             >
-              {isDeletingBusiness ? "Deactivating..." : "Deactivate"}
+              {isPausingBusiness ? "Pausing..." : "Pause"}
             </button>
           </div>
         </DialogContent>

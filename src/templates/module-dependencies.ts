@@ -26,6 +26,7 @@ export const INDUSTRY_MODULE_PLANS: Record<string, IndustryModulePlan> = {
     dependencies: {
       pos: ["products"],
       sales: ["products"],
+      orders: ["products"],
       returns: ["sales", "products"],
       inventory: ["products"],
       categories: ["products"],
@@ -278,6 +279,7 @@ export const INDUSTRY_MODULE_PLANS: Record<string, IndustryModulePlan> = {
     dependencies: {
       pos: ["products"],
       sales: ["products"],
+      orders: ["products"],
       categories: ["products"],
       brands: ["products"],
       "vehicle-compatibility": ["products"],

@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import type { ApiTemplateConfig } from "@/hooks/useIndustryTemplate";
 import { parseMobileHeaderSettings } from "@/lib/mobile-header-settings";
-import { parseOrdersSettings, parseProductsSettings } from "@/lib/module-feature-settings";
-import { parseRoleAccess, SOFTWARE_ROLE_KEYS, SOFTWARE_ROLE_LABELS, type SoftwareRoleKey } from "@/lib/role-access";
+import { parseCategoriesSettings, parseOrdersSettings, parseProductsSettings } from "@/lib/module-feature-settings";
+import { parseRoleAccess, roleKeyLabel, softwareRoleKeysForIndustry, type SoftwareRoleKey } from "@/lib/role-access";
 import { resolveRoleEntry } from "@/lib/software-role-defaults";
 import { isSoftwareSupportedModule } from "@/lib/software-supported-modules";
 import { SoftwareModuleIcon } from "@/lib/software-module-icons";
@@ -19,6 +19,10 @@ type SoftwareMobilePreviewProps = {
 export function SoftwareMobilePreview({ businessName, templateConfig }: SoftwareMobilePreviewProps) {
   const [previewRole, setPreviewRole] = useState<SoftwareRoleKey>("business_admin");
   const [activeTab, setActiveTab] = useState(0);
+  const roleKeys = useMemo(
+    () => softwareRoleKeysForIndustry(templateConfig.industryId),
+    [templateConfig.industryId],
+  );
 
   const enabled = useMemo(
     () => new Set(templateConfig.enabledModules ?? []),
@@ -66,47 +70,55 @@ export function SoftwareMobilePreview({ businessName, templateConfig }: Software
         className="relative w-[300px] shrink-0 overflow-hidden rounded-[2rem] border-[10px] border-[#0f172a] bg-white shadow-2xl"
         style={{ minHeight: 600 }}
       >
-        {/* Header */}
-        <div
-          className="px-3 pb-2 pt-8"
-          style={{ background: `linear-gradient(135deg, ${primary}, ${secondary})` }}
-        >
-          <div className="flex items-center gap-2">
-            <div
-              className="flex h-9 max-w-[110px] items-center justify-center rounded-lg border border-white/80 px-2 shadow"
-              style={{ backgroundColor: mobileHeader.logoBackgroundColor }}
-            >
-              {templateConfig.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={templateConfig.logoUrl}
-                  alt=""
-                  className="max-h-6 w-auto max-w-[96px] object-contain"
-                />
-              ) : (
-                <span className="text-[9px] font-bold text-[#94a3b8]">LOGO</span>
-              )}
+        {/* Header — respects Software Control “Allow mobile app header” */}
+        {mobileHeader.enabled ? (
+          <div
+            className="px-3 pb-2 pt-8"
+            style={{ background: `linear-gradient(135deg, ${primary}, ${secondary})` }}
+          >
+            <div className="flex items-center gap-2">
+              <div
+                className="flex h-9 max-w-[110px] items-center justify-center rounded-lg border border-white/80 px-2 shadow"
+                style={{ backgroundColor: mobileHeader.logoBackgroundColor }}
+              >
+                {templateConfig.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={templateConfig.logoUrl}
+                    alt=""
+                    className="max-h-6 w-auto max-w-[96px] object-contain"
+                  />
+                ) : (
+                  <span className="text-[9px] font-bold text-[#94a3b8]">LOGO</span>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-white">{businessName}</p>
+                <p className="truncate text-[10px] text-white/80">{activeItem?.label ?? "Home"}</p>
+              </div>
+              {mobileHeader.showLogout ? (
+                <span className="rounded bg-white/20 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                  Logout
+                </span>
+              ) : null}
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-semibold text-white">{businessName}</p>
-              <p className="truncate text-[10px] text-white/80">{activeItem?.label ?? "Home"}</p>
-            </div>
-            {mobileHeader.showLogout ? (
-              <span className="rounded bg-white/20 px-1.5 py-0.5 text-[9px] font-bold text-white">
-                Logout
-              </span>
+            {mobileHeader.showOnlineStatus ? (
+              <p className="mt-1.5 text-[9px] font-bold text-emerald-200">● ONLINE</p>
             ) : null}
           </div>
-          {mobileHeader.showOnlineStatus ? (
-            <p className="mt-1.5 text-[9px] font-bold text-emerald-200">● ONLINE</p>
-          ) : null}
-        </div>
+        ) : (
+          <div className="border-b border-[#e2e8f0] bg-[#f8fafc] px-3 pb-2 pt-8">
+            <p className="text-center text-[10px] font-medium text-[#94a3b8]">
+              Header off (Control → Mobile app header)
+            </p>
+          </div>
+        )}
 
         {/* Body */}
         <div className="space-y-3 p-3" style={{ minHeight: 400 }}>
           {navItems.length === 0 ? (
             <p className="py-8 text-center text-sm text-[#94a3b8]">
-              No tabs for {SOFTWARE_ROLE_LABELS[previewRole]}
+              No tabs for {roleKeyLabel(previewRole)}
             </p>
           ) : activeModuleId === "dashboard" ? (
             <>
@@ -216,7 +228,7 @@ export function SoftwareMobilePreview({ businessName, templateConfig }: Software
             Preview as role
           </p>
           <div className="flex flex-wrap gap-2">
-            {SOFTWARE_ROLE_KEYS.map((role) => (
+            {roleKeys.map((role) => (
               <button
                 key={role}
                 type="button"
@@ -230,17 +242,31 @@ export function SoftwareMobilePreview({ businessName, templateConfig }: Software
                     : "border-[#e2e8f0] text-[#64748b]"
                 }`}
               >
-                {SOFTWARE_ROLE_LABELS[role]}
+                {roleKeyLabel(role)}
               </button>
             ))}
           </div>
         </div>
 
         <ul className="list-inside list-disc space-y-1">
-          <li>{navItems.length} tab(s) for {SOFTWARE_ROLE_LABELS[previewRole]}</li>
+          <li>{navItems.length} tab(s) for {roleKeyLabel(previewRole)}</li>
           <li>{dashboardCards.length} dashboard card(s)</li>
           <li>Theme: {templateConfig.themeMode ?? "light"}</li>
           <li>Offline sync: {(templateConfig.moduleSettings?.offlineSync?.enabled as boolean) !== false ? "On" : "Off"}</li>
+          <li>Mobile header: {mobileHeader.enabled ? "On" : "Off"}</li>
+          <li>
+            Categories:{" "}
+            {enabled.has("categories")
+              ? parseCategoriesSettings(templateConfig.moduleSettings).allowManage
+                ? "Manage on"
+                : "Manage off"
+              : "Module off"}
+            {enabled.has("categories")
+              ? parseCategoriesSettings(templateConfig.moduleSettings).showFilters
+                ? " · Filters on"
+                : " · Filters off"
+              : ""}
+          </li>
         </ul>
 
         {navItems.map((item) => (

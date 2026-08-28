@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileText, Search, Clock3, Loader2, Eye, Printer, CheckCircle2, RotateCcw, File, X, Receipt, Filter } from "lucide-react";
+import { Download, FileText, Search, Clock3, Loader2, Eye, Printer, CheckCircle2, RotateCcw, File, X, Receipt, Filter, Trash2 } from "lucide-react";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Loading from "@/components/common/Loading";
@@ -20,6 +20,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 type StatusFilter = "all" | "pending" | "paid";
+type RangeFilter = "day" | "week" | "month";
 
 type InvoiceRow = {
   id: string;
@@ -82,13 +83,22 @@ function InvoicesContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [rangeFilter, setRangeFilter] = useState<RangeFilter>("day");
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRecord | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [updatingInvoiceUuid, setUpdatingInvoiceUuid] = useState<string | null>(null);
+  const [deletingInvoiceUuid, setDeletingInvoiceUuid] = useState<string | null>(null);
 
-  const { invoices, loading, actionLoading, error, pagination, refetch, updateInvoiceStatus } = useInvoices({
+  const canDeleteInvoice =
+    (role ?? (typeof window !== "undefined" ? localStorage.getItem("roleName") : null)) ===
+      "business_admin" ||
+    (role ?? (typeof window !== "undefined" ? localStorage.getItem("roleName") : null)) ===
+      "super_admin";
+
+  const { invoices, loading, actionLoading, error, pagination, refetch, updateInvoiceStatus, deleteInvoice } = useInvoices({
     page: currentPage,
     limit: 100,
+    range: rangeFilter,
   });
 
   useEffect(() => {
@@ -160,6 +170,27 @@ function InvoicesContent() {
       toast.error(message, { id: toastId });
     } finally {
       setUpdatingInvoiceUuid(null);
+    }
+  };
+
+  const handleDeleteInvoice = async (invoiceUuid: string, invoiceNumber: string) => {
+    if (!canDeleteInvoice) {
+      toast.error("Only business admin can delete invoices.");
+      return;
+    }
+    const confirmed = window.confirm(`Delete invoice ${invoiceNumber}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    const toastId = toast.loading("Deleting invoice...");
+    try {
+      setDeletingInvoiceUuid(invoiceUuid);
+      await deleteInvoice(invoiceUuid);
+      toast.success("Invoice deleted.", { id: toastId });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to delete invoice.";
+      toast.error(message, { id: toastId });
+    } finally {
+      setDeletingInvoiceUuid(null);
     }
   };
 
@@ -254,26 +285,57 @@ function InvoicesContent() {
 
         {/* Filters */}
         <section className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="dn-tab-bar !rounded-2xl !py-2 lg:w-auto">
-              {(
-                [
-                  { key: "all" as const, label: "All" },
-                  { key: "pending" as const, label: "Pending" },
-                  { key: "paid" as const, label: "Paid" },
-                ] as const
-              ).map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  data-active={statusFilter === tab.key ? "true" : "false"}
-                  className="dn-tab !h-10"
-                  onClick={() => setStatusFilter(tab.key)}
-                >
-                  <Filter className="h-3.5 w-3.5" />
-                  {tab.label}
-                </button>
-              ))}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#94a3b8]">Period</p>
+                <div className="dn-tab-bar !rounded-2xl !py-2 lg:w-auto">
+                  {(
+                    [
+                      { key: "day" as const, label: "Daily" },
+                      { key: "week" as const, label: "Weekly" },
+                      { key: "month" as const, label: "Monthly" },
+                    ] as const
+                  ).map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      data-active={rangeFilter === tab.key ? "true" : "false"}
+                      className="dn-tab !h-10"
+                      onClick={() => {
+                        setRangeFilter(tab.key);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <Clock3 className="h-3.5 w-3.5" />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#94a3b8]">Status</p>
+                <div className="dn-tab-bar !rounded-2xl !py-2 lg:w-auto">
+                  {(
+                    [
+                      { key: "all" as const, label: "All" },
+                      { key: "pending" as const, label: "Pending" },
+                      { key: "paid" as const, label: "Paid" },
+                    ] as const
+                  ).map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      data-active={statusFilter === tab.key ? "true" : "false"}
+                      className="dn-tab !h-10"
+                      onClick={() => setStatusFilter(tab.key)}
+                    >
+                      <Filter className="h-3.5 w-3.5" />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             <label className="relative block w-full space-y-1.5 lg:max-w-sm">
               <span className="block text-sm font-semibold text-[#64748b]">Search</span>
@@ -399,6 +461,21 @@ function InvoicesContent() {
                             >
                               <CheckCircle2 className="h-4 w-4" />
                               Paid
+                            </button>
+                          ) : null}
+                          {canDeleteInvoice ? (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteInvoice(invoice.uuid, invoice.id)}
+                              disabled={actionLoading && deletingInvoiceUuid === invoice.uuid}
+                              className="dn-btn dn-btn-outline !h-9 !px-3 text-[#dc2626] border-[#fecaca] hover:bg-[#fef2f2]"
+                              title="Delete invoice"
+                            >
+                              {deletingInvoiceUuid === invoice.uuid ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
                             </button>
                           ) : null}
                         </div>

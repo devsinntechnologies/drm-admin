@@ -1,23 +1,39 @@
 import type { ModuleId } from "@/templates/types";
+import { getSoftwareRoleKeysForIndustry, staffRoleLabel } from "@/lib/staff-role-catalog";
 
 export type RoleAccessEntry = {
   modules: ModuleId[];
   defaultModule?: ModuleId;
 };
 
-export type RoleAccessMap = Partial<
-  Record<"waiter" | "kitchen" | "business_admin" | "super_admin", RoleAccessEntry>
->;
+/** Any staff / admin role key used in moduleSettings.roleAccess. */
+export type SoftwareRoleKey = string;
 
+export type RoleAccessMap = Partial<Record<string, RoleAccessEntry>>;
+
+/** @deprecated Prefer getSoftwareRoleKeysForIndustry(industryId) */
 export const SOFTWARE_ROLE_KEYS = ["waiter", "kitchen", "business_admin"] as const;
 
-export type SoftwareRoleKey = (typeof SOFTWARE_ROLE_KEYS)[number];
-
-export const SOFTWARE_ROLE_LABELS: Record<SoftwareRoleKey, string> = {
+export const SOFTWARE_ROLE_LABELS: Record<string, string> = {
   waiter: "Waiter",
   kitchen: "Kitchen",
   business_admin: "Business admin",
+  store_manager: "Store manager",
+  cashier: "Cashier",
+  inventory_clerk: "Inventory clerk",
+  pharmacy_manager: "Pharmacy manager",
+  pharmacist: "Pharmacist",
+  shift_incharge: "Shift incharge",
+  inventory_manager: "Inventory manager",
 };
+
+export function roleKeyLabel(role: string): string {
+  return SOFTWARE_ROLE_LABELS[role] ?? staffRoleLabel(role);
+}
+
+export function softwareRoleKeysForIndustry(industryId: string | null | undefined): string[] {
+  return getSoftwareRoleKeysForIndustry(industryId);
+}
 
 export function parseRoleAccess(
   moduleSettings?: Record<string, Record<string, unknown>> | null,
@@ -31,7 +47,7 @@ export function parseRoleAccess(
       ? ((entry as RoleAccessEntry).modules as ModuleId[])
       : [];
     const defaultModule = (entry as RoleAccessEntry).defaultModule;
-    result[role as keyof RoleAccessMap] = {
+    result[role] = {
       modules,
       ...(defaultModule ? { defaultModule } : {}),
     };
@@ -42,11 +58,25 @@ export function parseRoleAccess(
 export function serializeRoleAccess(roleAccess: RoleAccessMap): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [role, entry] of Object.entries(roleAccess)) {
-    if (!entry?.modules?.length && !entry?.defaultModule) continue;
+    const modules = entry?.modules ?? [];
+    if (!modules.length) continue;
+    const defaultModule =
+      entry?.defaultModule && modules.includes(entry.defaultModule)
+        ? entry.defaultModule
+        : modules[0];
     out[role] = {
-      modules: entry.modules ?? [],
-      ...(entry.defaultModule ? { defaultModule: entry.defaultModule } : {}),
+      modules,
+      defaultModule,
     };
   }
   return out;
+}
+
+/** Normalize login role names to roleAccess keys. */
+export function normalizePortalRole(role: string | null | undefined): string {
+  const value = String(role ?? "")
+    .toLowerCase()
+    .trim();
+  if (value === "businessadmin" || value === "admin") return "business_admin";
+  return value;
 }

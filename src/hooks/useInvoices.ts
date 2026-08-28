@@ -40,10 +40,11 @@ export interface InvoicesResponse {
 interface UseInvoicesOptions {
   page?: number;
   limit?: number;
+  range?: "day" | "week" | "month";
 }
 
 export function useInvoices(options: UseInvoicesOptions = {}) {
-  const { page = 1, limit = 20 } = options;
+  const { page = 1, limit = 20, range = "day" } = options;
   const { token } = useAuth();
   const activeBusinessId = useActiveBusinessId();
 
@@ -76,6 +77,9 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
       url.searchParams.append("page", String(pageNum));
       if (limit) {
         url.searchParams.append("limit", String(limit));
+      }
+      if (range) {
+        url.searchParams.append("range", range);
       }
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
@@ -112,7 +116,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [token, limit, activeBusinessId]);
+  }, [token, limit, range, activeBusinessId]);
 
   useEffect(() => {
     fetchInvoices(page);
@@ -183,6 +187,43 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     }
   }, [fetchInvoices, pagination.page, token, activeBusinessId]);
 
+  const deleteInvoice = useCallback(async (invoiceUuid: string) => {
+    let authToken = token;
+    if (!authToken && typeof window !== "undefined") {
+      authToken = localStorage.getItem("auth_token") || localStorage.getItem("token");
+    }
+
+    if (!authToken) {
+      throw new Error("No authentication token available");
+    }
+
+    setActionLoading(true);
+    try {
+      const url = new URL(`${BASE_URL}/invoice/${invoiceUuid}`);
+      if (activeBusinessId) {
+        url.searchParams.append("businessId", activeBusinessId);
+      }
+
+      const response = await fetch(url.toString(), {
+        method: "DELETE",
+        headers: {
+          accept: "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `Failed to delete invoice: ${response.statusText}`);
+      }
+
+      await fetchInvoices(pagination.page);
+      return true;
+    } finally {
+      setActionLoading(false);
+    }
+  }, [fetchInvoices, pagination.page, token, activeBusinessId]);
+
   return {
     invoices,
     loading,
@@ -192,6 +233,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     nextPage,
     prevPage,
     updateInvoiceStatus,
+    deleteInvoice,
     refetch: fetchInvoices,
   };
 }

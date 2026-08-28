@@ -7,6 +7,7 @@ type MobileHeaderPreviewProps = {
   logoUrl: string | null;
   primaryColor: string;
   secondaryColor: string;
+  enabled: boolean;
   showLogout: boolean;
   showOnlineStatus: boolean;
   logoBackgroundColor: string;
@@ -17,10 +18,23 @@ export function MobileHeaderPreview({
   logoUrl,
   primaryColor,
   secondaryColor,
+  enabled,
   showLogout,
   showOnlineStatus,
   logoBackgroundColor,
 }: MobileHeaderPreviewProps) {
+  if (!enabled) {
+    return (
+      <div className="overflow-hidden rounded-xl border border-dashed border-[#e2e8f0] bg-[#f8fafc]">
+        <div className="flex min-h-[88px] items-center justify-center px-4 py-6 text-center">
+          <p className="text-sm text-[#64748b]">
+            Mobile app header is off — Flutter will hide the branded navbar.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="overflow-hidden rounded-xl border border-[#e2e8f0] shadow-sm">
       <div

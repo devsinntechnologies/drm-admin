@@ -43,7 +43,12 @@ function configToApiPayload(
 /** Save to API when available, always mirror to localStorage for offline/resume. */
 export async function persistTemplateConfig(
   config: CustomizedTemplateConfig,
-  options?: { businessId?: string; moduleSettings?: Record<string, Record<string, unknown>> },
+  options?: {
+    businessId?: string;
+    moduleSettings?: Record<string, Record<string, unknown>>;
+    /** When true, throws instead of returning persistedToApi: false (use after business create). */
+    requireApi?: boolean;
+  },
 ): Promise<PersistTemplateResult> {
   if (config.extensions) {
     saveTemplateExtensions(config.id, config.extensions);
@@ -77,10 +82,14 @@ export async function persistTemplateConfig(
     return { config: merged, persistedToApi: true };
   } catch (error) {
     const message = normalizeErrorMessage(error, "API unavailable");
+    const warning = `Saved locally. API sync failed: ${message}`;
+    if (options?.requireApi) {
+      throw new Error(warning);
+    }
     return {
       config,
       persistedToApi: false,
-      warning: `Saved locally. API sync failed: ${message}`,
+      warning,
     };
   }
 }
@@ -93,6 +102,7 @@ export async function persistIndustryTemplateForBusiness(options: {
   location?: string;
   currency?: string;
   market?: string;
+  requireApi?: boolean;
 }): Promise<PersistTemplateResult> {
   const industry = INDUSTRY_TEMPLATES.find((item) => item.id === options.industryId);
   if (!industry) {
@@ -113,7 +123,10 @@ export async function persistIndustryTemplateForBusiness(options: {
     currency: options.currency,
     market: options.market,
   });
-  return persistTemplateConfig(config, { businessId: options.businessId });
+  return persistTemplateConfig(config, {
+    businessId: options.businessId,
+    requireApi: options.requireApi ?? true,
+  });
 }
 
 export function mergeConfigWithExtensions(config: CustomizedTemplateConfig): CustomizedTemplateConfig {

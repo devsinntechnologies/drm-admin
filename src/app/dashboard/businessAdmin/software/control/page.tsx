@@ -82,7 +82,12 @@ export default function BusinessAdminSoftwareControlPage() {
         </dl>
       </ControlSection>
 
-      <SoftwareStaffOverview businessId={businessId} business={business} />
+      <SoftwareStaffOverview
+        businessId={businessId}
+        business={business}
+        industryId={industryId}
+        enabledModules={templateConfig?.enabledModules}
+      />
 
       {!hasTemplate ? <SoftwareTemplateNotConfigured businessId={businessId} isSuperAdmin={false} /> : null}
 
