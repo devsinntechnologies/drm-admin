@@ -1,6 +1,7 @@
 export const STAFF_REALTIME_EVENTS = {
   SELF_ORDERS_CHANGED: "drm:self-orders-changed",
   ORDERS_CHANGED: "drm:orders-changed",
+  INVOICES_CHANGED: "drm:invoices-changed",
 } as const;
 
 export function emitStaffRealtime(event: string, detail?: unknown) {

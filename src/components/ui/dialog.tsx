@@ -17,7 +17,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out",
+      "fixed inset-0 z-[200] bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out",
       className,
     )}
     {...props}
@@ -25,16 +25,24 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+  /** `top` pins the sheet to the viewport (Staff and other tall panels). */
+  align?: "center" | "top";
+};
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  DialogContentProps
+>(({ className, children, align = "center", ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 text-[var(--text-primary)] shadow-[0_24px_60px_rgba(0,0,0,0.35)]",
+        "fixed left-1/2 z-[200] w-[92vw] max-w-lg -translate-x-1/2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 text-[var(--text-primary)] shadow-[0_24px_60px_rgba(0,0,0,0.35)]",
+        align === "top"
+          ? "top-6 max-h-[calc(100dvh-3rem)] translate-y-0 overflow-y-auto"
+          : "top-1/2 -translate-y-1/2",
         className,
       )}
       {...props}

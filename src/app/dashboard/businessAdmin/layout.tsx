@@ -68,7 +68,18 @@ function ThemedWorkspace({ children }: { children: React.ReactNode }) {
 
 function BusinessAdminLayoutContent({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
-  const businessId = searchParams.get("businessId")?.trim() ?? null;
+  const urlBusinessId = searchParams.get("businessId")?.trim() ?? null;
+  const [storedBusinessId, setStoredBusinessId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (urlBusinessId) {
+      localStorage.setItem("businessId", urlBusinessId);
+      return;
+    }
+    setStoredBusinessId(localStorage.getItem("businessId")?.trim() || null);
+  }, [urlBusinessId]);
+
+  const businessId = urlBusinessId || storedBusinessId;
 
   return (
     <BusinessTemplateProvider businessId={businessId}>

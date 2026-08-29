@@ -1,6 +1,8 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { authenticatedBaseQueryWithReauth } from "@/lib/authenticated-base-query";
 import type { ApiTemplateConfig } from "@/hooks/useIndustryTemplate";
+import type { CredentialsResult, ResetCredentialsPayload } from "@/lib/credentials-result";
+import { asCredentialsResult } from "@/lib/credentials-result";
 
 export type BusinessStatus = "active" | "inactive" | "expired";
 
@@ -264,6 +266,23 @@ export const businessApi = createApi({
         { type: "Business", id: "LIST" },
       ],
     }),
+    resetOwnerCredentials: builder.mutation<
+      CredentialsResult,
+      { id: string; body?: ResetCredentialsPayload }
+    >({
+      query: ({ id, body }) => ({
+        url: `/business/${id}/reset-owner-credentials`,
+        method: "POST",
+        body: body ?? { generate: true, sendEmail: true },
+      }),
+      transformResponse: (response: unknown) => {
+        const parsed = asCredentialsResult(response);
+        if (!parsed) {
+          throw new Error("Invalid credentials response");
+        }
+        return parsed;
+      },
+    }),
   }),
 });
 
@@ -277,4 +296,5 @@ export const {
   useDeleteBusinessByIdMutation,
   useActivateBusinessByIdMutation,
   useUploadBusinessLogoMutation,
+  useResetOwnerCredentialsMutation,
 } = businessApi;

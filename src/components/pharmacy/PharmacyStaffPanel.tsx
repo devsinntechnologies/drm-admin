@@ -11,6 +11,8 @@ import { apiClient } from "@/lib/api-client";
 import { usePharmacyAction, usePharmacyQuery } from "@/hooks/usePharmacyQuery";
 import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { PHARMACY_STAFF_ROLES, type PharmacyStaffRole } from "@/lib/pharmacy-role-nav";
+import { asCredentialsResult } from "@/lib/credentials-result";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 type StaffFilter = "all" | PharmacyStaffRole;
 
@@ -45,6 +47,9 @@ export function PharmacyStaffPanel() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState<StaffFilter>("all");
   const [createOpen, setCreateOpen] = useState(false);
+  const [passwordMember, setPasswordMember] = useState<PharmacyStaffRow | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [emailPassword, setEmailPassword] = useState(true);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -98,11 +103,20 @@ export function PharmacyStaffPanel() {
           onSubmit={(event) => {
             event.preventDefault();
             run(async () => {
-              const created = await apiClient.post<{ email?: string; name?: string }>("/pharmacy/staff", {
+              const created = await apiClient.post<Record<string, unknown>>("/pharmacy/staff", {
                 ...form,
                 email: form.email.trim() || undefined,
               }, token, businessId);
-              toast.success(`Login: ${created?.email || form.email || "see Staff list"}`);
+              const creds = asCredentialsResult(created);
+              if (creds?.credentialsEmailSent) {
+                toast.success(`Login emailed to ${creds.loginEmail || created.email || form.email}`);
+              } else {
+                toast.success(`Login: ${String(created?.email || form.email || "see Staff list")}`);
+                toast.warning(
+                  creds?.credentialsEmailError ||
+                    "Credentials email was not sent. Share the password from the form if needed.",
+                );
+              }
               setForm({ name: "", email: "", password: "", role: "pharmacist", licenseNumber: "" });
               setCreateOpen(false);
               reload();
@@ -190,25 +204,120 @@ export function PharmacyStaffPanel() {
           license: row.licenseNumber || "—",
           status: <StatusBadge value={row.status || "inactive"} tone={row.status === "active" ? "success" : "neutral"} />,
           actions: canManage ? (
-            <button
-              type="button"
-              className="text-sm font-semibold text-[var(--brand-secondary)]"
-              onClick={() =>
-                run(async () => {
-                  await apiClient.patch(`/pharmacy/staff/${row.id}/status`, { isActive: row.status !== "active" }, token, businessId);
-                  toast.success(row.status === "active" ? "Deactivated" : "Activated");
-                  reload();
-                })
-              }
-            >
-              {row.status === "active" ? "Deactivate" : "Activate"}
-            </button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className="text-sm font-semibold text-[var(--brand-secondary)]"
+                onClick={() => {
+                  setPasswordMember(row);
+                  setNewPassword("");
+                  setEmailPassword(true);
+                }}
+              >
+                Reset pwd
+              </button>
+              <button
+                type="button"
+                className="text-sm font-semibold text-[var(--brand-secondary)]"
+                onClick={() =>
+                  run(async () => {
+                    const raw = await apiClient.patch(
+                      `/pharmacy/staff/${row.id}/password`,
+                      { generate: true, sendEmail: true },
+                      token,
+                      businessId,
+                    );
+                    const creds = asCredentialsResult(raw);
+                    if (creds?.credentialsEmailSent) {
+                      toast.success("A new password was emailed.");
+                    } else {
+                      toast.warning(
+                        creds?.credentialsEmailError ||
+                          `Password updated. Copy it: ${creds?.temporaryPassword || ""}`,
+                      );
+                    }
+                  })
+                }
+              >
+                Email pwd
+              </button>
+              <button
+                type="button"
+                className="text-sm font-semibold text-[var(--brand-secondary)]"
+                onClick={() =>
+                  run(async () => {
+                    await apiClient.patch(`/pharmacy/staff/${row.id}/status`, { isActive: row.status !== "active" }, token, businessId);
+                    toast.success(row.status === "active" ? "Deactivated" : "Activated");
+                    reload();
+                  })
+                }
+              >
+                {row.status === "active" ? "Deactivate" : "Activate"}
+              </button>
+            </div>
           ) : (
             "—"
           ),
         }))}
         empty={<p className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-muted)] py-12 text-center text-[var(--text-muted)]">No pharmacy staff found</p>}
       />
+
+      <Dialog open={!!passwordMember} onOpenChange={(open) => !open && setPasswordMember(null)}>
+        <DialogContent className="max-w-md">
+          <DialogTitle>Reset password — {passwordMember?.name}</DialogTitle>
+          <div className="mt-4 space-y-4">
+            <FormField label="New password" required>
+              <input
+                type="password"
+                className={portalInputClass}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                minLength={6}
+              />
+            </FormField>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={emailPassword}
+                onChange={(e) => setEmailPassword(e.target.checked)}
+              />
+              Email this password to the staff login
+            </label>
+            <button
+              type="button"
+              disabled={pending}
+              className="w-full rounded-2xl bg-[var(--brand-primary)] py-3 text-sm font-bold text-white disabled:opacity-60"
+              onClick={() => {
+                if (!passwordMember || newPassword.length < 6) {
+                  toast.error("Password must be at least 6 characters");
+                  return;
+                }
+                run(async () => {
+                  const raw = await apiClient.patch(
+                    `/pharmacy/staff/${passwordMember.id}/password`,
+                    { password: newPassword, sendEmail: emailPassword },
+                    token,
+                    businessId,
+                  );
+                  const creds = asCredentialsResult(raw);
+                  if (emailPassword && creds && !creds.credentialsEmailSent) {
+                    toast.warning(
+                      creds.credentialsEmailError ||
+                        `Email was not sent. Password: ${creds.temporaryPassword || newPassword}`,
+                    );
+                  } else {
+                    toast.success(creds?.credentialsEmailSent ? "Password updated and emailed" : "Password updated");
+                  }
+                  setPasswordMember(null);
+                  setNewPassword("");
+                });
+              }}
+            >
+              {pending ? "Saving..." : "Update password"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { BASE_URL } from "@/lib/constant";
+import { DIGINIZAM_CLIENT, DIGINIZAM_CLIENT_HEADER } from "@/lib/diginizam-client";
 
 export type LoginCredentials = {
   email: string;
@@ -81,6 +82,7 @@ export const loginUser = createAsyncThunk<
       headers: {
         accept: "application/json",
         "Content-Type": "application/json",
+        [DIGINIZAM_CLIENT_HEADER]: DIGINIZAM_CLIENT,
       },
       body: JSON.stringify(credentials),
     });
@@ -96,12 +98,18 @@ export const loginUser = createAsyncThunk<
         payload !== null &&
         (
           (payload as { code?: string }).code === "BUSINESS_INACTIVE" ||
+          (payload as { code?: string }).code === "PRODUCT_DISABLED" ||
           (typeof (payload as { message?: unknown }).message === "object" &&
-            (payload as { message?: { code?: string } }).message?.code ===
-              "BUSINESS_INACTIVE") ||
+            ((payload as { message?: { code?: string } }).message?.code ===
+              "BUSINESS_INACTIVE" ||
+              (payload as { message?: { code?: string } }).message?.code ===
+                "PRODUCT_DISABLED")) ||
           String((payload as { message?: unknown }).message ?? "")
             .toLowerCase()
-            .includes("deactivated")
+            .includes("deactivated") ||
+          String((payload as { message?: unknown }).message ?? "")
+            .toLowerCase()
+            .includes("turned off")
         );
 
       if (inactiveMessage) {

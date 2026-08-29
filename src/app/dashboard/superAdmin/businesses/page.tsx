@@ -40,6 +40,7 @@ import {
   useLazyGetBusinessByIdQuery,
   usePatchBusinessByIdMutation,
   useActivateBusinessByIdMutation,
+  useResetOwnerCredentialsMutation,
 } from "@/hooks/useBusiness";
 import { saveBusinessProfile, getBusinessProfile } from "@/lib/business-profile";
 import { persistIndustryTemplateForBusiness } from "@/template-engine/persist-template-config";
@@ -101,6 +102,7 @@ function BusinessesContent() {
   const [planOpen, setPlanOpen] = useState(false);
   const [pauseTargetBusiness, setPauseTargetBusiness] = useState<BusinessItem | null>(null);
   const [createdCredentials, setCreatedCredentials] = useState<{
+    businessId: string;
     email: string;
     password: string;
     businessName: string;
@@ -146,6 +148,8 @@ function BusinessesContent() {
   const [patchBusinessById, { isLoading: isPatchingBusiness }] = usePatchBusinessByIdMutation();
   const [deleteBusinessById, { isLoading: isPausingBusiness }] = useDeleteBusinessByIdMutation();
   const [activateBusinessById, { isLoading: isResumingBusiness }] = useActivateBusinessByIdMutation();
+  const [resetOwnerCredentials, { isLoading: isResendingOwnerEmail }] =
+    useResetOwnerCredentialsMutation();
 
   const mappedBusinesses = useMemo<BusinessItem[]>(() => {
     const rows = Array.isArray(businessData?.data) ? businessData.data : [];
@@ -342,6 +346,7 @@ function BusinessesContent() {
 
         if (created.temporaryPassword) {
           setCreatedCredentials({
+            businessId: created.id,
             email: created.loginEmail || created.ownerEmail || payload.email,
             password: created.temporaryPassword,
             businessName: created.businessName || payload.businessName,
@@ -1042,7 +1047,7 @@ function BusinessesContent() {
                 </p>
               )}
 
-              <div className="mt-1 flex items-center justify-end gap-2">
+              <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -1054,6 +1059,49 @@ function BusinessesContent() {
                   className="inline-flex h-10 items-center rounded-xl border border-[#d7dbe4] px-4 text-sm font-semibold text-[#374151]"
                 >
                   Copy both
+                </button>
+                <button
+                  type="button"
+                  disabled={isResendingOwnerEmail}
+                  onClick={() => {
+                    void (async () => {
+                      const toastId = toast.loading("Sending login email…");
+                      try {
+                        const result = await resetOwnerCredentials({
+                          id: createdCredentials.businessId,
+                          body: { generate: true, sendEmail: true },
+                        }).unwrap();
+                        setCreatedCredentials((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                email: result.loginEmail || prev.email,
+                                password: result.temporaryPassword || prev.password,
+                                emailSent: result.credentialsEmailSent,
+                                emailError: result.credentialsEmailError,
+                              }
+                            : prev,
+                        );
+                        if (result.credentialsEmailSent) {
+                          toast.success("Login email sent to the owner.", { id: toastId });
+                        } else {
+                          toast.warning(
+                            result.credentialsEmailError ||
+                              "Email was not sent. Copy the new password below.",
+                            { id: toastId },
+                          );
+                        }
+                      } catch (err) {
+                        toast.error(normalizeErrorMessage(err, "Failed to send login email."), {
+                          id: toastId,
+                        });
+                      }
+                    })();
+                  }}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#d7dbe4] px-4 text-sm font-semibold text-[#374151] disabled:opacity-60"
+                >
+                  <Mail className="h-4 w-4" />
+                  {createdCredentials.emailSent ? "Resend login email" : "Email login details"}
                 </button>
                 <button
                   type="button"

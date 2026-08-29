@@ -1,6 +1,10 @@
-import { redirect } from "next/navigation";
+import { redirectWithBusinessId } from "@/lib/redirect-with-business";
 
-/** Land business admins on Control so optional sections (e.g. mobile header) are visible. */
-export default function BusinessAdminSoftwareIndexPage() {
-  redirect("/dashboard/businessAdmin/software/control");
+type PageProps = {
+  searchParams: Promise<{ businessId?: string }>;
+};
+
+/** Land admins on Control so optional sections (e.g. mobile header) are visible. */
+export default async function BusinessAdminSoftwareIndexPage({ searchParams }: PageProps) {
+  await redirectWithBusinessId("/dashboard/businessAdmin/software/control", searchParams);
 }

@@ -51,6 +51,7 @@ export const RESTAURANT_LIVE_MODULES: ModuleId[] = [
   "orders",
   "kitchen",
   "staff",
+  "reports",
 ];
 
 export function isModuleImplemented(moduleId: string, industryId?: string | null): boolean {

@@ -11,6 +11,11 @@ import {
 } from "@/lib/staff-role-catalog";
 import { getStoredAuthToken } from "@/lib/utils";
 import type { ModuleId } from "@/templates/types";
+import {
+  asCredentialsResult,
+  type CredentialsResult,
+  type ResetCredentialsPayload,
+} from "@/lib/credentials-result";
 
 export type StaffAccount = {
   id: string;
@@ -287,9 +292,19 @@ export function useStaffAccounts(
   );
 
   const updatePassword = useCallback(
-    async (staff: StaffAccount, password: string) => {
+    async (
+      staff: StaffAccount,
+      password: string,
+      options?: ResetCredentialsPayload,
+    ): Promise<CredentialsResult | null> => {
       const authToken = getAuthToken(token);
       if (!authToken || !businessId) throw new Error("No authentication token available");
+
+      const payload: ResetCredentialsPayload = {
+        password: password || undefined,
+        generate: options?.generate ?? !password,
+        sendEmail: options?.sendEmail !== false,
+      };
 
       setActionLoading(true);
       try {
@@ -304,20 +319,28 @@ export function useStaffAccounts(
               Authorization: `Bearer ${authToken}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ newPassword: password, password }),
+            body: JSON.stringify({
+              newPassword: payload.password,
+              password: payload.password,
+              generate: payload.generate,
+              sendEmail: payload.sendEmail,
+            }),
           });
           if (!response.ok) {
             throw new Error(await parseFetchError(response, "Failed to update password"));
           }
-        } else {
-          const path = family === "pharmacy" ? "/pharmacy/staff" : "/retail/staff";
-          await apiClient.patch(
-            `${path}/${staff.id}/password`,
-            { password },
-            authToken,
-            businessId,
-          );
+          const json = await response.json().catch(() => null);
+          return asCredentialsResult(json);
         }
+
+        const path = family === "pharmacy" ? "/pharmacy/staff" : "/retail/staff";
+        const raw = await apiClient.patch(
+          `${path}/${staff.id}/password`,
+          payload,
+          authToken,
+          businessId,
+        );
+        return asCredentialsResult(raw);
       } finally {
         setActionLoading(false);
       }

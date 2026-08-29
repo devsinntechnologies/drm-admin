@@ -1,5 +1,9 @@
-import { redirect } from "next/navigation";
+import { redirectWithBusinessId } from "@/lib/redirect-with-business";
 
-export default function BusinessAdminSoftwareFeaturesRedirect() {
-  redirect("/dashboard/businessAdmin/software/control");
+type PageProps = {
+  searchParams: Promise<{ businessId?: string }>;
+};
+
+export default async function BusinessAdminSoftwareFeaturesRedirect({ searchParams }: PageProps) {
+  await redirectWithBusinessId("/dashboard/businessAdmin/software/control", searchParams);
 }

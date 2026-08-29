@@ -4,17 +4,19 @@ import Loading from "@/components/common/Loading";
 import { SoftwareMobilePreview } from "@/components/business/SoftwareMobilePreview";
 import { SoftwareTemplateNotConfigured } from "@/components/business/SoftwareTemplateNotConfigured";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 
 export default function BusinessAdminSoftwarePreviewPage() {
   const businessId = useActiveBusinessId();
+  const { role } = useAuth();
   const { businessName, templateConfig, isLoading } = useBusinessTemplate();
 
   if (isLoading) return <Loading className="py-16" />;
   if (!businessId) return null;
 
   if (!templateConfig?.id) {
-    return <SoftwareTemplateNotConfigured businessId={businessId} isSuperAdmin={false} />;
+    return <SoftwareTemplateNotConfigured businessId={businessId} isSuperAdmin={role === "super_admin"} />;
   }
 
   return (

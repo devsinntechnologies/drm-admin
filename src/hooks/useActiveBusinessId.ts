@@ -1,48 +1,53 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { normalizePortalRole } from "@/lib/role-access";
 import { useMemo } from "react";
 
 /**
  * Hook to get the currently active businessId.
  * Prioritizes the businessId from the URL query parameter if present.
- * Otherwise, falls back to the businessId stored in localStorage for business staff.
+ * Otherwise, falls back to the businessId stored in localStorage for business
+ * staff, and for super_admin while impersonating a business workspace.
  */
 export function useActiveBusinessId() {
   const { role } = useAuth();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   const businessId = useMemo(() => {
-    // 1. Check URL query parameters
     const urlBusinessId = searchParams.get("businessId");
 
-    // 2. If present, prioritize it
     if (urlBusinessId) {
       return urlBusinessId.trim();
     }
 
-    // 3. Fallback to localStorage ONLY for business-related roles
-    if (typeof window !== "undefined") {
-      const isStaff =
-        role === "business_admin" ||
-        role === "kitchen" ||
-        role === "waiter" ||
-        role === "pharmacist" ||
-        role === "cashier" ||
-        role === "inventory_manager" ||
-        role === "pharmacy_manager" ||
-        role === "shift_incharge" ||
-        role === "store_manager" ||
-        role === "inventory_clerk";
-      if (isStaff) {
-        const storedId = localStorage.getItem("businessId");
-        return storedId ? storedId.trim() : null;
-      }
+    if (typeof window === "undefined") return null;
+
+    const storedId = localStorage.getItem("businessId");
+    if (!storedId) return null;
+
+    const normalized = normalizePortalRole(role);
+    const onBusinessWorkspace = pathname.includes("/businessAdmin");
+    const isStaff =
+      normalized === "business_admin" ||
+      normalized === "kitchen" ||
+      normalized === "waiter" ||
+      normalized === "pharmacist" ||
+      normalized === "cashier" ||
+      normalized === "inventory_manager" ||
+      normalized === "pharmacy_manager" ||
+      normalized === "shift_incharge" ||
+      normalized === "store_manager" ||
+      normalized === "inventory_clerk";
+
+    if (isStaff || (normalized === "super_admin" && onBusinessWorkspace)) {
+      return storedId.trim();
     }
 
     return null;
-  }, [searchParams, role]);
+  }, [searchParams, role, pathname]);
 
   return businessId;
 }

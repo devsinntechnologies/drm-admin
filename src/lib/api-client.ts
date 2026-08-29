@@ -2,10 +2,11 @@ import { toast } from "sonner";
 import { BASE_URL } from "@/lib/constant";
 import { buildApiUrl, unwrapApiData } from "@/lib/api";
 import { getStoredAuthToken, normalizeErrorMessage } from "@/lib/utils";
-import { isBusinessInactivePayload, businessInactivePayloadMessage } from "@/lib/business-session";
+import { isPortalSessionEndedPayload, businessInactivePayloadMessage } from "@/lib/business-session";
 import { redirectToLogin } from "@/lib/authenticated-base-query";
 import { logout } from "@/lib/features/auth/authSlice";
 import { store } from "@/lib/store";
+import { DIGINIZAM_CLIENT, DIGINIZAM_CLIENT_HEADER } from "@/lib/diginizam-client";
 
 export class ApiClientError extends Error {
   status: number;
@@ -21,7 +22,7 @@ export class ApiClientError extends Error {
 /** Ends the session and sends the user to /login when the backend reports it's no longer valid. */
 function handleInvalidSession(status: number, payload: unknown) {
   store.dispatch(logout());
-  if (isBusinessInactivePayload(status, payload)) {
+  if (isPortalSessionEndedPayload(status, payload)) {
     toast.error(businessInactivePayloadMessage(payload));
   }
   redirectToLogin();
@@ -32,6 +33,7 @@ function authHeaders(token?: string | null): HeadersInit {
   return {
     accept: "application/json",
     "content-type": "application/json",
+    [DIGINIZAM_CLIENT_HEADER]: DIGINIZAM_CLIENT,
     ...(resolved ? { Authorization: `Bearer ${resolved}` } : {}),
   };
 }
@@ -45,7 +47,7 @@ function withBusinessId(path: string, businessId?: string | null) {
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    if (response.status === 401 || isBusinessInactivePayload(response.status, payload)) {
+    if (response.status === 401 || isPortalSessionEndedPayload(response.status, payload)) {
       handleInvalidSession(response.status, payload);
     }
     throw new ApiClientError(
@@ -109,6 +111,7 @@ export const apiClient = {
       headers: {
         accept: "application/json",
         ...(resolved ? { Authorization: `Bearer ${resolved}` } : {}),
+        [DIGINIZAM_CLIENT_HEADER]: DIGINIZAM_CLIENT,
       },
       body: formData,
     });

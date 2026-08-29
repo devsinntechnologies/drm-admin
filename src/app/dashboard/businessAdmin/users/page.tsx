@@ -10,11 +10,12 @@ import { useUsers, type UserRole } from "@/hooks/useUsers";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Edit, Loader2, Plus, Search, Trash2, Users, User, UtensilsCrossed, X } from "lucide-react";
+import { Edit, Loader2, Mail, Plus, Search, Trash2, Users, UtensilsCrossed, X } from "lucide-react";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { PharmacyStaffPanel } from "@/components/pharmacy/PharmacyStaffPanel";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { normalizeErrorMessage } from "@/lib/utils";
+import { asCredentialsResult } from "@/lib/credentials-result";
 
 function formatJoinedDate(isoDate: string) {
   const date = new Date(isoDate);
@@ -66,8 +67,9 @@ function UsersContent() {
   });
 
   // Edit password state
-  const [editUser, setEditUser] = useState<{ id: string; role: UserRole; name: string } | null>(null);
+  const [editUser, setEditUser] = useState<{ id: string; role: UserRole; name: string; email?: string } | null>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [emailPassword, setEmailPassword] = useState(true);
 
   // Delete confirm state
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; role: UserRole; name: string } | null>(null);
@@ -126,13 +128,19 @@ function UsersContent() {
 
     const toastId = toast.loading("Creating user...");
     try {
-      await createUser({
+      const created = await createUser({
         name,
         password,
         role: createForm.role,
       });
-
+      const creds = asCredentialsResult(created);
       toast.success(`${createForm.role === "waiter" ? "Waiter" : "Kitchen"} created successfully.`, { id: toastId });
+      if (!creds?.credentialsEmailSent) {
+        toast.warning(
+          creds?.credentialsEmailError ||
+            "Login email was not sent. Share the password you entered with the staff member.",
+        );
+      }
       setCreateForm({
         name: "",
         password: "",
@@ -152,8 +160,19 @@ function UsersContent() {
     }
     const toastId = toast.loading("Updating password...");
     try {
-      await updatePassword(editUser, newPassword.trim());
-      toast.success("Password updated successfully.", { id: toastId });
+      const result = await updatePassword(editUser, newPassword.trim(), {
+        sendEmail: emailPassword,
+      });
+      toast.success(
+        result?.credentialsEmailSent ? "Password updated and emailed." : "Password updated successfully.",
+        { id: toastId },
+      );
+      if (emailPassword && result && !result.credentialsEmailSent) {
+        toast.warning(
+          result.credentialsEmailError ||
+            `Email was not sent. Password: ${result.temporaryPassword || newPassword.trim()}`,
+        );
+      }
       setEditUser(null);
       setNewPassword("");
     } catch (err) {
@@ -387,7 +406,7 @@ function UsersContent() {
                     {isActive ? "Deactivate" : "Activate"}
                   </button>
                   <button
-                    onClick={() => { setEditUser({ id: user.id, role: user.role, name: user.name }); setNewPassword(""); }}
+                    onClick={() => { setEditUser({ id: user.id, role: user.role, name: user.name, email: user.email }); setNewPassword(""); setEmailPassword(true); }}
                     className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-50"
                   >
                     <Edit className="h-4 w-4" />
@@ -435,6 +454,49 @@ function UsersContent() {
                 autoFocus
               />
             </div>
+            <label className="flex items-center gap-2 text-sm text-[#334155]">
+              <input
+                type="checkbox"
+                checked={emailPassword}
+                onChange={(e) => setEmailPassword(e.target.checked)}
+              />
+              Email this password to the staff login
+            </label>
+            <button
+              type="button"
+              disabled={actionLoading}
+              onClick={() => {
+                if (!editUser) return;
+                void (async () => {
+                  const toastId = toast.loading("Emailing a new password…");
+                  try {
+                    const result = await updatePassword(editUser, "", {
+                      generate: true,
+                      sendEmail: true,
+                    });
+                    if (result?.credentialsEmailSent) {
+                      toast.success("A new password was emailed.", { id: toastId });
+                    } else {
+                      toast.warning(
+                        result?.credentialsEmailError ||
+                          `Password updated. Copy it: ${result?.temporaryPassword || ""}`,
+                        { id: toastId },
+                      );
+                    }
+                    setEditUser(null);
+                    setNewPassword("");
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Failed to email password.", {
+                      id: toastId,
+                    });
+                  }
+                })();
+              }}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#dbe3ef] bg-white px-4 py-2.5 text-sm font-semibold text-[#111827] disabled:opacity-60"
+            >
+              <Mail className="h-4 w-4" />
+              Email a new random password
+            </button>
             <button
               type="submit"
               disabled={actionLoading}

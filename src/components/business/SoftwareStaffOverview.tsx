@@ -7,6 +7,7 @@ import {
   ExternalLink,
   KeyRound,
   Loader2,
+  Mail,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -46,6 +47,8 @@ import { manageUsersHrefForIndustry, staffRoleLabel } from "@/lib/staff-role-cat
 import { appendBusinessId } from "@/lib/module-routes";
 import { cn, normalizeErrorMessage } from "@/lib/utils";
 import type { ModuleId } from "@/templates/types";
+import { OwnerCredentialsActions } from "@/components/business/OwnerCredentialsActions";
+import { useAuth } from "@/hooks/useAuth";
 
 type SoftwareStaffOverviewProps = {
   businessId: string;
@@ -95,6 +98,9 @@ export function SoftwareStaffOverview({
   compact = false,
   hidePortalLink = false,
 }: SoftwareStaffOverviewProps) {
+  const { role } = useAuth();
+  const canManageOwner =
+    role === "super_admin" || role === "business_admin";
   const resolvedIndustryId = industryId ?? business.templateConfig?.industryId ?? null;
   const ownerEmail = business.ownerEmail || business.email;
   const {
@@ -136,6 +142,7 @@ export function SoftwareStaffOverview({
     password: string;
     emailSent: boolean;
     emailError?: string;
+    staff?: StaffAccount;
   } | null>(null);
 
   const [editTarget, setEditTarget] = useState<StaffAccount | null>(null);
@@ -144,6 +151,15 @@ export function SoftwareStaffOverview({
 
   const [passwordTarget, setPasswordTarget] = useState<StaffAccount | null>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [emailPassword, setEmailPassword] = useState(true);
+  const [shownReset, setShownReset] = useState<{
+    name: string;
+    email: string;
+    password: string;
+    emailSent: boolean;
+    emailError?: string;
+    staff?: StaffAccount;
+  } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<StaffAccount | null>(null);
 
   const roleOptions = useMemo(() => creatableRoles, [creatableRoles]);
@@ -205,6 +221,7 @@ export function SoftwareStaffOverview({
         password: result.temporaryPassword || password,
         emailSent: result.credentialsEmailSent === true,
         emailError: result.credentialsEmailError,
+        staff: result.account,
       });
       if (!result.credentialsEmailSent) {
         toast.warning(
@@ -250,12 +267,59 @@ export function SoftwareStaffOverview({
     }
     const toastId = toast.loading("Updating password…");
     try {
-      await updatePassword(passwordTarget, password);
-      toast.success("Password updated.", { id: toastId });
+      const result = await updatePassword(passwordTarget, password, {
+        sendEmail: emailPassword,
+      });
+      toast.success(
+        result?.credentialsEmailSent ? "Password updated and emailed." : "Password updated.",
+        { id: toastId },
+      );
+      setShownReset({
+        name: passwordTarget.name,
+        email: result?.loginEmail || passwordTarget.email,
+        password: result?.temporaryPassword || password,
+        emailSent: result?.credentialsEmailSent === true,
+        emailError: result?.credentialsEmailError,
+        staff: passwordTarget,
+      });
+      if (result && !result.credentialsEmailSent && emailPassword) {
+        toast.warning(
+          result.credentialsEmailError ||
+            "Password email was not sent. Copy the password from the dialog.",
+        );
+      }
       setPasswordTarget(null);
       setNewPassword("");
     } catch (err) {
       toast.error(normalizeErrorMessage(err, "Failed to update password."), { id: toastId });
+    }
+  };
+
+  const emailNewStaffPassword = async (staff: StaffAccount) => {
+    const toastId = toast.loading("Emailing a new password…");
+    try {
+      const result = await updatePassword(staff, "", { generate: true, sendEmail: true });
+      toast.dismiss(toastId);
+      setShownReset({
+        name: staff.name,
+        email: result?.loginEmail || staff.email,
+        password: result?.temporaryPassword || "",
+        emailSent: result?.credentialsEmailSent === true,
+        emailError: result?.credentialsEmailError,
+        staff,
+      });
+      if (result?.credentialsEmailSent) {
+        toast.success("A new password was emailed.");
+      } else {
+        toast.warning(
+          result?.credentialsEmailError ||
+            "Password was updated, but the email was not sent. Copy it below.",
+        );
+      }
+    } catch (err) {
+      toast.error(normalizeErrorMessage(err, "Failed to email a new password."), {
+        id: toastId,
+      });
     }
   };
 
@@ -439,7 +503,7 @@ export function SoftwareStaffOverview({
         </div>
       </div>
 
-      <div className="flex items-center gap-3 border-b border-[#e2e8f0] bg-[#f8fafc] px-5 py-3">
+      <div className="flex flex-wrap items-center gap-3 border-b border-[#e2e8f0] bg-[#f8fafc] px-5 py-3">
         <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold", avatarTone(ownerName))}>
           {initials(ownerName)}
         </span>
@@ -450,6 +514,15 @@ export function SoftwareStaffOverview({
         <span className="shrink-0 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-[#334155] ring-1 ring-[#e2e8f0]">
           Owner
         </span>
+        {canManageOwner ? (
+          <OwnerCredentialsActions
+            businessId={businessId}
+            ownerName={ownerName}
+            ownerEmail={ownerEmail}
+            compact
+            selfService={role === "business_admin"}
+          />
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -584,6 +657,11 @@ export function SoftwareStaffOverview({
                             setMenuId(null);
                             setPasswordTarget(user);
                             setNewPassword("");
+                            setEmailPassword(true);
+                          }}
+                          onEmailPassword={() => {
+                            setMenuId(null);
+                            void emailNewStaffPassword(user);
                           }}
                           onToggleStatus={() => {
                             setMenuId(null);
@@ -668,7 +746,7 @@ export function SoftwareStaffOverview({
           <DialogHeader>
             <DialogTitle>Reset password</DialogTitle>
             <DialogDescription>
-              Set a new password for {passwordTarget?.name}. Share it with them securely.
+              Set a new password for {passwordTarget?.name}. You can also email it to them.
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={(event) => void onPasswordSubmit(event)}>
@@ -683,6 +761,14 @@ export function SoftwareStaffOverview({
                 autoComplete="new-password"
               />
             </FormField>
+            <label className="flex items-center gap-2 text-sm text-[#334155]">
+              <input
+                type="checkbox"
+                checked={emailPassword}
+                onChange={(event) => setEmailPassword(event.target.checked)}
+              />
+              Email this password to the staff login
+            </label>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
@@ -759,6 +845,83 @@ export function SoftwareStaffOverview({
                 <Copy className="h-4 w-4" />
                 Copy credentials
               </button>
+              {createdCreds.staff ? (
+                <button
+                  type="button"
+                  className="dn-btn dn-btn-primary inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg text-sm"
+                  disabled={actionLoading}
+                  onClick={() => {
+                    const staff = createdCreds.staff;
+                    if (!staff) return;
+                    void emailNewStaffPassword(staff).then(() => setCreatedCreds(null));
+                  }}
+                >
+                  <Mail className="h-4 w-4" />
+                  {createdCreds.emailSent ? "Resend login email" : "Email login details"}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(shownReset)} onOpenChange={(open) => !open && setShownReset(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Staff password updated</DialogTitle>
+            <DialogDescription>
+              {shownReset?.emailSent
+                ? "The new password was emailed. It is shown once here as a backup."
+                : "Email was not sent. Copy this password and share it securely."}
+            </DialogDescription>
+          </DialogHeader>
+          {shownReset ? (
+            <div className="space-y-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4 text-sm">
+              <p>
+                <span className="text-[#64748b]">Name:</span>{" "}
+                <span className="font-medium">{shownReset.name}</span>
+              </p>
+              <p>
+                <span className="text-[#64748b]">Email:</span>{" "}
+                <span className="font-mono text-xs">{shownReset.email}</span>
+              </p>
+              {shownReset.password ? (
+                <p>
+                  <span className="text-[#64748b]">Password:</span>{" "}
+                  <span className="font-mono text-xs">{shownReset.password}</span>
+                </p>
+              ) : null}
+              {!shownReset.emailSent && shownReset.emailError ? (
+                <p className="text-xs text-[#b45309]">{shownReset.emailError}</p>
+              ) : null}
+              <button
+                type="button"
+                className="dn-btn dn-btn-outline inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg text-sm"
+                onClick={() => {
+                  void navigator.clipboard.writeText(
+                    `Email: ${shownReset.email}\nPassword: ${shownReset.password}`,
+                  );
+                  toast.success("Credentials copied.");
+                }}
+              >
+                <Copy className="h-4 w-4" />
+                Copy credentials
+              </button>
+              {shownReset.staff ? (
+                <button
+                  type="button"
+                  className="dn-btn dn-btn-primary inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg text-sm"
+                  disabled={actionLoading}
+                  onClick={() => {
+                    const staff = shownReset.staff;
+                    if (!staff) return;
+                    void emailNewStaffPassword(staff);
+                  }}
+                >
+                  <Mail className="h-4 w-4" />
+                  Resend login email
+                </button>
+              ) : null}
             </div>
           ) : null}
         </DialogContent>
@@ -774,6 +937,7 @@ function StaffRowMenu({
   disabled,
   onEdit,
   onPassword,
+  onEmailPassword,
   onToggleStatus,
   onDelete,
 }: {
@@ -783,6 +947,7 @@ function StaffRowMenu({
   disabled: boolean;
   onEdit: () => void;
   onPassword: () => void;
+  onEmailPassword: () => void;
   onToggleStatus: () => void;
   onDelete: () => void;
 }) {
@@ -821,7 +986,7 @@ function StaffRowMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-xl border border-[#e2e8f0] bg-white py-1 shadow-[0_12px_32px_rgba(15,23,42,0.12)]"
+          className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-xl border border-[#e2e8f0] bg-white py-1 shadow-[0_12px_32px_rgba(15,23,42,0.12)]"
         >
           <button
             type="button"
@@ -840,6 +1005,15 @@ function StaffRowMenu({
           >
             <KeyRound className="h-3.5 w-3.5" />
             Reset password
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#334155] hover:bg-[#f8fafc]"
+            onClick={onEmailPassword}
+          >
+            <Mail className="h-3.5 w-3.5" />
+            Email new password
           </button>
           <button
             type="button"

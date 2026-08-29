@@ -80,3 +80,9 @@ export function normalizePortalRole(role: string | null | undefined): string {
   if (value === "businessadmin" || value === "admin") return "business_admin";
   return value;
 }
+
+/** Website and Software & Mobile are owner/platform settings, not staff modules. */
+export function canManageSoftwareAndWebsite(role: string | null | undefined): boolean {
+  const value = normalizePortalRole(role);
+  return value === "super_admin" || value === "business_admin";
+}

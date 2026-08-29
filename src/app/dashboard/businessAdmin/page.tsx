@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
+import { DashboardReportsSection } from "@/components/business/DashboardReportsSection";
 import { TemplateDashboard } from "@/components/business/TemplateDashboard";
 import { SnookerWorkspace } from "@/components/snooker/SnookerWorkspace";
 import {
@@ -169,6 +170,7 @@ function DashboardLegacy() {
     <AdminShell activeTab="dashboard">
       <PortalPage>
         <RoleGuideBanner />
+        <DashboardReportsSection />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <article className="portal-accent-card min-h-[200px] flex flex-col justify-between">
             <div className="relative z-10 flex items-start justify-between">

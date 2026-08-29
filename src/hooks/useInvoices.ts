@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { BASE_URL } from "@/lib/constant";
+import { STAFF_REALTIME_EVENTS } from "@/lib/staff-realtime";
+import { DIGINIZAM_CLIENT, DIGINIZAM_CLIENT_HEADER } from "@/lib/diginizam-client";
+import { machineTzOffsetMinutes } from "@/lib/invoice-datetime";
 
 export type InvoiceStatus = "pending" | "paid" | "overdue" | string;
 
@@ -30,6 +33,7 @@ export interface InvoiceRecord {
   deliveryCharges: string | number | null;
   packagingPrice: string | number | null;
   Items: InvoiceItem[];
+  items?: InvoiceItem[];
   createdAt: string;
   updatedAt: string;
 }
@@ -48,6 +52,53 @@ interface UseInvoicesOptions {
   page?: number;
   limit?: number;
   range?: "day" | "week" | "month";
+}
+
+function normalizeInvoice(raw: unknown): InvoiceRecord | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as InvoiceRecord;
+  return {
+    ...row,
+    Items: row.Items ?? row.items ?? [],
+  };
+}
+
+function unwrapInvoiceList(payload: unknown): {
+  invoices: InvoiceRecord[];
+  pagination: { total?: number; page?: number; totalPages?: number };
+} {
+  if (Array.isArray(payload)) {
+    return {
+      invoices: payload.map(normalizeInvoice).filter(Boolean) as InvoiceRecord[],
+      pagination: {},
+    };
+  }
+  if (!payload || typeof payload !== "object") {
+    return { invoices: [], pagination: {} };
+  }
+
+  const root = payload as Record<string, unknown>;
+  const nested = root.data;
+  const list = Array.isArray(nested)
+    ? nested
+    : nested && typeof nested === "object" && Array.isArray((nested as Record<string, unknown>).data)
+      ? ((nested as Record<string, unknown>).data as unknown[])
+      : [];
+
+  const paginationSource =
+    (root.pagination as Record<string, unknown> | undefined) ??
+    (nested && typeof nested === "object"
+      ? ((nested as Record<string, unknown>).pagination as Record<string, unknown> | undefined)
+      : undefined);
+
+  return {
+    invoices: list.map(normalizeInvoice).filter(Boolean) as InvoiceRecord[],
+    pagination: {
+      total: Number(paginationSource?.total) || undefined,
+      page: Number(paginationSource?.page) || undefined,
+      totalPages: Number(paginationSource?.totalPages ?? paginationSource?.last_page) || undefined,
+    },
+  };
 }
 
 export function useInvoices(options: UseInvoicesOptions = {}) {
@@ -88,6 +139,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
       if (range) {
         url.searchParams.append("range", range);
       }
+      url.searchParams.append("tzOffsetMinutes", String(machineTzOffsetMinutes()));
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
@@ -97,6 +149,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
         headers: {
           accept: "application/json",
           Authorization: `Bearer ${authToken}`,
+          [DIGINIZAM_CLIENT_HEADER]: DIGINIZAM_CLIENT,
         },
       });
 
@@ -110,12 +163,13 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
         throw new Error(`Failed to fetch invoices: ${response.statusText}`);
       }
 
-      const payload: InvoicesResponse = await response.json();
-      setInvoices(payload.data ?? []);
+      const payload = await response.json();
+      const unwrapped = unwrapInvoiceList(payload);
+      setInvoices(unwrapped.invoices);
       setPagination({
-        total: payload.pagination?.total ?? 0,
-        page: payload.pagination?.page ?? pageNum,
-        last_page: payload.pagination?.totalPages ?? 1,
+        total: unwrapped.pagination.total ?? unwrapped.invoices.length,
+        page: unwrapped.pagination.page ?? pageNum,
+        last_page: unwrapped.pagination.totalPages ?? 1,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "An error occurred while fetching invoices";
@@ -138,8 +192,10 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     };
 
     window.addEventListener("invoices:refetch", handler as EventListener);
+    window.addEventListener(STAFF_REALTIME_EVENTS.INVOICES_CHANGED, handler as EventListener);
     return () => {
       window.removeEventListener("invoices:refetch", handler as EventListener);
+      window.removeEventListener(STAFF_REALTIME_EVENTS.INVOICES_CHANGED, handler as EventListener);
     };
   }, [fetchInvoices, pagination.page, page]);
 
@@ -248,6 +304,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     if (activeBusinessId) {
       url.searchParams.append("businessId", activeBusinessId);
     }
+    url.searchParams.append("tzOffsetMinutes", String(machineTzOffsetMinutes()));
 
     const response = await fetch(url.toString(), {
       method: "GET",

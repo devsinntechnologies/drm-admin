@@ -217,7 +217,12 @@ function AppUpdatesContent() {
     const toastId = toast.loading("Publishing…");
     try {
       await publishRelease(release.id).unwrap();
-      toast.success(`Published ${release.versionName} for ${release.platform}.`, { id: toastId });
+      toast.success(
+        release.policy === "forced"
+          ? `Force update ${release.versionName} is live. Open the business Software page to see the alert.`
+          : `Published ${release.versionName} for ${release.platform}. Linked businesses see it under Software.`,
+        { id: toastId },
+      );
     } catch (error) {
       toast.error(normalizeErrorMessage(error, "Publish failed."), { id: toastId });
     }
@@ -249,8 +254,8 @@ function AppUpdatesContent() {
       <PortalPage>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <p className="max-w-2xl text-sm text-[#64748b]">
-            Publish a Windows, macOS, or Android installer. Logged-in POS apps check on startup
-            and can skip a few times, then must update — depending on the policy you set here.
+            Publish a Windows, macOS, or Android installer. After you publish, the linked
+            business Software page shows a live version alert, and POS apps prompt on next login.
           </p>
           <button type="button" onClick={openCreate} className="dn-btn dn-btn-primary h-11 rounded-xl px-5">
             <Plus className="h-4 w-4" />

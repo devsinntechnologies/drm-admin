@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { KeyRound, Loader2, UserCog } from "lucide-react";
+import { KeyRound, Loader2, Mail, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { useRetailResource } from "@/hooks/useRetailResource";
+import { asCredentialsResult } from "@/lib/credentials-result";
 
 interface StaffMember {
   id: string;
@@ -33,6 +34,7 @@ function StaffContent() {
   const [form, setForm] = useState(emptyForm);
   const [passwordMember, setPasswordMember] = useState<StaffMember | null>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [emailPassword, setEmailPassword] = useState(true);
 
   const { items, loading, actionLoading, error, create, patch } =
     useRetailResource<StaffMember>("/retail/staff");
@@ -60,13 +62,22 @@ function StaffContent() {
     }
     const toastId = toast.loading("Creating staff account...");
     try {
-      await create({
+      const created = await create({
         name: form.name.trim(),
         role: form.role,
         email: form.email.trim() || undefined,
         password: form.password,
       });
-      toast.success("Staff account created", { id: toastId });
+      const creds = asCredentialsResult(created);
+      if (creds?.credentialsEmailSent) {
+        toast.success("Staff account created and emailed", { id: toastId });
+      } else {
+        toast.success("Staff account created", { id: toastId });
+        toast.warning(
+          creds?.credentialsEmailError ||
+            "Credentials email was not sent. Share the password manually.",
+        );
+      }
       setForm(emptyForm);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create staff account", { id: toastId });
@@ -90,8 +101,21 @@ function StaffContent() {
     }
     const toastId = toast.loading("Updating password...");
     try {
-      await patch(`${passwordMember.id}/password`, { password: newPassword });
-      toast.success("Password updated", { id: toastId });
+      const raw = await patch(`${passwordMember.id}/password`, {
+        password: newPassword,
+        sendEmail: emailPassword,
+      });
+      const creds = asCredentialsResult(raw);
+      toast.success(
+        creds?.credentialsEmailSent ? "Password updated and emailed" : "Password updated",
+        { id: toastId },
+      );
+      if (emailPassword && creds && !creds.credentialsEmailSent) {
+        toast.warning(
+          creds.credentialsEmailError ||
+            `Email was not sent. Password: ${creds.temporaryPassword || newPassword}`,
+        );
+      }
       setPasswordMember(null);
       setNewPassword("");
     } catch (err) {
@@ -164,11 +188,43 @@ function StaffContent() {
                         onClick={() => {
                           setPasswordMember(member);
                           setNewPassword("");
+                          setEmailPassword(true);
                         }}
                         className="rounded-xl border px-3 py-1.5 text-xs font-bold text-[var(--brand-secondary)]"
                       >
                         <KeyRound className="mr-1 inline h-3 w-3" />
                         Reset pwd
+                      </button>
+                      <button
+                        onClick={() => {
+                          void (async () => {
+                            const toastId = toast.loading("Emailing a new password…");
+                            try {
+                              const raw = await patch(`${member.id}/password`, {
+                                generate: true,
+                                sendEmail: true,
+                              });
+                              const creds = asCredentialsResult(raw);
+                              if (creds?.credentialsEmailSent) {
+                                toast.success("A new password was emailed", { id: toastId });
+                              } else {
+                                toast.warning(
+                                  creds?.credentialsEmailError ||
+                                    `Password updated. Copy it: ${creds?.temporaryPassword || ""}`,
+                                  { id: toastId },
+                                );
+                              }
+                            } catch (err) {
+                              toast.error(
+                                err instanceof Error ? err.message : "Failed to email password",
+                                { id: toastId },
+                              );
+                            }
+                          })();
+                        }}
+                        className="rounded-xl border px-3 py-1.5 text-xs font-bold text-[var(--brand-secondary)]"
+                      >
+                        Email pwd
                       </button>
                       <button
                         onClick={() => toggleStatus(member)}
@@ -200,6 +256,50 @@ function StaffContent() {
                 minLength={6}
               />
             </FormField>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={emailPassword}
+                onChange={(e) => setEmailPassword(e.target.checked)}
+              />
+              Email this password to the staff login
+            </label>
+            <button
+              type="button"
+              disabled={actionLoading}
+              onClick={() => {
+                if (!passwordMember) return;
+                void (async () => {
+                  const toastId = toast.loading("Emailing a new password…");
+                  try {
+                    const raw = await patch(`${passwordMember.id}/password`, {
+                      generate: true,
+                      sendEmail: true,
+                    });
+                    const creds = asCredentialsResult(raw);
+                    if (creds?.credentialsEmailSent) {
+                      toast.success("A new password was emailed", { id: toastId });
+                    } else {
+                      toast.warning(
+                        creds?.credentialsEmailError ||
+                          `Password updated. Copy it: ${creds?.temporaryPassword || ""}`,
+                        { id: toastId },
+                      );
+                    }
+                    setPasswordMember(null);
+                    setNewPassword("");
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Failed to email password", {
+                      id: toastId,
+                    });
+                  }
+                })();
+              }}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--border-subtle)] py-3 text-sm font-bold disabled:opacity-60"
+            >
+              <Mail className="h-4 w-4" />
+              Email a new random password
+            </button>
             <button
               type="button"
               onClick={resetPassword}

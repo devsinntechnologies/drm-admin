@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import Loading from "@/components/common/Loading";
+import { SoftwareAppUpdatePanel } from "@/components/business/SoftwareAppUpdatePanel";
 import { SoftwareControlContent } from "@/components/business/SoftwareControlContent";
 import { SoftwareSyncStatusPanel } from "@/components/business/SoftwareSyncStatusPanel";
 import { SoftwareTemplateNotConfigured } from "@/components/business/SoftwareTemplateNotConfigured";
@@ -56,6 +57,8 @@ export default function SoftwareControlPage() {
           businessName={business.businessName}
         />
       ) : null}
+
+      <SoftwareAppUpdatePanel businessId={businessId} />
 
       {hasTemplate ? (
         <>

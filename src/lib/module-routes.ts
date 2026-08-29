@@ -14,6 +14,7 @@ export const MODULE_HREF: Partial<Record<ModuleId, string>> = {
   sales: `${BUSINESS_ADMIN_BASE}/invoices`,
   staff: `${BUSINESS_ADMIN_BASE}/users`,
   menu: `${BUSINESS_ADMIN_BASE}/products`,
+  reports: `${BUSINESS_ADMIN_BASE}/restaurant/reports`,
   "public-catalog": `${BUSINESS_ADMIN_BASE}/public-data`,
   settings: `${BUSINESS_ADMIN_BASE}/settings`,
 };
@@ -157,6 +158,8 @@ export function pathnameToModuleId(pathname: string): string | null {
   if (path.includes("/kitchen")) return "kitchen";
   if (path.includes("/tables")) return "tables";
   if (path.includes("/public-data")) return "public-catalog";
+  if (path.includes("/businessAdmin/software")) return "software";
+  if (path.includes("/businessAdmin/website")) return "website";
   if (path.includes("/settings")) return "settings";
 
   return null;

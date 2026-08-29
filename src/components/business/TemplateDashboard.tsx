@@ -4,6 +4,7 @@ import { Activity, Flame, TriangleAlert } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Loading from "@/components/common/Loading";
 import { PortalCard, PortalPage, PortalStatCard } from "@/components/admin/PortalPage";
+import { DashboardReportsSection } from "@/components/business/DashboardReportsSection";
 import { RoleGuideBanner } from "@/components/admin/RoleGuideBanner";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { useDashboardRefresh } from "@/contexts/DashboardRefreshContext";
@@ -18,30 +19,46 @@ type TemplateDashboardProps = {
   className?: string;
 };
 
-type LowStockItem = {
-  productId: string;
-  variantId?: string;
-  productName: string;
-  inStock: number;
-  stockCount?: number | null;
+type InvoiceRevenue = {
+  paid?: number;
+  pending?: number;
+  total?: number;
 };
 
-type TopProduct = {
-  productId: string;
-  productName: string;
-  quantitySold: number;
-  revenue: number;
+type InvoiceTopProduct = {
+  productId?: string;
+  name?: string;
+  quantity?: number;
+  revenue?: number;
 };
 
-type RetailDashboard = {
-  todaySales: number;
-  totalTransactions: number;
-  grossProfit: number;
-  totalRefunded?: number;
-  lowStockCount: number;
-  lowStockProducts?: LowStockItem[];
-  topProducts?: TopProduct[];
-  pendingPurchases: number;
+type InvoiceDashboard = {
+  revenue?: {
+    daily?: InvoiceRevenue;
+    monthly?: InvoiceRevenue;
+  };
+  invoices?: { totalPending?: number; pendingAmount?: number };
+  orders?: {
+    activeOrders?: number;
+    totalOrdersDaily?: number;
+    totalOrdersMonthly?: number;
+    completedOrdersMonthly?: number;
+  };
+  graph?: {
+    topSellingProducts?: InvoiceTopProduct[];
+  };
+};
+
+type StockSummary = {
+  lowStockCount?: number;
+  outOfStockCount?: number;
+  recentAlerts?: Array<{
+    id?: string;
+    productId?: string;
+    productName?: string;
+    currentStock?: number;
+    inStock?: number;
+  }>;
 };
 
 export function TemplateDashboard({ cards, className }: TemplateDashboardProps) {
@@ -51,23 +68,25 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
   const { money } = usePharmacyMarket();
   const industryId = templateConfig?.industryId;
   const isPharmacy = industryId === "pharmacy";
-  const isRetail = industryId === "retail-store";
   const queryRefreshKey = `${refreshKey}:${pathname}`;
 
   const { data: pharmacyLive, loading: pharmacyLoading } = usePharmacyQuery<Record<string, number>>(
     isPharmacy ? "/pharmacy-reports/dashboard" : null,
     queryRefreshKey,
   );
-  const { data: retailLive, loading: retailLoading } = usePharmacyQuery<RetailDashboard>(
-    isRetail ? "/retail/reports/dashboard" : null,
+  const { data: invoiceLive, loading: invoiceLoading } = usePharmacyQuery<InvoiceDashboard>(
+    isPharmacy ? null : `/dashboard/full?tzOffsetMinutes=${-new Date().getTimezoneOffset()}`,
+    queryRefreshKey,
+  );
+  const { data: stockLive, loading: stockLoading } = usePharmacyQuery<StockSummary>(
+    isPharmacy ? null : "/stock-management/dashboard/summary",
     queryRefreshKey,
   );
 
-  const liveLoading = (isPharmacy && pharmacyLoading) || (isRetail && retailLoading);
-  const hasLiveSource = isPharmacy || isRetail;
+  const liveLoading = isPharmacy ? pharmacyLoading : invoiceLoading || stockLoading;
 
   const formatValue = (id: DashboardCardId) => {
-    if (liveLoading && hasLiveSource) {
+    if (liveLoading) {
       return "…";
     }
 
@@ -79,37 +98,57 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
       return String(raw);
     }
 
-    if (isRetail && retailLive) {
-      switch (id) {
-        case "today-sales":
-          return money(Number(retailLive.todaySales));
-        case "total-transactions":
-          return String(retailLive.totalTransactions);
-        case "gross-profit":
-          return money(Number(retailLive.grossProfit));
-        case "low-stock":
-          return String(retailLive.lowStockCount);
-        case "pending-purchases":
-          return String(retailLive.pendingPurchases);
-        case "top-products":
-          return retailLive.topProducts?.[0]?.productName ?? "—";
-        default:
-          break;
-      }
-    }
+    const daily = invoiceLive?.revenue?.daily;
+    const dailyTotal = Number(daily?.total ?? 0);
+    const dailyPaid = Number(daily?.paid ?? 0);
+    const dailyCount = Number(invoiceLive?.orders?.totalOrdersDaily ?? 0);
+    const topName = invoiceLive?.graph?.topSellingProducts?.[0]?.name;
+    const pendingInvoices = Number(invoiceLive?.invoices?.totalPending ?? 0);
 
-    if (hasLiveSource) {
-      return "—";
+    switch (id) {
+      case "today-sales":
+        return money(dailyTotal);
+      case "total-transactions":
+        return String(dailyCount);
+      case "avg-order-value":
+        return money(dailyCount > 0 ? dailyTotal / dailyCount : 0);
+      case "gross-profit":
+        return money(dailyPaid);
+      case "low-stock":
+      case "low-stock-ingredients":
+      case "low-stock-sizes":
+      case "ingredient-shortage":
+        return String(stockLive?.lowStockCount ?? 0);
+      case "pending-purchases":
+        return String(pendingInvoices);
+      case "active-orders":
+      case "orders-in-progress":
+      case "customer-orders":
+        return String(invoiceLive?.orders?.activeOrders ?? 0);
+      case "top-products":
+      case "fast-moving-parts":
+      case "best-selling-item":
+      case "fast-selling":
+      case "best-selling-books":
+      case "top-vehicle-brands":
+      case "top-brands":
+      case "top-authors":
+      case "best-collection":
+        return topName || "—";
+      case "warranty-claims":
+      case "product-returns":
+      case "returns-exchanges":
+        return "0";
+      case "inventory-value":
+        return money(Number(invoiceLive?.revenue?.monthly?.total ?? dailyTotal));
+      default:
+        return "—";
     }
-
-    return "—";
   };
 
   const liveLabel = isPharmacy
     ? " Values below are live pharmacy KPIs."
-    : isRetail
-      ? " Values below are live retail KPIs."
-      : " Live data integration will replace sample values.";
+    : " Values below are calculated from issued invoices and live stock.";
 
   if (!cards.length) {
     return (
@@ -123,14 +162,16 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
 
   const accentCards = cards.slice(0, 2);
   const statCards = cards.slice(2);
-  const lowStockItems = retailLive?.lowStockProducts ?? [];
-  const topProducts = retailLive?.topProducts ?? [];
+  const lowStockItems = (stockLive?.recentAlerts ?? []).filter(
+    (item) => item.productName || item.productId,
+  );
+  const topProducts = invoiceLive?.graph?.topSellingProducts ?? [];
 
   return (
     <PortalPage className={className}>
       <RoleGuideBanner />
 
-      {liveLoading && hasLiveSource ? (
+      {liveLoading ? (
         <div className="flex items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] py-6">
           <Loading size="sm" label="Loading latest dashboard data…" />
         </div>
@@ -182,7 +223,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
         </div>
       ) : null}
 
-      {isRetail ? (
+      {!isPharmacy ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <PortalCard title="Low Stock" subtitle="Items at or below reorder threshold" icon={TriangleAlert}>
             {liveLoading ? (
@@ -191,12 +232,14 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
               <div className="space-y-2">
                 {lowStockItems.map((item) => (
                   <div
-                    key={`${item.productId}-${item.variantId ?? "base"}`}
+                    key={item.id ?? `${item.productId}-${item.productName ?? "item"}`}
                     className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3"
                   >
-                    <p className="text-sm font-semibold text-[var(--text-primary)]">{item.productName}</p>
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">
+                      {item.productName || "Stock alert"}
+                    </p>
                     <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-600 dark:text-amber-300">
-                      {item.inStock} left
+                      {item.currentStock ?? item.inStock ?? 0} left
                     </span>
                   </div>
                 ))}
@@ -206,41 +249,43 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
             )}
           </PortalCard>
 
-          <PortalCard title="Top-Selling Products" subtitle="Best sellers today (net of returns)" icon={Flame}>
+          <PortalCard title="Top-Selling Products" subtitle="Best sellers from today's invoices" icon={Flame}>
             {liveLoading ? (
               <Loading size="sm" />
             ) : topProducts.length ? (
               <div className="space-y-2">
                 {topProducts.map((item, index) => (
                   <div
-                    key={item.productId}
+                    key={item.productId ?? `${item.name}-${index}`}
                     className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3"
                   >
                     <div className="flex items-center gap-3">
                       <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--brand-primary-soft)] text-xs font-bold text-[var(--brand-secondary)]">
                         {index + 1}
                       </span>
-                      <p className="text-sm font-semibold text-[var(--text-primary)]">{item.productName}</p>
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">{item.name ?? "—"}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold text-[var(--brand-secondary)]">{item.quantitySold} sold</p>
-                      <p className="text-xs text-[var(--text-muted)]">{money(item.revenue)}</p>
+                      <p className="text-sm font-bold text-[var(--brand-secondary)]">{Number(item.quantity ?? 0)} sold</p>
+                      <p className="text-xs text-[var(--text-muted)]">{money(Number(item.revenue ?? 0))}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="py-6 text-center text-sm text-[var(--text-muted)]">No sales recorded today yet</p>
+              <p className="py-6 text-center text-sm text-[var(--text-muted)]">No invoices recorded yet</p>
             )}
           </PortalCard>
         </div>
       ) : null}
 
+      <DashboardReportsSection />
+
       <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-5">
         <h3 className="text-sm font-semibold text-[var(--text-primary)]">Configured KPI cards</h3>
         <p className="mt-1 text-sm text-[var(--text-muted)]">
           Dashboard layout follows your industry template.
-          {(isPharmacy || isRetail) ? liveLabel : " Live data integration will replace sample values."}
+          {liveLabel}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {cards.map((id) => (

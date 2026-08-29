@@ -2,6 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BASE_URL } from "@/lib/constant";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+import {
+  asCredentialsResult,
+  type CredentialsResult,
+  type ResetCredentialsPayload,
+} from "@/lib/credentials-result";
 
 export type UserRole = "waiter" | "kitchen";
 
@@ -199,11 +204,14 @@ export function useUsers(overrideBusinessId?: string | null) {
   );
 
   const updatePassword = useCallback(
-    async (user: { id: string; role: UserRole }, newPassword: string) => {
+    async (
+      user: { id: string; role: UserRole },
+      newPassword: string,
+      options?: ResetCredentialsPayload,
+    ): Promise<CredentialsResult | null> => {
       const authToken = getAuthToken(token);
       if (!authToken) throw new Error("No authentication token available");
 
-      // Swagger: PATCH /waiters/{waiterId}/password  or  /kitchens/{id}/password
       const endpoint = user.role === "waiter"
         ? `waiters/${user.id}/password`
         : `kitchens/${user.id}/password`;
@@ -213,9 +221,11 @@ export function useUsers(overrideBusinessId?: string | null) {
 
       setActionLoading(true);
       try {
-        const payload: Record<string, any> = { 
-          password: newPassword,
-          newPassword: newPassword
+        const payload: Record<string, unknown> = {
+          password: newPassword || undefined,
+          newPassword: newPassword || undefined,
+          generate: options?.generate ?? !newPassword,
+          sendEmail: options?.sendEmail !== false,
         };
         if (activeBusinessId) {
           payload.businessId = activeBusinessId;
@@ -245,8 +255,9 @@ export function useUsers(overrideBusinessId?: string | null) {
           throw new Error(detail);
         }
 
+        const json = await response.json().catch(() => null);
         await fetchUsers();
-        return true;
+        return asCredentialsResult(json);
       } finally {
         setActionLoading(false);
       }

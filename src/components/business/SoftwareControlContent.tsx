@@ -10,6 +10,7 @@ import {
   GripVertical,
   Printer,
   LayoutDashboard,
+  BarChart3,
   Loader2,
   Palette,
   Package,
@@ -403,9 +404,9 @@ export function SoftwareControlContent({
     <div className="space-y-6">
       <div className="rounded-xl border border-[#dbeafe] bg-[#eff6ff] px-4 py-3 text-sm text-[#1e40af]">
         These are the <strong>mobile app screens</strong> DigiNizam Flutter ships (including{" "}
-        <strong>Staff</strong> and <strong>Inventory</strong>). Turn a module on → it appears in the
-        app for store managers after save + refresh. Turn it off → it hides. Role access below further
-        limits cashiers and other staff roles.
+        <strong>Staff</strong>, <strong>Inventory</strong>, and <strong>Reports</strong>). Turn a module
+        on → it appears in the app after save + refresh. Turn it off → it hides. Role access below
+        further limits cashiers and other staff roles.
       </div>
 
       {/* Modules */}
@@ -718,7 +719,8 @@ export function SoftwareControlContent({
         <h2 className="mb-1 text-base font-semibold text-[#0f172a]">7. Module features (mobile app)</h2>
         <p className="mb-4 text-sm text-[#64748b]">
           Fine-tune each mobile module: dashboard stat cards, product permissions, orders screens
-          (POS vs active queue), and category filters. Save at the bottom to push changes to Flutter.
+          (POS vs active queue), Reports date filters, and category filters. Save at the bottom to
+          push changes to Flutter.
         </p>
         <div className="space-y-2">
           {enabledModules.includes("dashboard") ? (
@@ -750,6 +752,43 @@ export function SoftwareControlContent({
                       />
                     ))}
                   </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {enabledModules.includes("reports") ? (
+            <div className="rounded-lg border border-[#e2e8f0]">
+              <button
+                type="button"
+                onClick={() =>
+                  setExpandedModule((m) => (m === "reports" ? null : "reports"))
+                }
+                className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-[#0f172a]"
+              >
+                {expandedModule === "reports" ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+                <BarChart3 className="h-4 w-4 text-[var(--brand-secondary)]" />
+                Reports — live filters (mobile + portal)
+              </button>
+              {expandedModule === "reports" ? (
+                <div className="space-y-2 border-t border-[#e2e8f0] p-4 text-sm text-[#475569]">
+                  <p>
+                    The Reports tab uses the same date filters as the business portal. Staff pick
+                    Today, This week, This month, or a custom range, then see sales, top items, and
+                    profit figures for that business.
+                  </p>
+                  <p>
+                    Super Admin and Business Admin both control this from Software Control. Saving
+                    here updates portal navigation and the Flutter app on next login or refresh.
+                  </p>
+                  <p className="text-xs text-[#94a3b8]">
+                    Grant Reports in the role matrix below so cashiers or managers can open it. Owners
+                    see it automatically when the module is on.
+                  </p>
                 </div>
               ) : null}
             </div>

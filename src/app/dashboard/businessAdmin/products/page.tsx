@@ -304,6 +304,7 @@ function MenuItemsContent() {
   const { market, currency } = usePharmacyMarket();
   const isPharmacy = templateConfig?.industryId === "pharmacy";
   const isRetail = templateConfig?.industryId === "retail-store";
+  const requiresCostAndStock = !isPharmacy;
   const productLabel = isPharmacy ? "Medicine" : isRetail ? "Product" : "Menu Item";
   const [createMedicine, setCreateMedicine] = useState<MedicineProfileForm>(EMPTY_MEDICINE_PROFILE);
   const [editMedicine, setEditMedicine] = useState<MedicineProfileForm>(EMPTY_MEDICINE_PROFILE);
@@ -470,14 +471,22 @@ function MenuItemsContent() {
       if (!createMedicine.genericName.trim()) return toast.error("Generic name is required");
       if (!createMedicine.saltName.trim()) return toast.error("Salt / composition is required");
     }
+    if (requiresCostAndStock) {
+      if (createForm.costPrice == null || Number.isNaN(Number(createForm.costPrice)) || Number(createForm.costPrice) < 0) {
+        return toast.error("Cost price is required");
+      }
+      if (createVariants.some((v) => v.costPrice == null || Number(v.costPrice) < 0)) {
+        return toast.error("Cost price is required for each variant");
+      }
+    }
 
     const toastId = toast.loading("Adding product...");
     try {
       await createProduct({
         ...createForm,
         isKitchen: isPharmacy || isRetail ? false : createForm.isKitchen,
-        isStockEnabled: isRetail ? createForm.isStockEnabled : undefined,
-        costPrice: isRetail ? createForm.costPrice : undefined,
+        isStockEnabled: requiresCostAndStock ? createForm.isStockEnabled : undefined,
+        costPrice: requiresCostAndStock ? createForm.costPrice : undefined,
         variants: createVariants,
       });
       if (isPharmacy) {
@@ -565,13 +574,21 @@ function MenuItemsContent() {
       if (!editMedicine.genericName.trim()) return toast.error("Generic name is required");
       if (!editMedicine.saltName.trim()) return toast.error("Salt / composition is required");
     }
+    if (requiresCostAndStock) {
+      if (editForm.costPrice == null || Number.isNaN(Number(editForm.costPrice)) || Number(editForm.costPrice) < 0) {
+        return toast.error("Cost price is required");
+      }
+      if (editVariants.some((v) => v.costPrice == null || Number(v.costPrice) < 0)) {
+        return toast.error("Cost price is required for each variant");
+      }
+    }
 
     const toastId = toast.loading("Updating product...");
     try {
       await updateProduct(editId, {
         ...editForm,
-        isStockEnabled: isRetail ? editForm.isStockEnabled : undefined,
-        costPrice: isRetail ? editForm.costPrice : undefined,
+        isStockEnabled: requiresCostAndStock ? editForm.isStockEnabled : undefined,
+        costPrice: requiresCostAndStock ? editForm.costPrice : undefined,
         variants: [
           ...editVariants.map((v) =>
             v.id
@@ -580,13 +597,13 @@ function MenuItemsContent() {
                   name: v.name,
                   price: v.price,
                   inStock: v.inStock,
-                  ...(isRetail ? { costPrice: v.costPrice } : {}),
+                  ...(requiresCostAndStock ? { costPrice: v.costPrice } : {}),
                 }
               : {
                   name: v.name,
                   price: v.price,
                   inStock: v.inStock,
-                  ...(isRetail ? { costPrice: v.costPrice } : {}),
+                  ...(requiresCostAndStock ? { costPrice: v.costPrice } : {}),
                 },
           ),
           ...deletedVariantIds.map((id) => ({ id, action: "delete" as const })),
@@ -746,7 +763,7 @@ function MenuItemsContent() {
                       />
                     </div>
                   </div>
-                  {isRetail ? (
+                  {requiresCostAndStock ? (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-sm font-bold">
@@ -766,11 +783,11 @@ function MenuItemsContent() {
                           checked={createForm.isStockEnabled}
                           onChange={(e) => setCreateForm((p) => ({ ...p, isStockEnabled: e.target.checked }))}
                         />
-                        Track inventory on sales
+                        Track inventory on sales <span className="text-[#dc2626]">*</span>
                       </label>
                     </div>
                   ) : null}
-                  <VariantsEditor variants={createVariants} setVariants={setCreateVariants} showCostPrice={isRetail} />
+                  <VariantsEditor variants={createVariants} setVariants={setCreateVariants} showCostPrice={requiresCostAndStock} />
                   {isPharmacy ? <MedicineProfileFields value={createMedicine} onChange={setCreateMedicine} /> : null}
                   <div className="space-y-2">
                     <label className="text-sm font-bold">Image</label>
@@ -912,7 +929,7 @@ function MenuItemsContent() {
                       />
                     </div>
                   </div>
-                  {isRetail ? (
+                  {requiresCostAndStock ? (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-sm font-bold">
@@ -932,14 +949,14 @@ function MenuItemsContent() {
                           checked={editForm.isStockEnabled}
                           onChange={(e) => setEditForm((p) => ({ ...p, isStockEnabled: e.target.checked }))}
                         />
-                        Track inventory on sales
+                        Track inventory on sales <span className="text-[#dc2626]">*</span>
                       </label>
                     </div>
                   ) : null}
                   <VariantsEditor
                     variants={editVariants}
                     setVariants={setEditVariants}
-                    showCostPrice={isRetail}
+                    showCostPrice={requiresCostAndStock}
                     onRemoveVariant={(variant) => {
                       if (variant.id) {
                         setDeletedVariantIds((prev) =>

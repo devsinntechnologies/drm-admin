@@ -20,9 +20,11 @@ type NotificationPayload = {
 };
 
 function namespaceForRole(role: string | null) {
-  if (role === "waiter") return "/waiter";
-  if (role === "business_admin" || role === "super_admin") return "/business_admin";
-  return null;
+  const normalized = (role ?? "").toLowerCase();
+  if (!normalized || normalized === "super_admin") return null;
+  if (normalized === "waiter") return "/waiter";
+  if (normalized === "kitchen" || normalized === "kitchen_staff") return "/kitchen";
+  return "/business_admin";
 }
 
 function redirectToLogin() {
@@ -70,7 +72,15 @@ export default function StaffRealtimeProvider({
       toast.warning(payload.message || "Table order rejected");
       emitStaffRealtime(STAFF_REALTIME_EVENTS.SELF_ORDERS_CHANGED, payload);
     };
-    const onBusinessDeactivated = (payload: NotificationPayload) => {
+    const onInvoiceChanged = (payload?: unknown) => {
+      emitStaffRealtime(STAFF_REALTIME_EVENTS.INVOICES_CHANGED, payload);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("invoices:refetch", { detail: payload }));
+      }
+    };
+    const onBusinessDeactivated = (payload: NotificationPayload & { product?: string; code?: string }) => {
+      const product = payload.product;
+      if (product && product !== "portal") return;
       toast.error(payload.message || BUSINESS_INACTIVE_MESSAGE);
       dispatch(logout());
       redirectToLogin();
@@ -79,13 +89,21 @@ export default function StaffRealtimeProvider({
     socket.on("self_order:requested", onRequested);
     socket.on("self_order:approved", onApproved);
     socket.on("self_order:rejected", onRejected);
+    socket.on("invoice:generated", onInvoiceChanged);
+    socket.on("new_invoice", onInvoiceChanged);
+    socket.on("invoice:updated", onInvoiceChanged);
     socket.on("business:deactivated", onBusinessDeactivated);
+    socket.on("business:product_disabled", onBusinessDeactivated);
 
     return () => {
       socket.off("self_order:requested", onRequested);
       socket.off("self_order:approved", onApproved);
       socket.off("self_order:rejected", onRejected);
+      socket.off("invoice:generated", onInvoiceChanged);
+      socket.off("new_invoice", onInvoiceChanged);
+      socket.off("invoice:updated", onInvoiceChanged);
       socket.off("business:deactivated", onBusinessDeactivated);
+      socket.off("business:product_disabled", onBusinessDeactivated);
       socket.disconnect();
     };
   }, [dispatch, role, token]);

@@ -14,6 +14,7 @@ export const SOFTWARE_SUPPORTED_MODULES = new Set<ModuleId>([
   "tables",
   "staff",
   "inventory",
+  "reports",
 ]);
 
 /**
@@ -71,6 +72,7 @@ export const MOBILE_MODULE_FEATURE_PANELS = new Set<string>([
   "orders",
   "categories",
   "sales",
+  "reports",
 ]);
 
 const FOOD_INDUSTRIES = new Set(["restaurant", "food-cafe", "bakery"]);
@@ -81,7 +83,7 @@ const FOOD_INDUSTRIES = new Set(["restaurant", "food-cafe", "bakery"]);
  */
 export function mobileModulesForIndustry(industryId?: string | null): ModuleId[] {
   if (!industryId) {
-    return ["dashboard", "products", "orders", "sales", "inventory", "staff", "categories"];
+    return ["dashboard", "products", "orders", "sales", "inventory", "staff", "categories", "reports"];
   }
 
   if (FOOD_INDUSTRIES.has(industryId)) {
@@ -95,11 +97,12 @@ export function mobileModulesForIndustry(industryId?: string | null): ModuleId[]
       "inventory",
       "staff",
       "categories",
+      "reports",
     ];
   }
 
   if (industryId === "pharmacy") {
-    return ["dashboard", "products", "sales", "inventory", "staff", "categories"];
+    return ["dashboard", "products", "sales", "inventory", "staff", "categories", "reports"];
   }
 
   // Retail, auto-parts, book-store, electronics, fashion, grocery, etc.
@@ -111,6 +114,7 @@ export function mobileModulesForIndustry(industryId?: string | null): ModuleId[]
     "inventory",
     "staff",
     "categories",
+    "reports",
   ];
 }
 

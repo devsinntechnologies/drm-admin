@@ -17,7 +17,7 @@ import {
   isPharmacyStaffRole,
   workspaceHomePath,
 } from "@/lib/pharmacy-role-nav";
-import { normalizePortalRole } from "@/lib/role-access";
+import { canManageSoftwareAndWebsite, normalizePortalRole } from "@/lib/role-access";
 import { toast } from "sonner";
 import { resolveMediaUrl, businessInitials } from "@/lib/media-url";
 
@@ -180,7 +180,7 @@ const tabs: Array<WorkspaceNavTab> = [
   {
     key: "software",
     label: "Software & Mobile",
-    href: "/dashboard/businessAdmin/software",
+    href: "/dashboard/businessAdmin/software/control",
     icon: <Smartphone className="h-5 w-5" />,
   },
   {
@@ -354,15 +354,22 @@ export default function AdminShell({
   }, [isMounted, resolvedRole, pathname, templateConfig?.industryId, businessId, router]);
 
   useEffect(() => {
-    if (!isMounted || !resolvedRole || !templateConfig) return;
+    if (!isMounted || !resolvedRole) return;
     if (resolvedRole === "super_admin") return;
     if (!pathname.includes("/businessAdmin")) return;
     const moduleId = pathnameToModuleId(pathname);
-    if (!moduleId || moduleId === "website" || moduleId === "software") return;
-    if (canAccessWorkspaceModule(templateConfig, resolvedRole, moduleId)) return;
     const home =
       workspaceHomePath(normalizePortalRole(resolvedRole), businessId) ||
       appendBusinessId("/dashboard/businessAdmin", businessId);
+
+    if (moduleId === "website" || moduleId === "software") {
+      if (canManageSoftwareAndWebsite(resolvedRole)) return;
+      router.replace(home);
+      return;
+    }
+
+    if (!templateConfig || !moduleId) return;
+    if (canAccessWorkspaceModule(templateConfig, resolvedRole, moduleId)) return;
     router.replace(home);
   }, [isMounted, resolvedRole, pathname, templateConfig, businessId, router]);
 
@@ -389,13 +396,15 @@ export default function AdminShell({
       const softwareTab: WorkspaceNavTab = {
         key: "software",
         label: "Software & Mobile",
-        href: appendBusinessId("/dashboard/businessAdmin/software", businessId),
+        href: appendBusinessId("/dashboard/businessAdmin/software/control", businessId),
         icon: <Smartphone className="h-5 w-5" />,
       };
+      const productTabs = canManageSoftwareAndWebsite(resolvedRole)
+        ? [websiteTab, softwareTab]
+        : [];
       const workspaceTabs = [
         ...buildBusinessWorkspaceNav(templateConfig, businessId, resolvedRole),
-        websiteTab,
-        softwareTab,
+        ...productTabs,
       ];
       // Soft layer: pharmacy/retail hardcoded map still applies for legacy staff roles.
       if (templateConfig.industryId === "pharmacy" || templateConfig.industryId === "retail-store") {
@@ -419,7 +428,22 @@ export default function AdminShell({
       }
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "pos" || tab.key === "products");
     } else if (shouldShowBusinessTabs) {
-      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "public-data" || tab.key === "website" || tab.key === "software" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
+      const productKeys = canManageSoftwareAndWebsite(resolvedRole)
+        ? ["website", "software"]
+        : [];
+      baseTabs = tabs.filter(
+        (tab) =>
+          tab.key === "dashboard" ||
+          tab.key === "products" ||
+          tab.key === "categories" ||
+          tab.key === "public-data" ||
+          tab.key === "tables" ||
+          tab.key === "invoices" ||
+          tab.key === "users" ||
+          tab.key === "orders" ||
+          tab.key === "kitchen" ||
+          productKeys.includes(tab.key),
+      );
     } else {
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "industry-templates" || tab.key === "app-updates" || tab.key === "action-logs");
       // Force Super Admin dashboard link to the superAdmin route

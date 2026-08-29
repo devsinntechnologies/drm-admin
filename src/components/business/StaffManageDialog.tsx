@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Users } from "lucide-react";
+import { Users, X } from "lucide-react";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -46,12 +47,19 @@ export function StaffManageDialog({
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
-          <DialogHeader>
+        <DialogContent
+          align="top"
+          className="max-w-4xl"
+        >
+          <DialogHeader className="relative pr-10">
             <DialogTitle>Staff for {business.businessName}</DialogTitle>
             <DialogDescription>
               Create and manage logins from Additional details. Changes apply to portal and mobile.
             </DialogDescription>
+            <DialogClose className="absolute right-0 top-0 grid h-9 w-9 place-items-center rounded-full bg-[#0f172a] text-white transition hover:bg-[#1e293b]">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </DialogClose>
           </DialogHeader>
           <SoftwareStaffOverview
             businessId={businessId}

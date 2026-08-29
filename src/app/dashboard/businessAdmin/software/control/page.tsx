@@ -5,11 +5,13 @@ import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import { ControlSection } from "@/components/business/ControlSection";
 import { LogoPickerField } from "@/components/business/LogoPickerField";
+import { SoftwareAppUpdatePanel } from "@/components/business/SoftwareAppUpdatePanel";
 import { SoftwareControlContent } from "@/components/business/SoftwareControlContent";
 import { SoftwareStaffOverview } from "@/components/business/SoftwareStaffOverview";
 import { SoftwareSyncStatusPanel } from "@/components/business/SoftwareSyncStatusPanel";
 import { SoftwareTemplateNotConfigured } from "@/components/business/SoftwareTemplateNotConfigured";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { useGetBusinessByIdQuery, useUploadBusinessLogoMutation } from "@/hooks/useBusiness";
 import { getBusinessProfile } from "@/lib/business-profile";
@@ -18,6 +20,7 @@ import { getIndustryById } from "@/templates/industries";
 
 export default function BusinessAdminSoftwareControlPage() {
   const businessId = useActiveBusinessId();
+  const { role } = useAuth();
   const { businessName, templateConfig } = useBusinessTemplate();
   const { data: business, isLoading, isError, refetch } = useGetBusinessByIdQuery(businessId || "", {
     skip: !businessId,
@@ -105,7 +108,14 @@ export default function BusinessAdminSoftwareControlPage() {
         enabledModules={templateConfig?.enabledModules}
       />
 
-      {!hasTemplate ? <SoftwareTemplateNotConfigured businessId={businessId} isSuperAdmin={false} /> : null}
+      {!hasTemplate ? (
+        <SoftwareTemplateNotConfigured
+          businessId={businessId}
+          isSuperAdmin={role === "super_admin"}
+        />
+      ) : null}
+
+      <SoftwareAppUpdatePanel businessId={businessId} />
 
       {hasTemplate ? (
         <>

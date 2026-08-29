@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useInvoiceBranding } from "@/hooks/useInvoiceBranding";
 import { downloadInvoicePdf } from "@/lib/invoice-pdf";
+import { formatInvoiceDateTime } from "@/lib/invoice-datetime";
 import { parseSalesSettings } from "@/lib/module-feature-settings";
 
 type StatusFilter = "all" | "pending" | "paid";
@@ -72,19 +73,6 @@ function invoiceAmounts(invoice: InvoiceRecord) {
   return { subtotal, delivery, packaging, total };
 }
 
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
 function toStatus(raw: string): InvoiceRow["status"] {
   const value = raw.toLowerCase();
   if (value === "paid") return "Paid";
@@ -118,9 +106,7 @@ function InvoicesContent() {
 
   const canDeleteInvoice =
     (role ?? (typeof window !== "undefined" ? localStorage.getItem("roleName") : null)) ===
-      "business_admin" ||
-    (role ?? (typeof window !== "undefined" ? localStorage.getItem("roleName") : null)) ===
-      "super_admin";
+      "business_admin";
 
   const { invoices, loading, actionLoading, error, pagination, refetch, updateInvoiceStatus, deleteInvoice, exportExcel } = useInvoices({
     page: currentPage,
@@ -157,7 +143,7 @@ function InvoicesContent() {
       uuid: invoice.uuid,
       orderNumber: invoice.orderNumber,
       businessName: invoice.businessName,
-      date: formatDate(invoice.createdAt),
+      date: formatInvoiceDateTime(invoice.createdAt),
       amount: parsePrice(invoice.totalPrice),
       status: toStatus(invoice.status),
       itemCount: invoice.Items?.length ?? 0,
@@ -272,7 +258,7 @@ function InvoicesContent() {
         orderNumber: selectedInvoice.orderNumber || selectedInvoice.invoiceNumber,
         businessName: branding.businessName || selectedInvoice.businessName,
         logoUrl: branding.logoUrl,
-        date: formatDate(selectedInvoice.createdAt),
+        date: formatInvoiceDateTime(selectedInvoice.createdAt),
         status: selectedInvoice.status,
         items: (selectedInvoice.Items ?? []).map((item) => ({
           productName: item.productname,
@@ -569,7 +555,7 @@ function InvoicesContent() {
                   orderNumber={selectedInvoice.orderNumber || selectedInvoice.invoiceNumber}
                   businessName={branding.businessName || selectedInvoice.businessName}
                   logoUrl={branding.logoUrl}
-                  date={formatDate(selectedInvoice.createdAt)}
+                  date={formatInvoiceDateTime(selectedInvoice.createdAt)}
                   status={selectedInvoice.status}
                   items={(selectedInvoice.Items ?? []).map((item, i) => ({
                     id: String(i),

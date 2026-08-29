@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   ChefHat,
   ClipboardList,
   LayoutDashboard,
@@ -22,6 +23,7 @@ const ICONS: Partial<Record<ModuleId, LucideIcon>> = {
   tables: Table2,
   staff: Users,
   inventory: Warehouse,
+  reports: BarChart3,
 };
 
 export function SoftwareModuleIcon({

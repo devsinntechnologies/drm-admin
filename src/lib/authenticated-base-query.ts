@@ -7,8 +7,9 @@ import {
 import { BASE_URL } from "@/lib/constant";
 import {
   businessInactiveMessage,
-  isBusinessInactiveError,
+  isPortalSessionEndedPayload,
 } from "@/lib/business-session";
+import { DIGINIZAM_CLIENT, DIGINIZAM_CLIENT_HEADER } from "@/lib/diginizam-client";
 import { logout } from "@/lib/features/auth/authSlice";
 import { getStoredAuthToken } from "@/lib/utils";
 import type { RootState } from "@/lib/store";
@@ -26,6 +27,7 @@ export const authenticatedBaseQuery = fetchBaseQuery({
       headers.set("Authorization", `Bearer ${token.trim()}`);
     }
     headers.set("accept", "*/*");
+    headers.set(DIGINIZAM_CLIENT_HEADER, DIGINIZAM_CLIENT);
     return headers;
   },
 });
@@ -46,7 +48,7 @@ export const authenticatedBaseQueryWithReauth: BaseQueryFn<
 > = async (args, api, extraOptions) => {
   const result = await authenticatedBaseQuery(args, api, extraOptions);
 
-  if (result.error?.status === 403 && isBusinessInactiveError(result.error)) {
+  if (result.error?.status === 403 && isPortalSessionEndedPayload(result.error.status, result.error.data)) {
     api.dispatch(logout());
     toast.error(businessInactiveMessage(result.error));
     redirectToLogin();
