@@ -52,7 +52,7 @@ export function WorkspaceReportsPage() {
 
   const topRows = useMemo(
     () =>
-      asList(invoiceReport?.topProducts).map((row) => ({
+      asList<InvoiceReports["topProducts"][number]>(invoiceReport?.topProducts).map((row) => ({
         name: row.name,
         qty: Number(row.quantity).toFixed(0),
         revenue: money(Number(row.revenue)),
@@ -161,7 +161,7 @@ export function WorkspaceReportsPage() {
                 { key: "count", label: "Invoices" },
                 { key: "revenue", label: "Revenue" },
               ]}
-              rows={asList(invoiceReport?.byOrderType).map((row) => ({
+              rows={asList<InvoiceReports["byOrderType"][number]>(invoiceReport?.byOrderType).map((row) => ({
                 orderType: String(row.orderType ?? "—"),
                 count: String(row.count),
                 revenue: money(Number(row.revenue)),
