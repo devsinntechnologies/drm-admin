@@ -60,7 +60,10 @@ export function WizardStepper({
         />
       </div>
 
-      <ol className="mt-4 grid grid-cols-7 gap-1">
+      <ol
+        className="mt-4 grid gap-1"
+        style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
+      >
         {steps.map((step, index) => {
           const isActive = step.id === currentStepId;
           const isCompleted = completedStepIds.includes(step.id) || index < currentIndex;

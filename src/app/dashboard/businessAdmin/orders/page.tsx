@@ -50,7 +50,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
-import InvoiceReceipt, { InvoicePrintButton } from "@/components/common/InvoiceReceipt";
+import InvoiceReceipt, { InvoiceDownloadButton, InvoicePrintButton } from "@/components/common/InvoiceReceipt";
+import { PrinterAccessAlert } from "@/components/common/PrinterAccessAlert";
+import { useInvoiceBranding } from "@/hooks/useInvoiceBranding";
+import { downloadInvoicePdf } from "@/lib/invoice-pdf";
 import { useAuth } from "@/hooks/useAuth";
 import { useCategories, type CategoryRecord } from "@/hooks/useCategories";
 import { useOrders, type OrderRecord } from "@/hooks/useOrders";
@@ -60,6 +63,8 @@ import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { BASE_URL } from "@/lib/constant";
 import { cn, buildOrderPatchItem, buildOrderRemoveItem, isUuid } from "@/lib/utils";
 import { SelfOrderRequestsPanel } from "@/components/orders/SelfOrderRequestsPanel";
+import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
+import { parseSalesSettings } from "@/lib/module-feature-settings";
 
 const CustomTrashIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -120,6 +125,9 @@ function formatElapsed(isoDate: string) {
 function OrdersContent() {
   const router = useRouter();
   const { role, token } = useAuth();
+  const branding = useInvoiceBranding();
+  const { templateConfig } = useBusinessTemplate();
+  const allowPrinter = parseSalesSettings(templateConfig?.moduleSettings).allowPrinter;
   const activeBusinessId = useActiveBusinessId();
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
@@ -139,6 +147,7 @@ function OrdersContent() {
   const [productOverrides, setProductOverrides] = useState<Record<string, string>>({});
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showOrderDetailsDialog, setShowOrderDetailsDialog] = useState(false);
+  const [printerAlertOpen, setPrinterAlertOpen] = useState(false);
   const [orderDetails, setOrderDetails] = useState<OrderDetailsState | null>(null);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<OrderRecord | null>(null);
@@ -538,8 +547,10 @@ function OrdersContent() {
     const toastId = toast.loading("Completing order...");
     try {
       await updateOrderStatus(orderDetails.orderId, "COMPLETED");
-      toast.success("Order completed", { id: toastId });
-      if (typeof window !== "undefined") {
+      toast.success(allowPrinter ? "Order completed" : "Order completed. Printing is not enabled for this business.", {
+        id: toastId,
+      });
+      if (allowPrinter && typeof window !== "undefined") {
         window.print();
       }
       setShowOrderDetailsDialog(false);
@@ -551,6 +562,7 @@ function OrdersContent() {
   };
 
   const orderDetailsDialog = (
+    <>
     <Dialog
       open={showOrderDetailsDialog}
       onOpenChange={(open) => {
@@ -572,16 +584,20 @@ function OrdersContent() {
                 className="dn-btn dn-btn-primary w-full !h-auto !flex-col !gap-1 !py-4"
               >
                 <span className="inline-flex items-center gap-2 text-base">
-                  {actionLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Printer className="h-5 w-5" />}
-                  Complete &amp; Print
+                  {actionLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : allowPrinter ? <Printer className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
+                  {allowPrinter ? "Complete & Print" : "Complete Order"}
                 </span>
-                <span className="text-xs font-medium opacity-90">Finalize order and print receipt</span>
+                <span className="text-xs font-medium opacity-90">
+                  {allowPrinter ? "Finalize order and print receipt" : "Finalize order"}
+                </span>
               </button>
             </div>
 
             <div className="p-6" id="order-invoice-print-area">
               <InvoiceReceipt
                 orderNumber={orderDetails.orderNumber}
+                businessName={branding.businessName}
+                logoUrl={branding.logoUrl}
                 tableLabel={orderDetails.table || "Take Away"}
                 items={orderDetails.Items.map((item) => ({
                   id: item.id,
@@ -594,8 +610,12 @@ function OrdersContent() {
                 subtotal={invoiceSubTotal}
                 deliveryCharges={invoiceDelivery}
                 packagingPrice={invoicePackaging}
-                total={invoiceNetAmount}
+                total={invoiceNetAmount > 0 ? invoiceNetAmount : invoiceSubTotal + invoiceDelivery + invoicePackaging}
                 status={orderDetails.status}
+                contactPhone={branding.contactPhone}
+                contactEmail={branding.contactEmail}
+                address={branding.address}
+                website={branding.website}
               />
             </div>
 
@@ -607,12 +627,49 @@ function OrdersContent() {
               >
                 Close
               </button>
-              <InvoicePrintButton onClick={() => window.print()} label="Print Only" />
+              <InvoiceDownloadButton
+                onClick={() =>
+                  void downloadInvoicePdf({
+                    fileName: `invoice-${orderDetails.orderNumber}.pdf`,
+                    orderNumber: orderDetails.orderNumber,
+                    businessName: branding.businessName,
+                    logoUrl: branding.logoUrl,
+                    items: orderDetails.Items.map((item) => ({
+                      productName: item.productName,
+                      quantity: item.quantity,
+                      price: item.price,
+                      total: item.total,
+                      variantName: item.variant?.name,
+                    })),
+                    subtotal: invoiceSubTotal,
+                    deliveryCharges: invoiceDelivery,
+                    packagingPrice: invoicePackaging,
+                    total: invoiceNetAmount > 0 ? invoiceNetAmount : invoiceSubTotal + invoiceDelivery + invoicePackaging,
+                    contactPhone: branding.contactPhone,
+                    contactEmail: branding.contactEmail,
+                    address: branding.address,
+                    website: branding.website,
+                    status: orderDetails.status,
+                  })
+                }
+              />
+              <InvoicePrintButton
+                onClick={() => {
+                  if (!allowPrinter) {
+                    setPrinterAlertOpen(true);
+                    return;
+                  }
+                  window.print();
+                }}
+                label="Print Only"
+              />
             </div>
           </div>
         ) : null}
       </DialogContent>
     </Dialog>
+    <PrinterAccessAlert open={printerAlertOpen} onOpenChange={setPrinterAlertOpen} />
+    </>
   );
 
   const variantPickerDialog = (

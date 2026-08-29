@@ -1,24 +1,28 @@
 "use client";
 
 import { Building2 } from "lucide-react";
+import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import { ControlSection } from "@/components/business/ControlSection";
+import { LogoPickerField } from "@/components/business/LogoPickerField";
 import { SoftwareControlContent } from "@/components/business/SoftwareControlContent";
 import { SoftwareStaffOverview } from "@/components/business/SoftwareStaffOverview";
 import { SoftwareSyncStatusPanel } from "@/components/business/SoftwareSyncStatusPanel";
 import { SoftwareTemplateNotConfigured } from "@/components/business/SoftwareTemplateNotConfigured";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
-import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
+import { useGetBusinessByIdQuery, useUploadBusinessLogoMutation } from "@/hooks/useBusiness";
 import { getBusinessProfile } from "@/lib/business-profile";
+import { resolveMediaUrl } from "@/lib/media-url";
 import { getIndustryById } from "@/templates/industries";
 
 export default function BusinessAdminSoftwareControlPage() {
   const businessId = useActiveBusinessId();
   const { businessName, templateConfig } = useBusinessTemplate();
-  const { data: business, isLoading, isError } = useGetBusinessByIdQuery(businessId || "", {
+  const { data: business, isLoading, isError, refetch } = useGetBusinessByIdQuery(businessId || "", {
     skip: !businessId,
   });
+  const [uploadLogo, { isLoading: uploadingLogo }] = useUploadBusinessLogoMutation();
 
   if (!businessId) {
     return <p className="text-sm text-[#64748b]">No business selected.</p>;
@@ -54,6 +58,18 @@ export default function BusinessAdminSoftwareControlPage() {
         description="Contact and plan details for this business. To change these, contact support."
         icon={Building2}
       >
+        <div className="mb-5">
+          <LogoPickerField
+            src={resolveMediaUrl(business.logo || templateConfig?.logoUrl || null)}
+            hint="Any size PNG, JPG, or WebP. Crop it here — it shows on login, splash, nav, and invoices."
+            busy={uploadingLogo}
+            onFile={async (file) => {
+              await uploadLogo({ id: business.id, file }).unwrap();
+              await refetch();
+              toast.success("Logo saved");
+            }}
+          />
+        </div>
         <dl className="grid gap-4 sm:grid-cols-2">
           <div>
             <dt className="text-xs font-bold uppercase tracking-wide text-[#94a3b8]">Business name</dt>

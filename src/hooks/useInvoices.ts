@@ -7,9 +7,11 @@ export type InvoiceStatus = "pending" | "paid" | "overdue" | string;
 
 export interface InvoiceItem {
   productname: string;
+  variantName?: string;
   image?: string;
   quantity: number;
-  price: string;
+  price: string | number;
+  total?: number;
 }
 
 export interface InvoiceRecord {
@@ -18,10 +20,15 @@ export interface InvoiceRecord {
   status: InvoiceStatus;
   orderNumber: string;
   businessName: string;
+  businessLogo?: string | null;
+  businessPhone?: string;
+  businessEmail?: string;
+  businessAddress?: string;
   orderId: string;
-  totalPrice: string;
-  deliveryCharges: string | null;
-  packagingPrice: string | null;
+  totalPrice: string | number;
+  subtotal?: number;
+  deliveryCharges: string | number | null;
+  packagingPrice: string | number | null;
   Items: InvoiceItem[];
   createdAt: string;
   updatedAt: string;
@@ -224,6 +231,52 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     }
   }, [fetchInvoices, pagination.page, token, activeBusinessId]);
 
+  const exportExcel = useCallback(async (options?: { range?: "day" | "week" | "month"; status?: string }) => {
+    let authToken = token;
+    if (!authToken && typeof window !== "undefined") {
+      authToken = localStorage.getItem("auth_token") || localStorage.getItem("token");
+    }
+    if (!authToken) {
+      throw new Error("No authentication token available");
+    }
+
+    const url = new URL(`${BASE_URL}/invoice/export`);
+    if (options?.range) url.searchParams.append("range", options.range);
+    if (options?.status && options.status !== "all") {
+      url.searchParams.append("status", options.status);
+    }
+    if (activeBusinessId) {
+      url.searchParams.append("businessId", activeBusinessId);
+    }
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || `Failed to export invoices: ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    const disposition = response.headers.get("Content-Disposition");
+    const match = disposition?.match(/filename="?([^"]+)"?/i);
+    const filename = match?.[1] ?? `invoices-${options?.range ?? "all"}-${Date.now()}.xlsx`;
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(href);
+    return true;
+  }, [token, activeBusinessId]);
+
   return {
     invoices,
     loading,
@@ -234,6 +287,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     prevPage,
     updateInvoiceStatus,
     deleteInvoice,
+    exportExcel,
     refetch: fetchInvoices,
   };
 }

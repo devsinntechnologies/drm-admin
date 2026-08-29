@@ -12,12 +12,9 @@ import {
   Trash2,
   Copy,
   ExternalLink,
-  ImagePlus,
   Sparkles,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { readLogoAsDataUrl, validateLogoFile } from "@/lib/logo-upload";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { PortalPage } from "@/components/admin/PortalPage";
@@ -27,6 +24,7 @@ import { GptPreviewButton } from "@/components/wizard/GptPreviewButton";
 import { WizardStepper } from "@/components/wizard/WizardStepper";
 import { DashboardCardChip, ModuleChip } from "@/components/wizard/TemplateConfigChips";
 import { TemplateThemeFields } from "@/components/wizard/TemplateThemeFields";
+import { LogoPickerField } from "@/components/business/LogoPickerField";
 import { createCustomizedConfig, buildDefaultNavigation } from "@/template-engine/builder";
 import { persistTemplateConfig } from "@/template-engine/persist-template-config";
 import { createDefaultExtensions } from "@/template-engine/template-extensions-storage";
@@ -311,19 +309,11 @@ function IndustryTemplatesContent() {
     toast.success(result.persistedToApi ? "Industry template saved to platform" : result.warning ?? "Industry template saved");
   }
 
-  function handleLogoUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const error = validateLogoFile(file);
-    if (error) {
-      toast.error(error);
-      return;
-    }
-    void readLogoAsDataUrl(file).then((dataUrl) => {
-      setLogoDataUrl(dataUrl);
-      toast.success("Logo added to template preview");
+  function applyLogoFile(file: File) {
+    setLogoDataUrl((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
     });
-    event.target.value = "";
   }
 
   function removeSaved(id: string) {
@@ -621,38 +611,21 @@ function IndustryTemplatesContent() {
               {step === "business-profile" && (
               <Panel title="Business profile">
                 <div className="mb-4 rounded-xl border border-dashed border-[#cbd5e1] bg-[#fafbfc] p-4">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
-                      {logoDataUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={logoDataUrl} alt="Business logo preview" className="h-full w-full object-contain p-1" />
-                      ) : (
-                        <IndustryIcon name={industry.theme.icon} className="h-8 w-8 text-[#94a3b8]" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-[#0f172a]">Business logo</p>
-                      <p className="mt-0.5 text-xs text-[#64748b]">
-                        Upload a logo for this template. Shown in the sidebar preview and saved with the configuration.
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <label className="dn-btn dn-btn-ghost inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-xs font-semibold text-[#0f172a]">
-                          <ImagePlus className="h-4 w-4" />
-                          Upload logo
-                          <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-                        </label>
-                        {logoDataUrl ? (
-                          <button
-                            type="button"
-                            onClick={() => setLogoDataUrl(null)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-[#fee2e2] bg-white px-3 py-2 text-xs font-semibold text-[#dc2626]"
-                          >
-                            <X className="h-3.5 w-3.5" /> Remove
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
+                  <LogoPickerField
+                    src={logoDataUrl}
+                    hint="Any size PNG, JPG, or WebP. Crop it in the editor for the template preview."
+                    onFile={applyLogoFile}
+                    onRemove={
+                      logoDataUrl
+                        ? () => {
+                            setLogoDataUrl((prev) => {
+                              if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+                              return null;
+                            });
+                          }
+                        : undefined
+                    }
+                  />
                 </div>
                 {industry.id === "pharmacy" ? (
                   <div className="mb-4">

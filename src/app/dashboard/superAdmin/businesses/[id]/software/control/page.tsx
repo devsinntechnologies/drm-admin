@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import Loading from "@/components/common/Loading";
 import { SoftwareControlContent } from "@/components/business/SoftwareControlContent";
-import { SoftwareStaffOverview } from "@/components/business/SoftwareStaffOverview";
 import { SoftwareSyncStatusPanel } from "@/components/business/SoftwareSyncStatusPanel";
 import { SoftwareTemplateNotConfigured } from "@/components/business/SoftwareTemplateNotConfigured";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
@@ -51,13 +50,6 @@ export default function SoftwareControlPage() {
 
   return (
     <div className="space-y-6">
-      <SoftwareStaffOverview
-        businessId={businessId}
-        business={business}
-        industryId={industryId}
-        enabledModules={templateConfig?.enabledModules}
-      />
-
       {!hasTemplate ? (
         <SoftwareTemplateNotConfigured
           businessId={businessId}

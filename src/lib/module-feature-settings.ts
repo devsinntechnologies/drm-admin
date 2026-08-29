@@ -157,3 +157,33 @@ export function serializeCategoriesSettings(
     showFilters: settings.showFilters,
   };
 }
+
+export type SalesModuleSettings = {
+  /** Staff can download invoice lists as Excel from Invoices */
+  allowExport: boolean;
+  /** Staff can connect a printer and print invoices */
+  allowPrinter: boolean;
+};
+
+export const DEFAULT_SALES_SETTINGS: SalesModuleSettings = {
+  allowExport: true,
+  allowPrinter: true,
+};
+
+export function parseSalesSettings(
+  moduleSettings?: Record<string, Record<string, unknown>> | null,
+): SalesModuleSettings {
+  const raw = moduleSettings?.sales;
+  if (!raw || typeof raw !== "object") return DEFAULT_SALES_SETTINGS;
+  return {
+    allowExport: raw.allowExport !== false,
+    allowPrinter: raw.allowPrinter !== false,
+  };
+}
+
+export function serializeSalesSettings(settings: SalesModuleSettings): Record<string, unknown> {
+  return {
+    allowExport: settings.allowExport,
+    allowPrinter: settings.allowPrinter,
+  };
+}

@@ -1,35 +1,36 @@
 # Mobile module readiness
 
-How portal modules become available on Flutter without blocking web enablement.
+How Software Control maps to Flutter.
 
-## Status badges (Software Control)
+## Source of truth
 
-| Status | Meaning | Where defined |
-|--------|---------|----------------|
-| **Mobile** (`ready`) | Flutter bottom-nav screen exists | `SOFTWARE_SUPPORTED_MODULES` + `ModuleScreenRegistry` |
-| **Mobile capability** (`capability`) | Gated inside another screen (no tab) | `MOBILE_CAPABILITY_MODULES` (e.g. `categories`) |
-| **Portal only** (`planned`) | Enable on web; Flutter skips until a screen ships | Default for all other catalog modules |
+Software Control section **1. Mobile app modules** lists only what Flutter ships:
 
-Helpers: `drm-admin/src/lib/software-supported-modules.ts` → `getMobileReadiness()`.
+| Kind | Modules | Defined in |
+|------|---------|------------|
+| App tabs | dashboard, menu, products, orders, kitchen, sales, tables, staff, inventory | `ModuleScreenRegistry` (Flutter) + `SOFTWARE_SUPPORTED_MODULES` |
+| In-app capability | categories | `MOBILE_CAPABILITY_MODULES` — tools inside Products / Orders |
 
-## Expansion playbook (portal → mobile)
+Industry helper: `mobileModulesForIndustry(industryId)` picks the right subset (retail vs restaurant vs pharmacy).
 
-Repeat for each module (example: `vehicle-compatibility`):
+Portal-only modules (reports, suppliers, purchases, …) are **not** shown here. They stay on the web portal and are preserved when you save.
 
-1. **Portal** — page already exists (or add under business workspace routes).
-2. **Flutter screen** — implement the screen under `diginizam-flutter/lib/views/…`.
-3. **Register**
-   - Add id to `ModuleScreenRegistry` (`module_screen_registry.dart`).
-   - Add id to `SOFTWARE_SUPPORTED_MODULES` (`software-supported-modules.ts`).
-4. **Optional features** — add defs to `module-feature-registry.ts` + parse/serialize in `module-feature-settings.ts` + Flutter getters on `ModuleConfig`.
-5. **Role matrix** — once registered as `ready`, “Opens on” can land on that tab; Mobile badge appears automatically.
-6. **Verify** — Software → Preview as each role; save Control; refresh Flutter.
+## How on / off works
 
-## Capability modules (no tab)
+1. Check a module → it is added to `enabledModules` and appears as a Flutter tab (or category tools).
+2. Uncheck → removed from the app on next sync / login.
+3. **Role access** (section below) chooses which *roles* see each *enabled* module.
+4. Tab **order** is controlled in Navigation order (drag).
 
-Use `MOBILE_CAPABILITY_MODULES` when the feature already lives inside another screen (Categories inside Products/Orders). Gate UI with `enabledModules` ∩ roleAccess + `moduleSettings.<id>` flags. Do **not** add capability ids to `ModuleScreenRegistry`.
+Categories: enable the Categories capability, then use **Allow adding / editing categories** for create/edit/delete.
 
-## Non-goals
+## Save behavior
 
-- Enabling a portal-only module must never fail save.
-- Do not fake a Mobile badge until a screen (or capability gate) exists.
+- Mobile toggles are merged into the business template without wiping portal modules.
+- Backend accepts Flutter mobile modules even if the industry portal catalog omitted them (fixes “Module X is not available for industry auto-parts”).
+
+## Adding a new Flutter screen later
+
+1. Build the screen in Flutter and register it in `ModuleScreenRegistry`.
+2. Add the id to `SOFTWARE_SUPPORTED_MODULES` / `mobileModulesForIndustry`.
+3. Optionally add feature flags in `module-feature-settings.ts`.

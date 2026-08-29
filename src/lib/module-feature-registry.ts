@@ -156,6 +156,27 @@ export const MODULE_FEATURE_REGISTRY: ModuleFeatureRegistryEntry[] = [
       },
     ],
   },
+  {
+    moduleId: "sales",
+    title: "Invoices / Sales",
+    description: "Invoice list tools on mobile and in the staff portal.",
+    features: [
+      {
+        kind: "boolean",
+        key: "allowExport",
+        label: "Allow Excel export",
+        description: "Staff can download the invoice list as Excel.",
+        defaultValue: true,
+      },
+      {
+        kind: "boolean",
+        key: "allowPrinter",
+        label: "Allow printer access",
+        description: "Staff can connect a printer and print invoices.",
+        defaultValue: true,
+      },
+    ],
+  },
 ];
 
 export function featurePanelVisible(

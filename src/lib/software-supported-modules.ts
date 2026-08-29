@@ -1,8 +1,8 @@
 import type { ModuleId } from "@/templates/types";
 
 /**
- * Modules the Flutter app currently ships **nav screens** for.
- * Keep in sync with diginizam-flutter ModuleScreenRegistry.
+ * Flutter bottom-nav screens — keep in sync with
+ * diginizam-flutter `ModuleScreenRegistry`.
  */
 export const SOFTWARE_SUPPORTED_MODULES = new Set<ModuleId>([
   "dashboard",
@@ -16,40 +16,111 @@ export const SOFTWARE_SUPPORTED_MODULES = new Set<ModuleId>([
   "inventory",
 ]);
 
-/** Primary mobile app tabs the Flutter app ships today (simplified admin control). */
-export const MOBILE_APP_PRIMARY_MODULES: ModuleId[] = [
-  "dashboard",
-  "menu",
-  "products",
-  "orders",
-  "sales",
-];
+/**
+ * In-screen capabilities (not bottom-nav tabs).
+ * Categories live inside Products / Orders on mobile.
+ */
+export const MOBILE_CAPABILITY_MODULES = new Set<ModuleId>(["categories"]);
 
 /**
- * Dashboard stat cards Flutter renders with live data (not placeholder "—" cards).
- * Keep in sync with diginizam-flutter restaurant_dashboard.dart.
+ * Every module Software Control may toggle for Flutter.
+ * Backend accepts these even when the industry portal catalog omits them.
  */
+export const MOBILE_CONTROL_MODULES = new Set<ModuleId>([
+  ...SOFTWARE_SUPPORTED_MODULES,
+  ...MOBILE_CAPABILITY_MODULES,
+]);
+
+/** Dashboard cards Flutter renders with live data. */
 export const MOBILE_DASHBOARD_CARDS = new Set<string>([
   "today-sales",
   "active-orders",
   "low-stock",
   "low-stock-ingredients",
+  "low-stock-sizes",
+  "ingredient-shortage",
+  "fast-moving-parts",
+  "top-products",
+  "best-selling-item",
+  "fast-selling",
+  "best-selling-books",
+  "top-vehicle-brands",
+  "top-brands",
+  "top-authors",
+  "best-collection",
+  "top-age-group",
+  "warranty-claims",
+  "product-returns",
+  "returns-exchanges",
+  "pending-purchases",
+  "total-transactions",
+  "gross-profit",
+  "avg-order-value",
+  "inventory-value",
+  "recently-added",
+  "customer-orders",
+  "orders-in-progress",
+  "takeaway-orders",
 ]);
 
-/** Modules that have a §7 feature panel wired to Flutter moduleSettings. */
+/** Modules that have a feature panel wired to Flutter moduleSettings. */
 export const MOBILE_MODULE_FEATURE_PANELS = new Set<string>([
   "dashboard",
   "menu",
   "products",
   "orders",
   "categories",
+  "sales",
 ]);
 
+const FOOD_INDUSTRIES = new Set(["restaurant", "food-cafe", "bakery"]);
+
 /**
- * Mobile capabilities that are gated from admin but are NOT bottom-nav tabs.
- * (e.g. Categories UI lives inside Products / Orders.)
+ * Mobile modules for an industry — only what the Flutter app ships.
+ * This is the Software Control checklist (not the full portal catalog).
  */
-export const MOBILE_CAPABILITY_MODULES = new Set<ModuleId>(["categories"]);
+export function mobileModulesForIndustry(industryId?: string | null): ModuleId[] {
+  if (!industryId) {
+    return ["dashboard", "products", "orders", "sales", "inventory", "staff", "categories"];
+  }
+
+  if (FOOD_INDUSTRIES.has(industryId)) {
+    return [
+      "dashboard",
+      "menu",
+      "orders",
+      "kitchen",
+      "sales",
+      "tables",
+      "inventory",
+      "staff",
+      "categories",
+    ];
+  }
+
+  if (industryId === "pharmacy") {
+    return ["dashboard", "products", "sales", "inventory", "staff", "categories"];
+  }
+
+  // Retail, auto-parts, book-store, electronics, fashion, grocery, etc.
+  return [
+    "dashboard",
+    "products",
+    "orders",
+    "sales",
+    "inventory",
+    "staff",
+    "categories",
+  ];
+}
+
+/** Primary tabs commonly on by default for new retail mobile setups. */
+export const MOBILE_APP_PRIMARY_MODULES: ModuleId[] = [
+  "dashboard",
+  "products",
+  "orders",
+  "sales",
+];
 
 export type MobileReadiness = "ready" | "capability" | "planned";
 
@@ -61,7 +132,10 @@ export function isMobileCapabilityModule(moduleId: string): boolean {
   return MOBILE_CAPABILITY_MODULES.has(moduleId as ModuleId);
 }
 
-/** Explicit mobile status for Control / role matrix badges. */
+export function isSoftwareControlModule(moduleId: string): boolean {
+  return MOBILE_CONTROL_MODULES.has(moduleId as ModuleId);
+}
+
 export function getMobileReadiness(moduleId: string): MobileReadiness {
   if (isSoftwareSupportedModule(moduleId)) return "ready";
   if (isMobileCapabilityModule(moduleId)) return "capability";
@@ -71,17 +145,12 @@ export function getMobileReadiness(moduleId: string): MobileReadiness {
 export function mobileReadinessLabel(status: MobileReadiness): string {
   switch (status) {
     case "ready":
-      return "Mobile";
+      return "App tab";
     case "capability":
-      return "Mobile capability";
+      return "Inside app";
     case "planned":
       return "Portal only";
   }
-}
-
-/** Modules that appear in Software Control (Flutter tabs + in-screen capabilities). */
-export function isSoftwareControlModule(moduleId: string): boolean {
-  return isSoftwareSupportedModule(moduleId) || isMobileCapabilityModule(moduleId);
 }
 
 export function filterSoftwareControlModules(moduleIds: ModuleId[]): ModuleId[] {
@@ -100,7 +169,7 @@ export function softwareControlRoleModules(
   return modules;
 }
 
-/** Industries that sell on mobile via Flutter Orders (POS), not Inventory. */
+/** Industries that sell on mobile via Flutter Orders (POS). */
 export const RETAIL_MOBILE_ORDERS_INDUSTRIES = new Set([
   "retail-store",
   "auto-parts",
@@ -116,10 +185,6 @@ export function industryUsesMobileOrders(industryId?: string | null): boolean {
   return Boolean(industryId && RETAIL_MOBILE_ORDERS_INDUSTRIES.has(industryId));
 }
 
-/**
- * Ensure Orders is available/enabled in Software Control for retail mobile POS.
- * Inventory stays available for stock clerks; Orders is the sell tab on Flutter.
- */
 export function ensureMobileOrdersModule(
   modules: ModuleId[],
   industryId?: string | null,
@@ -134,4 +199,101 @@ export function ensureMobileOrdersModule(
     next.push("orders");
   }
   return next;
+}
+
+/**
+ * Simple mobile-only dependencies (do not pull in portal modules like POS / purchases).
+ */
+const MOBILE_DEPENDENCIES: Partial<Record<ModuleId, ModuleId[]>> = {
+  orders: ["products"],
+  categories: ["products"],
+  inventory: ["products"],
+  sales: ["products"],
+  kitchen: ["orders"],
+};
+
+function catalogProductModule(catalog: ModuleId[]): ModuleId {
+  return catalog.includes("menu") && !catalog.includes("products") ? "menu" : "products";
+}
+
+function resolveMobileDeps(moduleId: ModuleId, catalog: ModuleId[]): ModuleId[] {
+  const raw = MOBILE_DEPENDENCIES[moduleId] ?? [];
+  const product = catalogProductModule(catalog);
+  return raw.map((dep) => (dep === "products" ? product : dep)).filter((id) => catalog.includes(id));
+}
+
+/** Turn a mobile module on — also enables its mobile deps. */
+export function enableMobileModule(
+  moduleId: ModuleId,
+  current: ModuleId[],
+  catalog: ModuleId[],
+): ModuleId[] {
+  if (!catalog.includes(moduleId)) return current;
+  const next = new Set(current.filter((id) => catalog.includes(id)));
+  next.add(moduleId);
+  for (const dep of resolveMobileDeps(moduleId, catalog)) {
+    next.add(dep);
+  }
+  return catalog.filter((id) => next.has(id));
+}
+
+/** Turn a mobile module off — also disables mobile modules that depend on it. */
+export function disableMobileModule(
+  moduleId: ModuleId,
+  current: ModuleId[],
+  catalog: ModuleId[],
+): ModuleId[] {
+  if (moduleId === "dashboard") return current;
+  const next = new Set(current.filter((id) => catalog.includes(id)));
+  next.delete(moduleId);
+
+  for (const candidate of catalog) {
+    const deps = resolveMobileDeps(candidate, catalog);
+    if (deps.includes(moduleId)) next.delete(candidate);
+  }
+
+  // Keep dashboard on when anything else is on
+  if (next.size > 0) next.add("dashboard");
+
+  return catalog.filter((id) => next.has(id));
+}
+
+/**
+ * Apply mobile on/off onto the full template enabled list.
+ * Portal-only modules are preserved; mobile catalog follows the toggles exactly.
+ */
+export function applyMobileModuleToggles(
+  templateEnabled: ModuleId[] | undefined,
+  mobileEnabled: ModuleId[],
+  catalog: ModuleId[],
+): ModuleId[] {
+  const catalogSet = new Set(catalog);
+  const portal = (templateEnabled ?? []).filter((id) => !catalogSet.has(id));
+  const mobile = catalog.filter((id) => mobileEnabled.includes(id));
+  // Always keep settings if it was there or is a shell module for the business
+  if (!(portal.includes("settings") || (templateEnabled ?? []).includes("settings"))) {
+    // settings stays portal-managed; don't invent it here
+  }
+  return [...new Set([...portal, ...mobile])];
+}
+
+/** Initial mobile enabled set from saved template. */
+export function initialMobileEnabled(
+  templateEnabled: ModuleId[] | undefined,
+  catalog: ModuleId[],
+  industryId?: string | null,
+): ModuleId[] {
+  const fromTemplate = (templateEnabled ?? []).filter((id) => catalog.includes(id));
+  if (fromTemplate.length) {
+    return ensureMobileOrdersModule(fromTemplate, industryId);
+  }
+  // New / empty: turn on the primary retail tabs that exist in this catalog
+  const defaults = MOBILE_APP_PRIMARY_MODULES.filter((id) => catalog.includes(id));
+  if (catalog.includes("categories")) defaults.push("categories");
+  if (catalog.includes("inventory")) defaults.push("inventory");
+  if (catalog.includes("staff")) defaults.push("staff");
+  return ensureMobileOrdersModule(
+    defaults.length ? defaults : [...catalog],
+    industryId,
+  );
 }

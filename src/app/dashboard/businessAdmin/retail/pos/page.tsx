@@ -7,7 +7,9 @@ import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { PortalPage, PortalPageHeader, portalInputClass, portalSearchClass } from "@/components/admin/PortalPage";
-import InvoiceReceipt, { InvoicePrintButton } from "@/components/common/InvoiceReceipt";
+import InvoiceReceipt, { InvoiceDownloadButton, InvoicePrintButton } from "@/components/common/InvoiceReceipt";
+import { useInvoiceBranding } from "@/hooks/useInvoiceBranding";
+import { downloadInvoicePdf } from "@/lib/invoice-pdf";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
@@ -75,6 +77,7 @@ type RetailCustomer = { id: string; name: string; phone?: string | null };
 function PosContent() {
   const router = useRouter();
   const { role, token: reduxToken } = useAuth();
+  const branding = useInvoiceBranding();
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -484,6 +487,8 @@ function PosContent() {
             <div className="p-4">
               <InvoiceReceipt
                 orderNumber={receipt.saleNumber}
+                businessName={branding.businessName}
+                logoUrl={branding.logoUrl}
                 date={new Date(receipt.createdAt).toLocaleString("en-GB")}
                 status="paid"
                 subtotal={Number(receipt.subtotal)}
@@ -499,8 +504,41 @@ function PosContent() {
                     total: Number(item.lineTotal),
                   };
                 })}
+                contactPhone={branding.contactPhone}
+                contactEmail={branding.contactEmail}
+                address={branding.address}
+                website={branding.website}
+                footerNote="Thank you for your purchase!"
               />
               <div className="mt-4 flex justify-end gap-2 px-2 pb-2">
+                <InvoiceDownloadButton
+                  onClick={() =>
+                    void downloadInvoicePdf({
+                      fileName: `invoice-${receipt.saleNumber}.pdf`,
+                      orderNumber: receipt.saleNumber,
+                      businessName: branding.businessName,
+                      logoUrl: branding.logoUrl,
+                      date: new Date(receipt.createdAt).toLocaleString("en-GB"),
+                      status: "paid",
+                      items: receipt.items.map((item) => {
+                        const parsed = parseVariantName(item.productName);
+                        return {
+                          productName: parsed.name,
+                          variantName: parsed.variantName,
+                          quantity: item.quantity,
+                          price: Number(item.unitPrice),
+                          total: Number(item.lineTotal),
+                        };
+                      }),
+                      subtotal: Number(receipt.subtotal),
+                      total: Number(receipt.totalAmount),
+                      contactPhone: branding.contactPhone,
+                      contactEmail: branding.contactEmail,
+                      address: branding.address,
+                      website: branding.website,
+                    })
+                  }
+                />
                 <InvoicePrintButton onClick={() => window.print()} />
                 <button
                   type="button"

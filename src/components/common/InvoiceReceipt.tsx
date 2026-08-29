@@ -1,7 +1,6 @@
 "use client";
 
-import Image from "next/image";
-import { CalendarDays, Hash, Printer, QrCode, Utensils } from "lucide-react";
+import { CalendarDays, Download, Hash, Printer, QrCode, Utensils } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type InvoiceLineItem = {
@@ -16,6 +15,7 @@ export type InvoiceLineItem = {
 export type InvoiceReceiptProps = {
   orderNumber: string;
   businessName?: string;
+  logoUrl?: string | null;
   tableLabel?: string | null;
   date?: string;
   items: InvoiceLineItem[];
@@ -26,8 +26,12 @@ export type InvoiceReceiptProps = {
   status?: string;
   contactPhone?: string;
   contactPhoneAlt?: string;
+  contactEmail?: string;
+  address?: string;
+  website?: string;
   className?: string;
   compact?: boolean;
+  footerNote?: string;
 };
 
 function formatMoney(value: number) {
@@ -44,6 +48,7 @@ function lineTotal(item: InvoiceLineItem) {
 export default function InvoiceReceipt({
   orderNumber,
   businessName = "DigiNizam Business",
+  logoUrl,
   tableLabel,
   date,
   items,
@@ -52,10 +57,14 @@ export default function InvoiceReceipt({
   packagingPrice = 0,
   total,
   status,
-  contactPhone = "0300-4153368",
-  contactPhoneAlt = "0335-4153368",
+  contactPhone,
+  contactPhoneAlt,
+  contactEmail,
+  address,
+  website = "diginizam.com",
   className,
   compact = false,
+  footerNote = "Thank you for your business!",
 }: InvoiceReceiptProps) {
   const displayDate =
     date ??
@@ -73,6 +82,9 @@ export default function InvoiceReceipt({
         ? "bg-[#fff7ed] text-[#ea580c] border-[#fed7aa]"
         : "bg-[#eef3ff] text-[#0050f8] border-[#c7d7f5]";
 
+  const netAmount = Number.isFinite(Number(total)) ? Number(total) : 0;
+  const hasContact = Boolean(contactPhone || contactPhoneAlt || contactEmail || address);
+
   return (
     <article
       className={cn(
@@ -85,11 +97,16 @@ export default function InvoiceReceipt({
         <div className="pointer-events-none absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-white/10" />
         <div className="relative flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-xl bg-white/15 backdrop-blur-sm">
-              <Image src="/logo-mark.png" alt="" width={32} height={28} className="h-7 w-auto object-contain" />
+            <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-xl bg-white/15 backdrop-blur-sm">
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt={businessName} className="h-10 w-10 object-contain" />
+              ) : (
+                <span className="text-sm font-bold">{businessName.slice(0, 2).toUpperCase()}</span>
+              )}
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">DigiNizam Receipt</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">Receipt</p>
               <h3 className="text-lg font-bold leading-tight">{businessName}</h3>
             </div>
           </div>
@@ -166,23 +183,32 @@ export default function InvoiceReceipt({
           ) : null}
           <div className="flex items-center justify-between border-t border-[#dbe4ef] pt-3">
             <span className="text-sm font-bold uppercase tracking-wide text-[#001840]">Net Amount</span>
-            <span className="text-xl font-bold text-[#0050F8]">{formatMoney(total)}</span>
+            <span className="text-xl font-bold text-[#0050F8]">{formatMoney(netAmount)}</span>
           </div>
         </div>
 
         <div className="flex items-end justify-between gap-4 border-t border-[#edf2f7] pt-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-[#94a3b8]">Contact</p>
-            <p className="text-sm font-bold text-[#334155]">{contactPhone}</p>
-            <p className="text-sm font-bold text-[#334155]">{contactPhoneAlt}</p>
+            {hasContact ? (
+              <>
+                {address ? <p className="text-sm font-semibold text-[#334155]">{address}</p> : null}
+                {contactPhone ? <p className="text-sm font-bold text-[#334155]">{contactPhone}</p> : null}
+                {contactPhoneAlt ? <p className="text-sm font-bold text-[#334155]">{contactPhoneAlt}</p> : null}
+                {contactEmail ? <p className="text-sm font-semibold text-[#334155]">{contactEmail}</p> : null}
+              </>
+            ) : (
+              <p className="text-sm font-semibold text-[#94a3b8]">Add phone in business profile</p>
+            )}
           </div>
           <QrCode className="h-10 w-10 text-[#001840]/40" />
         </div>
       </div>
 
       <footer className="border-t border-[#edf2f7] bg-[#f8fbff] px-6 py-4 text-center">
-        <p className="text-sm font-medium italic text-[#64748b]">Thank you for dining with us!</p>
+        <p className="text-sm font-medium italic text-[#64748b]">{footerNote}</p>
         <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#94a3b8]">Powered by DigiNizam</p>
+        <p className="mt-0.5 text-[10px] font-bold text-[#0050F8]">{website}</p>
       </footer>
     </article>
   );
@@ -207,6 +233,30 @@ export function InvoicePrintButton({
       className={cn("dn-btn dn-btn-primary gap-2", className)}
     >
       <Printer className="h-4 w-4" />
+      {label}
+    </button>
+  );
+}
+
+export function InvoiceDownloadButton({
+  onClick,
+  loading,
+  label = "Download PDF",
+  className,
+}: {
+  onClick?: () => void;
+  loading?: boolean;
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      className={cn("dn-btn dn-btn-outline gap-2", className)}
+    >
+      <Download className="h-4 w-4" />
       {label}
     </button>
   );

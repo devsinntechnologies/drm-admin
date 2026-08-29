@@ -118,6 +118,9 @@ export function SoftwareSyncStatusPanel({ businessId }: SoftwareSyncStatusPanelP
                         </p>
                         <p className="text-xs text-[#94a3b8]">
                           {device.platform ?? "unknown"} · {device.userRole ?? "staff"}
+                          {device.appVersion
+                            ? ` · v${device.appVersion}${device.versionCode != null ? ` (${device.versionCode})` : ""}`
+                            : ""}
                         </p>
                       </div>
                     </div>

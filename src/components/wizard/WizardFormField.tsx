@@ -27,15 +27,17 @@ export function WizardFormField({
         {required ? <span className="wizard-required">*</span> : null}
       </span>
       {children}
-      <span
-        className={cn(
-          "wizard-field-hint",
-          hintTone === "success" && "wizard-field-hint--success",
-          hintTone === "error" && "wizard-field-hint--error",
-        )}
-      >
-        {hint || "\u00a0"}
-      </span>
+      {hint ? (
+        <span
+          className={cn(
+            "wizard-field-hint",
+            hintTone === "success" && "wizard-field-hint--success",
+            hintTone === "error" && "wizard-field-hint--error",
+          )}
+        >
+          {hint}
+        </span>
+      ) : null}
     </div>
   );
 }

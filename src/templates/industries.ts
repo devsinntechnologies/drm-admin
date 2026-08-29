@@ -228,7 +228,7 @@ export const INDUSTRY_TEMPLATES: IndustryTemplate[] = [
     family: "general-retail",
     theme: { accent: "blue", icon: "car" },
     labels: { product: "Part", products: "Parts", order: "Order", orders: "Orders" },
-    modules: ["dashboard", "pos", "products", "categories", "orders", "brands", "vehicle-compatibility", "inventory", "serial-numbers", "sales", "returns", "warranties", "purchases", "suppliers", "customers", "reports", "settings"],
+    modules: ["dashboard", "pos", "products", "categories", "orders", "brands", "vehicle-compatibility", "inventory", "serial-numbers", "sales", "returns", "warranties", "purchases", "suppliers", "customers", "staff", "reports", "settings"],
     optionalModules: ["delivery", "accounting", "multi-branch"],
     dashboardCards: ["today-sales", "low-stock", "fast-moving-parts", "warranty-claims", "top-vehicle-brands", "pending-purchases"],
     roles: ["Owner", "Counter Sales", "Warehouse", "Technician"],

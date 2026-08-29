@@ -18,6 +18,7 @@ export type MobileDeviceSyncRecord = {
   lastHeartbeatAt: string | null;
   lastSuccessfulSyncAt: string | null;
   lastError: string | null;
+  versionCode: number | null;
   updatedAt: string;
 };
 
@@ -38,10 +39,15 @@ export const mobileSyncApi = createApi({
   baseQuery: authenticatedBaseQueryWithReauth,
   tagTypes: ["MobileSyncDevices", "MobileSyncLiveStatus"],
   endpoints: (builder) => ({
-    getMobileSyncDevices: builder.query<MobileDeviceSyncRecord[], string>({
-      query: (businessId) => `/mobile-sync/devices?businessId=${encodeURIComponent(businessId)}`,
+    getMobileSyncDevices: builder.query<MobileDeviceSyncRecord[], string | void>({
+      query: (businessId) =>
+        businessId
+          ? `/mobile-sync/devices?businessId=${encodeURIComponent(businessId)}`
+          : "/mobile-sync/devices",
       transformResponse: (response: unknown) => unwrapData<MobileDeviceSyncRecord[]>(response),
-      providesTags: (_result, _error, businessId) => [{ type: "MobileSyncDevices", id: businessId }],
+      providesTags: (_result, _error, businessId) => [
+        { type: "MobileSyncDevices", id: businessId || "ALL" },
+      ],
     }),
     // The "Live" half of the Live/Synced status pair -- whether any
     // realtime client (order socket) is connected for this business right

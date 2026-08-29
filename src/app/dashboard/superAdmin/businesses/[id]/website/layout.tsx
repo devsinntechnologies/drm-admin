@@ -1,12 +1,11 @@
 "use client";
 
 import { Suspense } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import Loading from "@/components/common/Loading";
 import { BusinessSectionTabs } from "@/components/business/BusinessSectionTabs";
+import { BusinessWorkspaceActions } from "@/components/business/BusinessWorkspaceActions";
 import { WebsiteSubTabs } from "@/components/business/website/WebsiteSubTabs";
 import { Breadcrumbs } from "@/components/design-system/Breadcrumbs";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
@@ -31,23 +30,28 @@ function WebsiteLayoutContent({ children }: { children: React.ReactNode }) {
         className="mb-4"
       />
 
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-semibold text-[#0f172a]">
             {isLoading ? "Website" : `${business?.businessName ?? "Business"} · Website`}
           </h1>
           <p className="mt-1 text-sm text-[#64748b]">Public storefront for customers.</p>
         </div>
-        <Link
-          href={`/dashboard/superAdmin/businesses/${businessId}`}
-          className="dn-btn dn-btn-outline inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm"
-        >
-          <ArrowLeft className="h-4 w-4" /> Profile
-        </Link>
+        <BusinessWorkspaceActions
+          businessId={businessId}
+          business={business}
+          area="website"
+        />
       </div>
 
       <div className="mb-5 space-y-4">
-        <BusinessSectionTabs businessId={businessId} active="website" />
+        <BusinessSectionTabs
+          businessId={businessId}
+          active="website"
+          websiteEnabled={business?.websiteEnabled}
+          portalEnabled={business?.portalEnabled}
+          softwareEnabled={business?.softwareEnabled}
+        />
         <WebsiteSubTabs businessId={businessId} />
       </div>
 

@@ -21,6 +21,13 @@ export type StaffAccount = {
   createdAt: string;
 };
 
+export type CreateStaffResult = {
+  account: StaffAccount;
+  temporaryPassword?: string;
+  credentialsEmailSent?: boolean;
+  credentialsEmailError?: string;
+};
+
 function getAuthToken(reduxToken: string | null) {
   return reduxToken || getStoredAuthToken();
 }
@@ -42,6 +49,29 @@ function normalizeRow(row: Record<string, unknown>, fallbackRole?: string): Staf
   };
 }
 
+/** Same formula as backend generateEntityEmail: ownerlocal+staff_name@domain */
+export function previewStaffLoginEmail(
+  businessEmail: string | null | undefined,
+  staffName: string,
+  _role?: string,
+): string {
+  const trimmed = String(businessEmail || "").trim().toLowerCase();
+  const at = trimmed.indexOf("@");
+  const raw = at > 0 ? trimmed.slice(0, at) : "staff";
+  const prefix =
+    raw.replace(/[^a-z0-9._-]+/g, "").replace(/^\.+|\.+$/g, "") || "staff";
+  const domain = at > 0 ? trimmed.slice(at + 1) : "gmail.com";
+  const slug =
+    staffName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 40) || "user";
+  return `${prefix}+${slug}@${domain}`;
+}
+
 async function fetchRestaurantRole(
   endpoint: string,
   authToken: string,
@@ -57,9 +87,24 @@ async function fetchRestaurantRole(
     const text = await response.text().catch(() => "");
     throw new Error(text || `Failed to fetch ${endpoint}`);
   }
-  const json = (await response.json()) as { data?: Record<string, unknown>[] };
+  const json = (await response.json()) as {
+    data?: Record<string, unknown>[] | Record<string, unknown>;
+  };
   const role = endpoint === "waiters" ? "waiter" : "kitchen";
-  return (json.data ?? []).map((row) => normalizeRow(row, role));
+  const raw = json.data;
+  const rows = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  return rows.map((row) => normalizeRow(row, role));
+}
+
+async function parseFetchError(response: Response, fallback: string) {
+  const text = await response.text();
+  try {
+    const parsed = JSON.parse(text);
+    const detail = parsed.message || parsed.error || text;
+    return typeof detail === "string" ? detail : fallback;
+  } catch {
+    return text || fallback;
+  }
 }
 
 export function useStaffAccounts(
@@ -103,11 +148,9 @@ export function useStaffAccounts(
       }
 
       const path = family === "pharmacy" ? "/pharmacy/staff" : "/retail/staff";
-      const result = await apiClient.get<{ data?: Record<string, unknown>[] } | Record<string, unknown>[]>(
-        `${path}?page=1&limit=100`,
-        authToken,
-        businessId,
-      );
+      const result = await apiClient.get<
+        { data?: Record<string, unknown>[] } | Record<string, unknown>[]
+      >(`${path}?page=1&limit=100`, authToken, businessId);
       const rows = Array.isArray(result) ? result : (result?.data ?? []);
       setUsers(
         rows
@@ -126,7 +169,12 @@ export function useStaffAccounts(
   }, [fetchUsers]);
 
   const createStaff = useCallback(
-    async (payload: { name: string; password: string; role: string; email?: string }) => {
+    async (payload: {
+      name: string;
+      password: string;
+      role: string;
+      email?: string;
+    }): Promise<CreateStaffResult> => {
       const authToken = getAuthToken(token);
       if (!authToken || !businessId) {
         throw new Error("No authentication token available");
@@ -134,6 +182,8 @@ export function useStaffAccounts(
 
       setActionLoading(true);
       try {
+        let created: Record<string, unknown> = {};
+
         if (family === "restaurant") {
           const endpoint = payload.role === "kitchen" ? "kitchens" : "waiters";
           const url = new URL(`${BASE_URL}/${endpoint}`);
@@ -152,19 +202,15 @@ export function useStaffAccounts(
             }),
           });
           if (!response.ok) {
-            const text = await response.text();
-            let detail: unknown = text;
-            try {
-              const parsed = JSON.parse(text);
-              detail = parsed.message || parsed.error || text;
-            } catch {
-              /* keep text */
-            }
-            throw new Error(typeof detail === "string" ? detail : "Failed to create staff");
+            throw new Error(await parseFetchError(response, "Failed to create staff"));
           }
+          const json = (await response.json()) as {
+            data?: Record<string, unknown>;
+          } & Record<string, unknown>;
+          created = (json.data ?? json) as Record<string, unknown>;
         } else {
           const path = family === "pharmacy" ? "/pharmacy/staff" : "/retail/staff";
-          await apiClient.post(
+          created = (await apiClient.post<Record<string, unknown>>(
             path,
             {
               name: payload.name,
@@ -174,7 +220,175 @@ export function useStaffAccounts(
             },
             authToken,
             businessId,
+          )) as Record<string, unknown>;
+        }
+
+        await fetchUsers();
+        return {
+          account: normalizeRow(created, payload.role),
+          temporaryPassword:
+            typeof created.temporaryPassword === "string"
+              ? created.temporaryPassword
+              : payload.password,
+          credentialsEmailSent: created.credentialsEmailSent === true,
+          credentialsEmailError:
+            typeof created.credentialsEmailError === "string"
+              ? created.credentialsEmailError
+              : undefined,
+        };
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [token, businessId, family, fetchUsers],
+  );
+
+  const updateStaff = useCallback(
+    async (staff: StaffAccount, payload: { name?: string; role?: string }) => {
+      const authToken = getAuthToken(token);
+      if (!authToken || !businessId) throw new Error("No authentication token available");
+
+      setActionLoading(true);
+      try {
+        if (family === "restaurant") {
+          const endpoint = staff.role === "kitchen" ? "kitchens" : "waiters";
+          const url = new URL(`${BASE_URL}/${endpoint}/${staff.id}`);
+          url.searchParams.append("businessId", businessId);
+          const response = await fetch(url.toString(), {
+            method: "PATCH",
+            headers: {
+              accept: "*/*",
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name: payload.name }),
+          });
+          if (!response.ok) {
+            throw new Error(await parseFetchError(response, "Failed to update staff"));
+          }
+        } else {
+          const path = family === "pharmacy" ? "/pharmacy/staff" : "/retail/staff";
+          await apiClient.patch(
+            `${path}/${staff.id}`,
+            {
+              name: payload.name,
+              role: payload.role,
+            },
+            authToken,
+            businessId,
           );
+        }
+        await fetchUsers();
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [token, businessId, family, fetchUsers],
+  );
+
+  const updatePassword = useCallback(
+    async (staff: StaffAccount, password: string) => {
+      const authToken = getAuthToken(token);
+      if (!authToken || !businessId) throw new Error("No authentication token available");
+
+      setActionLoading(true);
+      try {
+        if (family === "restaurant") {
+          const endpoint = staff.role === "kitchen" ? "kitchens" : "waiters";
+          const url = new URL(`${BASE_URL}/${endpoint}/${staff.id}/password`);
+          url.searchParams.append("businessId", businessId);
+          const response = await fetch(url.toString(), {
+            method: "PATCH",
+            headers: {
+              accept: "*/*",
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ newPassword: password, password }),
+          });
+          if (!response.ok) {
+            throw new Error(await parseFetchError(response, "Failed to update password"));
+          }
+        } else {
+          const path = family === "pharmacy" ? "/pharmacy/staff" : "/retail/staff";
+          await apiClient.patch(
+            `${path}/${staff.id}/password`,
+            { password },
+            authToken,
+            businessId,
+          );
+        }
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [token, businessId, family],
+  );
+
+  const setStatus = useCallback(
+    async (staff: StaffAccount, isActive: boolean) => {
+      const authToken = getAuthToken(token);
+      if (!authToken || !businessId) throw new Error("No authentication token available");
+
+      setActionLoading(true);
+      try {
+        if (family === "restaurant") {
+          const endpoint = staff.role === "kitchen" ? "kitchens" : "waiters";
+          const url = new URL(`${BASE_URL}/${endpoint}/${staff.id}/status`);
+          url.searchParams.append("businessId", businessId);
+          const response = await fetch(url.toString(), {
+            method: "PATCH",
+            headers: {
+              accept: "*/*",
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ isActive }),
+          });
+          if (!response.ok) {
+            throw new Error(await parseFetchError(response, "Failed to update status"));
+          }
+        } else {
+          const path = family === "pharmacy" ? "/pharmacy/staff" : "/retail/staff";
+          await apiClient.patch(
+            `${path}/${staff.id}/status`,
+            { isActive },
+            authToken,
+            businessId,
+          );
+        }
+        await fetchUsers();
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [token, businessId, family, fetchUsers],
+  );
+
+  const deleteStaff = useCallback(
+    async (staff: StaffAccount) => {
+      const authToken = getAuthToken(token);
+      if (!authToken || !businessId) throw new Error("No authentication token available");
+
+      setActionLoading(true);
+      try {
+        if (family === "restaurant") {
+          const endpoint = staff.role === "kitchen" ? "kitchens" : "waiters";
+          const url = new URL(`${BASE_URL}/${endpoint}/${staff.id}`);
+          url.searchParams.append("businessId", businessId);
+          const response = await fetch(url.toString(), {
+            method: "DELETE",
+            headers: {
+              accept: "*/*",
+              Authorization: `Bearer ${authToken}`,
+            },
+          });
+          if (!response.ok) {
+            throw new Error(await parseFetchError(response, "Failed to remove staff"));
+          }
+        } else {
+          const path = family === "pharmacy" ? "/pharmacy/staff" : "/retail/staff";
+          await apiClient.delete(`${path}/${staff.id}`, authToken, businessId);
         }
         await fetchUsers();
       } finally {
@@ -202,6 +416,10 @@ export function useStaffAccounts(
     actionLoading,
     error,
     createStaff,
+    updateStaff,
+    updatePassword,
+    setStatus,
+    deleteStaff,
     refetch: fetchUsers,
   };
 }

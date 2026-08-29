@@ -6,7 +6,10 @@ import { Eye, FileText, Loader2, Search } from "lucide-react";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { PortalPage, PortalPageHeader, portalSearchClass } from "@/components/admin/PortalPage";
-import InvoiceReceipt, { InvoicePrintButton } from "@/components/common/InvoiceReceipt";
+import InvoiceReceipt, { InvoiceDownloadButton, InvoicePrintButton } from "@/components/common/InvoiceReceipt";
+import { PrinterAccessAlert } from "@/components/common/PrinterAccessAlert";
+import { useInvoiceBranding } from "@/hooks/useInvoiceBranding";
+import { downloadInvoicePdf } from "@/lib/invoice-pdf";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
@@ -14,6 +17,8 @@ import { useRetailResource } from "@/hooks/useRetailResource";
 import { apiClient } from "@/lib/api-client";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { getStoredAuthToken } from "@/lib/utils";
+import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
+import { parseSalesSettings } from "@/lib/module-feature-settings";
 
 interface SaleItem {
   id: string;
@@ -61,6 +66,9 @@ function formatDate(value: string) {
 function SalesContent() {
   const router = useRouter();
   const { role, token: reduxToken } = useAuth();
+  const branding = useInvoiceBranding();
+  const { templateConfig } = useBusinessTemplate();
+  const allowPrinter = parseSalesSettings(templateConfig?.moduleSettings).allowPrinter;
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -71,6 +79,7 @@ function SalesContent() {
   const [search, setSearch] = useState("");
   const [selectedSale, setSelectedSale] = useState<SaleDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [printerAlertOpen, setPrinterAlertOpen] = useState(false);
 
   useEffect(() => {
     const storedRole = typeof window !== "undefined" ? localStorage.getItem("roleName") : null;
@@ -191,6 +200,8 @@ function SalesContent() {
             <div className="p-4">
               <InvoiceReceipt
                 orderNumber={selectedSale.saleNumber}
+                businessName={branding.businessName}
+                logoUrl={branding.logoUrl}
                 date={formatDate(selectedSale.createdAt)}
                 status="paid"
                 subtotal={Number(selectedSale.subtotal)}
@@ -206,6 +217,11 @@ function SalesContent() {
                     total: Number(item.lineTotal),
                   };
                 })}
+                contactPhone={branding.contactPhone}
+                contactEmail={branding.contactEmail}
+                address={branding.address}
+                website={branding.website}
+                footerNote="Thank you for your purchase!"
               />
               {Number(selectedSale.discountAmount) > 0 ? (
                 <p className="mt-2 px-2 text-xs text-[var(--text-muted)]">
@@ -213,7 +229,43 @@ function SalesContent() {
                 </p>
               ) : null}
               <div className="mt-4 flex justify-end gap-2 px-2 pb-2">
-                <InvoicePrintButton onClick={() => window.print()} />
+                <InvoiceDownloadButton
+                  onClick={() =>
+                    void downloadInvoicePdf({
+                      fileName: `invoice-${selectedSale.saleNumber}.pdf`,
+                      orderNumber: selectedSale.saleNumber,
+                      businessName: branding.businessName,
+                      logoUrl: branding.logoUrl,
+                      date: formatDate(selectedSale.createdAt),
+                      status: "paid",
+                      items: selectedSale.items.map((item) => {
+                        const parsed = parseVariantName(item.productName);
+                        return {
+                          productName: parsed.name,
+                          variantName: parsed.variantName,
+                          quantity: item.quantity,
+                          price: Number(item.unitPrice),
+                          total: Number(item.lineTotal),
+                        };
+                      }),
+                      subtotal: Number(selectedSale.subtotal),
+                      total: Number(selectedSale.totalAmount),
+                      contactPhone: branding.contactPhone,
+                      contactEmail: branding.contactEmail,
+                      address: branding.address,
+                      website: branding.website,
+                    })
+                  }
+                />
+                <InvoicePrintButton
+                  onClick={() => {
+                    if (!allowPrinter) {
+                      setPrinterAlertOpen(true);
+                      return;
+                    }
+                    window.print();
+                  }}
+                />
                 <button
                   type="button"
                   className="rounded-xl border px-4 py-2 text-sm font-semibold"
@@ -226,6 +278,7 @@ function SalesContent() {
           ) : null}
         </DialogContent>
       </Dialog>
+      <PrinterAccessAlert open={printerAlertOpen} onOpenChange={setPrinterAlertOpen} />
     </AdminShell>
   );
 }

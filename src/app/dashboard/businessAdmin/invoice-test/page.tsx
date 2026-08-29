@@ -178,8 +178,8 @@ export default function InvoiceTestPage() {
 
               {/* Footer Banner */}
               <div className="bg-[#f5f5f5] p-5 text-center mt-auto border-t border-gray-200 shrink-0">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">POWERED BY DEVSINN TECHNOLOGIES</p>
-                <p className="text-[12px] font-bold text-[#d32f2f] mt-1">www.devsinntechnologies.com</p>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">POWERED BY DIGINIZAM</p>
+                <p className="text-[12px] font-bold text-[#0050F8] mt-1">diginizam.com</p>
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileText, Search, Clock3, Loader2, Eye, Printer, CheckCircle2, RotateCcw, File, X, Receipt, Filter, Trash2 } from "lucide-react";
+import { Download, FileText, Search, Clock3, Loader2, Eye, Printer, CheckCircle2, RotateCcw, File, X, Filter, Trash2 } from "lucide-react";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Loading from "@/components/common/Loading";
@@ -8,7 +8,8 @@ import AdminShell from "@/components/admin/AdminShell";
 import {
   PortalPage,
 } from "@/components/admin/PortalPage";
-import InvoiceReceipt, { InvoicePrintButton } from "@/components/common/InvoiceReceipt";
+import InvoiceReceipt, { InvoiceDownloadButton, InvoicePrintButton } from "@/components/common/InvoiceReceipt";
+import { PrinterAccessAlert } from "@/components/common/PrinterAccessAlert";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
@@ -16,8 +17,9 @@ import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { useInvoices, type InvoiceRecord } from "@/hooks/useInvoices";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { useInvoiceBranding } from "@/hooks/useInvoiceBranding";
+import { downloadInvoicePdf } from "@/lib/invoice-pdf";
+import { parseSalesSettings } from "@/lib/module-feature-settings";
 
 type StatusFilter = "all" | "pending" | "paid";
 type RangeFilter = "day" | "week" | "month";
@@ -46,9 +48,28 @@ function formatCurrency(value: number, currency = "PKR") {
   }
 }
 
-function parsePrice(value?: string | null) {
+function parsePrice(value?: string | number | null) {
   const amount = Number(value ?? 0);
   return Number.isFinite(amount) ? amount : 0;
+}
+
+function invoiceAmounts(invoice: InvoiceRecord) {
+  const itemsSubtotal = (invoice.Items ?? []).reduce((sum, item) => {
+    const explicit = Number(item.total);
+    if (Number.isFinite(explicit) && explicit > 0) return sum + explicit;
+    return sum + parsePrice(item.price) * Number(item.quantity || 0);
+  }, 0);
+  const delivery = parsePrice(invoice.deliveryCharges);
+  const packaging = parsePrice(invoice.packagingPrice);
+  const stored = parsePrice(invoice.totalPrice);
+  const total = stored > 0 ? stored : itemsSubtotal + delivery + packaging;
+  const subtotal =
+    typeof invoice.subtotal === "number" && invoice.subtotal > 0
+      ? invoice.subtotal
+      : itemsSubtotal > 0
+        ? itemsSubtotal
+        : Math.max(0, total - delivery - packaging);
+  return { subtotal, delivery, packaging, total };
 }
 
 function formatDate(value: string) {
@@ -75,8 +96,12 @@ function InvoicesContent() {
   const router = useRouter();
   const { role } = useAuth();
   const { templateConfig, currency } = useBusinessTemplate();
+  const branding = useInvoiceBranding();
   const isPharmacy = templateConfig?.industryId === "pharmacy";
   const isRetail = templateConfig?.industryId === "retail-store";
+  const salesSettings = parseSalesSettings(templateConfig?.moduleSettings);
+  const allowInvoiceExport = salesSettings.allowExport;
+  const allowPrinter = salesSettings.allowPrinter;
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -88,6 +113,8 @@ function InvoicesContent() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [updatingInvoiceUuid, setUpdatingInvoiceUuid] = useState<string | null>(null);
   const [deletingInvoiceUuid, setDeletingInvoiceUuid] = useState<string | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [printerAlertOpen, setPrinterAlertOpen] = useState(false);
 
   const canDeleteInvoice =
     (role ?? (typeof window !== "undefined" ? localStorage.getItem("roleName") : null)) ===
@@ -95,7 +122,7 @@ function InvoicesContent() {
     (role ?? (typeof window !== "undefined" ? localStorage.getItem("roleName") : null)) ===
       "super_admin";
 
-  const { invoices, loading, actionLoading, error, pagination, refetch, updateInvoiceStatus, deleteInvoice } = useInvoices({
+  const { invoices, loading, actionLoading, error, pagination, refetch, updateInvoiceStatus, deleteInvoice, exportExcel } = useInvoices({
     page: currentPage,
     limit: 100,
     range: rangeFilter,
@@ -194,50 +221,36 @@ function InvoicesContent() {
     }
   };
 
-  const handleExportPDF = () => {
-    if (filteredInvoices.length === 0) {
-      toast.error("No data to export");
-      return;
-    }
-
-    const toastId = toast.loading("Generating PDF...");
+  const handleExportExcel = async () => {
+    const toastId = toast.loading("Exporting invoices...");
     try {
-      const doc = new jsPDF();
-      doc.setFontSize(20);
-      doc.setTextColor(0, 24, 64);
-      doc.text("Invoices Report", 14, 22);
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
-
-      const tableData = filteredInvoices.map((r) => [
-        r.id,
-        r.orderNumber,
-        r.date,
-        formatCurrency(r.amount, currency),
-        r.status,
-      ]);
-
-      autoTable(doc, {
-        startY: 35,
-        head: [["Invoice ID", "Order #", "Date", "Amount", "Status"]],
-        body: tableData,
-        headStyles: { fillColor: [0, 24, 64] },
-        alternateRowStyles: { fillColor: [238, 243, 255] },
+      await exportExcel({
+        range: rangeFilter,
+        status: statusFilter,
       });
-
-      doc.save(`invoices-report-${Date.now()}.pdf`);
-      toast.success("PDF exported successfully", { id: toastId });
+      toast.success("Excel exported with invoice and product details.", { id: toastId });
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to generate PDF", { id: toastId });
+      const message = err instanceof Error ? err.message : "Failed to export invoices.";
+      toast.error(message, { id: toastId });
     }
   };
 
   const handlePrint = () => {
+    if (!allowPrinter) {
+      setPrinterAlertOpen(true);
+      return;
+    }
     if (typeof window !== "undefined") {
       window.print();
     }
+  };
+
+  const requestPrinterOr = (action: () => void) => {
+    if (!allowPrinter) {
+      setPrinterAlertOpen(true);
+      return;
+    }
+    action();
   };
 
   const openInvoiceDetails = (invoiceUuid: string) => {
@@ -247,11 +260,44 @@ function InvoicesContent() {
     setIsDetailsOpen(true);
   };
 
-  const selectedSubtotal = selectedInvoice
-    ? parsePrice(selectedInvoice.totalPrice) -
-      parsePrice(selectedInvoice.deliveryCharges) -
-      parsePrice(selectedInvoice.packagingPrice)
-    : 0;
+  const selectedAmounts = selectedInvoice ? invoiceAmounts(selectedInvoice) : null;
+
+  const handleDownloadPdf = async () => {
+    if (!selectedInvoice || !selectedAmounts) return;
+    const toastId = toast.loading("Preparing PDF...");
+    setDownloadingPdf(true);
+    try {
+      await downloadInvoicePdf({
+        fileName: `invoice-${selectedInvoice.invoiceNumber || selectedInvoice.uuid}.pdf`,
+        orderNumber: selectedInvoice.orderNumber || selectedInvoice.invoiceNumber,
+        businessName: branding.businessName || selectedInvoice.businessName,
+        logoUrl: branding.logoUrl,
+        date: formatDate(selectedInvoice.createdAt),
+        status: selectedInvoice.status,
+        items: (selectedInvoice.Items ?? []).map((item) => ({
+          productName: item.productname,
+          quantity: item.quantity,
+          price: item.price,
+          total: item.total,
+          variantName: item.variantName,
+        })),
+        subtotal: selectedAmounts.subtotal,
+        deliveryCharges: selectedAmounts.delivery,
+        packagingPrice: selectedAmounts.packaging,
+        total: selectedAmounts.total,
+        contactPhone: branding.contactPhone || selectedInvoice.businessPhone,
+        contactEmail: branding.contactEmail || selectedInvoice.businessEmail,
+        address: branding.address || selectedInvoice.businessAddress,
+        website: branding.website,
+      });
+      toast.success("Invoice PDF downloaded.", { id: toastId });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to download PDF.";
+      toast.error(message, { id: toastId });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   if (!isAuthorized) return null;
 
@@ -262,13 +308,6 @@ function InvoicesContent() {
       pageSubtitle={isPharmacy ? "Paid invoices and pharmacy sale history" : undefined}
     >
       <PortalPage>
-        <div className="mb-6 flex justify-end">
-          <button type="button" onClick={handleExportPDF} className="dn-btn dn-btn-outline shrink-0">
-            <Download className="h-4 w-4" />
-            Export PDF
-          </button>
-        </div>
-
         {/* Stats */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[
@@ -354,18 +393,30 @@ function InvoicesContent() {
 
         {/* Table */}
         <section className="rounded-2xl border border-[#e2e8f0] bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-[#edf2f7] px-6 py-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-[#0050F8]" />
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf2f7] px-4 py-4 sm:px-6">
+            <div className="flex min-w-0 items-center gap-2">
+              <FileText className="h-5 w-5 shrink-0 text-[#0050F8]" />
               <h2 className="text-lg font-bold text-[#0f172a]">Invoice List</h2>
               <span className="rounded-full bg-[#eef3ff] px-2.5 py-0.5 text-xs font-semibold text-[#001840]">
                 {filteredInvoices.length}
               </span>
             </div>
-            <button type="button" onClick={() => refetch()} className="dn-btn dn-btn-soft !h-9 !px-3">
-              <RotateCcw className={cn("h-4 w-4", loading && "animate-spin")} />
-              Refresh
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {allowInvoiceExport ? (
+                <button
+                  type="button"
+                  onClick={() => void handleExportExcel()}
+                  className="dn-btn dn-btn-primary !h-9 !px-3"
+                >
+                  <Download className="h-4 w-4" />
+                  Export Excel
+                </button>
+              ) : null}
+              <button type="button" onClick={() => refetch()} className="dn-btn dn-btn-soft !h-9 !px-3">
+                <RotateCcw className={cn("h-4 w-4", loading && "animate-spin")} />
+                Refresh
+              </button>
+            </div>
           </div>
 
           {error ? (
@@ -446,7 +497,7 @@ function InvoicesContent() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => openInvoiceDetails(invoice.uuid)}
+                            onClick={() => requestPrinterOr(() => openInvoiceDetails(invoice.uuid))}
                             className="dn-btn dn-btn-outline !h-9 !px-3"
                             title="Print"
                           >
@@ -515,8 +566,9 @@ function InvoicesContent() {
 
               <div className="p-6" id="invoice-print-area">
                 <InvoiceReceipt
-                  orderNumber={selectedInvoice.orderNumber}
-                  businessName={selectedInvoice.businessName}
+                  orderNumber={selectedInvoice.orderNumber || selectedInvoice.invoiceNumber}
+                  businessName={branding.businessName || selectedInvoice.businessName}
+                  logoUrl={branding.logoUrl}
                   date={formatDate(selectedInvoice.createdAt)}
                   status={selectedInvoice.status}
                   items={(selectedInvoice.Items ?? []).map((item, i) => ({
@@ -524,11 +576,17 @@ function InvoicesContent() {
                     productName: item.productname,
                     quantity: item.quantity,
                     price: item.price,
+                    total: item.total,
+                    variantName: item.variantName,
                   }))}
-                  subtotal={selectedSubtotal}
-                  deliveryCharges={parsePrice(selectedInvoice.deliveryCharges)}
-                  packagingPrice={parsePrice(selectedInvoice.packagingPrice)}
-                  total={parsePrice(selectedInvoice.totalPrice)}
+                  subtotal={selectedAmounts?.subtotal ?? 0}
+                  deliveryCharges={selectedAmounts?.delivery ?? 0}
+                  packagingPrice={selectedAmounts?.packaging ?? 0}
+                  total={selectedAmounts?.total ?? 0}
+                  contactPhone={branding.contactPhone || selectedInvoice.businessPhone}
+                  contactEmail={branding.contactEmail || selectedInvoice.businessEmail}
+                  address={branding.address || selectedInvoice.businessAddress}
+                  website={branding.website}
                 />
               </div>
 
@@ -547,12 +605,14 @@ function InvoicesContent() {
                     Mark Paid
                   </button>
                 ) : null}
+                <InvoiceDownloadButton onClick={() => void handleDownloadPdf()} loading={downloadingPdf} />
                 <InvoicePrintButton onClick={handlePrint} label="Print Receipt" />
               </div>
             </div>
           ) : null}
         </DialogContent>
       </Dialog>
+      <PrinterAccessAlert open={printerAlertOpen} onOpenChange={setPrinterAlertOpen} />
     </AdminShell>
   );
 }

@@ -66,7 +66,8 @@ export function PortalFeaturesContent({
     <section>
       <h2 className="mb-1 text-sm font-semibold text-[#475569]">Portal features</h2>
       <p className="mb-4 text-sm text-[#64748b]">
-        Open any enabled tool for {businessName}. Each opens in the live portal.
+        Portal workspace tools for {businessName}. App tabs are configured under Software & Mobile.
+        Logo and staff live in Additional details.
       </p>
       <div className="space-y-5">
         {sortedCategories.map((category) => (

@@ -7,9 +7,11 @@ import {
   type SoftwareRoleKey,
 } from "@/lib/role-access";
 import {
+  applyMobileModuleToggles,
   isSoftwareControlModule,
   isSoftwareSupportedModule,
   industryUsesMobileOrders,
+  mobileModulesForIndustry,
 } from "@/lib/software-supported-modules";
 
 const DEFAULT_ROLE_MODULES: Record<string, ModuleId[]> = {
@@ -34,9 +36,11 @@ const DEFAULT_ROLE_MODULES: Record<string, ModuleId[]> = {
     "sales",
     "products",
     "categories",
+    "inventory",
+    "staff",
   ],
   cashier: ["orders", "sales", "products", "categories"],
-  inventory_clerk: ["products", "categories", "inventory", "purchases"],
+  inventory_clerk: ["products", "categories", "inventory", "staff"],
   pharmacy_manager: [
     "dashboard",
     "pos",
@@ -112,12 +116,14 @@ export function mergeRoleAccessPreservingPortal(
   return merged;
 }
 
+/** Merge mobile toggles into the full template enabled list (portal modules preserved). */
 export function mergeEnabledModulesPreservingPortal(
   mobileEnabled: ModuleId[],
   templateEnabled: ModuleId[] | undefined,
+  industryId?: string | null,
 ): ModuleId[] {
-  const portalOnly = (templateEnabled ?? []).filter((id) => !isSoftwareControlModule(id));
-  return [...new Set([...mobileEnabled, ...portalOnly])];
+  const catalog = mobileModulesForIndustry(industryId);
+  return applyMobileModuleToggles(templateEnabled, mobileEnabled, catalog);
 }
 
 /** Strip role matrix state to mobile modules only (for Software Control UI). */
@@ -227,7 +233,10 @@ export function serializeResolvedRoleAccess(
   return serializeRoleAccess(resolved);
 }
 
-/** Grant Orders to retail sell roles when Orders is enabled for the business. */
+/**
+ * Seed Orders onto retail sell roles only when that role has no saved matrix yet.
+ * Never overrides an explicit admin uncheck — that was making Orders "stuck" on.
+ */
 export function ensureRetailRoleOrdersAccess(
   roleAccess: RoleAccessMap,
   enabledModules: ModuleId[],
@@ -241,21 +250,13 @@ export function ensureRetailRoleOrdersAccess(
   const next: RoleAccessMap = { ...roleAccess };
 
   for (const role of sellRoles) {
-    const entry = resolveRoleEntry(next, role, enabledModules);
-    if (entry.modules.includes("orders")) {
-      next[role] = entry;
+    const existing = roleAccess[role];
+    if (existing?.modules?.length) {
+      // Explicit matrix from admin — keep as saved (including Orders unchecked).
+      next[role] = normalizeRoleEntry(existing, enabledModules);
       continue;
     }
-    const modules = entry.modules.filter((id) => id !== "inventory");
-    if (!modules.includes("orders")) modules.push("orders");
-    next[role] = normalizeRoleEntry(
-      {
-        modules,
-        defaultModule:
-          entry.defaultModule === "inventory" ? "orders" : entry.defaultModule,
-      },
-      enabledModules,
-    );
+    next[role] = resolveRoleEntry({}, role, enabledModules);
   }
 
   return next;

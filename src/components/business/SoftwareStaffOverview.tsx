@@ -1,10 +1,33 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { KeyRound, Loader2, Mail, Plus, UserCog, Users } from "lucide-react";
+import {
+  Copy,
+  ExternalLink,
+  KeyRound,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  UserCheck,
+  UserMinus,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
-import { PortalStatCard } from "@/components/admin/PortalPage";
+import { FormField, portalInputClass } from "@/components/admin/PortalPage";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +37,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import type { BusinessRecord } from "@/hooks/useBusiness";
-import { useStaffAccounts } from "@/hooks/useStaffAccounts";
+import {
+  previewStaffLoginEmail,
+  useStaffAccounts,
+  type StaffAccount,
+} from "@/hooks/useStaffAccounts";
 import { manageUsersHrefForIndustry, staffRoleLabel } from "@/lib/staff-role-catalog";
 import { appendBusinessId } from "@/lib/module-routes";
 import { cn, normalizeErrorMessage } from "@/lib/utils";
@@ -26,7 +53,33 @@ type SoftwareStaffOverviewProps = {
   industryId?: string | null;
   enabledModules?: ModuleId[] | string[] | null;
   manageUsersHref?: string;
+  compact?: boolean;
+  hidePortalLink?: boolean;
 };
+
+type RoleFilter = "all" | "active" | string;
+
+const AVATAR_TONES = [
+  "bg-[#eef2ff] text-[#4338ca]",
+  "bg-[#ecfeff] text-[#0e7490]",
+  "bg-[#fef3c7] text-[#b45309]",
+  "bg-[#fce7f3] text-[#be185d]",
+  "bg-[#dbeafe] text-[#1d4ed8]",
+  "bg-[#f1f5f9] text-[#334155]",
+];
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+function avatarTone(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i += 1) hash += name.charCodeAt(i);
+  return AVATAR_TONES[hash % AVATAR_TONES.length];
+}
 
 function formatDate(iso: string) {
   const date = new Date(iso);
@@ -39,9 +92,13 @@ export function SoftwareStaffOverview({
   industryId,
   enabledModules,
   manageUsersHref,
+  compact = false,
+  hidePortalLink = false,
 }: SoftwareStaffOverviewProps) {
   const resolvedIndustryId = industryId ?? business.templateConfig?.industryId ?? null;
+  const ownerEmail = business.ownerEmail || business.email;
   const {
+    family,
     creatableRoles,
     users,
     byRole,
@@ -49,6 +106,10 @@ export function SoftwareStaffOverview({
     error,
     actionLoading,
     createStaff,
+    updateStaff,
+    updatePassword,
+    setStatus,
+    deleteStaff,
   } = useStaffAccounts(businessId, resolvedIndustryId, enabledModules);
 
   const defaultRole = creatableRoles[0]?.key ?? "waiter";
@@ -58,6 +119,10 @@ export function SoftwareStaffOverview({
     manageUsersHrefForIndustry(resolvedIndustryId, businessId) ??
     appendBusinessId("/dashboard/businessAdmin/users", businessId);
 
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [menuId, setMenuId] = useState<string | null>(null);
+
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: "",
@@ -65,8 +130,45 @@ export function SoftwareStaffOverview({
     email: "",
     role: defaultRole,
   });
+  const [createdCreds, setCreatedCreds] = useState<{
+    name: string;
+    email: string;
+    password: string;
+    emailSent: boolean;
+    emailError?: string;
+  } | null>(null);
+
+  const [editTarget, setEditTarget] = useState<StaffAccount | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState("");
+
+  const [passwordTarget, setPasswordTarget] = useState<StaffAccount | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<StaffAccount | null>(null);
 
   const roleOptions = useMemo(() => creatableRoles, [creatableRoles]);
+
+  const predictedEmail = useMemo(() => {
+    if (!createForm.name.trim()) return "";
+    return previewStaffLoginEmail(ownerEmail, createForm.name.trim());
+  }, [createForm.name, ownerEmail]);
+
+  const filteredUsers = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return users.filter((user) => {
+      if (roleFilter === "active") {
+        if (user.status.toLowerCase() !== "active") return false;
+      } else if (roleFilter !== "all" && user.role !== roleFilter) {
+        return false;
+      }
+      if (!query) return true;
+      return (
+        user.name.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query) ||
+        staffRoleLabel(user.role).toLowerCase().includes(query)
+      );
+    });
+  }, [users, roleFilter, search]);
 
   const onCreateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -90,13 +192,26 @@ export function SoftwareStaffOverview({
 
     const toastId = toast.loading("Creating staff…");
     try {
-      await createStaff({
+      const result = await createStaff({
         name,
         password,
         role,
         email: createForm.email.trim() || undefined,
       });
       toast.success(`${staffRoleLabel(role)} created successfully.`, { id: toastId });
+      setCreatedCreds({
+        name,
+        email: result.account.email || predictedEmail,
+        password: result.temporaryPassword || password,
+        emailSent: result.credentialsEmailSent === true,
+        emailError: result.credentialsEmailError,
+      });
+      if (!result.credentialsEmailSent) {
+        toast.warning(
+          result.credentialsEmailError ||
+            "Credentials email was not sent. Copy the login details below.",
+        );
+      }
       setCreateForm({ name: "", password: "", email: "", role: defaultRole });
       setCreateOpen(false);
     } catch (err) {
@@ -104,260 +219,649 @@ export function SoftwareStaffOverview({
     }
   };
 
+  const onEditSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editTarget) return;
+    const name = editName.trim();
+    if (!name) {
+      toast.error("Name is required.");
+      return;
+    }
+    const toastId = toast.loading("Updating staff…");
+    try {
+      await updateStaff(editTarget, {
+        name,
+        role: family === "restaurant" ? undefined : editRole || editTarget.role,
+      });
+      toast.success("Staff updated.", { id: toastId });
+      setEditTarget(null);
+    } catch (err) {
+      toast.error(normalizeErrorMessage(err, "Failed to update staff."), { id: toastId });
+    }
+  };
+
+  const onPasswordSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!passwordTarget) return;
+    const password = newPassword.trim();
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters.");
+      return;
+    }
+    const toastId = toast.loading("Updating password…");
+    try {
+      await updatePassword(passwordTarget, password);
+      toast.success("Password updated.", { id: toastId });
+      setPasswordTarget(null);
+      setNewPassword("");
+    } catch (err) {
+      toast.error(normalizeErrorMessage(err, "Failed to update password."), { id: toastId });
+    }
+  };
+
+  const toggleStatus = async (user: StaffAccount) => {
+    const isActive = user.status.toLowerCase() === "active";
+    const toastId = toast.loading(isActive ? "Deactivating…" : "Activating…");
+    try {
+      await setStatus(user, !isActive);
+      toast.success(isActive ? "Staff deactivated." : "Staff activated.", { id: toastId });
+    } catch (err) {
+      toast.error(normalizeErrorMessage(err, "Failed to update status."), { id: toastId });
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const toastId = toast.loading("Removing staff…");
+    try {
+      await deleteStaff(deleteTarget);
+      toast.success("Staff removed.", { id: toastId });
+      setDeleteTarget(null);
+    } catch (err) {
+      toast.error(normalizeErrorMessage(err, "Failed to remove staff."), { id: toastId });
+    }
+  };
+
+  const ownerName = business.ownerName || business.businessName || "Owner";
+
+  const filters: { key: RoleFilter; label: string; count: number }[] = [
+    { key: "all", label: "All", count: users.length },
+    ...roleOptions.map((role) => ({
+      key: role.key,
+      label: role.label,
+      count: byRole[role.key] ?? 0,
+    })),
+    { key: "active", label: "Active", count: activeCount },
+  ];
+
   return (
-    <div className="space-y-5">
-      <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-[#0f172a]">Mobile app logins</h2>
-            <p className="mt-1 text-sm text-[#64748b]">
-              Owner and staff accounts for {business.businessName}. Roles follow this business template.
+    <section className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#e2e8f0] px-5 py-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#eef2ff] text-[#4338ca]">
+            <Users className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-[#0f172a]">Staff</h2>
+            <p className="mt-0.5 text-sm text-[#64748b]">
+              {compact
+                ? "Create and manage logins for this business."
+                : "People who can sign in to this business."}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Dialog
-              open={createOpen}
-              onOpenChange={(open) => {
-                setCreateOpen(open);
-                if (!open) {
-                  setCreateForm({ name: "", password: "", email: "", role: defaultRole });
-                } else {
-                  setCreateForm((prev) => ({ ...prev, role: prev.role || defaultRole }));
-                }
-              }}
-            >
-              <DialogTrigger asChild>
-                <button
-                  type="button"
-                  className="dn-btn dn-btn-primary inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm"
-                  disabled={roleOptions.length === 0}
-                >
-                  <Plus className="h-4 w-4" />
-                  Create staff
-                </button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create staff</DialogTitle>
-                  <DialogDescription>
-                    Roles available for this industry template. They can sign in with the generated or provided login.
-                  </DialogDescription>
-                </DialogHeader>
-                <form className="space-y-4" onSubmit={(event) => void onCreateSubmit(event)}>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-[#111827]" htmlFor="software-staff-name">
-                      Name <span className="text-[#dc2626]">*</span>
-                    </label>
-                    <input
-                      id="software-staff-name"
-                      value={createForm.name}
-                      onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
-                      className="w-full rounded-xl border border-[#e0e0e0] bg-[#f8f8f8] px-4 py-3 text-sm outline-none focus:border-[#001840]"
-                      placeholder="Enter name"
-                      autoComplete="off"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-[#111827]" htmlFor="software-staff-password">
-                      Password <span className="text-[#dc2626]">*</span>
-                    </label>
-                    <input
-                      id="software-staff-password"
-                      type="password"
-                      value={createForm.password}
-                      onChange={(event) => setCreateForm((prev) => ({ ...prev, password: event.target.value }))}
-                      className="w-full rounded-xl border border-[#e0e0e0] bg-[#f8f8f8] px-4 py-3 text-sm outline-none focus:border-[#001840]"
-                      placeholder="Min. 6 characters"
-                      autoComplete="new-password"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-[#111827]" htmlFor="software-staff-email">
-                      Email (optional)
-                    </label>
-                    <input
-                      id="software-staff-email"
-                      type="email"
-                      value={createForm.email}
-                      onChange={(event) => setCreateForm((prev) => ({ ...prev, email: event.target.value }))}
-                      className="w-full rounded-xl border border-[#e0e0e0] bg-[#f8f8f8] px-4 py-3 text-sm outline-none focus:border-[#001840]"
-                      placeholder="optional@email.com"
-                      autoComplete="off"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <span className="text-sm font-medium text-[#111827]">Role</span>
-                    <div className="flex flex-wrap gap-2">
-                      {roleOptions.map((role) => (
-                        <button
-                          key={role.key}
-                          type="button"
-                          onClick={() => setCreateForm((prev) => ({ ...prev, role: role.key }))}
-                          className={cn(
-                            "rounded-lg border px-3 py-2 text-sm font-medium",
-                            createForm.role === role.key
-                              ? "border-[var(--brand-secondary)] bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]"
-                              : "border-[#e2e8f0] bg-white text-[#64748b]",
-                          )}
-                        >
-                          {role.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-2">
-                    <button
-                      type="button"
-                      className="dn-btn dn-btn-outline h-9 rounded-lg px-3 text-sm"
-                      onClick={() => setCreateOpen(false)}
-                      disabled={actionLoading}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="dn-btn dn-btn-primary h-9 rounded-lg px-3 text-sm"
-                      disabled={actionLoading}
-                    >
-                      {actionLoading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" /> Creating…
-                        </>
-                      ) : (
-                        "Create staff"
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-            <Link
-              href={usersLink}
-              className="dn-btn dn-btn-outline inline-flex h-9 items-center rounded-lg px-3 text-sm"
-            >
-              Manage users in portal
-            </Link>
-          </div>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {hidePortalLink ? null : (
+          <Link
+            href={usersLink}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]"
+          >
+            Team page
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
+          )}
+          <Dialog
+            open={createOpen}
+            onOpenChange={(open) => {
+              setCreateOpen(open);
+              if (!open) {
+                setCreateForm({ name: "", password: "", email: "", role: defaultRole });
+              } else {
+                setCreateForm((prev) => ({ ...prev, role: prev.role || defaultRole }));
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <button
+                type="button"
+                className="dn-btn dn-btn-primary inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm"
+                disabled={roleOptions.length === 0}
+              >
+                <Plus className="h-4 w-4" />
+                Add staff
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add staff</DialogTitle>
+                <DialogDescription>
+                  Login is the owner email with +staff_name, unless you enter a different address.
+                </DialogDescription>
+              </DialogHeader>
+              <form className="space-y-4" onSubmit={(event) => void onCreateSubmit(event)}>
+                <FormField label="Name" required>
+                  <input
+                    id="software-staff-name"
+                    value={createForm.name}
+                    onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
+                    className={portalInputClass}
+                    placeholder="Full name"
+                    autoComplete="off"
+                  />
+                </FormField>
 
-        <div className="grid gap-3 lg:grid-cols-2">
-          <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
-            <div className="flex items-start gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-lg bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]">
-                <UserCog className="h-5 w-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold uppercase tracking-wide text-[#94a3b8]">Business owner</p>
-                <p className="mt-1 font-semibold text-[#0f172a]">{business.ownerName || business.businessName}</p>
-                <p className="mt-2 flex items-center gap-2 text-sm text-[#475569]">
-                  <Mail className="h-4 w-4 shrink-0 text-[#94a3b8]" />
-                  <span className="truncate">{business.ownerEmail || business.email}</span>
-                </p>
-                <p className="mt-1 text-xs text-[#64748b]">Role: {business.ownerRole || "business_admin"}</p>
-              </div>
-            </div>
-          </div>
+                <FormField label="Password" required>
+                  <input
+                    id="software-staff-password"
+                    type="password"
+                    value={createForm.password}
+                    onChange={(event) => setCreateForm((prev) => ({ ...prev, password: event.target.value }))}
+                    className={portalInputClass}
+                    placeholder="Min. 6 characters"
+                    autoComplete="new-password"
+                  />
+                </FormField>
 
-          <div className="rounded-xl border border-dashed border-[#cbd5e1] bg-white p-4">
-            <div className="flex items-start gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#fef3c7] text-[#b45309]">
-                <KeyRound className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-[#94a3b8]">Passwords</p>
-                <p className="mt-1 text-sm text-[#475569]">
-                  Staff passwords are set when you create accounts here. Reset them from the users page if needed.
-                </p>
-              </div>
-            </div>
-          </div>
+                <FormField label="Login email">
+                  <input
+                    id="software-staff-email"
+                    type="email"
+                    value={createForm.email}
+                    onChange={(event) => setCreateForm((prev) => ({ ...prev, email: event.target.value }))}
+                    className={portalInputClass}
+                    placeholder={predictedEmail || "Leave blank to auto-generate"}
+                    autoComplete="off"
+                  />
+                  {predictedEmail && !createForm.email.trim() ? (
+                    <p className="text-xs text-[#64748b]">
+                      Will create <span className="font-mono">{predictedEmail}</span>
+                    </p>
+                  ) : null}
+                </FormField>
+
+                <div className="space-y-2">
+                  <span className="block text-sm font-semibold text-[#64748b]">Role</span>
+                  <div className="flex flex-wrap gap-2">
+                    {roleOptions.map((role) => (
+                      <button
+                        key={role.key}
+                        type="button"
+                        onClick={() => setCreateForm((prev) => ({ ...prev, role: role.key }))}
+                        className={cn(
+                          "rounded-lg border px-3 py-2 text-sm font-medium transition",
+                          createForm.role === role.key
+                            ? "border-[var(--brand-secondary)] bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]"
+                            : "border-[#e2e8f0] bg-white text-[#64748b] hover:border-[#cbd5e1]",
+                        )}
+                      >
+                        {role.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    className="dn-btn dn-btn-outline h-9 rounded-lg px-3 text-sm"
+                    onClick={() => setCreateOpen(false)}
+                    disabled={actionLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="dn-btn dn-btn-primary h-9 rounded-lg px-3 text-sm"
+                    disabled={actionLoading}
+                  >
+                    {actionLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Creating…
+                      </>
+                    ) : (
+                      "Add staff"
+                    )}
+                  </button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
-      </section>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {roleOptions.slice(0, 3).map((role) => (
-          <PortalStatCard
-            key={role.key}
-            label={role.label}
-            value={byRole[role.key] ?? 0}
-            icon={Users}
-            tone="primary"
-          />
-        ))}
-        <PortalStatCard label="Active staff" value={activeCount} icon={Users} tone="accent" />
-        {roleOptions.length <= 2 ? (
-          <PortalStatCard label="Total staff" value={users.length} icon={Users} tone="neutral" />
-        ) : null}
       </div>
 
-      <section className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
-        <div className="border-b border-[#e2e8f0] px-5 py-4">
-          <h3 className="text-sm font-semibold text-[#0f172a]">Staff accounts</h3>
-          <p className="text-sm text-[#64748b]">
-            Logins for this template ({roleOptions.map((r) => r.label).join(", ") || "none"}).
-          </p>
+      <div className="flex items-center gap-3 border-b border-[#e2e8f0] bg-[#f8fafc] px-5 py-3">
+        <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold", avatarTone(ownerName))}>
+          {initials(ownerName)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-[#0f172a]">{ownerName}</p>
+          <p className="truncate text-xs text-[#64748b]">{ownerEmail}</p>
         </div>
+        <span className="shrink-0 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-[#334155] ring-1 ring-[#e2e8f0]">
+          Owner
+        </span>
+      </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center gap-2 py-12 text-sm text-[#64748b]">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading users…
-          </div>
-        ) : error ? (
-          <p className="px-5 py-8 text-sm text-[#dc2626]">{error}</p>
-        ) : users.length === 0 ? (
-          <div className="px-5 py-10 text-center">
-            <p className="text-sm text-[#64748b]">No staff users yet.</p>
+      <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-1.5">
+          {filters.map((filter) => (
             <button
+              key={filter.key}
               type="button"
-              onClick={() => setCreateOpen(true)}
-              className="mt-3 inline-flex text-sm font-semibold text-[var(--brand-secondary)] hover:underline"
-              disabled={roleOptions.length === 0}
+              onClick={() => setRoleFilter(filter.key)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition",
+                roleFilter === filter.key
+                  ? "bg-[#0f172a] text-white"
+                  : "bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]",
+              )}
             >
-              Create staff
+              {filter.label}
+              <span
+                className={cn(
+                  "tabular-nums",
+                  roleFilter === filter.key ? "text-white/70" : "text-[#94a3b8]",
+                )}
+              >
+                {filter.count}
+              </span>
             </button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="bg-[#f8fafc] text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                <tr>
-                  <th className="px-5 py-3">Name</th>
-                  <th className="px-5 py-3">Login email</th>
-                  <th className="px-5 py-3">Role</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3">Created</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e2e8f0]">
-                {users.map((user) => (
-                  <tr key={user.id} className="text-[#334155]">
-                    <td className="px-5 py-3 font-medium text-[#0f172a]">{user.name}</td>
-                    <td className="px-5 py-3 font-mono text-xs">{user.email || "—"}</td>
-                    <td className="px-5 py-3">{staffRoleLabel(user.role)}</td>
+          ))}
+        </div>
+        <label className="relative block w-full sm:max-w-[16rem]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search staff"
+            className="h-9 w-full rounded-lg border border-[#e2e8f0] bg-white pl-9 pr-3 text-sm outline-none transition placeholder:text-[#94a3b8] focus:border-[var(--brand-secondary)] focus:ring-2 focus:ring-[var(--brand-secondary)]/15"
+            aria-label="Search staff"
+          />
+        </label>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 py-14 text-sm text-[#64748b]">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading staff…
+        </div>
+      ) : error ? (
+        <p className="px-5 py-8 text-sm text-[#dc2626]">{error}</p>
+      ) : users.length === 0 ? (
+        <div className="px-5 py-12 text-center">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[#f1f5f9] text-[#94a3b8]">
+            <Users className="h-5 w-5" />
+          </span>
+          <p className="mt-3 text-sm font-semibold text-[#0f172a]">No staff yet</p>
+          <p className="mt-1 text-sm text-[#64748b]">Add a store manager, cashier, or clerk to get started.</p>
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--brand-secondary)] hover:underline"
+            disabled={roleOptions.length === 0}
+          >
+            <Plus className="h-4 w-4" />
+            Add staff
+          </button>
+        </div>
+      ) : filteredUsers.length === 0 ? (
+        <p className="px-5 py-10 text-center text-sm text-[#64748b]">No staff match this filter.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="text-[11px] font-semibold uppercase tracking-wide text-[#94a3b8]">
+              <tr>
+                <th className="px-5 pb-2 pt-0 font-semibold">Person</th>
+                <th className="px-5 pb-2 pt-0 font-semibold">Role</th>
+                <th className="px-5 pb-2 pt-0 font-semibold">Status</th>
+                <th className="hidden px-5 pb-2 pt-0 font-semibold md:table-cell">Added</th>
+                <th className="px-5 pb-2 pt-0 text-right font-semibold">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#f1f5f9]">
+              {filteredUsers.map((user) => {
+                const isActive = user.status.toLowerCase() === "active";
+                return (
+                  <tr key={user.id} className="text-[#334155] hover:bg-[#fafbfc]">
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={cn(
+                            "grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-bold",
+                            avatarTone(user.name),
+                          )}
+                        >
+                          {initials(user.name)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-[#0f172a]">{user.name}</p>
+                          <p className="truncate text-xs text-[#64748b]">{user.email || "No email"}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className="inline-flex rounded-full bg-[#f1f5f9] px-2.5 py-0.5 text-xs font-semibold text-[#334155]">
+                        {staffRoleLabel(user.role)}
+                      </span>
+                    </td>
                     <td className="px-5 py-3">
                       <span
                         className={cn(
-                          "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold capitalize",
-                          user.status.toLowerCase() === "active"
-                            ? "bg-[#ecfdf5] text-[#059669]"
-                            : "bg-[#f1f5f9] text-[#64748b]",
+                          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize",
+                          isActive ? "bg-[#ecfdf5] text-[#059669]" : "bg-[#f1f5f9] text-[#64748b]",
                         )}
                       >
+                        <span className={cn("h-1.5 w-1.5 rounded-full", isActive ? "bg-[#059669]" : "bg-[#94a3b8]")} />
                         {user.status}
                       </span>
                     </td>
-                    <td className="px-5 py-3">{formatDate(user.createdAt)}</td>
+                    <td className="hidden px-5 py-3 text-[#64748b] md:table-cell">{formatDate(user.createdAt)}</td>
+                    <td className="px-5 py-3">
+                      <div className="flex justify-end">
+                        <StaffRowMenu
+                          user={user}
+                          open={menuId === user.id}
+                          onOpenChange={(open) => setMenuId(open ? user.id : null)}
+                          disabled={actionLoading}
+                          onEdit={() => {
+                            setMenuId(null);
+                            setEditTarget(user);
+                            setEditName(user.name);
+                            setEditRole(user.role);
+                          }}
+                          onPassword={() => {
+                            setMenuId(null);
+                            setPasswordTarget(user);
+                            setNewPassword("");
+                          }}
+                          onToggleStatus={() => {
+                            setMenuId(null);
+                            void toggleStatus(user);
+                          }}
+                          onDelete={() => {
+                            setMenuId(null);
+                            setDeleteTarget(user);
+                          }}
+                        />
+                      </div>
+                    </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Dialog open={Boolean(editTarget)} onOpenChange={(open) => !open && setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit staff</DialogTitle>
+            <DialogDescription>
+              Change the display name{family === "restaurant" ? "" : " or role"}.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={(event) => void onEditSubmit(event)}>
+            <FormField label="Name" required>
+              <input
+                id="edit-staff-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className={portalInputClass}
+              />
+            </FormField>
+            {family !== "restaurant" ? (
+              <div className="space-y-2">
+                <span className="block text-sm font-semibold text-[#64748b]">Role</span>
+                <div className="flex flex-wrap gap-2">
+                  {roleOptions.map((role) => (
+                    <button
+                      key={role.key}
+                      type="button"
+                      onClick={() => setEditRole(role.key)}
+                      className={cn(
+                        "rounded-lg border px-3 py-2 text-sm font-medium transition",
+                        editRole === role.key
+                          ? "border-[var(--brand-secondary)] bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]"
+                          : "border-[#e2e8f0] bg-white text-[#64748b] hover:border-[#cbd5e1]",
+                      )}
+                    >
+                      {role.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <div className="flex justify-end gap-2">
+              <button type="button" className="dn-btn dn-btn-outline h-9 rounded-lg px-3 text-sm" onClick={() => setEditTarget(null)}>
+                Cancel
+              </button>
+              <button type="submit" className="dn-btn dn-btn-primary h-9 rounded-lg px-3 text-sm" disabled={actionLoading}>
+                Save
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(passwordTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPasswordTarget(null);
+            setNewPassword("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset password</DialogTitle>
+            <DialogDescription>
+              Set a new password for {passwordTarget?.name}. Share it with them securely.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={(event) => void onPasswordSubmit(event)}>
+            <FormField label="New password" required>
+              <input
+                id="reset-staff-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className={portalInputClass}
+                placeholder="Min. 6 characters"
+                autoComplete="new-password"
+              />
+            </FormField>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="dn-btn dn-btn-outline h-9 rounded-lg px-3 text-sm"
+                onClick={() => setPasswordTarget(null)}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="dn-btn dn-btn-primary h-9 rounded-lg px-3 text-sm" disabled={actionLoading}>
+                Update password
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {deleteTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              They will no longer be able to sign in. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-[#dc2626] text-white hover:bg-[#b91c1c]"
+              onClick={() => void confirmDelete()}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={Boolean(createdCreds)} onOpenChange={(open) => !open && setCreatedCreds(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Staff login created</DialogTitle>
+            <DialogDescription>
+              {createdCreds?.emailSent
+                ? "Credentials were emailed to the staff login and the business owner."
+                : "Email was not sent. Copy these details and share them manually."}
+            </DialogDescription>
+          </DialogHeader>
+          {createdCreds ? (
+            <div className="space-y-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4 text-sm">
+              <p>
+                <span className="text-[#64748b]">Name:</span>{" "}
+                <span className="font-medium">{createdCreds.name}</span>
+              </p>
+              <p>
+                <span className="text-[#64748b]">Email:</span>{" "}
+                <span className="font-mono text-xs">{createdCreds.email}</span>
+              </p>
+              <p>
+                <span className="text-[#64748b]">Password:</span>{" "}
+                <span className="font-mono text-xs">{createdCreds.password}</span>
+              </p>
+              {!createdCreds.emailSent && createdCreds.emailError ? (
+                <p className="text-xs text-[#b45309]">{createdCreds.emailError}</p>
+              ) : null}
+              <button
+                type="button"
+                className="dn-btn dn-btn-outline inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg text-sm"
+                onClick={() => {
+                  void navigator.clipboard.writeText(
+                    `Email: ${createdCreds.email}\nPassword: ${createdCreds.password}`,
+                  );
+                  toast.success("Credentials copied.");
+                }}
+              >
+                <Copy className="h-4 w-4" />
+                Copy credentials
+              </button>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </section>
+  );
+}
+
+function StaffRowMenu({
+  user,
+  open,
+  onOpenChange,
+  disabled,
+  onEdit,
+  onPassword,
+  onToggleStatus,
+  onDelete,
+}: {
+  user: StaffAccount;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  disabled: boolean;
+  onEdit: () => void;
+  onPassword: () => void;
+  onToggleStatus: () => void;
+  onDelete: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isActive = user.status.toLowerCase() === "active";
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) onOpenChange(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onOpenChange(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, onOpenChange]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        className="grid h-8 w-8 place-items-center rounded-lg text-[#64748b] transition hover:bg-[#f1f5f9] hover:text-[#0f172a]"
+        aria-label={`Actions for ${user.name}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        disabled={disabled}
+        onClick={() => onOpenChange(!open)}
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-xl border border-[#e2e8f0] bg-white py-1 shadow-[0_12px_32px_rgba(15,23,42,0.12)]"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#334155] hover:bg-[#f8fafc]"
+            onClick={onEdit}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#334155] hover:bg-[#f8fafc]"
+            onClick={onPassword}
+          >
+            <KeyRound className="h-3.5 w-3.5" />
+            Reset password
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#334155] hover:bg-[#f8fafc]"
+            onClick={onToggleStatus}
+          >
+            {isActive ? <UserMinus className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}
+            {isActive ? "Deactivate" : "Activate"}
+          </button>
+          <div className="my-1 h-px bg-[#f1f5f9]" />
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#dc2626] hover:bg-[#fef2f2]"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Remove
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

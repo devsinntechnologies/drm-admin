@@ -17,6 +17,7 @@ import {
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { EmptyState } from "@/components/design-system/EmptyState";
+import { BusinessProductBadges } from "@/components/business/BusinessProductBadges";
 import { toast } from "sonner";
 import { Suspense, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -60,14 +61,14 @@ type BusinessItem = {
   email: string;
   phone: string;
   address: string;
-  revenue: string;
-  orders: string;
-  users: string;
   active: boolean;
   status: "Active" | "Paused" | "Expired";
   plan: "Enterprise" | "Premium" | "Basic";
   background: string;
   thumb: string;
+  websiteEnabled: boolean;
+  portalEnabled: boolean;
+  softwareEnabled: boolean;
 };
 
 const businessImages = [
@@ -171,14 +172,14 @@ function BusinessesContent() {
         email: item.email,
         phone: item.phone,
         address: item.address,
-        revenue: "-",
-        orders: "-",
-        users: "-",
         active: item.status === "active",
         status: normalizedStatus,
         plan: normalizedPlan,
         background: image,
         thumb: image,
+        websiteEnabled: item.websiteEnabled !== false,
+        portalEnabled: item.portalEnabled !== false,
+        softwareEnabled: item.softwareEnabled !== false,
       };
     });
   }, [businessData]);
@@ -847,20 +848,14 @@ function BusinessesContent() {
                 <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /> {business.address}</p>
               </div>
 
-              <div className="mt-4 grid grid-cols-3 rounded-xl bg-[#f5f6fa] p-3 text-center">
-                <div>
-                  <strong className="text-lg text-[#06ad53]">{business.revenue}</strong>
-                  <p className="text-xs text-[#616b80]">Revenue</p>
-                </div>
-                <div>
-                  <strong className="text-lg text-[#2063ec]">{business.orders}</strong>
-                  <p className="text-xs text-[#616b80]">Orders</p>
-                </div>
-                <div>
-                  <strong className="text-lg text-[#0050F8]">{business.users}</strong>
-                  <p className="text-xs text-[#616b80]">Users</p>
-                </div>
-              </div>
+              <BusinessProductBadges
+                flags={{
+                  websiteEnabled: business.websiteEnabled,
+                  portalEnabled: business.portalEnabled,
+                  softwareEnabled: business.softwareEnabled,
+                }}
+                className="mt-4"
+              />
 
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <button

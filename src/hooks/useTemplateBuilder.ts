@@ -2,9 +2,10 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { readLogoAsDataUrl, validateLogoFile } from "@/lib/logo-upload";
-import { createCustomizedConfig, buildDefaultNavigation } from "@/template-engine/builder";
 import { persistTemplateConfig } from "@/template-engine/persist-template-config";
+import { createCustomizedConfig, buildDefaultNavigation } from "@/template-engine/builder";
+import { businessApi } from "@/hooks/useBusiness";
+import { store } from "@/lib/store";
 import { createDefaultExtensions } from "@/template-engine/template-extensions-storage";
 import { getIndustryById } from "@/templates/industries";
 import {
@@ -46,6 +47,7 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
   const [productLabel, setProductLabel] = useState("Product");
   const [productsLabel, setProductsLabel] = useState("Products");
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [extensions, setExtensions] = useState<TemplateConfigExtensions>({});
   const [lastSavedId, setLastSavedId] = useState<string | null>(null);
   const [apiIndustries, setApiIndustries] = useState<Record<string, IndustryTemplate>>({});
@@ -161,6 +163,7 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
     setProductLabel(config.labels.product);
     setProductsLabel(config.labels.products);
     setLogoDataUrl(config.logoDataUrl ?? null);
+    setLogoFile(null);
     setExtensions(config.extensions ?? createDefaultExtensions(config.industryName));
   }, []);
 
@@ -332,22 +335,32 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
         moduleSettings,
         requireApi: Boolean(businessId),
       });
+      if (businessId && logoFile) {
+        await store
+          .dispatch(businessApi.endpoints.uploadBusinessLogo.initiate({ id: businessId, file: logoFile }))
+          .unwrap();
+      }
       setLastSavedId(result.config.id);
       toast.success("Template saved to platform");
       return result.config;
     },
-    [industry, businessName, buildConfig, extensions],
+    [industry, businessName, buildConfig, extensions, logoFile],
   );
 
-  const handleLogoUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const error = validateLogoFile(file);
-    if (error) {
-      toast.error(error);
-      return;
-    }
-    void readLogoAsDataUrl(file).then(setLogoDataUrl);
+  const applyLogoFile = useCallback((file: File) => {
+    setLogoFile(file);
+    setLogoDataUrl((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  }, []);
+
+  const clearLogo = useCallback(() => {
+    setLogoFile(null);
+    setLogoDataUrl((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return null;
+    });
   }, []);
 
   const gptPreviewConfig = useMemo(
@@ -426,7 +439,9 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
     productsLabel,
     setProductsLabel,
     logoDataUrl,
+    logoFile,
     setLogoDataUrl,
+    clearLogo,
     extensions,
     updateExtensions,
     lastSavedId,
@@ -440,7 +455,8 @@ export function useTemplateBuilder(initialIndustryId?: string | null) {
     reorderDashboardCards,
     reorderModules,
     updateNavLabel,
-    handleLogoUpload,
+    handleLogoUpload: applyLogoFile,
+    applyLogoFile,
     buildConfig,
     saveConfig,
     gptPreviewConfig,

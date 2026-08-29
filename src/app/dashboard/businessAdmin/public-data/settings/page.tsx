@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Loading from "@/components/common/Loading";
-import { AlertCircle, ImagePlus, Loader2, RefreshCw, Save, X } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw, Save } from "lucide-react";
 import { BASE_URL } from "@/lib/constant";
 import { toast } from "sonner";
+import { LogoPickerField } from "@/components/business/LogoPickerField";
 import { usePublicDataSettings, CatalogSyncStatusResponse } from "@/hooks/usePublicData";
 import { normalizeErrorMessage } from "@/lib/utils";
 
@@ -211,51 +212,30 @@ export default function PublicDataSettingsPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-[#0f172a]">Business logo</label>
-            <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
-              <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
-                {logoPreview ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoPreview} alt="Business logo" className="h-full w-full object-contain p-1" />
-                ) : (
-                  <ImagePlus className="h-6 w-6 text-[#94a3b8]" />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-[#64748b]">
-                  Used on table QR cards. JPEG, PNG, or WebP.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-xs font-semibold text-[#0f172a]">
-                    <ImagePlus className="h-4 w-4" />
-                    Upload logo
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0] || null;
-                        setLogoFile(file);
-                        setLogoPreview(file ? URL.createObjectURL(file) : logoPreview);
-                      }}
-                    />
-                  </label>
-                  {logoPreview ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLogoFile(null);
-                        setLogoPreview(null);
-                        setForm((prev) => ({ ...prev, logo: "" }));
-                      }}
-                      className="inline-flex items-center gap-1 rounded-lg border border-[#fee2e2] bg-white px-3 py-2 text-xs font-semibold text-[#dc2626]"
-                    >
-                      <X className="h-3.5 w-3.5" /> Remove
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
+            <LogoPickerField
+              src={logoPreview}
+              title="Website logo"
+              hint="Any size PNG, JPG, or WebP. Crop it for table QR cards and the public site."
+              onFile={(file) => {
+                setLogoFile(file);
+                setLogoPreview((prev) => {
+                  if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+                  return URL.createObjectURL(file);
+                });
+              }}
+              onRemove={
+                logoPreview
+                  ? () => {
+                      setLogoFile(null);
+                      setLogoPreview((prev) => {
+                        if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+                        return null;
+                      });
+                      setForm((prev) => ({ ...prev, logo: "" }));
+                    }
+                  : undefined
+              }
+            />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

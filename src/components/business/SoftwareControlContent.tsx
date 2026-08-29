@@ -5,8 +5,10 @@ import { useDispatch } from "react-redux";
 import {
   ChevronDown,
   ChevronRight,
+  Download,
+  FileSpreadsheet,
   GripVertical,
-  ImagePlus,
+  Printer,
   LayoutDashboard,
   Loader2,
   Palette,
@@ -16,10 +18,8 @@ import {
   Smartphone,
   Tags,
   Wifi,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { ModuleChip } from "@/components/wizard/TemplateConfigChips";
 import { DashboardCardChip } from "@/components/wizard/TemplateConfigChips";
 import { MobileHeaderPreview } from "@/components/business/MobileHeaderPreview";
 import { SoftwareRoleMatrix } from "@/components/business/SoftwareRoleMatrix";
@@ -30,9 +30,13 @@ import {
   useCreateTemplateConfigMutation,
   useUpdateTemplateConfigMutation,
 } from "@/hooks/useIndustryTemplate";
-import { parseRoleAccess, softwareRoleKeysForIndustry, type RoleAccessMap } from "@/lib/role-access";
+import {
+  parseRoleAccess,
+  softwareRoleKeysForIndustry,
+  type RoleAccessMap,
+  type SoftwareRoleKey,
+} from "@/lib/role-access";
 import { resolveModuleDisplayLabel, syncLabelsFromNavigation } from "@/lib/resolve-module-display-label";
-import { readLogoAsDataUrl, validateLogoFile } from "@/lib/logo-upload";
 import {
   DEFAULT_MOBILE_HEADER_SETTINGS,
   parseMobileHeaderSettings,
@@ -42,47 +46,45 @@ import {
 import {
   serializeResolvedRoleAccess,
   normalizeRoleAccessForModules,
-  roleModulesFromEnabled,
-  mergeEnabledModulesPreservingPortal,
   mergeRoleAccessPreservingPortal,
   mobileRoleAccessView,
-  mobileModulesFromEnabled,
-  ensureRetailRoleOrdersAccess,
+  resolveRoleEntry,
 } from "@/lib/software-role-defaults";
 import {
   parseCategoriesSettings,
   parseOrdersSettings,
   parseProductsSettings,
+  parseSalesSettings,
   serializeCategoriesSettings,
   serializeOrdersSettings,
   serializeProductsSettings,
+  serializeSalesSettings,
   type CategoriesModuleSettings,
   type OrdersModuleSettings,
   type ProductsModuleSettings,
+  type SalesModuleSettings,
 } from "@/lib/module-feature-settings";
 import {
   getMobileReadiness,
   mobileReadinessLabel,
   MOBILE_DASHBOARD_CARDS,
-  filterSoftwareControlModules,
   isSoftwareControlModule,
   softwareControlRoleModules,
-  ensureMobileOrdersModule,
   industryUsesMobileOrders,
+  mobileModulesForIndustry,
+  initialMobileEnabled,
+  enableMobileModule,
+  disableMobileModule,
+  applyMobileModuleToggles,
+  isMobileCapabilityModule,
 } from "@/lib/software-supported-modules";
 import { SoftwareModuleIcon } from "@/lib/software-module-icons";
 import { normalizeErrorMessage } from "@/lib/utils";
+import { isEmbeddedLogoData } from "@/lib/logo-upload";
+import { resolveMediaUrl } from "@/lib/media-url";
 import { syncNavigationToEnabledModules } from "@/template-engine/builder";
 import { getIndustryById } from "@/templates/industries";
-import { DASHBOARD_CARD_CATALOG } from "@/templates/modules";
-import { ACCENT_COLORS, colorsFromAccent } from "@/templates/modules";
-import {
-  canDisableModule,
-  getLockReason,
-  getLockedModules,
-  withDependenciesEnabled,
-  withDependentsDisabled,
-} from "@/templates/module-dependencies";
+import { DASHBOARD_CARD_CATALOG, MODULE_CATALOG, ACCENT_COLORS, colorsFromAccent } from "@/templates/modules";
 import type {
   AccentColor,
   CustomizedTemplateConfig,
@@ -99,19 +101,6 @@ type SoftwareControlContentProps = {
   industryId: string;
 };
 
-function ModulePlatformBadge({ moduleId, enabled }: { moduleId: ModuleId; enabled: boolean }) {
-  if (!enabled || !isSoftwareControlModule(moduleId)) return null;
-  const readiness = getMobileReadiness(moduleId);
-  const mobileLabel = mobileReadinessLabel(readiness);
-  return (
-    <span className="absolute right-2 top-2">
-      <span className="rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[10px] font-bold uppercase text-[#059669]">
-        {mobileLabel}
-      </span>
-    </span>
-  );
-}
-
 export function SoftwareControlContent({
   businessId,
   businessName,
@@ -121,32 +110,27 @@ export function SoftwareControlContent({
   const dispatch = useDispatch();
   const industry = getIndustryById(industryId);
 
-  /** Industry modules only — Business modules is the sole on/off control (no entitlements ceiling). */
-  const availableModules = useMemo<ModuleId[]>(() => {
-    if (!industry) return [];
-    return ensureMobileOrdersModule(
-      Array.from(new Set([...industry.modules, ...(industry.optionalModules ?? [])])),
-      industryId,
-    );
-  }, [industry, industryId]);
+  /** Flutter app modules for this industry — the only checklist in Software Control. */
+  const mobileCatalog = useMemo<ModuleId[]>(
+    () => mobileModulesForIndustry(industryId),
+    [industryId],
+  );
 
   const [enabledModules, setEnabledModules] = useState<ModuleId[]>(() =>
-    ensureMobileOrdersModule(
-      (templateConfig?.enabledModules ?? industry?.modules ?? []) as ModuleId[],
+    initialMobileEnabled(
+      (templateConfig?.enabledModules ?? []) as ModuleId[],
+      mobileModulesForIndustry(industryId),
       industryId,
     ),
   );
   const [roleAccess, setRoleAccess] = useState<RoleAccessMap>(() => {
-    const modules = ensureMobileOrdersModule(
-      (templateConfig?.enabledModules ?? industry?.modules ?? []) as ModuleId[],
+    const modules = initialMobileEnabled(
+      (templateConfig?.enabledModules ?? []) as ModuleId[],
+      mobileModulesForIndustry(industryId),
       industryId,
     );
-    return ensureRetailRoleOrdersAccess(
-      normalizeRoleAccessForModules(
-        parseRoleAccess(templateConfig?.moduleSettings),
-        roleModulesFromEnabled(modules),
-        industryId,
-      ),
+    return normalizeRoleAccessForModules(
+      parseRoleAccess(templateConfig?.moduleSettings),
       modules,
       industryId,
     );
@@ -176,6 +160,9 @@ export function SoftwareControlContent({
   const [categoriesSettings, setCategoriesSettings] = useState<CategoriesModuleSettings>(() =>
     parseCategoriesSettings(templateConfig?.moduleSettings),
   );
+  const [salesSettings, setSalesSettings] = useState<SalesModuleSettings>(() =>
+    parseSalesSettings(templateConfig?.moduleSettings),
+  );
   const [expandedModule, setExpandedModule] = useState<string | null>("dashboard");
   const [dragModuleId, setDragModuleId] = useState<string | null>(null);
 
@@ -184,18 +171,15 @@ export function SoftwareControlContent({
   const saving = savingUpdate || savingCreate;
 
   useEffect(() => {
-    const modules = ensureMobileOrdersModule(
-      (templateConfig?.enabledModules ?? industry?.modules ?? []) as ModuleId[],
+    const modules = initialMobileEnabled(
+      (templateConfig?.enabledModules ?? []) as ModuleId[],
+      mobileCatalog,
       industryId,
     );
     setEnabledModules(modules);
     setRoleAccess(
-      ensureRetailRoleOrdersAccess(
-        normalizeRoleAccessForModules(
-          parseRoleAccess(templateConfig?.moduleSettings),
-          roleModulesFromEnabled(modules),
-          industryId,
-        ),
+      normalizeRoleAccessForModules(
+        parseRoleAccess(templateConfig?.moduleSettings),
         modules,
         industryId,
       ),
@@ -221,19 +205,16 @@ export function SoftwareControlContent({
     setProductsSettings(parseProductsSettings(templateConfig?.moduleSettings));
     setOrdersSettings(parseOrdersSettings(templateConfig?.moduleSettings, industryId));
     setCategoriesSettings(parseCategoriesSettings(templateConfig?.moduleSettings));
-  }, [templateConfig, industry?.modules, industry?.dashboardCards, industry?.labels, industryId]);
-
-  const locked = useMemo(
-    () => getLockedModules(industry?.id ?? "", enabledModules, availableModules),
-    [industry?.id, enabledModules, availableModules],
-  );
+    setSalesSettings(parseSalesSettings(templateConfig?.moduleSettings));
+  }, [templateConfig, industry?.labels, industryId, mobileCatalog]);
 
   const navItems = useMemo(
     () =>
       navigation.filter(
         (item) =>
           enabledModules.includes(item.moduleId as ModuleId) &&
-          isSoftwareControlModule(item.moduleId),
+          isSoftwareControlModule(item.moduleId) &&
+          !isMobileCapabilityModule(item.moduleId),
       ),
     [navigation, enabledModules],
   );
@@ -245,43 +226,45 @@ export function SoftwareControlContent({
       templateConfig?.labels ?? industry?.labels,
     );
 
-  const toggleModule = (moduleId: ModuleId) => {
-    if (!industry) return;
-    const isOn = enabledModules.includes(moduleId);
-    if (isOn) {
-      const check = canDisableModule(industry.id, moduleId, enabledModules, availableModules);
-      if (!check.ok) {
-        toast.error(check.reason ?? "This module cannot be disabled");
-        return;
+  const grantModuleToOwnerRoles = (
+    prev: RoleAccessMap,
+    moduleId: ModuleId,
+    enabled: ModuleId[],
+  ): RoleAccessMap => {
+    const next = { ...normalizeRoleAccessForModules(prev, enabled, industryId) };
+    const ownerRoles: SoftwareRoleKey[] = ["business_admin", "store_manager"];
+    for (const role of ownerRoles) {
+      if (!softwareRoleKeysForIndustry(industryId).includes(role)) continue;
+      const entry = resolveRoleEntry(next, role, enabled);
+      if (entry.modules.includes(moduleId)) {
+        next[role] = entry;
+        continue;
       }
-      const { next, removed } = withDependentsDisabled(
-        industry.id,
-        moduleId,
-        enabledModules,
-        availableModules,
-      );
-      const related = removed.filter((id) => id !== moduleId);
-      if (related.length) toast.message(`Also turned off: ${related.join(", ")}`);
-      setEnabledModules(next);
-      setRoleAccess((prev) =>
-        normalizeRoleAccessForModules(prev, mobileModulesFromEnabled(next), industryId),
-      );
-      return;
+      next[role] = {
+        modules: [...entry.modules, moduleId],
+        defaultModule: entry.defaultModule ?? moduleId,
+      };
     }
-    const next = withDependenciesEnabled(industry.id, moduleId, enabledModules, availableModules);
-    const added = next.filter((id) => !enabledModules.includes(id) && id !== moduleId);
-    if (added.length) toast.message(`Also enabled: ${added.join(", ")}`);
-    setEnabledModules(next);
+    return next;
   };
 
-  const handleLogoUpload = (file?: File | null) => {
-    if (!file) return;
-    const error = validateLogoFile(file);
-    if (error) {
-      toast.error(error);
+  const toggleModule = (moduleId: ModuleId) => {
+    const isOn = enabledModules.includes(moduleId);
+    if (isOn) {
+      if (moduleId === "dashboard") {
+        toast.error("Dashboard stays available while other app modules are on.");
+        return;
+      }
+      const next = disableMobileModule(moduleId, enabledModules, mobileCatalog);
+      setEnabledModules(next);
+      setRoleAccess((prev) => normalizeRoleAccessForModules(prev, next, industryId));
       return;
     }
-    void readLogoAsDataUrl(file).then(setLogoUrl);
+    const next = enableMobileModule(moduleId, enabledModules, mobileCatalog);
+    setEnabledModules(next);
+    // Turning a module on also grants it to business admin / store manager so it
+    // shows in the app immediately after save + refresh (role matrix still editable).
+    setRoleAccess((prev) => grantModuleToOwnerRoles(prev, moduleId, next));
   };
 
   const reorderNav = (fromId: string, toId: string) => {
@@ -316,17 +299,15 @@ export function SoftwareControlContent({
     () =>
       softwareControlRoleModules(enabledModules, {
         includeCategories:
-          availableModules.includes("categories") &&
+          mobileCatalog.includes("categories") &&
           (enabledModules.includes("categories") || hasProducts),
       }),
-    [enabledModules, availableModules, hasProducts],
+    [enabledModules, mobileCatalog, hasProducts],
   );
   const roleKeys = useMemo(() => softwareRoleKeysForIndustry(industryId), [industryId]);
 
   const handleRoleAccessChange = (mobileView: RoleAccessMap) => {
-    setRoleAccess((prev) =>
-      mergeRoleAccessPreservingPortal(prev, mobileView, roleModules, enabledModules, industryId),
-    );
+    setRoleAccess(mobileView);
   };
 
   const save = async () => {
@@ -335,21 +316,15 @@ export function SoftwareControlContent({
       return;
     }
 
-    const mergedEnabled = ensureMobileOrdersModule(
-      mergeEnabledModulesPreservingPortal(
-        enabledModules,
-        (templateConfig?.enabledModules ?? []) as ModuleId[],
-      ),
-      industryId,
+    const mergedEnabled = applyMobileModuleToggles(
+      (templateConfig?.enabledModules ?? []) as ModuleId[],
+      enabledModules,
+      mobileCatalog,
     );
-    const mergedRoleAccess = ensureRetailRoleOrdersAccess(
-      mergeRoleAccessPreservingPortal(
-        parseRoleAccess(templateConfig?.moduleSettings),
-        roleAccess,
-        roleModules,
-        mergedEnabled,
-        industryId,
-      ),
+    const mergedRoleAccess = mergeRoleAccessPreservingPortal(
+      parseRoleAccess(templateConfig?.moduleSettings),
+      roleAccess,
+      roleModules,
       mergedEnabled,
       industryId,
     );
@@ -374,6 +349,7 @@ export function SoftwareControlContent({
       products: serializeProductsSettings(productsSettings),
       orders: serializeOrdersSettings(ordersSettings),
       categories: serializeCategoriesSettings(categoriesSettings),
+      sales: serializeSalesSettings(salesSettings),
     };
 
     const payload = {
@@ -389,7 +365,7 @@ export function SoftwareControlContent({
       currency: templateConfig?.currency,
       location: templateConfig?.location,
       branchCount: templateConfig?.branchCount,
-      logoUrl: logoUrl || "",
+      ...(logoUrl && !isEmbeddedLogoData(logoUrl) ? { logoUrl } : {}),
       businessId,
       moduleSettings,
     };
@@ -421,17 +397,15 @@ export function SoftwareControlContent({
   const mobileDashboardCards = (
     Object.keys(DASHBOARD_CARD_CATALOG) as DashboardCardId[]
   ).filter((cardId) => MOBILE_DASHBOARD_CARDS.has(cardId));
-  const softwareControlModules = useMemo(
-    () => filterSoftwareControlModules(availableModules),
-    [availableModules],
-  );
+  const softwareControlModules = mobileCatalog;
 
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-[#dbeafe] bg-[#eff6ff] px-4 py-3 text-sm text-[#1e40af]">
-        <strong>Flutter app control only.</strong> Configure mobile tabs, role access, orders screens,
-        products, and dashboard cards here. Web portal modules (reports, suppliers, settings, etc.) are
-        not shown — they are managed separately.
+        These are the <strong>mobile app screens</strong> DigiNizam Flutter ships (including{" "}
+        <strong>Staff</strong> and <strong>Inventory</strong>). Turn a module on → it appears in the
+        app for store managers after save + refresh. Turn it off → it hides. Role access below further
+        limits cashiers and other staff roles.
       </div>
 
       {/* Modules */}
@@ -441,30 +415,54 @@ export function SoftwareControlContent({
           <h2 className="text-base font-semibold text-[#0f172a]">1. Mobile app modules</h2>
         </div>
         <p className="mb-4 text-sm text-[#64748b]">
-          Only modules with a Flutter screen are listed. Disable a tab here and it disappears from the
-          mobile app on next sync.
+          Check to enable. Drag items in section 5 (Navigation order) to control tab order.
           {industryUsesMobileOrders(industryId) ? (
             <>
               {" "}
-              For retail / auto parts, <strong>Orders</strong> is the mobile POS sell tab (same as
-              the Flutter Orders screen). Keep it enabled for store managers and cashiers.
+              For retail / auto parts, <strong>Orders</strong> is the sell / POS tab on the phone.
             </>
           ) : null}
         </p>
         <div className="grid gap-2 md:grid-cols-2">
-          {softwareControlModules.map((moduleId) => (
-            <div key={moduleId} className="relative">
-              <ModuleChip
-                id={moduleId}
-                checked={enabledModules.includes(moduleId)}
-                locked={locked.has(moduleId)}
-                lockReason={getLockReason(industry.id, moduleId, enabledModules, availableModules)}
-                industryId={industry.id}
-                onToggle={() => toggleModule(moduleId)}
-              />
-              <ModulePlatformBadge moduleId={moduleId} enabled={enabledModules.includes(moduleId)} />
-            </div>
-          ))}
+          {softwareControlModules.map((moduleId) => {
+            const meta = MODULE_CATALOG[moduleId];
+            const checked = enabledModules.includes(moduleId);
+            const readiness = getMobileReadiness(moduleId);
+            return (
+              <label
+                key={moduleId}
+                className={`relative flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${
+                  checked
+                    ? "border-[var(--brand-secondary)] bg-[var(--brand-primary-soft)]"
+                    : "border-[#e2e8f0] bg-white hover:border-[#cbd5e1]"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4"
+                  checked={checked}
+                  disabled={moduleId === "dashboard" && checked}
+                  onChange={() => toggleModule(moduleId)}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <SoftwareModuleIcon moduleId={moduleId} className="h-4 w-4 text-[var(--brand-secondary)]" />
+                    <span className="text-sm font-semibold text-[#0f172a]">
+                      {meta?.label ?? moduleId}
+                    </span>
+                  </span>
+                  <span className="mt-0.5 block text-xs text-[#64748b]">
+                    {isMobileCapabilityModule(moduleId)
+                      ? "Not a tab — tools inside Products / Orders"
+                      : meta?.description ?? "Mobile app screen"}
+                  </span>
+                </span>
+                <span className="rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[10px] font-bold uppercase text-[#059669]">
+                  {mobileReadinessLabel(readiness)}
+                </span>
+              </label>
+            );
+          })}
         </div>
       </section>
 
@@ -494,44 +492,12 @@ export function SoftwareControlContent({
       <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
         <div className="mb-4 flex items-center gap-2">
           <Palette className="h-4 w-4 text-[var(--brand-secondary)]" />
-          <h2 className="text-base font-semibold text-[#0f172a]">3. Theme & logo</h2>
+          <h2 className="text-base font-semibold text-[#0f172a]">3. Theme</h2>
         </div>
-        <div className="mb-5 flex flex-wrap items-start gap-4 rounded-xl border border-dashed border-[#e2e8f0] bg-[#f8fafc] p-4">
-          <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="" className="h-full w-full object-contain p-1" />
-            ) : (
-              <span className="text-xs font-bold text-[#94a3b8]">Logo</span>
-            )}
-          </div>
-          <div className="min-w-[220px] flex-1">
-            <p className="text-sm font-semibold text-[#0f172a]">Business logo</p>
-            <p className="mt-1 text-xs text-[#64748b]">
-              Wide PNG/JPG recommended (transparent background). Shown on a white plate in the mobile navbar.
-            </p>
-            <div className="mt-2 flex gap-2">
-              <label className="dn-btn dn-btn-outline inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg px-3 text-xs">
-                <ImagePlus className="h-4 w-4" /> Upload
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={(event) => handleLogoUpload(event.target.files?.[0])}
-                />
-              </label>
-              {logoUrl ? (
-                <button
-                  type="button"
-                  onClick={() => setLogoUrl(null)}
-                  className="rounded-lg border px-3 py-2 text-xs font-semibold text-[#dc2626]"
-                >
-                  <X className="mr-1 inline h-3.5 w-3.5" /> Remove
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </div>
+        <p className="mb-4 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#64748b]">
+          Logo and business name are edited in Additional details, so portal, website, and software
+          all use the same identity.
+        </p>
         <TemplateThemeFields
           themeMode={themeMode}
           onThemeModeChange={setThemeMode}
@@ -654,7 +620,7 @@ export function SoftwareControlContent({
             </div>
             <MobileHeaderPreview
               businessName={businessName}
-              logoUrl={logoUrl}
+              logoUrl={resolveMediaUrl(logoUrl)}
               primaryColor={primaryColor}
               secondaryColor={secondaryColor}
               enabled={mobileHeader.enabled}
@@ -666,7 +632,7 @@ export function SoftwareControlContent({
         ) : (
           <MobileHeaderPreview
             businessName={businessName}
-            logoUrl={logoUrl}
+            logoUrl={resolveMediaUrl(logoUrl)}
             primaryColor={primaryColor}
             secondaryColor={secondaryColor}
             enabled={false}
@@ -790,11 +756,71 @@ export function SoftwareControlContent({
           ) : null}
 
           {enabledModules.includes("sales") ? (
-            <div className="rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#64748b]">
-              <span className="font-semibold text-[#0f172a]">Invoices / Sales</span>
-              <span className="mt-1 block">
-                Enabled in step 1. Mobile shows invoice list with daily filters — no extra toggles here yet.
-              </span>
+            <div className="rounded-lg border border-[#e2e8f0]">
+              <button
+                type="button"
+                onClick={() => setExpandedModule((m) => (m === "sales" ? null : "sales"))}
+                className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-[#0f172a]"
+              >
+                {expandedModule === "sales" ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+                <FileSpreadsheet className="h-4 w-4 text-[var(--brand-secondary)]" />
+                Invoices / Sales
+              </button>
+              {expandedModule === "sales" ? (
+                <div className="space-y-3 border-t border-[#e2e8f0] p-4">
+                  <label className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4"
+                      checked={salesSettings.allowExport}
+                      onChange={(event) =>
+                        setSalesSettings((prev) => ({
+                          ...prev,
+                          allowExport: event.target.checked,
+                        }))
+                      }
+                    />
+                    <span>
+                      <span className="flex items-center gap-1.5 text-sm font-medium text-[#0f172a]">
+                        <Download className="h-3.5 w-3.5" />
+                        Allow Excel export
+                      </span>
+                      <span className="mt-0.5 block text-xs text-[#64748b]">
+                        Staff can download the invoice list as Excel from Invoices. Turn this off to hide the
+                        button on mobile, desktop, and the staff portal.
+                      </span>
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4"
+                      checked={salesSettings.allowPrinter}
+                      onChange={(event) =>
+                        setSalesSettings((prev) => ({
+                          ...prev,
+                          allowPrinter: event.target.checked,
+                        }))
+                      }
+                    />
+                    <span>
+                      <span className="flex items-center gap-1.5 text-sm font-medium text-[#0f172a]">
+                        <Printer className="h-3.5 w-3.5" />
+                        Allow printer access
+                      </span>
+                      <span className="mt-0.5 block text-xs text-[#64748b]">
+                        Staff can connect a printer and print invoices from Invoices, Orders, and the mobile
+                        app. Turn this off to disable printing; staff will be asked to contact an
+                        administrator.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -1118,10 +1144,11 @@ export function SoftwareControlContent({
                     />
                     <span>
                       <span className="block text-sm font-medium text-[#0f172a]">
-                        Allow managing categories
+                        Allow adding / editing categories
                       </span>
                       <span className="block text-xs text-[#64748b]">
-                        Create, edit, and delete via the Categories dialog on mobile.
+                        When on, staff with Categories access can create, edit, and delete categories
+                        inside Products / Orders on mobile. When off, they can only view / filter.
                       </span>
                     </span>
                   </label>

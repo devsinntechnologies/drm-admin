@@ -20,6 +20,9 @@ export type BusinessRecord = {
   planId: string;
   planName: string;
   templateConfig?: ApiTemplateConfig | null;
+  websiteEnabled?: boolean;
+  portalEnabled?: boolean;
+  softwareEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -73,7 +76,12 @@ export type CreateBusinessResponse = {
 
 export type PatchBusinessPayload = {
   id: string;
-  body: CreateBusinessPayload;
+  body: Partial<CreateBusinessPayload> & {
+    logo?: string;
+    websiteEnabled?: boolean;
+    portalEnabled?: boolean;
+    softwareEnabled?: boolean;
+  };
 };
 
 function defaultPagination(total: number, page = 1, limit = 10): GetBusinessesResponse["pagination"] {
@@ -240,6 +248,22 @@ export const businessApi = createApi({
         { type: "Business", id: "LIST" },
       ],
     }),
+    uploadBusinessLogo: builder.mutation<BusinessRecord, { id: string; file: File }>({
+      query: ({ id, file }) => {
+        const body = new FormData();
+        body.append("logo", file);
+        return {
+          url: `/business/${id}/logo`,
+          method: "PATCH",
+          body,
+        };
+      },
+      transformResponse: (response: unknown) => normalizeBusinessRecord(response),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "Business", id },
+        { type: "Business", id: "LIST" },
+      ],
+    }),
   }),
 });
 
@@ -252,4 +276,5 @@ export const {
   usePatchBusinessByIdMutation,
   useDeleteBusinessByIdMutation,
   useActivateBusinessByIdMutation,
+  useUploadBusinessLogoMutation,
 } = businessApi;

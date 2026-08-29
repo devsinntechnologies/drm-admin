@@ -8,6 +8,12 @@ import { saveTemplateConfig, loadSavedTemplates } from "@/template-engine/storag
 import { saveTemplateExtensions, loadTemplateExtensions } from "@/template-engine/template-extensions-storage";
 import { INDUSTRY_TEMPLATES } from "@/templates/industries";
 import type { CustomizedTemplateConfig } from "@/templates/types";
+import { isEmbeddedLogoData } from "@/lib/logo-upload";
+
+function usableStoredLogo(value?: string): string | undefined {
+  if (!value || isEmbeddedLogoData(value)) return undefined;
+  return value;
+}
 
 export type PersistTemplateResult = {
   config: CustomizedTemplateConfig;
@@ -35,7 +41,7 @@ function configToApiPayload(
     location: config.location,
     branchCount: config.branchCount,
     businessId,
-    logoUrl: config.logoDataUrl || undefined,
+    logoUrl: usableStoredLogo(config.logoDataUrl),
     ...(moduleSettings ? { moduleSettings } : {}),
   };
 }

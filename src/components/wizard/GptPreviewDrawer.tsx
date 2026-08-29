@@ -38,6 +38,8 @@ const STEP_SUMMARIES: Record<string, string> = {
   permissions: "Default roles and permission matrix",
   preview: "Complete generated workspace experience",
   "select-template": "Selected industry template foundation",
+  review: "Confirm business details before creating",
+  generate: "Business created — next steps",
   review: "Final review before business generation",
   generate: "Generated business portal preview",
 };

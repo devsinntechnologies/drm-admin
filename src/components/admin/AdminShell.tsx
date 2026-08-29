@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { Activity, AppWindow, Building2, Crown, CreditCard, Globe2, LayoutGrid, LayoutTemplate, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Receipt, Bell, Shapes, ShoppingCart, Smartphone, Store, Users, UtensilsCrossed, X } from "lucide-react";
+import { Activity, AppWindow, Building2, Crown, CreditCard, Download, Globe2, LayoutGrid, LayoutTemplate, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Receipt, Bell, Shapes, ShoppingCart, Smartphone, Store, Users, UtensilsCrossed, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,6 +39,7 @@ const PATH_PAGE_TITLES: Record<string, string> = {
   "/dashboard/superAdmin/businesses/setup": "New business",
   "/dashboard/superAdmin/subscriptions": "Subscription Management",
   "/dashboard/superAdmin/industry-templates": "Industry Templates",
+  "/dashboard/superAdmin/app-updates": "App Updates",
   "/dashboard/superAdmin/action-logs": "Action Logs",
   "/dashboard/businessAdmin/products": "Menu Items",
   "/dashboard/businessAdmin/categories": "Manage Categories",
@@ -139,6 +140,12 @@ const tabs: Array<WorkspaceNavTab> = [
     label: "Industry Templates",
     href: "/dashboard/superAdmin/industry-templates",
     icon: <LayoutTemplate className="h-5 w-5" />,
+  },
+  {
+    key: "app-updates",
+    label: "App Updates",
+    href: "/dashboard/superAdmin/app-updates",
+    icon: <Download className="h-5 w-5" />,
   },
   {
     key: "action-logs",
@@ -362,7 +369,7 @@ export default function AdminShell({
   const visibleTabs = useMemo(() => {
     // During SSR and first paint, we MUST return a static set of tabs that match the server
     if (!isMounted) {
-      return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "industry-templates" || tab.key === "action-logs");
+      return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "industry-templates" || tab.key === "app-updates" || tab.key === "action-logs");
     }
 
     const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
@@ -414,7 +421,7 @@ export default function AdminShell({
     } else if (shouldShowBusinessTabs) {
       baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "products" || tab.key === "categories" || tab.key === "public-data" || tab.key === "website" || tab.key === "software" || tab.key === "tables" || tab.key === "invoices" || tab.key === "users" || tab.key === "orders" || tab.key === "kitchen");
     } else {
-      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "industry-templates" || tab.key === "action-logs");
+      baseTabs = tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "industry-templates" || tab.key === "app-updates" || tab.key === "action-logs");
       // Force Super Admin dashboard link to the superAdmin route
       baseTabs = baseTabs.map(tab =>
         tab.key === "dashboard" ? { ...tab, href: "/dashboard/superAdmin" } : tab

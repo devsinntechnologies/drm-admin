@@ -3,20 +3,18 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Globe2, ImagePlus, LayoutDashboard, Settings2, Shield, Smartphone, X, CheckCircle2, ArrowRight } from "lucide-react";
+import { Globe2, LayoutDashboard, Settings2, Smartphone, CheckCircle2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { PortalPage } from "@/components/admin/PortalPage";
-import { IndustryIcon } from "@/components/templates/IndustryIcon";
 import { GptPreviewDrawer } from "@/components/wizard/GptPreviewDrawer";
 import { WizardLayout } from "@/components/wizard/WizardLayout";
 import { WizardStepper } from "@/components/wizard/WizardStepper";
 import { IndustryPickerCard } from "@/components/wizard/IndustryPickerCard";
 import { BusinessMarketPicker, marketFromPhonePrefix, type BusinessMarketCode } from "@/components/wizard/BusinessMarketPicker";
 import { WizardFormField, WizardFormSection } from "@/components/wizard/WizardFormField";
-import { DashboardCardChip, ModuleChip } from "@/components/wizard/TemplateConfigChips";
-import { SoftwareRoleMatrix } from "@/components/business/SoftwareRoleMatrix";
+import { LogoPickerField } from "@/components/business/LogoPickerField";
 import { TemplateThemeFields } from "@/components/wizard/TemplateThemeFields";
 import { useTemplateBuilder } from "@/hooks/useTemplateBuilder";
 import { useCreateBusinessMutation, useLazyCheckBusinessEmailQuery } from "@/hooks/useBusiness";
@@ -26,7 +24,6 @@ import { saveBusinessProfile } from "@/lib/business-profile";
 import { loadAllTemplateConfigsLocal } from "@/template-engine/persist-template-config";
 import { INDUSTRY_TEMPLATES } from "@/templates/industries";
 import { colorsFromAccent } from "@/templates/modules";
-import type { DashboardCardId, ModuleId } from "@/templates/types";
 import type { BusinessSetupStepId } from "@/templates/types";
 import { pharmacyCountryDefaults } from "@/lib/pharmacy-market";
 import {
@@ -36,19 +33,11 @@ import {
   validateEmail,
   validatePhoneNumber,
 } from "@/lib/form-validation";
-import { softwareRoleKeysForIndustry, type RoleAccessMap } from "@/lib/role-access";
-import { roleModulesFromEnabled, serializeResolvedRoleAccess } from "@/lib/software-role-defaults";
-import { isSoftwareSupportedModule } from "@/lib/software-supported-modules";
-import { moduleLabel } from "@/templates/module-dependencies";
-import { cn } from "@/lib/utils";
 
 const STEPS = [
   { id: "select-template", label: "Industry", description: "Pick a business type" },
   { id: "business-profile", label: "Details", description: "Name and contact" },
   { id: "theme", label: "Look", description: "Colours and labels" },
-  { id: "modules", label: "Menu", description: "Turn features on or off" },
-  { id: "dashboard", label: "Stats", description: "Home screen numbers" },
-  { id: "roles", label: "Roles", description: "Who sees what in the app" },
   { id: "review", label: "Check", description: "Then create" },
   { id: "generate", label: "Done", description: "All set" },
 ] as const;
@@ -66,12 +55,9 @@ function BusinessSetupContent() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [countryCode, setCountryCode] = useState("+92");
   const [planId, setPlanId] = useState("");
-  const [dragModuleId, setDragModuleId] = useState<ModuleId | null>(null);
-  const [dragDashboardCardId, setDragDashboardCardId] = useState<DashboardCardId | null>(null);
   const [emailHint, setEmailHint] = useState<string | null>(null);
   const [phoneHint, setPhoneHint] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
-  const [wizardRoleAccess, setWizardRoleAccess] = useState<RoleAccessMap>({});
 
   const [createBusiness, { isLoading: creating }] = useCreateBusinessMutation();
   const [checkBusinessEmail] = useLazyCheckBusinessEmailQuery();
@@ -95,16 +81,6 @@ function BusinessSetupContent() {
 
   const stepIndex = STEPS.findIndex((s) => s.id === step);
   const completedSteps = STEPS.slice(0, stepIndex).map((s) => s.id);
-
-  const wizardRoleModules = useMemo(
-    () => roleModulesFromEnabled(builder.enabledModules as ModuleId[]),
-    [builder.enabledModules],
-  );
-
-  const wizardModuleLabel = (moduleId: ModuleId) => {
-    const nav = builder.navItems.find((item) => item.moduleId === moduleId);
-    return nav?.label?.trim() || moduleLabel(moduleId);
-  };
 
   function goNext() {
     const next = STEPS[stepIndex + 1];
@@ -241,13 +217,7 @@ function BusinessSetupContent() {
         throw new Error("Business created but no ID returned");
       }
 
-      await builder.saveConfig(created.id, {
-        roleAccess: serializeResolvedRoleAccess(
-          roleModulesFromEnabled(builder.enabledModules as ModuleId[]),
-          wizardRoleAccess,
-          builder.industry.id,
-        ),
-      });
+      await builder.saveConfig(created.id);
 
       saveBusinessProfile(created.id, {
         industryId: builder.industry.id,
@@ -296,7 +266,7 @@ function BusinessSetupContent() {
         {step === "select-template" && (
           <WizardLayout
             title="Pick an industry"
-            subtitle="Sets the menu and features for this business."
+            subtitle="Choose the template. Portal, website, and app modules are configured after you create the business."
             accentBlue
             isFirstStep
             onNext={() => {
@@ -365,35 +335,12 @@ function BusinessSetupContent() {
 
             <div className="wizard-form-stack">
               <WizardFormSection>
-                <div className="wizard-logo-row">
-                  <div className="wizard-logo-preview">
-                    {builder.logoDataUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={builder.logoDataUrl} alt="" className="h-full w-full object-contain p-1" />
-                    ) : (
-                      <IndustryIcon name={builder.industry.theme.icon} className="h-8 w-8 text-[#94a3b8]" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="wizard-form-section-title">Logo</p>
-                    <p className="wizard-form-section-desc">Optional — PNG or JPG, up to 2 MB.</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-3 text-sm font-medium text-[#64748b] hover:border-[#cbd5e1]">
-                        <ImagePlus className="h-4 w-4" /> Upload
-                        <input type="file" accept="image/*" className="hidden" onChange={builder.handleLogoUpload} />
-                      </label>
-                      {builder.logoDataUrl ? (
-                        <button
-                          type="button"
-                          onClick={() => builder.setLogoDataUrl(null)}
-                          className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#fecaca] bg-white px-3 text-sm font-medium text-[#dc2626]"
-                        >
-                          <X className="h-3.5 w-3.5" /> Remove
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
+                <LogoPickerField
+                  src={builder.logoDataUrl}
+                  hint="Any size PNG, JPG, or WebP. Crop it to fit login, splash, nav, and invoices."
+                  onFile={builder.applyLogoFile}
+                  onRemove={builder.logoDataUrl ? builder.clearLogo : undefined}
+                />
               </WizardFormSection>
 
               <div className="wizard-form-divider" />
@@ -582,119 +529,6 @@ function BusinessSetupContent() {
           </WizardLayout>
         )}
 
-        {step === "modules" && builder.industry && (
-          <WizardLayout
-            title="Menu items"
-            subtitle="Switch features on or off. Drag to reorder."
-            accentBlue
-            onBack={goBack}
-            onNext={goNext}
-            onOpenGptPreview={() => setGptOpen(true)}
-          >
-            <p className="wizard-help mb-4">Dashboard and Settings always stay on.</p>
-            {builder.modulePlan ? (
-              <p className="wizard-help mb-4 rounded-xl bg-white px-3 py-2">
-                {builder.modulePlan.summary}
-              </p>
-            ) : null}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {builder.navItems.map((item) => {
-                const checked = builder.enabledModules.includes(item.moduleId);
-                const locked = checked && builder.lockedModules.has(item.moduleId);
-                const reason = locked
-                  ? builder.getLockReason(item.moduleId)
-                  : null;
-                return (
-                  <ModuleChip
-                    key={item.moduleId}
-                    id={item.moduleId}
-                    label={item.label}
-                    checked={checked}
-                    locked={!!locked}
-                    lockReason={reason}
-                    industryId={builder.industry?.id}
-                    dragging={dragModuleId === item.moduleId}
-                    onToggle={() => builder.toggleModule(item.moduleId)}
-                    onDragStart={() => setDragModuleId(item.moduleId)}
-                    onDragEnd={() => setDragModuleId(null)}
-                    onDrop={() => {
-                      if (dragModuleId) builder.reorderModules(dragModuleId, item.moduleId);
-                      setDragModuleId(null);
-                    }}
-                  />
-                );
-              })}
-            </div>
-          </WizardLayout>
-        )}
-
-        {step === "dashboard" && builder.industry && (
-          <WizardLayout
-            title="Home screen"
-            subtitle="Pick the stats shown on the dashboard."
-            accentBlue
-            onBack={goBack}
-            onNext={goNext}
-            onOpenGptPreview={() => setGptOpen(true)}
-          >
-            <p className="wizard-help mb-4">Toggle on or off. Drag to change order.</p>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {builder.dashboardCardOrder.map((cardId) => {
-                const selected = builder.dashboardCards.includes(cardId);
-                return (
-                  <DashboardCardChip
-                    key={cardId}
-                    id={cardId}
-                    checked={selected}
-                    dragging={dragDashboardCardId === cardId}
-                    onToggle={() => builder.toggleDashboardCard(cardId)}
-                    onDragStart={() => setDragDashboardCardId(cardId)}
-                    onDragEnd={() => setDragDashboardCardId(null)}
-                    onDrop={() => {
-                      if (dragDashboardCardId) {
-                        builder.reorderDashboardCards(dragDashboardCardId, cardId);
-                      }
-                      setDragDashboardCardId(null);
-                    }}
-                  />
-                );
-              })}
-            </div>
-          </WizardLayout>
-        )}
-
-        {step === "roles" && builder.industry && (
-          <WizardLayout
-            title="Mobile role access"
-            subtitle="Choose which app tabs each staff role can open. You can change this later under Software & Mobile → Control."
-            accentBlue
-            onBack={goBack}
-            onNext={goNext}
-            onOpenGptPreview={() => setGptOpen(true)}
-          >
-            <div className="mb-4 rounded-xl border border-[#dbeafe] bg-[#eff6ff] px-4 py-3 text-sm text-[#1e40af]">
-              <Shield className="mr-1 inline h-4 w-4" />
-              Assign which enabled modules each role can open in the portal and Flutter app. Staff see changes
-              after they log in or refresh.
-            </div>
-            {wizardRoleModules.length === 0 ? (
-              <p className="wizard-help">
-                No modules are enabled. Go back and turn on at least one module, or continue — you can configure
-                access later in Software Control.
-              </p>
-            ) : (
-              <SoftwareRoleMatrix
-                businessName={builder.businessName || builder.industry.name}
-                modules={builder.enabledModules as ModuleId[]}
-                roleKeys={softwareRoleKeysForIndustry(builder.industry.id)}
-                roleAccess={wizardRoleAccess}
-                onChange={setWizardRoleAccess}
-                moduleLabel={wizardModuleLabel}
-              />
-            )}
-          </WizardLayout>
-        )}
-
         {step === "review" && builder.industry && (
           <WizardLayout
             title="Final check"
@@ -720,16 +554,13 @@ function BusinessSetupContent() {
               <div className="wizard-review-card">
                 <h4>Setup</h4>
                 <ul className="mt-2 space-y-1">
-                  <li>{builder.industry.name}</li>
+                  <li>{builder.industry.name} template</li>
                   {builder.industry.id === "pharmacy" ? (
                     <li>{builder.market === "UK" ? "United Kingdom" : "Pakistan"} · {builder.currency}</li>
                   ) : (
                     <li>{builder.currency}</li>
                   )}
-                  <li>{builder.enabledModules.length} menu items on</li>
-                  <li>{builder.enabledModules.filter((id) => isSoftwareSupportedModule(id)).length} mobile app modules</li>
-                  <li>{builder.dashboardCards.length} stats on home</li>
-                  <li>Role access for waiter, kitchen and business owner</li>
+                  <li>Portal, website, and software modules are enabled after create</li>
                   <li>{builder.themeMode} mode</li>
                 </ul>
               </div>
@@ -747,7 +578,8 @@ function BusinessSetupContent() {
                 <div className="min-w-0 flex-1">
                   <h2 className="text-xl font-semibold text-[#065f46]">{builder.businessName} is ready</h2>
                   <p className="mt-2 text-sm text-[#047857]">
-                    Your {builder.industry?.name.toLowerCase() ?? "business"} is set up. Choose where to go next.
+                    Your {builder.industry?.name.toLowerCase() ?? "business"} is set up with the industry
+                    template. Enable Website, Portal, or Software from each area, then configure modules there.
                   </p>
                 </div>
               </div>
@@ -803,8 +635,8 @@ function BusinessSetupContent() {
                 <span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]">
                   <Settings2 className="h-5 w-5" />
                 </span>
-                <p className="mt-4 text-base font-semibold text-[#0f172a]">Manage business profile</p>
-                <p className="mt-1 text-sm text-[#64748b]">Plan, contact details, theme and workspace settings.</p>
+                <p className="mt-4 text-base font-semibold text-[#0f172a]">Additional details</p>
+                <p className="mt-1 text-sm text-[#64748b]">Logo, contact, plan and staff for this business.</p>
                 <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[var(--brand-secondary)]">
                   View profile <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </span>
