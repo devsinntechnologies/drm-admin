@@ -21,8 +21,8 @@ export function PrinterAccessAlert({
             Printer access is not available
           </DialogTitle>
           <p className="mt-3 text-sm leading-relaxed text-[#64748b]">
-            Printing has not been enabled for this business. Please contact your administrator to
-            request access to printer and invoice printing features.
+            Printing is turned off for this business. Please contact your administrator to enable
+            printer connection and invoice printing.
           </p>
           <button
             type="button"

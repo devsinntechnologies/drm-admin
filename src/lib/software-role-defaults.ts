@@ -99,7 +99,7 @@ export function mergeRoleAccessPreservingPortal(
     ];
 
     if (!modules.length) {
-      delete merged[role];
+      merged[role] = { modules: [] };
       continue;
     }
 
@@ -138,10 +138,7 @@ export function mobileRoleAccessView(
   const view: RoleAccessMap = {};
 
   for (const role of keys) {
-    const entry = resolveRoleEntry(roleAccess, role, mobileModules);
-    if (entry.modules.length) {
-      view[role] = entry;
-    }
+    view[role] = resolveRoleEntry(roleAccess, role, mobileModules);
   }
 
   return view;
@@ -174,7 +171,9 @@ export function resolveRoleEntry(
   enabledModules: ModuleId[],
 ) {
   const existing = roleAccess[role];
-  if (existing?.modules?.length) {
+  // An explicit matrix (including modules: []) must win. Empty used to be
+  // treated as "unset" and the defaults snapped every checkbox back on.
+  if (existing && Array.isArray(existing.modules)) {
     return normalizeRoleEntry(existing, enabledModules);
   }
   const defaults = (DEFAULT_ROLE_MODULES[role] ?? []).filter((id) => enabledModules.includes(id));
@@ -214,10 +213,7 @@ export function normalizeRoleAccessForModules(
   for (const role of keys) {
     const entry = roleAccess[role];
     if (!entry) continue;
-    const normalized = normalizeRoleEntry(entry, enabledModules);
-    if (normalized.modules.length) {
-      next[role] = normalized;
-    }
+    next[role] = normalizeRoleEntry(entry, enabledModules);
   }
   return next;
 }

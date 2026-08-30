@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 type SoftwareMobilePreviewProps = {
   businessName: string;
   templateConfig: ApiTemplateConfig;
+  logoUrl?: string | null;
 };
 
 /** Matches Flutter MediaQuery tiers used across diginizam-flutter. */
@@ -47,6 +48,7 @@ const DEVICE_SIZES: Record<
 export function SoftwareMobilePreview({
   businessName,
   templateConfig,
+  logoUrl: logoUrlProp,
 }: SoftwareMobilePreviewProps) {
   const [previewRole, setPreviewRole] = useState<SoftwareRoleKey>("business_admin");
   const [activeTab, setActiveTab] = useState(0);
@@ -250,10 +252,10 @@ export function SoftwareMobilePreview({
                     className="flex h-9 max-w-[110px] items-center justify-center rounded-lg border border-white/80 px-2 shadow"
                     style={{ backgroundColor: mobileHeader.logoBackgroundColor }}
                   >
-                    {templateConfig.logoUrl ? (
+                    {resolveMediaUrl(logoUrlProp || templateConfig.logoUrl) ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={resolveMediaUrl(templateConfig.logoUrl) ?? undefined}
+                        src={resolveMediaUrl(logoUrlProp || templateConfig.logoUrl) ?? undefined}
                         alt=""
                         className="max-h-6 w-auto max-w-[96px] object-contain"
                       />

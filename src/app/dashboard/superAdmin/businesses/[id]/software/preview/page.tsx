@@ -29,7 +29,11 @@ export default function SoftwarePreviewPage() {
           How the Flutter app bottom navigation and home screen will look for {business.businessName}.
         </p>
       </section>
-      <SoftwareMobilePreview businessName={business.businessName} templateConfig={templateConfig} />
+      <SoftwareMobilePreview
+        businessName={business.businessName}
+        templateConfig={templateConfig}
+        logoUrl={business.logo || templateConfig.logoUrl}
+      />
     </div>
   );
 }

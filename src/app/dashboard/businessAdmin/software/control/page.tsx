@@ -64,7 +64,7 @@ export default function BusinessAdminSoftwareControlPage() {
         <div className="mb-5">
           <LogoPickerField
             src={resolveMediaUrl(business.logo || templateConfig?.logoUrl || null)}
-            hint="Any size PNG, JPG, or WebP. Crop it here — it shows on login, splash, nav, and invoices."
+            hint="This logo is the app icon, portal favicon, login mark, splash, nav, and invoices."
             busy={uploadingLogo}
             onFile={async (file) => {
               await uploadLogo({ id: business.id, file }).unwrap();
@@ -125,6 +125,7 @@ export default function BusinessAdminSoftwareControlPage() {
           businessName={businessName}
           templateConfig={templateConfig}
           industryId={industryId}
+          uploadedLogoUrl={business.logo}
           />
         </>
       ) : null}

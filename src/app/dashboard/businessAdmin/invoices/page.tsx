@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileText, Search, Clock3, Loader2, Eye, Printer, CheckCircle2, RotateCcw, File, X, Filter, Trash2 } from "lucide-react";
+import { Download, FileText, Search, Clock3, Loader2, Eye, Printer, RotateCcw, File, X, Trash2 } from "lucide-react";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Loading from "@/components/common/Loading";
@@ -22,7 +22,6 @@ import { downloadInvoicePdf } from "@/lib/invoice-pdf";
 import { formatInvoiceDateTime } from "@/lib/invoice-datetime";
 import { parseSalesSettings } from "@/lib/module-feature-settings";
 
-type StatusFilter = "all" | "pending" | "paid";
 type RangeFilter = "day" | "week" | "month";
 
 type InvoiceRow = {
@@ -73,11 +72,16 @@ function invoiceAmounts(invoice: InvoiceRecord) {
   return { subtotal, delivery, packaging, total };
 }
 
-function toStatus(raw: string): InvoiceRow["status"] {
-  const value = raw.toLowerCase();
-  if (value === "paid") return "Paid";
-  if (value === "pending") return "Pending";
-  return "Overdue";
+function displayInvoiceId(raw?: string | null) {
+  const value = (raw || "").trim();
+  if (!value || value.toUpperCase() === "PENDING" || value.toUpperCase() === "N/A") {
+    return "Pending";
+  }
+  return value;
+}
+
+function toStatus(_raw: string): InvoiceRow["status"] {
+  return "Paid";
 }
 
 function InvoicesContent() {
@@ -95,11 +99,9 @@ function InvoicesContent() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [rangeFilter, setRangeFilter] = useState<RangeFilter>("day");
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRecord | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [updatingInvoiceUuid, setUpdatingInvoiceUuid] = useState<string | null>(null);
   const [deletingInvoiceUuid, setDeletingInvoiceUuid] = useState<string | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [printerAlertOpen, setPrinterAlertOpen] = useState(false);
@@ -108,7 +110,7 @@ function InvoicesContent() {
     (role ?? (typeof window !== "undefined" ? localStorage.getItem("roleName") : null)) ===
       "business_admin";
 
-  const { invoices, loading, actionLoading, error, pagination, refetch, updateInvoiceStatus, deleteInvoice, exportExcel } = useInvoices({
+  const { invoices, loading, actionLoading, error, pagination, refetch, deleteInvoice, exportExcel } = useInvoices({
     page: currentPage,
     limit: 100,
     range: rangeFilter,
@@ -139,7 +141,7 @@ function InvoicesContent() {
 
   const rows = useMemo<InvoiceRow[]>(() => {
     return invoices.map((invoice) => ({
-      id: invoice.invoiceNumber || invoice.uuid,
+      id: displayInvoiceId(invoice.invoiceNumber),
       uuid: invoice.uuid,
       orderNumber: invoice.orderNumber,
       businessName: invoice.businessName,
@@ -156,35 +158,15 @@ function InvoicesContent() {
         .toLowerCase()
         .includes(search.toLowerCase());
 
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "pending" && invoice.status !== "Paid") ||
-        (statusFilter === "paid" && invoice.status === "Paid");
-
-      return matchesSearch && matchesStatus;
+      return matchesSearch;
     });
-  }, [rows, search, statusFilter]);
+  }, [rows, search]);
 
   const stats = useMemo(() => {
-    const pending = rows.filter((r) => r.status !== "Paid").length;
     const paid = rows.filter((r) => r.status === "Paid").length;
     const revenue = rows.filter((r) => r.status === "Paid").reduce((sum, r) => sum + r.amount, 0);
-    return { pending, paid, revenue, total: rows.length };
+    return { paid, revenue, total: rows.length };
   }, [rows]);
-
-  const handleMarkPaid = async (invoiceUuid: string) => {
-    const toastId = toast.loading("Updating status...");
-    try {
-      setUpdatingInvoiceUuid(invoiceUuid);
-      await updateInvoiceStatus(invoiceUuid, "paid");
-      toast.success("Invoice marked as paid.", { id: toastId });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update invoice status.";
-      toast.error(message, { id: toastId });
-    } finally {
-      setUpdatingInvoiceUuid(null);
-    }
-  };
 
   const handleDeleteInvoice = async (invoiceUuid: string, invoiceNumber: string) => {
     if (!canDeleteInvoice) {
@@ -212,7 +194,7 @@ function InvoicesContent() {
     try {
       await exportExcel({
         range: rangeFilter,
-        status: statusFilter,
+        status: "paid",
       });
       toast.success("Excel exported with invoice and product details.", { id: toastId });
     } catch (err) {
@@ -298,7 +280,7 @@ function InvoicesContent() {
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[
             { label: "Total Invoices", value: stats.total, tone: "text-[#001840]" },
-            { label: "Pending Payment", value: stats.pending, tone: "text-[#ea580c]" },
+            { label: "Paid", value: stats.paid, tone: "text-[#059669]" },
             { label: "Collected Revenue", value: formatCurrency(stats.revenue, currency), tone: "text-[#0050F8]" },
           ].map((card) => (
             <article key={card.label} className="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
@@ -333,29 +315,6 @@ function InvoicesContent() {
                       }}
                     >
                       <Clock3 className="h-3.5 w-3.5" />
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-[#94a3b8]">Status</p>
-                <div className="dn-tab-bar !rounded-2xl !py-2 lg:w-auto">
-                  {(
-                    [
-                      { key: "all" as const, label: "All" },
-                      { key: "pending" as const, label: "Pending" },
-                      { key: "paid" as const, label: "Paid" },
-                    ] as const
-                  ).map((tab) => (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      data-active={statusFilter === tab.key ? "true" : "false"}
-                      className="dn-tab !h-10"
-                      onClick={() => setStatusFilter(tab.key)}
-                    >
-                      <Filter className="h-3.5 w-3.5" />
                       {tab.label}
                     </button>
                   ))}
@@ -420,9 +379,7 @@ function InvoicesContent() {
               </div>
               <p className="text-lg font-semibold text-[#0f172a]">No invoices found</p>
               <p className="mt-1 text-sm text-[#64748b]">
-                {statusFilter === "pending"
-                  ? "All invoices are paid — great work!"
-                  : isPharmacy
+                {isPharmacy
                     ? "Complete a POS sale to generate your first invoice."
                     : "Complete an order to generate your first invoice."}
               </p>
@@ -448,7 +405,15 @@ function InvoicesContent() {
                           <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#eef3ff] text-[#0050F8]">
                             <File className="h-4 w-4" />
                           </div>
-                          <span className="text-sm font-semibold text-[#0f172a]">{invoice.id}</span>
+                          <span className="text-sm font-semibold text-[#0f172a]">
+                            {invoice.id === "Pending" ? (
+                              <span className="inline-flex rounded-full bg-[#fff7ed] px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-[#ea580c]">
+                                Pending
+                              </span>
+                            ) : (
+                              invoice.id
+                            )}
+                          </span>
                         </div>
                       </td>
                       <td className="px-4 py-4 text-sm text-[#64748b]">{invoice.orderNumber}</td>
@@ -484,22 +449,14 @@ function InvoicesContent() {
                           <button
                             type="button"
                             onClick={() => requestPrinterOr(() => openInvoiceDetails(invoice.uuid))}
-                            className="dn-btn dn-btn-outline !h-9 !px-3"
-                            title="Print"
+                            className={cn(
+                              "dn-btn dn-btn-outline !h-9 !px-3",
+                              !allowPrinter && "opacity-45",
+                            )}
+                            title={allowPrinter ? "Print" : "Printing is disabled — contact your administrator"}
                           >
                             <Printer className="h-4 w-4" />
                           </button>
-                          {invoice.status !== "Paid" ? (
-                            <button
-                              type="button"
-                              onClick={() => handleMarkPaid(invoice.uuid)}
-                              disabled={actionLoading && updatingInvoiceUuid === invoice.uuid}
-                              className="dn-btn dn-btn-secondary !h-9 !px-3"
-                            >
-                              <CheckCircle2 className="h-4 w-4" />
-                              Paid
-                            </button>
-                          ) : null}
                           {canDeleteInvoice ? (
                             <button
                               type="button"
@@ -580,19 +537,12 @@ function InvoicesContent() {
                 <button type="button" onClick={() => setIsDetailsOpen(false)} className="dn-btn dn-btn-outline">
                   Close
                 </button>
-                {selectedInvoice.status.toLowerCase() !== "paid" ? (
-                  <button
-                    type="button"
-                    onClick={() => handleMarkPaid(selectedInvoice.uuid)}
-                    disabled={actionLoading}
-                    className="dn-btn dn-btn-secondary"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Mark Paid
-                  </button>
-                ) : null}
                 <InvoiceDownloadButton onClick={() => void handleDownloadPdf()} loading={downloadingPdf} />
-                <InvoicePrintButton onClick={handlePrint} label="Print Receipt" />
+                <InvoicePrintButton
+                  onClick={handlePrint}
+                  label="Print Receipt"
+                  className={!allowPrinter ? "opacity-45" : undefined}
+                />
               </div>
             </div>
           ) : null}

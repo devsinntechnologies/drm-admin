@@ -1,6 +1,7 @@
 "use client";
 
-import { CalendarDays, Download, Hash, Printer, QrCode, Utensils } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarDays, Download, Hash, Printer, Utensils } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type InvoiceLineItem = {
@@ -43,6 +44,50 @@ function lineTotal(item: InvoiceLineItem) {
   const qty = Number(item.quantity) || 1;
   const explicit = Number(item.total);
   return Number.isFinite(explicit) && explicit > 0 ? explicit : unit * qty;
+}
+
+function invoiceQrPayload(invoiceId?: string) {
+  const value = (invoiceId || "").trim();
+  if (!value || value.toUpperCase() === "PENDING" || value.toUpperCase() === "N/A") {
+    return "https://diginizam.com/";
+  }
+  return `https://diginizam.com/invoice/${encodeURIComponent(value)}`;
+}
+
+function InvoiceQrImage({ value, size = 80 }: { value: string; size?: number }) {
+  const [src, setSrc] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    void import("qrcode").then((mod) => {
+      const QRCode = mod.default;
+      return QRCode.toDataURL(invoiceQrPayload(value), {
+        width: size * 4,
+        margin: 1,
+        errorCorrectionLevel: "M",
+        color: { dark: "#000000", light: "#ffffff" },
+      });
+    }).then((url) => {
+      if (!cancelled) setSrc(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [value, size]);
+
+  if (!src) {
+    return <div className="shrink-0 bg-white" style={{ width: size, height: size }} />;
+  }
+
+  return (
+    <img
+      src={src}
+      alt="Invoice QR code"
+      width={size}
+      height={size}
+      className="shrink-0 bg-white"
+    />
+  );
 }
 
 export default function InvoiceReceipt({
@@ -201,7 +246,7 @@ export default function InvoiceReceipt({
               <p className="text-sm font-semibold text-[#94a3b8]">Add phone in business profile</p>
             )}
           </div>
-          <QrCode className="h-10 w-10 text-[#001840]/40" />
+          <InvoiceQrImage value={orderNumber} size={80} />
         </div>
       </div>
 

@@ -58,15 +58,16 @@ export function parseRoleAccess(
 export function serializeRoleAccess(roleAccess: RoleAccessMap): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [role, entry] of Object.entries(roleAccess)) {
-    const modules = entry?.modules ?? [];
-    if (!modules.length) continue;
+    if (!entry) continue;
+    const modules = entry.modules ?? [];
+    // Persist empty arrays so "no tabs for this role" does not reload as defaults.
     const defaultModule =
-      entry?.defaultModule && modules.includes(entry.defaultModule)
+      entry.defaultModule && modules.includes(entry.defaultModule)
         ? entry.defaultModule
         : modules[0];
     out[role] = {
       modules,
-      defaultModule,
+      ...(defaultModule ? { defaultModule } : {}),
     };
   }
   return out;

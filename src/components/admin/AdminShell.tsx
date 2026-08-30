@@ -20,6 +20,7 @@ import {
 import { canManageSoftwareAndWebsite, normalizePortalRole } from "@/lib/role-access";
 import { toast } from "sonner";
 import { resolveMediaUrl, businessInitials } from "@/lib/media-url";
+import { DocumentBranding } from "@/components/admin/DocumentBranding";
 
 type TabKey = string;
 
@@ -292,10 +293,16 @@ export default function AdminShell({
   });
 
   const isBusinessSetup = pathname.includes("/businesses/setup");
-  const profileBusinessIdMatch = !isBusinessSetup ? pathname.match(/\/superAdmin\/businesses\/([^/]+)$/) : null;
-  const profileBusinessId = profileBusinessIdMatch?.[1];
-  const { data: profileBusiness } = useGetBusinessByIdQuery(profileBusinessId || "", {
-    skip: !profileBusinessId,
+  const superAdminBusinessMatch = !isBusinessSetup
+    ? pathname.match(/\/superAdmin\/businesses\/([^/]+)/)
+    : null;
+  const superAdminBusinessId =
+    superAdminBusinessMatch?.[1] && superAdminBusinessMatch[1] !== "setup"
+      ? superAdminBusinessMatch[1]
+      : null;
+  const brandingBusinessId = businessId || superAdminBusinessId;
+  const { data: profileBusiness } = useGetBusinessByIdQuery(brandingBusinessId || "", {
+    skip: !brandingBusinessId || brandingBusinessId === businessId,
   });
 
   const resolvedActiveTab = pathnameToModuleId(pathname) ?? activeTab;
@@ -491,12 +498,20 @@ export default function AdminShell({
             ? "Staff Portal"
             : "Admin Portal";
 
-  const shellTitle = activeBusiness?.businessName || templateConfig?.businessName || "DigiNizam";
-  const shellLogo = resolveMediaUrl(logoUrl || activeBusiness?.logo || null);
-  const usePlatformLogo = !pathname.includes("/businessAdmin");
+  const brandedBusiness = activeBusiness || profileBusiness;
+  const isBusinessBranded = Boolean(brandingBusinessId);
+  const shellTitle = brandedBusiness?.businessName || templateConfig?.businessName || "DigiNizam";
+  const shellLogo = resolveMediaUrl(logoUrl || brandedBusiness?.logo || null);
+  const usePlatformLogo = !isBusinessBranded;
+  const documentTitle = isBusinessBranded
+    ? pageTitle && pageTitle !== shellTitle
+      ? `${pageTitle} · ${shellTitle}`
+      : shellTitle
+    : pageTitle || "DigiNizam Admin";
 
   return (
     <div className="admin-shell min-h-screen bg-[var(--app-bg)] text-[var(--text-primary)]">
+      <DocumentBranding title={documentTitle} faviconUrl={isBusinessBranded ? shellLogo : null} />
       <aside
         className={cn(
           "admin-shell-aside fixed inset-y-0 left-0 z-40 hidden h-dvh flex-col overflow-hidden border-r bg-[var(--surface)] transition-[width] duration-200 xl:flex",

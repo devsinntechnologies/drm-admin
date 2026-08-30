@@ -100,6 +100,8 @@ type SoftwareControlContentProps = {
   businessName: string;
   templateConfig: ApiTemplateConfig | null | undefined;
   industryId: string;
+  /** Details-page / business.logo upload — preferred over template logoUrl. */
+  uploadedLogoUrl?: string | null;
 };
 
 export function SoftwareControlContent({
@@ -107,6 +109,7 @@ export function SoftwareControlContent({
   businessName,
   templateConfig,
   industryId,
+  uploadedLogoUrl = null,
 }: SoftwareControlContentProps) {
   const dispatch = useDispatch();
   const industry = getIndustryById(industryId);
@@ -145,7 +148,9 @@ export function SoftwareControlContent({
   const [primaryColor, setPrimaryColor] = useState(templateConfig?.primaryColor ?? "#001840");
   const [secondaryColor, setSecondaryColor] = useState(templateConfig?.secondaryColor ?? "#0050F8");
   const [themeMode, setThemeMode] = useState<ThemeMode>(templateConfig?.themeMode ?? "light");
-  const [logoUrl, setLogoUrl] = useState<string | null>(templateConfig?.logoUrl ?? null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(
+    uploadedLogoUrl ?? templateConfig?.logoUrl ?? null,
+  );
   const [navigation, setNavigation] = useState<CustomizedTemplateConfig["navigation"]>(
     templateConfig?.navigation ?? [],
   );
@@ -171,6 +176,12 @@ export function SoftwareControlContent({
   const [createConfig, { isLoading: savingCreate }] = useCreateTemplateConfigMutation();
   const saving = savingUpdate || savingCreate;
 
+  const configSyncKey = [
+    templateConfig?.id ?? "",
+    templateConfig?.updatedAt ?? "",
+    industryId,
+  ].join("|");
+
   useEffect(() => {
     const modules = initialMobileEnabled(
       (templateConfig?.enabledModules ?? []) as ModuleId[],
@@ -192,7 +203,6 @@ export function SoftwareControlContent({
     setPrimaryColor(templateConfig?.primaryColor ?? "#001840");
     setSecondaryColor(templateConfig?.secondaryColor ?? "#0050F8");
     setThemeMode(templateConfig?.themeMode ?? "light");
-    setLogoUrl(templateConfig?.logoUrl ?? null);
     setNavigation(
       templateConfig?.navigation ??
         syncNavigationToEnabledModules(
@@ -207,7 +217,13 @@ export function SoftwareControlContent({
     setOrdersSettings(parseOrdersSettings(templateConfig?.moduleSettings, industryId));
     setCategoriesSettings(parseCategoriesSettings(templateConfig?.moduleSettings));
     setSalesSettings(parseSalesSettings(templateConfig?.moduleSettings));
-  }, [templateConfig, industry?.labels, industryId, mobileCatalog]);
+    // Hydrate from the saved template, not on every parent re-render / business refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configSyncKey, mobileCatalog]);
+
+  useEffect(() => {
+    setLogoUrl(uploadedLogoUrl ?? templateConfig?.logoUrl ?? null);
+  }, [uploadedLogoUrl, templateConfig?.logoUrl]);
 
   const navItems = useMemo(
     () =>
@@ -353,6 +369,10 @@ export function SoftwareControlContent({
       sales: serializeSalesSettings(salesSettings),
     };
 
+    const usableLogo = [uploadedLogoUrl, logoUrl, templateConfig?.logoUrl].find(
+      (value) => value && !isEmbeddedLogoData(value),
+    );
+
     const payload = {
       businessName: templateConfig?.businessName ?? businessName,
       industryId: industry.id,
@@ -366,7 +386,7 @@ export function SoftwareControlContent({
       currency: templateConfig?.currency,
       location: templateConfig?.location,
       branchCount: templateConfig?.branchCount,
-      ...(logoUrl && !isEmbeddedLogoData(logoUrl) ? { logoUrl } : {}),
+      ...(usableLogo ? { logoUrl: usableLogo } : {}),
       businessId,
       moduleSettings,
     };
@@ -621,7 +641,7 @@ export function SoftwareControlContent({
             </div>
             <MobileHeaderPreview
               businessName={businessName}
-              logoUrl={resolveMediaUrl(logoUrl)}
+              logoUrl={resolveMediaUrl(uploadedLogoUrl || logoUrl)}
               primaryColor={primaryColor}
               secondaryColor={secondaryColor}
               enabled={mobileHeader.enabled}
@@ -633,7 +653,7 @@ export function SoftwareControlContent({
         ) : (
           <MobileHeaderPreview
             businessName={businessName}
-            logoUrl={resolveMediaUrl(logoUrl)}
+            logoUrl={resolveMediaUrl(uploadedLogoUrl || logoUrl)}
             primaryColor={primaryColor}
             secondaryColor={secondaryColor}
             enabled={false}
@@ -1216,11 +1236,13 @@ export function SoftwareControlContent({
         </div>
       </section>
 
-      <div className="sticky bottom-4 z-10 flex justify-end rounded-xl border border-[#e2e8f0] bg-white/95 p-4 shadow-lg backdrop-blur">
-        <button type="button" onClick={() => void save()} disabled={saving} className="dn-btn dn-btn-primary min-w-[10rem]">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Save software control
-        </button>
+      <div className="pointer-events-none sticky bottom-4 z-10 flex justify-end">
+        <div className="pointer-events-auto rounded-xl border border-[#e2e8f0] bg-white/95 p-4 shadow-lg backdrop-blur">
+          <button type="button" onClick={() => void save()} disabled={saving} className="dn-btn dn-btn-primary min-w-[10rem]">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Save software control
+          </button>
+        </div>
       </div>
     </div>
   );

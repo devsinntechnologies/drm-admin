@@ -10,7 +10,7 @@ import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 export default function BusinessAdminSoftwarePreviewPage() {
   const businessId = useActiveBusinessId();
   const { role } = useAuth();
-  const { businessName, templateConfig, isLoading } = useBusinessTemplate();
+  const { businessName, templateConfig, logoUrl, isLoading } = useBusinessTemplate();
 
   if (isLoading) return <Loading className="py-16" />;
   if (!businessId) return null;
@@ -27,7 +27,11 @@ export default function BusinessAdminSoftwarePreviewPage() {
           Preview of the Flutter app for {businessName}.
         </p>
       </section>
-      <SoftwareMobilePreview businessName={businessName} templateConfig={templateConfig} />
+      <SoftwareMobilePreview
+        businessName={businessName}
+        templateConfig={templateConfig}
+        logoUrl={logoUrl}
+      />
     </div>
   );
 }

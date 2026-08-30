@@ -3,11 +3,25 @@
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Mail } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { homePathAfterLogin } from "@/lib/auth-redirect";
+import { BASE_URL } from "@/lib/constant";
+import { DIGINIZAM_CLIENT, DIGINIZAM_CLIENT_HEADER } from "@/lib/diginizam-client";
+import { resolveMediaUrl } from "@/lib/media-url";
 import { normalizeErrorMessage } from "@/lib/utils";
+import {
+  applyDocumentBranding,
+  DEFAULT_PORTAL_ICON,
+  DEFAULT_PORTAL_TITLE,
+  DocumentBranding,
+} from "@/components/admin/DocumentBranding";
+
+type PublicBranding = {
+  businessName: string | null;
+  logoUrl: string | null;
+};
 
 export function LoginForm() {
   const router = useRouter();
@@ -15,7 +29,37 @@ export function LoginForm() {
   const { login, isLoading, error, clearError } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [branding, setBranding] = useState<PublicBranding | null>(null);
   const returnTo = searchParams.get("returnTo");
+
+  useEffect(() => {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed.includes("@") || !trimmed.includes(".")) {
+      setBranding(null);
+      applyDocumentBranding(DEFAULT_PORTAL_TITLE, DEFAULT_PORTAL_ICON);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `${BASE_URL.replace(/\/$/, "")}/users/public/branding?email=${encodeURIComponent(trimmed)}`,
+          { headers: { Accept: "application/json", [DIGINIZAM_CLIENT_HEADER]: DIGINIZAM_CLIENT } },
+        );
+        if (!response.ok) return;
+        const payload = (await response.json()) as { data?: PublicBranding } & PublicBranding;
+        const data = payload.data ?? payload;
+        const name = data.businessName?.trim() || null;
+        const logo = resolveMediaUrl(data.logoUrl);
+        setBranding({ businessName: name, logoUrl: logo });
+        applyDocumentBranding(name ? `${name} · Sign in` : DEFAULT_PORTAL_TITLE, logo);
+      } catch {
+        setBranding(null);
+      }
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [email]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,21 +83,35 @@ export function LoginForm() {
     }
   };
 
+  const logoSrc = branding?.logoUrl;
+  const brandName = branding?.businessName;
+
   return (
     <section className="portal-surface w-full max-w-md rounded-4xl px-6 py-10 sm:px-10">
+      <DocumentBranding
+        title={brandName ? `${brandName} · Sign in` : DEFAULT_PORTAL_TITLE}
+        faviconUrl={logoSrc}
+      />
       <div className="mx-auto grid w-full max-w-[240px] place-items-center">
-        <Image
-          src="/diginizam-logo.svg"
-          alt="DigiNizam"
-          width={240}
-          height={56}
-          className="h-auto w-full object-contain"
-          priority
-        />
+        {logoSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoSrc} alt={brandName || "Business"} className="h-14 w-auto max-w-full object-contain" />
+        ) : (
+          <Image
+            src="/diginizam-logo.svg"
+            alt="DigiNizam"
+            width={240}
+            height={56}
+            className="h-auto w-full object-contain"
+            priority
+          />
+        )}
       </div>
 
       <div className="mt-6 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-[#0f172a]">Sign in</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-[#0f172a]">
+          {brandName ? `Sign in to ${brandName}` : "Sign in"}
+        </h1>
         <p className="mt-2 text-sm text-[#5b657a]">Use your work email. Your workspace opens from your account.</p>
       </div>
 

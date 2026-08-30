@@ -172,13 +172,15 @@ export function SoftwareRoleMatrix({
                   </td>
                   {modules.map((moduleId) => (
                     <td key={moduleId} className="px-3 py-3 text-center">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4"
-                        checked={allowed.has(moduleId)}
-                        onChange={() => toggleModule(role, moduleId)}
-                        aria-label={`${roleKeyLabel(role)} can access ${moduleLabel(moduleId)}`}
-                      />
+                      <label className="inline-flex cursor-pointer items-center justify-center p-1">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 cursor-pointer"
+                          checked={allowed.has(moduleId)}
+                          onChange={() => toggleModule(role, moduleId)}
+                          aria-label={`${roleKeyLabel(role)} can access ${moduleLabel(moduleId)}`}
+                        />
+                      </label>
                     </td>
                   ))}
                   {!compact ? (

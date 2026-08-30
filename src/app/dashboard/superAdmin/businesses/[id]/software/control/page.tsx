@@ -68,6 +68,7 @@ export default function SoftwareControlPage() {
           businessName={business.businessName}
           templateConfig={templateConfig}
           industryId={industryId}
+          uploadedLogoUrl={business.logo}
           />
         </>
       ) : null}

@@ -34,7 +34,7 @@ function ThemedWorkspace({ children }: { children: React.ReactNode }) {
           <p className="text-lg font-semibold text-[#0f172a]">Could not load workspace</p>
           <p className="mt-2 text-sm text-[#64748b]">
             {isUnauthorized
-              ? "Your session expired or was issued by a different server. Sign in again against your local backend (localhost:3002)."
+              ? "Your session expired or was issued by a different server. Sign in again."
               : "The business could not be loaded. Make sure the backend is running and you are signed in."}
           </p>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
