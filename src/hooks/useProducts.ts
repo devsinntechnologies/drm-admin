@@ -32,6 +32,8 @@ export interface Product {
   isStockEnabled?: boolean;
   costPrice?: number | null;
   stockCount?: number | null;
+  lowStockThreshold?: number | null;
+  reorderLevel?: number | null;
   variants: ProductVariant[];
   createdAt: string;
   updatedAt: string;
@@ -182,6 +184,12 @@ export function useProducts(options: UseProductsOptions = {}) {
   useEffect(() => {
     fetchProducts(page);
   }, [page, fetchProducts]);
+
+  useEffect(() => {
+    const refreshInventory = () => void fetchProducts(page);
+    window.addEventListener("diginizam:inventory-changed", refreshInventory);
+    return () => window.removeEventListener("diginizam:inventory-changed", refreshInventory);
+  }, [fetchProducts, page]);
 
   const goToPage = useCallback((pageNum: number) => {
     if (pageNum > 0 && pageNum <= pagination.last_page) {

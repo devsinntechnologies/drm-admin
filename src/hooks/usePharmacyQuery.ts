@@ -57,11 +57,11 @@ export function usePharmacyQuery<T>(
     } finally {
       setLoading(false);
     }
-  }, [path, token, businessId, refreshKey, requireBusinessId, pathname]);
+  }, [path, token, businessId, requireBusinessId]);
 
   useEffect(() => {
     void reload();
-  }, [reload]);
+  }, [reload, refreshKey, pathname]);
 
   useEffect(() => {
     if (!refetchOnFocus || !path) return;
@@ -73,6 +73,13 @@ export function usePharmacyQuery<T>(
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [path, reload, refetchOnFocus]);
+
+  useEffect(() => {
+    if (!path) return;
+    const onInventoryChanged = () => void reload();
+    window.addEventListener("diginizam:inventory-changed", onInventoryChanged);
+    return () => window.removeEventListener("diginizam:inventory-changed", onInventoryChanged);
+  }, [path, reload]);
 
   return { data, rows: asList<T extends unknown[] ? T[number] : T>(data), loading, error, reload, businessId, token };
 }

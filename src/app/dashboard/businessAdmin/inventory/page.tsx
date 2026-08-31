@@ -17,7 +17,9 @@ function InventoryContent() {
     qty: Number(row.qtyBase || 0).toFixed(2),
     batches: row.batchCount,
     reorder: row.reorderLevel,
-    status: row.belowReorder ? <StatusBadge value="Reorder" tone="danger" /> : <StatusBadge value="OK" tone="success" />,
+    status: Number(row.qtyBase ?? 0) <= Math.max(0, Number(row.reorderLevel ?? 0))
+      ? <StatusBadge value="Reorder" tone="danger" />
+      : <StatusBadge value="OK" tone="success" />,
   }));
 
   return (

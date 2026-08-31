@@ -16,6 +16,9 @@ export function DashboardRefreshProvider({ children }: { children: ReactNode }) 
   const [refreshKey, setRefreshKey] = useState(0);
   const bumpDashboardRefresh = useCallback(() => {
     setRefreshKey((key) => key + 1);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("diginizam:inventory-changed"));
+    }
   }, []);
 
   return (

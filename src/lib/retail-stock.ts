@@ -18,8 +18,14 @@ export function hasVariants(product: Product): boolean {
 }
 
 export function getLowStockThreshold(product: Product): number {
-  if (product.stockCount != null && product.stockCount > 0) {
-    return Math.floor(product.stockCount * (DEFAULT_LOW_STOCK_PERCENT / 100));
+  const configured = product.lowStockThreshold ?? product.reorderLevel;
+  if (configured != null && Number.isFinite(Number(configured))) {
+    return Math.max(0, Math.floor(Number(configured)));
+  }
+  // stockCount is a legacy opening/target-stock field, not current on-hand.
+  // Keep it as a fallback only; never calculate a threshold from mutable stock.
+  if (product.stockCount != null && Number.isFinite(Number(product.stockCount)) && product.stockCount > 0) {
+    return Math.max(1, Math.floor(Number(product.stockCount) * (DEFAULT_LOW_STOCK_PERCENT / 100)));
   }
   return DEFAULT_LOW_STOCK_MIN;
 }

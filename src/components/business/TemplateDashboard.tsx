@@ -2,6 +2,7 @@
 
 import { Activity, Flame, TriangleAlert } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useMemo } from "react";
 import Loading from "@/components/common/Loading";
 import { PortalCard, PortalPage, PortalStatCard } from "@/components/admin/PortalPage";
 import { DashboardReportsSection } from "@/components/business/DashboardReportsSection";
@@ -12,6 +13,8 @@ import { DASHBOARD_CARD_CATALOG } from "@/templates/modules";
 import type { DashboardCardId } from "@/templates/types";
 import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { usePharmacyQuery } from "@/hooks/usePharmacyQuery";
+import { useProducts, type Product } from "@/hooks/useProducts";
+import { getActiveVariants, getStockStatus, hasVariants, isStockTracked } from "@/lib/retail-stock";
 import { cn } from "@/lib/utils";
 
 type TemplateDashboardProps = {
@@ -61,6 +64,40 @@ type StockSummary = {
   }>;
 };
 
+type RetailPurchase = {
+  id: string;
+  status?: string;
+  totalAmount?: number | string;
+  createdAt?: string;
+  receivedAt?: string;
+  updatedAt?: string;
+};
+
+function localLowStockRows(products: Product[]) {
+  return products
+    .filter((product) => product.status === "ACTIVE" && isStockTracked(product))
+    .flatMap((product) => {
+      if (hasVariants(product)) {
+        return getActiveVariants(product)
+          .filter((variant) => ["low", "out"].includes(getStockStatus(product, variant)))
+          .map((variant) => ({
+            id: `${product.id}:${variant.id}`,
+            productId: product.id,
+            productName: `${product.name} (${variant.name})`,
+            currentStock: Number(variant.inStock) || 0,
+          }));
+      }
+      return ["low", "out"].includes(getStockStatus(product))
+        ? [{
+            id: product.id,
+            productId: product.id,
+            productName: product.name,
+            currentStock: Number(product.inStock) || 0,
+          }]
+        : [];
+    });
+}
+
 export function TemplateDashboard({ cards, className }: TemplateDashboardProps) {
   const pathname = usePathname();
   const { refreshKey } = useDashboardRefresh();
@@ -68,7 +105,9 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
   const { money } = usePharmacyMarket();
   const industryId = templateConfig?.industryId;
   const isPharmacy = industryId === "pharmacy";
+  const isRetail = industryId === "retail-store";
   const queryRefreshKey = `${refreshKey}:${pathname}`;
+  const { products, loading: productsLoading } = useProducts({ limit: 500 });
 
   const { data: pharmacyLive, loading: pharmacyLoading } = usePharmacyQuery<Record<string, number>>(
     isPharmacy ? "/pharmacy-reports/dashboard" : null,
@@ -82,8 +121,28 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
     isPharmacy ? null : "/stock-management/dashboard/summary",
     queryRefreshKey,
   );
+  const { data: retailPurchases, loading: purchasesLoading } = usePharmacyQuery<RetailPurchase[]>(
+    isRetail ? "/retail/purchases?page=1&limit=500" : null,
+    queryRefreshKey,
+  );
 
-  const liveLoading = isPharmacy ? pharmacyLoading : invoiceLoading || stockLoading;
+  const calculatedLowStock = useMemo(() => localLowStockRows(products), [products]);
+  const purchaseSummary = useMemo(() => {
+    const rows = Array.isArray(retailPurchases) ? retailPurchases : [];
+    const pending = rows.filter((row) => !["received", "cancelled", "canceled"].includes(String(row.status ?? "").toLowerCase())).length;
+    const today = new Date().toISOString().slice(0, 10);
+    const receivedToday = rows
+      .filter((row) => {
+        const activityDate = row.receivedAt ?? row.updatedAt ?? row.createdAt;
+        return String(row.status ?? "").toLowerCase() === "received" && String(activityDate ?? "").slice(0, 10) === today;
+      })
+      .reduce((sum, row) => sum + (Number(row.totalAmount) || 0), 0);
+    return { pending, receivedToday };
+  }, [retailPurchases]);
+
+  const liveLoading = isPharmacy
+    ? pharmacyLoading
+    : invoiceLoading || stockLoading || productsLoading || (isRetail && purchasesLoading);
 
   const formatValue = (id: DashboardCardId) => {
     if (liveLoading) {
@@ -118,9 +177,11 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
       case "low-stock-ingredients":
       case "low-stock-sizes":
       case "ingredient-shortage":
-        return String(stockLive?.lowStockCount ?? 0);
+        return String(productsLoading ? (stockLive?.lowStockCount ?? 0) : calculatedLowStock.length);
       case "pending-purchases":
-        return String(pendingInvoices);
+        return String(isRetail ? purchaseSummary.pending : pendingInvoices);
+      case "purchase-value":
+        return money(isRetail ? purchaseSummary.receivedToday : 0);
       case "active-orders":
       case "orders-in-progress":
       case "customer-orders":
@@ -162,9 +223,10 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
 
   const accentCards = cards.slice(0, 2);
   const statCards = cards.slice(2);
-  const lowStockItems = (stockLive?.recentAlerts ?? []).filter(
+  const apiLowStockItems = (stockLive?.recentAlerts ?? []).filter(
     (item) => item.productName || item.productId,
   );
+  const lowStockItems = productsLoading ? apiLowStockItems : calculatedLowStock;
   const topProducts = invoiceLive?.graph?.topSellingProducts ?? [];
 
   return (
@@ -239,7 +301,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
                       {item.productName || "Stock alert"}
                     </p>
                     <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-600 dark:text-amber-300">
-                      {item.currentStock ?? item.inStock ?? 0} left
+                      {item.currentStock ?? ("inStock" in item ? item.inStock : 0) ?? 0} left
                     </span>
                   </div>
                 ))}

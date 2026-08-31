@@ -272,11 +272,11 @@ export function allowedModulesForRole(
   if (!normalized || normalized === "super_admin") return null;
   if (normalized === "businessadmin" || normalized === "admin") {
     const entry = roleAccess.business_admin;
-    if (!entry?.modules?.length) return null;
+    if (!entry || !Array.isArray(entry.modules)) return null;
     return normalizeRoleEntry(entry, enabledModules).modules;
   }
   const entry = roleAccess[normalized];
-  if (!entry?.modules?.length) {
+  if (!entry || !Array.isArray(entry.modules)) {
     if (normalized === "business_admin") return null;
     const defaults = resolveRoleEntry({}, normalized, enabledModules).modules;
     return defaults.length ? defaults : [];

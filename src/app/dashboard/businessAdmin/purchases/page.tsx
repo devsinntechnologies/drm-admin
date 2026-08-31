@@ -12,12 +12,14 @@ import { apiClient } from "@/lib/api-client";
 import { asList } from "@/lib/api";
 import { usePharmacyAction, usePharmacyQuery } from "@/hooks/usePharmacyQuery";
 import { useProducts } from "@/hooks/useProducts";
+import { useDashboardRefresh } from "@/contexts/DashboardRefreshContext";
 
 function PurchasesContent() {
   const { token, businessId, run } = usePharmacyAction();
   const { data: pos, reload } = usePharmacyQuery<any>("/pharmacy/procurement/purchase-orders");
   const { data: suppliers } = usePharmacyQuery<any>("/pharmacy/procurement/suppliers");
   const { products } = useProducts({ limit: 100 });
+  const { bumpDashboardRefresh } = useDashboardRefresh();
   const [po, setPo] = useState({ supplierId: "", productId: "", qty: 1, rate: 0 });
   const [grn, setGrn] = useState({ purchaseOrderId: "", productId: "", batchNo: "", expiryDate: "", qty: 1, rate: 0 });
 
@@ -27,12 +29,17 @@ function PurchasesContent() {
         <form className="space-y-3 rounded-2xl border border-[#e2e8f0] bg-white p-4" onSubmit={(e) => {
           e.preventDefault();
           run(async () => {
+            if (po.qty <= 0 || po.rate < 0) {
+              toast.error("Quantity must be greater than zero and rate cannot be negative");
+              return;
+            }
             await apiClient.post("/pharmacy/procurement/purchase-orders", {
               supplierId: po.supplierId,
               items: [{ productId: po.productId, qty: po.qty, rate: po.rate }],
             }, token, businessId);
             toast.success("PO created");
-            reload();
+            setPo({ supplierId: "", productId: "", qty: 1, rate: 0 });
+            await reload();
           });
         }}>
           <h3 className="font-semibold">New purchase order</h3>
@@ -54,18 +61,25 @@ function PurchasesContent() {
           <FormField label="Rate">
             <input className={portalInputClass} type="number" placeholder="0" value={po.rate} onChange={(e) => setPo({ ...po, rate: Number(e.target.value) })} />
           </FormField>
+          <p className="text-sm font-semibold text-[var(--text-primary)]">Purchase total: {(po.qty * po.rate).toFixed(2)}</p>
           <Button type="submit">Create PO</Button>
         </form>
 
         <form className="space-y-3 rounded-2xl border border-[#e2e8f0] bg-white p-4" onSubmit={(e) => {
           e.preventDefault();
           run(async () => {
+            if (grn.qty <= 0 || grn.rate < 0) {
+              toast.error("Received quantity must be greater than zero and rate cannot be negative");
+              return;
+            }
             await apiClient.post("/pharmacy/procurement/grn", {
               purchaseOrderId: grn.purchaseOrderId,
               items: [{ productId: grn.productId, batchNo: grn.batchNo, expiryDate: grn.expiryDate, qty: grn.qty, rate: grn.rate }],
             }, token, businessId);
             toast.success("GRN posted — batch created");
-            reload();
+            setGrn({ purchaseOrderId: "", productId: "", batchNo: "", expiryDate: "", qty: 1, rate: 0 });
+            await reload();
+            bumpDashboardRefresh();
           });
         }}>
           <h3 className="font-semibold">Goods received note</h3>
@@ -93,6 +107,7 @@ function PurchasesContent() {
           <FormField label="Rate">
             <input className={portalInputClass} type="number" placeholder="0" value={grn.rate} onChange={(e) => setGrn({ ...grn, rate: Number(e.target.value) })} />
           </FormField>
+          <p className="text-sm font-semibold text-[var(--text-primary)]">Received cost: {(grn.qty * grn.rate).toFixed(2)}</p>
           <Button type="submit">Receive GRN</Button>
         </form>
       </div>
