@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   AlertCircle,
   ChevronLeft,
@@ -31,6 +31,8 @@ import {
 } from "@/hooks/usePublicData";
 import { BASE_URL } from "@/lib/constant";
 import { cn, normalizeErrorMessage } from "@/lib/utils";
+import { DragSortHandle } from "@/components/common/DragSortHandle";
+import { useHtml5Reorder } from "@/hooks/useHtml5Reorder";
 
 function StatusChip({ label, tone }: { label: string; tone: "green" | "amber" | "slate" | "red" | "blue" }) {
   const tones = {
@@ -99,6 +101,7 @@ export default function PublicDataProductsPage() {
     deleteVariant,
     listVariants,
     fetchProducts,
+    reorderProducts,
   } = usePublicProducts({ page: currentPage, search });
 
   const { categories } = usePublicCategories({ page: 1, limit: 100, enabled: true });
@@ -110,6 +113,28 @@ export default function PublicDataProductsPage() {
     () => products.filter((product) => !product.deletedAt),
     [products],
   );
+
+  const onReorder = useCallback(
+    async (ids: string[]) => {
+      try {
+        await reorderProducts(ids);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to save catalog order");
+        throw err;
+      }
+    },
+    [reorderProducts],
+  );
+
+  const {
+    items: orderedProducts,
+    dragId,
+    dropId,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
+  } = useHtml5Reorder(activeProducts, onReorder, !actionLoading);
 
   const onCreate = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -292,7 +317,9 @@ export default function PublicDataProductsPage() {
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h3 className="text-xl font-bold text-[#0f172a]">Public Products</h3>
-          <p className="text-sm text-[#64748b]">Manage published products, availability, and variants</p>
+          <p className="text-sm text-[#64748b]">
+            Manage published products, availability, and variants. Drag the grip to change catalog order.
+          </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <label className="block min-w-[240px] space-y-1.5">
@@ -352,10 +379,19 @@ export default function PublicDataProductsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {activeProducts.map((product) => {
+          {orderedProducts.map((product) => {
             const url = imageUrl(product.image);
             return (
-              <article key={product.id} className="overflow-hidden rounded-3xl border border-[#f1f5f9] bg-white shadow-sm">
+              <article
+                key={product.id}
+                onDragOver={(event) => onDragOver(product.id, event)}
+                onDrop={(event) => onDrop(product.id, event)}
+                className={cn(
+                  "overflow-hidden rounded-3xl border bg-white shadow-sm transition",
+                  dragId === product.id ? "border-[#93c5fd] opacity-60" : "border-[#f1f5f9]",
+                  dropId === product.id && dragId !== product.id ? "ring-2 ring-[#93c5fd]" : "",
+                )}
+              >
                 <div className="relative h-44 w-full bg-[#f8fafc]">
                   {url ? (
                     <Image src={url} alt={product.name} fill className="object-cover" />
@@ -364,6 +400,13 @@ export default function PublicDataProductsPage() {
                       <ImageIcon className="h-10 w-10 text-[#cbd5e1]" />
                     </div>
                   )}
+                  <div className="absolute left-3 top-3 rounded-xl bg-white/90 shadow-sm">
+                    <DragSortHandle
+                      disabled={actionLoading}
+                      onDragStart={(event) => onDragStart(product.id, event)}
+                      onDragEnd={onDragEnd}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-3 p-4">
                   <div>

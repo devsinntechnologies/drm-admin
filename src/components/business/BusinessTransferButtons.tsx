@@ -59,8 +59,8 @@ export function BusinessTransferButtons({
             <DialogTitle>{mode === "import" ? "Import business data" : "Export business data"}</DialogTitle>
             <DialogDescription>
               {mode === "import"
-                ? `Upload a DigiNizam export ZIP into ${businessName || "this business"}. Import appends records and never wipes existing data.`
-                : `Choose which sections to include, then download a ZIP from ${businessName || "this business"}.`}
+                ? `Upload a DigiNizam export ZIP into ${businessName || "this business"}. Images in the ZIP are restored. Import appends records and never wipes existing data.`
+                : `Choose which sections to include, then download a ZIP from ${businessName || "this business"}. Product and logo images are packed into the ZIP.`}
             </DialogDescription>
           </DialogHeader>
           {mode ? (

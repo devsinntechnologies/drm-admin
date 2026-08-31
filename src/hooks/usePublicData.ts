@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { BASE_URL } from "@/lib/constant";
 import { getStoredAuthToken } from "@/lib/utils";
+import { applySubsetOrder } from "@/lib/reorder";
 
 export type PublicSourceType = "operational" | "manual";
 export type PublicSyncStatus = "pending" | "synced" | "failed" | "detached";
@@ -662,6 +663,45 @@ export function usePublicProducts(options: UsePublicDataListOptions = {}) {
     [activeBusinessId, fetchProducts, pagination.page, reduxToken, search],
   );
 
+  const reorderProducts = useCallback(
+    async (ids: string[]) => {
+      const token = getAuthToken(reduxToken);
+      if (!token) throw new Error("No authentication token available");
+
+      const previous = products;
+      setProducts((prev) => {
+        const order = applySubsetOrder(
+          prev.map((product) => product.id),
+          ids,
+        );
+        const byId = new Map(prev.map((product) => [product.id, product]));
+        return order.flatMap((id) => {
+          const product = byId.get(id);
+          return product ? [product] : [];
+        });
+      });
+
+      try {
+        const url = new URL(`${BASE_URL}/public-data/products/reorder`);
+        appendBusinessId(url, activeBusinessId);
+        const response = await fetch(url.toString(), {
+          method: "PATCH",
+          headers: {
+            accept: "*/*",
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ ids }),
+        });
+        await readJson(response, "Failed to reorder products");
+      } catch (err) {
+        setProducts(previous);
+        throw err;
+      }
+    },
+    [activeBusinessId, products, reduxToken],
+  );
+
   const listVariants = useCallback(
     async (productId: string) => {
       const token = getAuthToken(reduxToken);
@@ -769,6 +809,7 @@ export function usePublicProducts(options: UsePublicDataListOptions = {}) {
     createProduct,
     updateProduct,
     deleteProduct,
+    reorderProducts,
     listVariants,
     createVariant,
     updateVariant,

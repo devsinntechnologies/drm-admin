@@ -6,6 +6,7 @@ import { apiClient, ApiClientError } from "@/lib/api-client";
 import { BASE_URL } from "@/lib/constant";
 import { buildApiUrl } from "@/lib/api";
 import { getStoredAuthToken, normalizeErrorMessage } from "@/lib/utils";
+import { DIGINIZAM_CLIENT, DIGINIZAM_CLIENT_HEADER } from "@/lib/diginizam-client";
 
 export type TransferSectionId =
   | "profile"
@@ -81,6 +82,7 @@ export function useBusinessTransfer(businessId: string) {
             headers: {
               accept: "application/zip",
               "content-type": "application/json",
+              [DIGINIZAM_CLIENT_HEADER]: DIGINIZAM_CLIENT,
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: JSON.stringify({ sections }),

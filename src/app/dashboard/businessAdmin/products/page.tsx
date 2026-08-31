@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
@@ -58,6 +58,8 @@ import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { apiClient } from "@/lib/api-client";
 import { EMPTY_MEDICINE_PROFILE, MedicineProfileFields, profileToPayload, type MedicineProfileForm } from "@/components/pharmacy/MedicineProfileFields";
 import { NumberInput } from "@/components/common/NumberInput";
+import { DragSortHandle } from "@/components/common/DragSortHandle";
+import { useHtml5Reorder } from "@/hooks/useHtml5Reorder";
 
 function ErrorAlert({ message }: { message: unknown }) {
   const errorMessage = normalizeErrorMessage(message, "Error loading items");
@@ -232,17 +234,39 @@ function MenuCard({
   onEdit,
   onDelete,
   deleting,
+  dragEnabled,
+  isDragging,
+  isDropTarget,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: {
   item: Product;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   deleting: boolean;
+  dragEnabled: boolean;
+  isDragging: boolean;
+  isDropTarget: boolean;
+  onDragStart: (event: React.DragEvent) => void;
+  onDragOver: (event: React.DragEvent) => void;
+  onDrop: (event: React.DragEvent) => void;
+  onDragEnd: () => void;
 }) {
   const imagePath = item.image?.trim();
   const imageUrl = imagePath ? (imagePath.startsWith("http") ? imagePath : `${BASE_URL}/${imagePath}`) : null;
 
   return (
-    <article className="overflow-hidden rounded-3xl bg-white border border-gray-100 shadow-sm flex flex-col">
+    <article
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      className={cn(
+        "overflow-hidden rounded-3xl bg-white border shadow-sm flex flex-col transition",
+        isDragging ? "border-[var(--brand-secondary,#93c5fd)] opacity-60" : "border-gray-100",
+        isDropTarget ? "ring-2 ring-[#93c5fd]" : "",
+      )}
+    >
       <div className="relative h-80 w-full bg-[#f8fafc]">
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -253,6 +277,9 @@ function MenuCard({
             <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">No Image</span>
           </div>
         )}
+        <div className="absolute left-3 top-3 rounded-xl bg-white/90 shadow-sm">
+          <DragSortHandle disabled={!dragEnabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
+        </div>
       </div>
 
       <div className="flex flex-col p-5 pt-3">
@@ -362,6 +389,7 @@ function MenuItemsContent() {
     getProductById,
     updateProduct,
     deleteProduct,
+    reorderProducts,
     refetch,
   } = useProducts({ page: currentPage, limit: isRetail ? 100 : undefined });
 
@@ -426,6 +454,28 @@ function MenuItemsContent() {
       return matchesName || matchesCategory;
     });
   }, [products, search]);
+
+  const onReorder = useCallback(
+    async (ids: string[]) => {
+      try {
+        await reorderProducts(ids);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to save product order");
+        throw err;
+      }
+    },
+    [reorderProducts],
+  );
+
+  const {
+    items: orderedProducts,
+    dragId,
+    dropId,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
+  } = useHtml5Reorder(filteredProducts, onReorder, !actionLoading);
 
   const resetCreateForm = () => {
     setCreateForm({
@@ -673,6 +723,9 @@ function MenuItemsContent() {
         </div>
 
         <PortalMetricRow label={isPharmacy ? "Total medicines" : isRetail ? "Total products" : "Total Items"} value={pagination.total} icon={Box} />
+        {orderedProducts.length > 1 ? (
+          <p className="mb-4 text-sm text-[#64748b]">Drag the grip on a card to change display order.</p>
+        ) : null}
 
         {error ? <ErrorAlert message={error} /> : null}
 
@@ -682,8 +735,21 @@ function MenuItemsContent() {
           <PortalEmptyState icon={Box} title={isPharmacy ? "No medicines found" : "No products found"} description={isPharmacy ? "Add a medicine to start billing and stock tracking." : "Add a new product to get started."} />
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredProducts.map((item) => (
-              <MenuCard key={item.id} item={item} onEdit={onOpenEdit} onDelete={onDelete} deleting={actionLoading} />
+            {orderedProducts.map((item) => (
+              <MenuCard
+                key={item.id}
+                item={item}
+                onEdit={onOpenEdit}
+                onDelete={onDelete}
+                deleting={actionLoading}
+                dragEnabled={!actionLoading}
+                isDragging={dragId === item.id}
+                isDropTarget={dropId === item.id && dragId !== item.id}
+                onDragStart={(event) => onDragStart(item.id, event)}
+                onDragOver={(event) => onDragOver(item.id, event)}
+                onDrop={(event) => onDrop(item.id, event)}
+                onDragEnd={onDragEnd}
+              />
             ))}
           </div>
         )}

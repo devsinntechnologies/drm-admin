@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2 } from "lucide-react";
+import { Building2, Archive } from "lucide-react";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import { ControlSection } from "@/components/business/ControlSection";
@@ -10,6 +10,7 @@ import { SoftwareControlContent } from "@/components/business/SoftwareControlCon
 import { SoftwareStaffOverview } from "@/components/business/SoftwareStaffOverview";
 import { SoftwareSyncStatusPanel } from "@/components/business/SoftwareSyncStatusPanel";
 import { SoftwareTemplateNotConfigured } from "@/components/business/SoftwareTemplateNotConfigured";
+import { BusinessDataTransferPanel } from "@/components/business/BusinessDataTransferPanel";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
@@ -107,6 +108,18 @@ export default function BusinessAdminSoftwareControlPage() {
         industryId={industryId}
         enabledModules={templateConfig?.enabledModules}
       />
+
+      <ControlSection
+        index={1}
+        title="Export & import"
+        description="Download a ZIP of this business (including product, category, and logo images) or restore one. Import appends; it does not wipe existing records."
+        icon={Archive}
+      >
+        <BusinessDataTransferPanel
+          businessId={businessId}
+          businessName={business.businessName}
+        />
+      </ControlSection>
 
       {!hasTemplate ? (
         <SoftwareTemplateNotConfigured
