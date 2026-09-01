@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   AlertCircle,
   ChevronLeft,
@@ -29,6 +29,8 @@ import {
 } from "@/hooks/usePublicData";
 import { BASE_URL } from "@/lib/constant";
 import { cn, normalizeErrorMessage } from "@/lib/utils";
+import { DragSortHandle } from "@/components/common/DragSortHandle";
+import { useHtml5Reorder } from "@/hooks/useHtml5Reorder";
 
 function StatusChip({ label, tone }: { label: string; tone: "green" | "amber" | "slate" | "red" | "blue" }) {
   const tones = {
@@ -86,12 +88,35 @@ export default function PublicDataCategoriesPage() {
     createCategory,
     updateCategory,
     deleteCategory,
+    reorderCategories,
   } = usePublicCategories({ page: currentPage, search });
 
   const activeCategories = useMemo(
     () => categories.filter((category) => !category.deletedAt),
     [categories],
   );
+
+  const onReorder = useCallback(
+    async (ids: string[]) => {
+      try {
+        await reorderCategories(ids);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to save catalog category order");
+        throw err;
+      }
+    },
+    [reorderCategories],
+  );
+
+  const {
+    items: orderedCategories,
+    dragId,
+    dropId,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
+  } = useHtml5Reorder(activeCategories, onReorder, !actionLoading);
 
   const resetCreate = () => {
     setCreateForm({ name: "", description: "", sortOrder: 0, isPublished: true, image: null });
@@ -201,7 +226,9 @@ export default function PublicDataCategoriesPage() {
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h3 className="text-xl font-bold text-[#0f172a]">Public Categories</h3>
-          <p className="text-sm text-[#64748b]">Create manual categories or manage synchronized ones</p>
+          <p className="text-sm text-[#64748b]">
+            Drag the grip to change storefront order, including the chips after ALL.
+          </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <label className="block min-w-[240px] space-y-1.5">
@@ -261,14 +288,25 @@ export default function PublicDataCategoriesPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {activeCategories.map((category) => {
+          {orderedCategories.map((category) => {
             const url = imageUrl(category.image);
             return (
               <div
                 key={category.id}
-                className="flex flex-col gap-4 rounded-2xl border border-[#f1f5f9] p-4 transition hover:border-[#cbd5e1] sm:flex-row sm:items-center sm:justify-between"
+                onDragOver={(event) => onDragOver(category.id, event)}
+                onDrop={(event) => onDrop(category.id, event)}
+                className={cn(
+                  "flex flex-col gap-4 rounded-2xl border p-4 transition sm:flex-row sm:items-center sm:justify-between",
+                  dragId === category.id ? "border-[#93c5fd] opacity-60" : "border-[#f1f5f9] hover:border-[#cbd5e1]",
+                  dropId === category.id && dragId !== category.id ? "ring-2 ring-[#93c5fd]" : "",
+                )}
               >
                 <div className="flex items-center gap-4">
+                  <DragSortHandle
+                    disabled={actionLoading}
+                    onDragStart={(event) => onDragStart(category.id, event)}
+                    onDragEnd={onDragEnd}
+                  />
                   <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border border-[#f1f5f9] bg-[#f8fafc]">
                     {url ? (
                       <Image src={url} alt={category.name} fill className="object-cover" />

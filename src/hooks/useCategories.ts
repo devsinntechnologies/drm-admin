@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { buildApiUrl } from "@/lib/api";
+import { apiClient } from "@/lib/api-client";
+import { applySubsetOrder } from "@/lib/reorder";
 
 export interface CategoryProduct {
   id: string;
@@ -305,6 +307,36 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     }
   }, [fetchCategories, pagination.page, activeBusinessId]);
 
+  const reorderCategories = useCallback(
+    async (ids: string[]) => {
+      const authToken = getAuthToken(reduxToken);
+      if (!authToken) {
+        throw new Error("No authentication token available");
+      }
+
+      const previous = categories;
+      setCategories((prev) => {
+        const order = applySubsetOrder(
+          prev.map((category) => category.id),
+          ids,
+        );
+        const byId = new Map(prev.map((category) => [category.id, category]));
+        return order.map((id, index) => ({
+          ...byId.get(id)!,
+          sortOrder: index,
+        }));
+      });
+
+      try {
+        await apiClient.patch("/category/reorder", { ids }, authToken, activeBusinessId);
+      } catch (err) {
+        setCategories(previous);
+        throw err;
+      }
+    },
+    [activeBusinessId, categories, reduxToken],
+  );
+
   return {
     categories,
     loading,
@@ -316,5 +348,6 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     createCategory,
     updateCategory,
     deleteCategory,
+    reorderCategories,
   };
 }

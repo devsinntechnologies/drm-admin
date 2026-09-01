@@ -472,6 +472,45 @@ export function usePublicCategories(options: UsePublicDataListOptions = {}) {
     [activeBusinessId, fetchCategories, pagination.page, reduxToken, search],
   );
 
+  const reorderCategories = useCallback(
+    async (ids: string[]) => {
+      const token = getAuthToken(reduxToken);
+      if (!token) throw new Error("No authentication token available");
+
+      const previous = categories;
+      setCategories((prev) => {
+        const order = applySubsetOrder(
+          prev.map((category) => category.id),
+          ids,
+        );
+        const byId = new Map(prev.map((category) => [category.id, category]));
+        return order.flatMap((id) => {
+          const category = byId.get(id);
+          return category ? [category] : [];
+        });
+      });
+
+      try {
+        const url = new URL(`${BASE_URL}/public-data/categories/reorder`);
+        appendBusinessId(url, activeBusinessId);
+        const response = await fetch(url.toString(), {
+          method: "PATCH",
+          headers: {
+            accept: "*/*",
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ ids }),
+        });
+        await readJson(response, "Failed to reorder categories");
+      } catch (err) {
+        setCategories(previous);
+        throw err;
+      }
+    },
+    [activeBusinessId, categories, reduxToken],
+  );
+
   return {
     categories,
     loading,
@@ -483,6 +522,7 @@ export function usePublicCategories(options: UsePublicDataListOptions = {}) {
     createCategory,
     updateCategory,
     deleteCategory,
+    reorderCategories,
   };
 }
 

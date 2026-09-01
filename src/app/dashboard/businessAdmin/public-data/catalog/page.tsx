@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   AlertCircle,
   ChevronLeft,
@@ -15,10 +15,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
+import { DragSortHandle } from "@/components/common/DragSortHandle";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
+import { useHtml5Reorder } from "@/hooks/useHtml5Reorder";
 import { usePublicCatalog } from "@/hooks/usePublicCatalog";
-import { usePublicDataSettings } from "@/hooks/usePublicData";
+import { usePublicCategories, usePublicDataSettings, usePublicProducts } from "@/hooks/usePublicData";
 import { BASE_URL } from "@/lib/constant";
 import { cn, normalizeErrorMessage } from "@/lib/utils";
 
@@ -78,6 +80,7 @@ export default function PublicCatalogPreviewPage() {
     error,
     pagination,
     fetchCatalog,
+    invalidateMeta,
   } = usePublicCatalog({
     page: currentPage,
     search,
@@ -85,6 +88,9 @@ export default function PublicCatalogPreviewPage() {
     available: availableOnly ? true : undefined,
     enabled: canPreview,
   });
+
+  const { reorderCategories } = usePublicCategories({ enabled: false });
+  const { reorderProducts } = usePublicProducts({ enabled: false });
 
   const settingsHref = businessId
     ? `/dashboard/businessAdmin/public-data?businessId=${businessId}`
@@ -108,6 +114,36 @@ export default function PublicCatalogPreviewPage() {
     setSearch(searchInput.trim());
   };
 
+  const onReorderCategories = useCallback(
+    async (ids: string[]) => {
+      try {
+        await reorderCategories(ids);
+        invalidateMeta();
+        await fetchCatalog();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to save category order");
+        throw err;
+      }
+    },
+    [fetchCatalog, invalidateMeta, reorderCategories],
+  );
+
+  const onReorderProducts = useCallback(
+    async (ids: string[]) => {
+      try {
+        await reorderProducts(ids);
+        await fetchCatalog();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to save catalog order");
+        throw err;
+      }
+    },
+    [fetchCatalog, reorderProducts],
+  );
+
+  const categoryReorder = useHtml5Reorder(categories, onReorderCategories, canPreview && !refreshing);
+  const productReorder = useHtml5Reorder(products, onReorderProducts, canPreview && !refreshing && !search);
+
   const onEnableStorefront = async () => {
     const toastId = toast.loading("Enabling public storefront...");
     try {
@@ -129,12 +165,20 @@ export default function PublicCatalogPreviewPage() {
 
   const productCards = useMemo(
     () =>
-      products.map((product) => {
+      productReorder.items.map((product) => {
         const url = imageUrl(product.image);
         return (
           <article
             key={product.id}
-            className="overflow-hidden rounded-3xl border border-[#f1f5f9] bg-white shadow-sm"
+            onDragOver={(event) => productReorder.onDragOver(product.id, event)}
+            onDrop={(event) => productReorder.onDrop(product.id, event)}
+            className={cn(
+              "overflow-hidden rounded-3xl border bg-white shadow-sm",
+              productReorder.dragId === product.id ? "border-[#93c5fd] opacity-60" : "border-[#f1f5f9]",
+              productReorder.dropId === product.id && productReorder.dragId !== product.id
+                ? "ring-2 ring-[#93c5fd]"
+                : "",
+            )}
           >
             <div className="relative h-40 w-full bg-[#f8fafc]">
               {url ? (
@@ -144,6 +188,15 @@ export default function PublicCatalogPreviewPage() {
                   <ImageIcon className="h-10 w-10 text-[#cbd5e1]" />
                 </div>
               )}
+              {!search ? (
+                <div className="absolute left-3 top-3 rounded-xl bg-white/90 shadow-sm">
+                  <DragSortHandle
+                    disabled={refreshing}
+                    onDragStart={(event) => productReorder.onDragStart(product.id, event)}
+                    onDragEnd={productReorder.onDragEnd}
+                  />
+                </div>
+              ) : null}
             </div>
             <div className="space-y-2 p-4">
               <div className="flex items-start justify-between gap-2">
@@ -173,7 +226,7 @@ export default function PublicCatalogPreviewPage() {
           </article>
         );
       }),
-    [products],
+    [productReorder, refreshing, search],
   );
 
   return (
@@ -183,7 +236,7 @@ export default function PublicCatalogPreviewPage() {
           <div className="min-w-0">
             <h3 className="text-xl font-bold text-[#0f172a]">Public Catalog Preview</h3>
             <p className="text-sm text-[#64748b]">
-              Read-only view of what customers see online from the public catalog API.
+              Same public catalog API as the storefront. Drag chips after ALL, and product cards, to change display order.
             </p>
             {businessId ? (
               <div className="mt-3 flex flex-wrap gap-2">
@@ -202,7 +255,10 @@ export default function PublicCatalogPreviewPage() {
             type="button"
             onClick={() => {
               fetchSettings();
-              if (canPreview) fetchCatalog();
+              if (canPreview) {
+                invalidateMeta();
+                fetchCatalog();
+              }
             }}
             disabled={loading || refreshing}
             className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-[#d7e1ed] px-4 py-2.5 text-sm font-semibold text-[#334155] hover:bg-[#f8fafc] disabled:opacity-60"
@@ -292,7 +348,7 @@ export default function PublicCatalogPreviewPage() {
         <div className="rounded-[28px] border border-[#e5edf5] bg-white p-6 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
           <div className="mb-5 flex flex-col gap-4">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-lg font-bold text-[#0f172a]">Published Products</h3>
+              <h3 className="text-lg font-bold text-[#0f172a]">Published Catalog</h3>
               {refreshing ? (
                 <span className="inline-flex items-center gap-2 text-xs font-semibold text-[#64748b]">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -312,28 +368,10 @@ export default function PublicCatalogPreviewPage() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") applySearch();
                     }}
-                    placeholder="Search published products..."
+                    placeholder="Search dishes (e.g. Biryani, برياني...)"
                     className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] py-2.5 pl-10 pr-3 text-sm outline-none"
                   />
                 </span>
-              </label>
-              <label className="block space-y-1.5">
-                <span className="block text-sm font-semibold text-[#64748b]">Category</span>
-                <select
-                  value={categoryId}
-                  onChange={(e) => {
-                    setCurrentPage(1);
-                    setCategoryId(e.target.value);
-                  }}
-                  className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2.5 text-sm outline-none lg:w-48"
-                >
-                  <option value="">All categories</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
               </label>
               <label className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2.5 text-sm font-medium text-[#334155]">
                 <input
@@ -353,6 +391,70 @@ export default function PublicCatalogPreviewPage() {
               >
                 Apply
               </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentPage(1);
+                  setCategoryId("");
+                }}
+                className={cn(
+                  "flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-full border-2 text-[11px] font-bold",
+                  !categoryId
+                    ? "border-[#f97316] bg-white text-[#f97316]"
+                    : "border-[#e2e8f0] bg-[#f8fafc] text-[#64748b]",
+                )}
+              >
+                ALL
+              </button>
+              {categoryReorder.items.map((category) => {
+                const url = imageUrl(category.image);
+                const selected = categoryId === category.id;
+                return (
+                  <div
+                    key={category.id}
+                    onDragOver={(event) => categoryReorder.onDragOver(category.id, event)}
+                    onDrop={(event) => categoryReorder.onDrop(category.id, event)}
+                    className={cn(
+                      "relative flex h-16 w-16 shrink-0 items-center justify-center overflow-visible rounded-full",
+                      categoryReorder.dragId === category.id ? "opacity-50" : "",
+                      categoryReorder.dropId === category.id && categoryReorder.dragId !== category.id
+                        ? "ring-2 ring-[#93c5fd] rounded-full"
+                        : "",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentPage(1);
+                        setCategoryId(category.id);
+                      }}
+                      className={cn(
+                        "relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2",
+                        selected ? "border-[#f97316]" : "border-[#e2e8f0]",
+                      )}
+                      title={category.name}
+                    >
+                      {url ? (
+                        <Image src={url} alt={category.name} fill unoptimized className="object-cover" />
+                      ) : (
+                        <span className="px-1 text-center text-[9px] font-bold leading-tight text-[#334155]">
+                          {category.name}
+                        </span>
+                      )}
+                    </button>
+                    <span className="absolute -right-2 -top-2 z-10 rounded-full bg-white shadow-sm">
+                      <DragSortHandle
+                        disabled={refreshing}
+                        onDragStart={(event) => categoryReorder.onDragStart(category.id, event)}
+                        onDragEnd={categoryReorder.onDragEnd}
+                      />
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
