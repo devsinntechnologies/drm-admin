@@ -190,14 +190,16 @@ export function IndustryShellPreview({
                     className={cn("shrink-0 rounded-md border border-[#e2e8f0] object-contain", full ? "h-10 w-10" : embed ? "h-8 w-8" : "h-6 w-6")}
                   />
                 ) : (
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/logo-mark.svg"
-                    alt=""
-                    width={full ? 48 : embed ? 36 : 28}
-                    height={full ? 40 : embed ? 30 : 24}
-                    className={cn("w-auto shrink-0 object-contain", full ? "h-10" : embed ? "h-8" : "h-6")}
-                  />
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/logo-mark.svg"
+                      alt=""
+                      width={full ? 48 : embed ? 36 : 28}
+                      height={full ? 40 : embed ? 30 : 24}
+                      className={cn("w-auto shrink-0 object-contain", full ? "h-10" : embed ? "h-8" : "h-6")}
+                    />
+                  </>
                 )}
                 <div className="min-w-0">
                   <p className={cn("truncate font-semibold leading-tight", t.brandTitle, dark ? "text-slate-100" : "text-[#0f172a]")}>
