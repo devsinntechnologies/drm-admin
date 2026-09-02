@@ -1,5 +1,4 @@
 "use client";
-import Image from "next/image";
 import Link from "next/link";
 import { Activity, AppWindow, Building2, Crown, CreditCard, Download, Globe2, LayoutGrid, LayoutTemplate, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Receipt, Bell, Shapes, ShoppingCart, Smartphone, Store, Users, UtensilsCrossed, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -247,13 +246,13 @@ function SidebarBrand({
 
   if (usePlatformLogo) {
     return (
-      <Image
-        src="/logo-mark.png"
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src="/logo-mark.svg"
         alt="DigiNizam"
         width={48}
         height={40}
         className="h-10 w-auto shrink-0 object-contain"
-        priority
       />
     );
   }
@@ -306,7 +305,7 @@ export default function AdminShell({
   });
 
   const resolvedActiveTab = pathnameToModuleId(pathname) ?? activeTab;
-  const templateNavLabel = templateConfig?.navigation.find((item) => item.moduleId === resolvedActiveTab)?.label;
+  const templateNavLabel = templateConfig?.navigation?.find((item) => item.moduleId === resolvedActiveTab)?.label;
 
   const pageTitle = pageTitleProp ?? resolvePageTitle(pathname, resolvedActiveTab, profileBusiness?.businessName, templateNavLabel);
 

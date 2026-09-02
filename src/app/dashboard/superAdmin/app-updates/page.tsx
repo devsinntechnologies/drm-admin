@@ -37,7 +37,7 @@ import {
   type AppReleaseRecord,
   type AppReleaseTargetMode,
 } from "@/hooks/useAppUpdates";
-import { normalizeErrorMessage } from "@/lib/utils";
+import { formatLastActivity, normalizeErrorMessage } from "@/lib/utils";
 
 type ReleaseFormState = {
   versionName: string;
@@ -102,8 +102,12 @@ export default function AppUpdatesPage() {
 }
 
 function AppUpdatesContent() {
-  const { data: releases, isLoading } = useGetAppReleasesQuery();
-  const { data: adoption } = useGetAppUpdateAdoptionQuery();
+  const { data: releases, isLoading } = useGetAppReleasesQuery(undefined, {
+    pollingInterval: 15_000,
+  });
+  const { data: adoption } = useGetAppUpdateAdoptionQuery(undefined, {
+    pollingInterval: 15_000,
+  });
   const { data: businessData } = useGetBusinessesQuery({ page: 1 });
   const businesses = businessData?.data ?? [];
 
@@ -188,13 +192,29 @@ function AppUpdatesContent() {
     const toastId = toast.loading(editing ? "Saving release…" : "Creating release…");
     try {
       const saved = editing
-        ? await updateAppRelease({ id: editing.id, body: payload }).unwrap()
+        ? await updateAppRelease({
+            id: editing.id,
+            body:
+              editing.status === "published"
+                ? {
+                    policy: payload.policy,
+                    maxSkips: payload.maxSkips,
+                    title: payload.title,
+                    notes: payload.notes,
+                    targetMode: payload.targetMode,
+                    businessIds: payload.businessIds,
+                  }
+                : payload,
+          }).unwrap()
         : await createAppRelease(payload).unwrap();
-      if (pendingFile) {
+      if (pendingFile && saved.status === "draft") {
         toast.loading("Uploading installer…", { id: toastId });
         await uploadAsset({ id: saved.id, file: pendingFile }).unwrap();
       }
-      toast.success(editing ? "Release saved." : "Draft release created.", { id: toastId });
+      toast.success(
+        editing?.status === "published" ? "Live release updated. POS apps pick this up within seconds." : editing ? "Release saved." : "Draft release created.",
+        { id: toastId },
+      );
       setDialogOpen(false);
       setPendingFile(null);
     } catch (error) {
@@ -232,7 +252,7 @@ function AppUpdatesContent() {
     const toastId = toast.loading("Rolling back…");
     try {
       await rollbackRelease(release.id).unwrap();
-      toast.success("POS apps will no longer be offered this installer.", { id: toastId });
+      toast.success("Stopped. POS apps will no longer be offered this installer.", { id: toastId });
     } catch (error) {
       toast.error(normalizeErrorMessage(error, "Rollback failed."), { id: toastId });
     }
@@ -254,8 +274,9 @@ function AppUpdatesContent() {
       <PortalPage>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <p className="max-w-2xl text-sm text-[#64748b]">
-            Publish a Windows, macOS, or Android installer. After you publish, the linked
-            business Software page shows a live version alert, and POS apps prompt on next login.
+            Publish a Windows, macOS, or Android installer. Link it to a business, switch force
+            vs optional, or stop it. Assigned versions show on the business Software page and on
+            POS login within seconds.
           </p>
           <button type="button" onClick={openCreate} className="dn-btn dn-btn-primary h-11 rounded-xl px-5">
             <Plus className="h-4 w-4" />
@@ -295,8 +316,9 @@ function AppUpdatesContent() {
                     <th className="px-4 py-3 font-semibold">Business</th>
                     <th className="px-4 py-3 font-semibold">Platform</th>
                     <th className="px-4 py-3 font-semibold">Installed</th>
-                    <th className="px-4 py-3 font-semibold">Latest</th>
+                    <th className="px-4 py-3 font-semibold">Assigned</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="px-4 py-3 font-semibold">Last activity</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -316,6 +338,13 @@ function AppUpdatesContent() {
                         {device.latestVersionName
                           ? `${device.latestVersionName} (${device.latestVersionCode})`
                           : "—"}
+                        {device.isForced ? (
+                          <div className="text-xs font-semibold text-[#b91c1c]">Force update</div>
+                        ) : device.assignedPolicy ? (
+                          <div className="text-xs text-[#94a3b8]">
+                            {POLICY_LABEL[device.assignedPolicy as AppReleasePolicy] ?? device.assignedPolicy}
+                          </div>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -323,8 +352,23 @@ function AppUpdatesContent() {
                             device.isUpToDate ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"
                           }`}
                         >
-                          {device.isUpToDate ? "Up to date" : "Needs update"}
+                          {device.isUpToDate
+                            ? "Up to date"
+                            : device.isForced
+                              ? "Must update"
+                              : "Needs update"}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {(() => {
+                          const activity = formatLastActivity(device.lastHeartbeatAt);
+                          return (
+                            <div>
+                              <div className="font-medium text-[#0f172a]">{activity.relative}</div>
+                              <div className="text-[#94a3b8]">{activity.absolute}</div>
+                            </div>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}
@@ -454,24 +498,43 @@ function AppUpdatesContent() {
                             </>
                           ) : null}
                           {release.status === "published" ? (
-                            <button
-                              type="button"
-                              className="dn-btn dn-btn-outline h-8 rounded-lg px-3 text-xs"
-                              disabled={rollingBack}
-                              onClick={() => void handleRollback(release)}
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />
-                              Rollback
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                className="dn-btn dn-btn-outline h-8 rounded-lg px-3 text-xs"
+                                onClick={() => openEdit(release)}
+                              >
+                                Manage
+                              </button>
+                              <button
+                                type="button"
+                                className="dn-btn dn-btn-outline h-8 rounded-lg px-3 text-xs"
+                                disabled={rollingBack}
+                                onClick={() => void handleRollback(release)}
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                                Stop
+                              </button>
+                            </>
                           ) : null}
                           {release.status === "rolled_back" ? (
-                            <button
-                              type="button"
-                              className="dn-btn dn-btn-ghost h-8 rounded-lg px-2 text-xs text-red-600"
-                              onClick={() => setDeleteTarget(release)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                className="dn-btn dn-btn-primary h-8 rounded-lg px-3 text-xs"
+                                disabled={publishing}
+                                onClick={() => void handlePublish(release)}
+                              >
+                                Serve again
+                              </button>
+                              <button
+                                type="button"
+                                className="dn-btn dn-btn-ghost h-8 rounded-lg px-2 text-xs text-red-600"
+                                onClick={() => setDeleteTarget(release)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </>
                           ) : null}
                         </div>
                       </td>
@@ -487,10 +550,17 @@ function AppUpdatesContent() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit draft release" : "New app release"}</DialogTitle>
+            <DialogTitle>
+              {editing?.status === "published"
+                ? "Manage live release"
+                : editing
+                  ? "Edit draft release"
+                  : "New app release"}
+            </DialogTitle>
             <DialogDescription>
-              Upload comes after you save, or pick a file now. Publishing is a separate step so you can
-              pilot one shop first.
+              {editing?.status === "published"
+                ? "Change force vs optional, link or unlink businesses, or keep the same installer. POS apps pick this up within seconds — no republish needed."
+                : "Upload comes after you save, or pick a file now. Publishing is a separate step so you can pilot one shop first."}
             </DialogDescription>
           </DialogHeader>
           <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
@@ -499,10 +569,11 @@ function AppUpdatesContent() {
                 Version name
                 <input
                   required
+                  disabled={editing?.status === "published"}
                   value={form.versionName}
                   onChange={(event) => setForm((current) => ({ ...current, versionName: event.target.value }))}
                   placeholder="1.2.0"
-                  className="mt-1 h-11 w-full rounded-xl border border-[#e2e8f0] px-3"
+                  className="mt-1 h-11 w-full rounded-xl border border-[#e2e8f0] px-3 disabled:bg-[#f8fafc]"
                 />
               </label>
               <label className="block text-sm font-medium text-[#334155]">
@@ -511,10 +582,11 @@ function AppUpdatesContent() {
                   required
                   type="number"
                   min={1}
+                  disabled={editing?.status === "published"}
                   value={form.versionCode}
                   onChange={(event) => setForm((current) => ({ ...current, versionCode: event.target.value }))}
                   placeholder="2"
-                  className="mt-1 h-11 w-full rounded-xl border border-[#e2e8f0] px-3"
+                  className="mt-1 h-11 w-full rounded-xl border border-[#e2e8f0] px-3 disabled:bg-[#f8fafc]"
                 />
               </label>
             </div>
@@ -530,7 +602,7 @@ function AppUpdatesContent() {
                       platform: event.target.value as AppReleasePlatform,
                     }))
                   }
-                  className="mt-1 h-11 w-full rounded-xl border border-[#e2e8f0] px-3"
+                  className="mt-1 h-11 w-full rounded-xl border border-[#e2e8f0] px-3 disabled:bg-[#f8fafc]"
                 >
                   <option value="windows">{PLATFORM_LABEL.windows}</option>
                   <option value="macos">{PLATFORM_LABEL.macos}</option>
@@ -621,6 +693,7 @@ function AppUpdatesContent() {
                 </div>
               ) : null}
             </fieldset>
+            {editing?.status === "published" ? null : (
             <label className="block text-sm font-medium text-[#334155]">
               Installer file {editing?.asset ? `(current: ${editing.asset.fileName})` : ""}
               <input
@@ -635,13 +708,14 @@ function AppUpdatesContent() {
                 </span>
               ) : null}
             </label>
+            )}
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" className="dn-btn dn-btn-outline h-10 rounded-xl px-4" onClick={() => setDialogOpen(false)}>
                 Cancel
               </button>
               <button type="submit" disabled={saving} className="dn-btn dn-btn-primary h-10 rounded-xl px-4">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {editing ? "Save draft" : "Create draft"}
+                {editing?.status === "published" ? "Save live release" : editing ? "Save draft" : "Create draft"}
               </button>
             </div>
           </form>

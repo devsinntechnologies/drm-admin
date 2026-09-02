@@ -3,12 +3,16 @@ export type CredentialsResult = {
   temporaryPassword: string;
   credentialsEmailSent: boolean;
   credentialsEmailError?: string;
+  keepCurrentPassword?: boolean;
+  hasPendingPassword?: boolean;
 };
 
 export type ResetCredentialsPayload = {
   password?: string;
   generate?: boolean;
   sendEmail?: boolean;
+  keepCurrentPassword?: boolean;
+  cancelPending?: boolean;
 };
 
 export function asCredentialsResult(raw: unknown): CredentialsResult | null {
@@ -39,5 +43,7 @@ export function asCredentialsResult(raw: unknown): CredentialsResult | null {
       typeof data.credentialsEmailError === "string"
         ? data.credentialsEmailError
         : undefined,
+    keepCurrentPassword: data.keepCurrentPassword !== false,
+    hasPendingPassword: data.hasPendingPassword === true,
   };
 }

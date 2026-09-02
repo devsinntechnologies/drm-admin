@@ -1,11 +1,17 @@
 import { isPharmacyStaffRole, workspaceHomePath } from "@/lib/pharmacy-role-nav";
 
+function isSafeReturnTo(returnTo?: string | null): returnTo is string {
+  if (!returnTo || !returnTo.startsWith("/") || returnTo.startsWith("//")) return false;
+  const path = returnTo.split("?")[0];
+  return path !== "/" && path !== "/login" && !path.startsWith("/login/");
+}
+
 export function homePathAfterLogin(
   role: string | null | undefined,
   businessId?: string | null,
   returnTo?: string | null,
 ): string {
-  if (returnTo && returnTo.startsWith("/")) return returnTo;
+  if (isSafeReturnTo(returnTo)) return returnTo;
 
   const currentRole = (role ?? "").trim();
   const businessIdParam = businessId ? `?businessId=${encodeURIComponent(businessId)}` : "";

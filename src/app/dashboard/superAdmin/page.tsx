@@ -21,6 +21,7 @@ import { MetricCard } from "@/components/design-system/MetricCard";
 import { PLATFORM_INDUSTRY_DISTRIBUTION } from "@/lib/industry-preview-profiles";
 import { useGetBusinessesQuery } from "@/hooks/useBusiness";
 import { useGetPlansQuery } from "@/hooks/usePlan";
+import { useAuth } from "@/hooks/useAuth";
 
 const ACTIVITY: ActivityItem[] = [
   { id: "1", title: "New business registered", description: "Metro Retail Co. joined the platform", time: "4m ago", type: "business" },
@@ -31,8 +32,14 @@ const ACTIVITY: ActivityItem[] = [
 ];
 
 function PlatformConsoleContent() {
-  const { data: planData, isLoading: plansLoading } = useGetPlansQuery();
-  const { data: businessData, isLoading: businessesLoading } = useGetBusinessesQuery({ page: 1 });
+  const { token } = useAuth();
+  const { data: planData, isLoading: plansLoading } = useGetPlansQuery(undefined, {
+    skip: !token,
+  });
+  const { data: businessData, isLoading: businessesLoading } = useGetBusinessesQuery(
+    { page: 1 },
+    { skip: !token },
+  );
   const stats = planData && !Array.isArray(planData) ? planData.stats : undefined;
   const totalBusinesses = businessData?.pagination?.total ?? 0;
 

@@ -24,6 +24,7 @@ export type StaffAccount = {
   role: string;
   status: string;
   createdAt: string;
+  hasPendingPassword?: boolean;
 };
 
 export type CreateStaffResult = {
@@ -51,6 +52,7 @@ function normalizeRow(row: Record<string, unknown>, fallbackRole?: string): Staf
     role: String(row.role ?? fallbackRole ?? ""),
     status: normalizeStatus(row.status ?? row.isActive ?? "active"),
     createdAt: String(row.createdAt ?? row.created_at ?? new Date().toISOString()),
+    hasPendingPassword: row.hasPendingPassword === true,
   };
 }
 
@@ -304,6 +306,8 @@ export function useStaffAccounts(
         password: password || undefined,
         generate: options?.generate ?? !password,
         sendEmail: options?.sendEmail !== false,
+        keepCurrentPassword: options?.keepCurrentPassword !== false,
+        cancelPending: options?.cancelPending,
       };
 
       setActionLoading(true);
@@ -324,12 +328,15 @@ export function useStaffAccounts(
               password: payload.password,
               generate: payload.generate,
               sendEmail: payload.sendEmail,
+              keepCurrentPassword: payload.keepCurrentPassword,
+              cancelPending: payload.cancelPending,
             }),
           });
           if (!response.ok) {
             throw new Error(await parseFetchError(response, "Failed to update password"));
           }
           const json = await response.json().catch(() => null);
+          await fetchUsers();
           return asCredentialsResult(json);
         }
 
@@ -340,12 +347,13 @@ export function useStaffAccounts(
           authToken,
           businessId,
         );
+        await fetchUsers();
         return asCredentialsResult(raw);
       } finally {
         setActionLoading(false);
       }
     },
-    [token, businessId, family],
+    [token, businessId, family, fetchUsers],
   );
 
   const setStatus = useCallback(

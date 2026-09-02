@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 const SIZE_CONFIG = {
@@ -46,13 +45,13 @@ export default function Loading({
           className="flex items-center justify-center rounded-2xl border border-[#e8eef7] bg-white shadow-[0_8px_24px_rgba(0,24,64,0.08)]"
           style={{ padding: config.pad }}
         >
-          <Image
-            src="/logo-mark.png"
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo-mark.svg"
             alt=""
             width={config.logoW}
             height={config.logoH}
             className="h-auto w-auto object-contain"
-            priority
           />
         </div>
 

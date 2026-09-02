@@ -47,14 +47,11 @@ export function StaffManageDialog({
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent
-          align="top"
-          className="max-w-4xl"
-        >
-          <DialogHeader className="relative pr-10">
-            <DialogTitle>Staff for {business.businessName}</DialogTitle>
+        <DialogContent align="top" className="max-w-5xl">
+          <DialogHeader className="relative pr-12">
+            <DialogTitle>Staff · {business.businessName}</DialogTitle>
             <DialogDescription>
-              Create and manage logins from Additional details. Changes apply to portal and mobile.
+              Create logins for the team. A new password does not lock them out unless you choose Replace now.
             </DialogDescription>
             <DialogClose className="absolute right-0 top-0 grid h-9 w-9 place-items-center rounded-full bg-[#0f172a] text-white transition hover:bg-[#1e293b]">
               <X className="h-4 w-4" />

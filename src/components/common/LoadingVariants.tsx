@@ -1,32 +1,31 @@
 "use client";
 
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 const LOGO = { markW: 44, markH: 36, fullW: 220, fullH: 48 } as const;
 
 function LogoMark({ className }: { className?: string }) {
   return (
-    <Image
-      src="/logo-mark.png"
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/logo-mark.svg"
       alt=""
       width={LOGO.markW}
       height={LOGO.markH}
       className={cn("h-auto w-auto object-contain", className)}
-      priority
     />
   );
 }
 
 function LogoFull({ className }: { className?: string }) {
   return (
-    <Image
-      src="/logo-full.png"
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/diginizam-logo.svg"
       alt=""
       width={LOGO.fullW}
       height={LOGO.fullH}
       className={cn("h-auto w-full max-w-[220px] object-contain", className)}
-      priority
     />
   );
 }

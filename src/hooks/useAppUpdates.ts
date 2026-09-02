@@ -58,6 +58,8 @@ export type AppUpdateAdoptionDevice = {
   isOnline: boolean;
   latestVersionName: string | null;
   latestVersionCode: number | null;
+  assignedPolicy: AppReleasePolicy | null;
+  isForced: boolean;
   isUpToDate: boolean;
 };
 
@@ -76,6 +78,9 @@ export type AppUpdateWorkspaceDevice = {
   versionCode: number | null;
   isOnline: boolean;
   lastHeartbeatAt: string | null;
+  assignedVersionName: string | null;
+  assignedVersionCode: number | null;
+  assignedPolicy: AppReleasePolicy | null;
   isUpToDate: boolean;
 };
 
@@ -152,7 +157,11 @@ export const appUpdatesApi = createApi({
     >({
       query: ({ id, body }) => ({ url: `/app-updates/${id}`, method: "PATCH", body }),
       transformResponse: (response: unknown) => unwrapData<AppReleaseRecord>(response),
-      invalidatesTags: [{ type: "AppReleases", id: "LIST" }],
+      invalidatesTags: [
+        { type: "AppReleases", id: "LIST" },
+        { type: "AppUpdateAdoption", id: "LIST" },
+        { type: "AppUpdateWorkspace", id: "LIST" },
+      ],
     }),
     uploadAppReleaseAsset: builder.mutation<AppReleaseRecord, { id: string; file: File }>({
       query: ({ id, file }) => {
@@ -210,7 +219,11 @@ export const appUpdatesApi = createApi({
     deleteAppRelease: builder.mutation<{ deleted: boolean; id: string }, string>({
       query: (id) => ({ url: `/app-updates/${id}`, method: "DELETE" }),
       transformResponse: (response: unknown) => unwrapData<{ deleted: boolean; id: string }>(response),
-      invalidatesTags: [{ type: "AppReleases", id: "LIST" }],
+      invalidatesTags: [
+        { type: "AppReleases", id: "LIST" },
+        { type: "AppUpdateAdoption", id: "LIST" },
+        { type: "AppUpdateWorkspace", id: "LIST" },
+      ],
     }),
   }),
 });

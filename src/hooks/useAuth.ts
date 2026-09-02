@@ -14,7 +14,14 @@ export function useAuth() {
   const login = useCallback(
     async (credentials: LoginCredentials) => {
       const action = await dispatch(loginUser(credentials));
-      return loginUser.fulfilled.match(action);
+      if (loginUser.fulfilled.match(action)) {
+        return { ok: true as const };
+      }
+      const message =
+        typeof action.payload === "string" && action.payload.trim()
+          ? action.payload
+          : "Unable to sign in";
+      return { ok: false as const, error: message };
     },
     [dispatch],
   );

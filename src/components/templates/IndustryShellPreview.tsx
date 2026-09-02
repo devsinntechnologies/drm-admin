@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import {
   Activity,
@@ -191,8 +190,9 @@ export function IndustryShellPreview({
                     className={cn("shrink-0 rounded-md border border-[#e2e8f0] object-contain", full ? "h-10 w-10" : embed ? "h-8 w-8" : "h-6 w-6")}
                   />
                 ) : (
-                  <Image
-                    src="/logo-mark.png"
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/logo-mark.svg"
                     alt=""
                     width={full ? 48 : embed ? 36 : 28}
                     height={full ? 40 : embed ? 30 : 24}
