@@ -1,6 +1,7 @@
 export type ProductsModuleSettings = {
   allowCreate: boolean;
   allowEdit: boolean;
+  allowBarcodeOnCreate: boolean;
   viewMode: "grid" | "list";
 };
 
@@ -21,6 +22,8 @@ export type OrdersModuleSettings = {
   showNewOrders: boolean;
   /** Which screen opens first when both are enabled */
   defaultSection: "active" | "new";
+  /** USB gun + camera add-to-cart on the POS screen */
+  allowBarcodeScanner: boolean;
 };
 
 /** Categories capability — lives inside Products/Orders on mobile (not a nav tab). */
@@ -34,6 +37,7 @@ export type CategoriesModuleSettings = {
 export const DEFAULT_PRODUCTS_SETTINGS: ProductsModuleSettings = {
   allowCreate: true,
   allowEdit: true,
+  allowBarcodeOnCreate: false,
   viewMode: "grid",
 };
 
@@ -45,6 +49,7 @@ export const DEFAULT_ORDERS_SETTINGS: OrdersModuleSettings = {
   showActiveOrders: true,
   showNewOrders: true,
   defaultSection: "active",
+  allowBarcodeScanner: false,
 };
 
 export const DEFAULT_CATEGORIES_SETTINGS: CategoriesModuleSettings = {
@@ -84,6 +89,7 @@ export function parseProductsSettings(
   return {
     allowCreate: raw.allowCreate !== false,
     allowEdit: raw.allowEdit !== false,
+    allowBarcodeOnCreate: raw.allowBarcodeOnCreate === true,
     viewMode: raw.viewMode === "list" ? "list" : "grid",
   };
 }
@@ -115,6 +121,10 @@ export function parseOrdersSettings(
       raw.defaultSection === "new" || raw.defaultSection === "active"
         ? raw.defaultSection
         : defaults.defaultSection,
+    allowBarcodeScanner:
+      typeof raw.allowBarcodeScanner === "boolean"
+        ? raw.allowBarcodeScanner
+        : defaults.allowBarcodeScanner,
   };
 }
 
@@ -133,6 +143,7 @@ export function serializeProductsSettings(settings: ProductsModuleSettings): Rec
   return {
     allowCreate: settings.allowCreate,
     allowEdit: settings.allowEdit,
+    allowBarcodeOnCreate: settings.allowBarcodeOnCreate,
     viewMode: settings.viewMode,
   };
 }
@@ -146,6 +157,7 @@ export function serializeOrdersSettings(settings: OrdersModuleSettings): Record<
     showActiveOrders: settings.showActiveOrders,
     showNewOrders: settings.showNewOrders,
     defaultSection: settings.defaultSection,
+    allowBarcodeScanner: settings.allowBarcodeScanner,
   };
 }
 

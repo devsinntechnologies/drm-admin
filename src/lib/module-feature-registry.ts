@@ -56,6 +56,13 @@ export const MODULE_FEATURE_REGISTRY: ModuleFeatureRegistryEntry[] = [
         defaultValue: true,
       },
       {
+        kind: "boolean",
+        key: "allowBarcodeOnCreate",
+        label: "Allow barcode on product form",
+        description: "Show a barcode field (USB gun + camera) when adding or editing products.",
+        defaultValue: false,
+      },
+      {
         kind: "enum",
         key: "viewMode",
         label: "Product layout",
@@ -121,6 +128,13 @@ export const MODULE_FEATURE_REGISTRY: ModuleFeatureRegistryEntry[] = [
         label: "Show new order / POS screen",
         description: "Product picker and cart for taking sales.",
         defaultValue: true,
+      },
+      {
+        kind: "boolean",
+        key: "allowBarcodeScanner",
+        label: "Allow barcode scanner on Orders",
+        description: "USB/Bluetooth gun and camera scanning to add products to the cart. Off by default.",
+        defaultValue: false,
       },
       {
         kind: "enum",

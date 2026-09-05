@@ -920,6 +920,25 @@ export function SoftwareControlContent({
                       }
                     />
                   </label>
+                  <label className="flex items-start justify-between gap-3 rounded-lg border border-[#e2e8f0] px-3 py-2 text-sm">
+                    <span>
+                      <span className="block">Allow barcode on product form</span>
+                      <span className="mt-0.5 block text-xs font-normal text-[#64748b]">
+                        USB gun and camera field when adding or editing products. Off by default.
+                      </span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={productsSettings.allowBarcodeOnCreate}
+                      onChange={(e) =>
+                        setProductsSettings((p) => ({
+                          ...p,
+                          allowBarcodeOnCreate: e.target.checked,
+                        }))
+                      }
+                    />
+                  </label>
                   <div>
                     <p className="mb-2 text-sm font-medium">Product layout</p>
                     <div className="flex gap-2">
@@ -1164,6 +1183,27 @@ export function SoftwareControlContent({
                       ))}
                     </div>
                   </div>
+                  <label className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4"
+                      checked={ordersSettings.allowBarcodeScanner}
+                      onChange={(event) =>
+                        setOrdersSettings((prev) => ({
+                          ...prev,
+                          allowBarcodeScanner: event.target.checked,
+                        }))
+                      }
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-[#0f172a]">
+                        Allow barcode scanner on Orders
+                      </span>
+                      <span className="block text-xs text-[#64748b]">
+                        USB/Bluetooth gun and camera add products to the cart. Hidden in the app when off.
+                      </span>
+                    </span>
+                  </label>
                 </div>
               ) : null}
             </div>
