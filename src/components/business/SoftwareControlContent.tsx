@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useDispatch } from "react-redux";
 import {
   ChevronDown,
@@ -85,6 +87,7 @@ import { SoftwareModuleIcon } from "@/lib/software-module-icons";
 import { normalizeErrorMessage } from "@/lib/utils";
 import { isEmbeddedLogoData } from "@/lib/logo-upload";
 import { resolveMediaUrl } from "@/lib/media-url";
+import { appendBusinessId } from "@/lib/module-routes";
 import { syncNavigationToEnabledModules } from "@/template-engine/builder";
 import { getIndustryById } from "@/templates/industries";
 import { DASHBOARD_CARD_CATALOG, MODULE_CATALOG, ACCENT_COLORS, colorsFromAccent } from "@/templates/modules";
@@ -114,7 +117,11 @@ export function SoftwareControlContent({
   uploadedLogoUrl = null,
 }: SoftwareControlContentProps) {
   const dispatch = useDispatch();
+  const pathname = usePathname();
   const industry = getIndustryById(industryId);
+  const printersHref = pathname.includes("/superAdmin/")
+    ? `/dashboard/superAdmin/businesses/${businessId}/software/printers`
+    : appendBusinessId("/dashboard/businessAdmin/software/printers", businessId);
 
   /** Flutter app modules for this industry — the only checklist in Software Control. */
   const mobileCatalog = useMemo<ModuleId[]>(
@@ -880,30 +887,40 @@ export function SoftwareControlContent({
                       </span>
                     </span>
                   </label>
-                  <label className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4"
-                      checked={salesSettings.allowPrinter}
-                      onChange={(event) =>
-                        setSalesSettings((prev) => ({
-                          ...prev,
-                          allowPrinter: event.target.checked,
-                        }))
-                      }
-                    />
-                    <span>
-                      <span className="flex items-center gap-1.5 text-sm font-medium text-[#0f172a]">
-                        <Printer className="h-3.5 w-3.5" />
-                        Allow printer access
+                  <div className="rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
+                    <label className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4"
+                        checked={salesSettings.allowPrinter}
+                        onChange={(event) =>
+                          setSalesSettings((prev) => ({
+                            ...prev,
+                            allowPrinter: event.target.checked,
+                          }))
+                        }
+                      />
+                      <span>
+                        <span className="flex items-center gap-1.5 text-sm font-medium text-[#0f172a]">
+                          <Printer className="h-3.5 w-3.5" />
+                          Allow printer access
+                        </span>
+                        <span className="mt-0.5 block text-xs text-[#64748b]">
+                          Staff can connect a printer and print invoices from Invoices, Orders, and the mobile
+                          app. Turn this off to disable printing; staff will be asked to contact an
+                          administrator.
+                        </span>
                       </span>
-                      <span className="mt-0.5 block text-xs text-[#64748b]">
-                        Staff can connect a printer and print invoices from Invoices, Orders, and the mobile
-                        app. Turn this off to disable printing; staff will be asked to contact an
-                        administrator.
-                      </span>
-                    </span>
-                  </label>
+                    </label>
+                    {salesSettings.allowPrinter ? (
+                      <Link
+                        href={printersHref}
+                        className="mt-2 ml-7 inline-flex text-xs font-semibold text-[#0050F8] hover:underline"
+                      >
+                        Open printer configuration
+                      </Link>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
             </div>

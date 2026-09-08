@@ -140,6 +140,7 @@ export const SOFTWARE_TIPS = {
   profile: "Legal name, plan, and contact details. Ask support if these need to change.",
   sync: "Which phones and desktops are live right now, and whether their data has finished syncing.",
   appVersion: "Which Windows, macOS, or Android build this business should install.",
+  printers: "Receipt and kitchen printer IPs. The POS on the shop network reports whether they are reachable.",
 };
 
 export const STAFF_TIPS = {

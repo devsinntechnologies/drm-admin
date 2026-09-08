@@ -202,6 +202,7 @@ export type IndustryTemplate = {
   roles: string[];
   workflows: string[];
   specialScreens: string[];
+  defaultPrinterRoles?: Array<"receipt" | "kitchen">;
   features: {
     batchTracking?: boolean;
     expiryTracking?: boolean;
