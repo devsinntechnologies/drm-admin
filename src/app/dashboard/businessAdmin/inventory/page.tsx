@@ -6,10 +6,13 @@ import Loading from "@/components/common/Loading";
 import { PharmacyPage } from "@/components/pharmacy/PharmacyPage";
 import { DataTable, StatusBadge } from "@/components/workspace/DataTable";
 import { PortalEmptyState } from "@/components/admin/PortalPage";
+import { ProductInventoryPanel } from "@/components/inventory/ProductInventoryPanel";
 import { asList } from "@/lib/api";
+import { isPharmacyIndustry } from "@/lib/industry-workspace";
 import { usePharmacyQuery } from "@/hooks/usePharmacyQuery";
+import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 
-function InventoryContent() {
+function PharmacyInventoryContent() {
   const { data, loading, error } = usePharmacyQuery<any[]>("/pharmacy/inventory");
   const rows = asList<any>(data).map((row) => ({
     name: row.name,
@@ -36,6 +39,21 @@ function InventoryContent() {
       />
     </PharmacyPage>
   );
+}
+
+function InventoryContent() {
+  const { templateConfig, isLoading } = useBusinessTemplate();
+  const industryId = templateConfig?.industryId;
+
+  if (isLoading && !industryId) {
+    return <Loading fullScreen />;
+  }
+
+  if (isPharmacyIndustry(industryId)) {
+    return <PharmacyInventoryContent />;
+  }
+
+  return <ProductInventoryPanel />;
 }
 
 export default function InventoryPage() {

@@ -27,6 +27,7 @@ export interface CategoryRecord {
   businessName: string;
   products: CategoryProduct[];
   image?: string;
+  customFields?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
@@ -163,7 +164,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     return (res.data ?? res) as CategoryRecord;
   }, [activeBusinessId]);
 
-  const createCategory = useCallback(async (payload: { categoryName: string; sortOrder: number; image?: File | null }) => {
+  const createCategory = useCallback(async (payload: { categoryName: string; sortOrder: number; image?: File | null; customFields?: Record<string, unknown> }) => {
     const token = getAuthToken(reduxToken);
     if (!token) {
       throw new Error("No authentication token available");
@@ -176,6 +177,9 @@ export function useCategories(options: UseCategoriesOptions = {}) {
       formData.append("sortOrder", String(payload.sortOrder));
       if (payload.image) {
         formData.append("image", payload.image);
+      }
+      if (payload.customFields) {
+        formData.append("customFields", JSON.stringify(payload.customFields));
       }
 
       const url = new URL(buildApiUrl("/category"));
@@ -215,7 +219,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     }
   }, [fetchCategories, pagination.page, activeBusinessId, reduxToken]);
 
-  const updateCategory = useCallback(async (id: string, payload: { categoryName: string; sortOrder: number; image?: File | null }) => {
+  const updateCategory = useCallback(async (id: string, payload: { categoryName: string; sortOrder: number; image?: File | null; customFields?: Record<string, unknown> }) => {
     const token = getAuthToken(reduxToken);
     if (!token) {
       throw new Error("No authentication token available");
@@ -228,6 +232,9 @@ export function useCategories(options: UseCategoriesOptions = {}) {
       formData.append("sortOrder", String(payload.sortOrder));
       if (payload.image) {
         formData.append("image", payload.image);
+      }
+      if (payload.customFields) {
+        formData.append("customFields", JSON.stringify(payload.customFields));
       }
 
       const url = new URL(buildApiUrl(`/category/${id}`));

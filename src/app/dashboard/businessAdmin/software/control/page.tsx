@@ -11,6 +11,9 @@ import { SoftwareStaffOverview } from "@/components/business/SoftwareStaffOvervi
 import { SoftwareSyncStatusPanel } from "@/components/business/SoftwareSyncStatusPanel";
 import { SoftwareTemplateNotConfigured } from "@/components/business/SoftwareTemplateNotConfigured";
 import { BusinessDataTransferPanel } from "@/components/business/BusinessDataTransferPanel";
+import { FbrSettingsPanel } from "@/components/business/FbrSettingsPanel";
+import { FbrActivityPanel } from "@/components/business/FbrActivityPanel";
+import { CrmSchemaPanel } from "@/components/crm/CrmSchemaPanel";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
@@ -102,6 +105,18 @@ export default function BusinessAdminSoftwareControlPage() {
         </dl>
       </ControlSection>
 
+      <FbrSettingsPanel
+        sectionIndex={1}
+        businessId={businessId}
+        businessName={business.businessName}
+        address={business.address}
+        fbrSettings={business.fbrSettings}
+      />
+
+      <FbrActivityPanel sectionIndex={2} businessId={businessId} />
+
+      <CrmSchemaPanel sectionIndex={3} businessId={businessId} />
+
       <SoftwareStaffOverview
         businessId={businessId}
         business={business}
@@ -110,7 +125,7 @@ export default function BusinessAdminSoftwareControlPage() {
       />
 
       <ControlSection
-        index={1}
+        index={4}
         title="Export & import"
         description="Download a ZIP of this business (including product, category, and logo images) or restore one. Import appends; it does not wipe existing records."
         icon={Archive}

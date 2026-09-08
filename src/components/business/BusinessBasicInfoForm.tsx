@@ -186,7 +186,7 @@ export function BusinessBasicInfoForm({ business }: BusinessBasicInfoFormProps) 
       />
 
       <div className="wizard-form-grid">
-        <WizardFormField label="Business name" required>
+        <WizardFormField label="Business name" required tip="Legal or trading name shown on invoices, the app, and the portal.">
           <input
             value={businessName}
             onChange={(e) => setBusinessName(e.target.value)}
@@ -195,7 +195,7 @@ export function BusinessBasicInfoForm({ business }: BusinessBasicInfoFormProps) 
           />
         </WizardFormField>
 
-        <WizardFormField label="Industry">
+        <WizardFormField label="Industry" tip="The template this business was created from. It decides default screens.">
           <input
             value={industryLabel ?? "Not set"}
             disabled
@@ -203,7 +203,7 @@ export function BusinessBasicInfoForm({ business }: BusinessBasicInfoFormProps) 
           />
         </WizardFormField>
 
-        <WizardFormField label="Address" required className="sm:col-span-2">
+        <WizardFormField label="Address" required className="sm:col-span-2" tip="Printed on invoices and sent to FBR as the seller address when FBR is on.">
           <input
             value={address}
             onChange={(e) => setAddress(e.target.value)}
@@ -212,7 +212,7 @@ export function BusinessBasicInfoForm({ business }: BusinessBasicInfoFormProps) 
           />
         </WizardFormField>
 
-        <WizardFormField label="Plan" required>
+        <WizardFormField label="Plan" required tip="Subscription plan. Limits and billing come from this.">
           <select
             value={planId}
             onChange={(e) => setPlanId(e.target.value)}
@@ -227,11 +227,11 @@ export function BusinessBasicInfoForm({ business }: BusinessBasicInfoFormProps) 
           </select>
         </WizardFormField>
 
-        <WizardFormField label="Status">
+        <WizardFormField label="Status" tip="Active businesses can sign in. Suspended businesses are locked.">
           <input value={business.status} disabled className="wizard-input capitalize" />
         </WizardFormField>
 
-        <WizardFormField label="Owner name" required>
+        <WizardFormField label="Owner name" required tip="Primary contact for this business.">
           <input
             value={manager}
             onChange={(e) => setManager(e.target.value)}
@@ -240,7 +240,7 @@ export function BusinessBasicInfoForm({ business }: BusinessBasicInfoFormProps) 
           />
         </WizardFormField>
 
-        <WizardFormField label="Email" required>
+        <WizardFormField label="Email" required tip="Owner email used for portal login and branding lookup.">
           <input
             type="email"
             value={email}
@@ -250,7 +250,7 @@ export function BusinessBasicInfoForm({ business }: BusinessBasicInfoFormProps) 
           />
         </WizardFormField>
 
-        <WizardFormField label="Phone" required>
+        <WizardFormField label="Phone" required tip="Contact number shown on invoices and the public profile.">
           <div className="wizard-input-group">
             <select
               value={countryCode}

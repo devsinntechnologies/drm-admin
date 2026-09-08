@@ -7,9 +7,15 @@ import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { PortalPage, PortalErrorAlert } from "@/components/admin/PortalPage";
+import { FieldLabel } from "@/components/ui/FeatureTip";
+import { CATEGORY_TIPS } from "@/lib/feature-tips";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { CategoryRecord, useCategories } from "@/hooks/useCategories";
+import { useCrmSchema } from "@/hooks/useCrmSchema";
+import { CrmRecordFields } from "@/components/crm/CrmRecordFields";
+import { CrmCardFields, crmShowsImage } from "@/components/crm/CrmCardFields";
+import { emptyCustomFieldValues, serializeCustomFields, type CrmModuleSchema } from "@/lib/crm";
 import { cn, normalizeErrorMessage } from "@/lib/utils";
 import { DeleteConfirmDialog } from "@/components/common/DeleteConfirmDialog";
 import {
@@ -32,6 +38,7 @@ function ErrorAlert({ message }: { message: unknown }) {
 
 function CategoryListItem({
   category,
+  schema,
   onEdit,
   dragEnabled,
   isDragging,
@@ -42,6 +49,7 @@ function CategoryListItem({
   onDragEnd,
 }: {
   category: CategoryRecord;
+  schema: CrmModuleSchema | null;
   onEdit: (id: string) => void;
   dragEnabled: boolean;
   isDragging: boolean;
@@ -54,6 +62,7 @@ function CategoryListItem({
   const imageUrl = category.image
     ? (category.image.startsWith("http") ? category.image : `${BASE_URL}/${category.image}`)
     : null;
+  const showImage = crmShowsImage(schema, "categories");
 
   return (
     <div
@@ -67,17 +76,29 @@ function CategoryListItem({
     >
       <div className="flex items-center gap-3">
         <DragSortHandle disabled={!dragEnabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
-        <div className="relative h-12 w-12 overflow-hidden rounded-xl bg-[#f8fafc] flex items-center justify-center border border-[#f1f5f9]">
-          {imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt={category.CategoryName} className="absolute inset-0 h-full w-full object-cover" />
-          ) : (
-            <ImageIcon className="h-6 w-6 text-[#111827]" />
-          )}
-        </div>
+        {showImage ? (
+          <div className="relative h-12 w-12 overflow-hidden rounded-xl bg-[#f8fafc] flex items-center justify-center border border-[#f1f5f9]">
+            {imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={imageUrl} alt={category.CategoryName} className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <ImageIcon className="h-6 w-6 text-[#111827]" />
+            )}
+          </div>
+        ) : null}
         <div>
-          <h4 className="text-sm font-bold text-[#111827]">{category.CategoryName}</h4>
-          <p className="text-xs text-[#111827]">Sort order: {category.sortOrder}</p>
+          <CrmCardFields
+            schema={schema}
+            moduleId="categories"
+            customFields={category.customFields}
+            className="space-y-1"
+            builtin={{
+              name: <h4 className="text-sm font-bold text-[#111827]">{category.CategoryName}</h4>,
+              sortOrder: (
+                <p className="text-xs text-[#111827]">Sort order: {category.sortOrder}</p>
+              ),
+            }}
+          />
         </div>
       </div>
       <button
@@ -109,12 +130,14 @@ function CategoriesContent() {
     sortOrder: 0,
     image: null as File | null,
   });
+  const [createCustomFields, setCreateCustomFields] = useState<Record<string, unknown>>({});
 
   const [editForm, setEditForm] = useState({
     categoryName: "",
     sortOrder: 0,
     image: null as File | null,
   });
+  const [editCustomFields, setEditCustomFields] = useState<Record<string, unknown>>({});
 
   const {
     categories,
@@ -128,6 +151,12 @@ function CategoriesContent() {
     deleteCategory,
     reorderCategories,
   } = useCategories({ page: currentPage });
+  const { schema: categoryCrmSchema } = useCrmSchema("categories");
+
+  useEffect(() => {
+    if (editId) return;
+    setCreateCustomFields(emptyCustomFieldValues(categoryCrmSchema?.fields ?? []));
+  }, [categoryCrmSchema, editId]);
 
   useEffect(() => {
     const storedRole = typeof window !== "undefined" ? localStorage.getItem("roleName") : null;
@@ -186,10 +215,12 @@ function CategoriesContent() {
 
   const resetCreate = () => {
     setCreateForm({ categoryName: "", sortOrder: 0, image: null });
+    setCreateCustomFields(emptyCustomFieldValues(categoryCrmSchema?.fields ?? []));
   };
 
   const resetEdit = () => {
     setEditForm({ categoryName: "", sortOrder: 0, image: null });
+    setEditCustomFields({});
     setEditId(null);
   };
 
@@ -205,6 +236,7 @@ function CategoriesContent() {
         categoryName: createForm.categoryName.trim(),
         sortOrder: Number(createForm.sortOrder),
         image: createForm.image,
+        customFields: serializeCustomFields(categoryCrmSchema?.fields ?? [], createCustomFields),
       });
       toast.success("Category created successfully", { id: toastId });
       resetCreate();
@@ -222,6 +254,10 @@ function CategoriesContent() {
         categoryName: category.CategoryName,
         sortOrder: category.sortOrder ?? 0,
         image: null,
+      });
+      setEditCustomFields({
+        ...emptyCustomFieldValues(categoryCrmSchema?.fields ?? []),
+        ...(category.customFields ?? {}),
       });
       toast.dismiss(toastId);
     } catch (err) {
@@ -241,6 +277,7 @@ function CategoriesContent() {
         categoryName: editForm.categoryName.trim(),
         sortOrder: Number(editForm.sortOrder),
         image: editForm.image,
+        customFields: serializeCustomFields(categoryCrmSchema?.fields ?? [], editCustomFields),
       });
       toast.success("Category updated successfully", { id: toastId });
       resetEdit();
@@ -284,7 +321,9 @@ function CategoriesContent() {
                 
                 <form className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar" onSubmit={editId ? onEditSubmit : onCreateSubmit}>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-[#64748b]">Category Name <span className="text-[#dc2626]">*</span></label>
+                    <label className="text-sm font-bold text-[#64748b]">
+                      <FieldLabel tip={CATEGORY_TIPS.name} required>Category Name</FieldLabel>
+                    </label>
                     <input
                       value={editId ? editForm.categoryName : createForm.categoryName}
                       onChange={(e) => editId ? setEditForm(p => ({ ...p, categoryName: e.target.value })) : setCreateForm(p => ({ ...p, categoryName: e.target.value }))}
@@ -294,7 +333,9 @@ function CategoriesContent() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-[#64748b]">Sort Order</label>
+                    <label className="text-sm font-bold text-[#64748b]">
+                      <FieldLabel tip={CATEGORY_TIPS.sort}>Sort Order</FieldLabel>
+                    </label>
                     <input
                       type="number"
                       value={editId ? editForm.sortOrder : createForm.sortOrder}
@@ -303,8 +344,17 @@ function CategoriesContent() {
                     />
                   </div>
 
+                  <CrmRecordFields
+                    schema={categoryCrmSchema}
+                    values={editId ? editCustomFields : createCustomFields}
+                    onChange={editId ? setEditCustomFields : setCreateCustomFields}
+                    inputClassName="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm font-medium outline-none transition focus:border-[#0050F8] focus:ring-2 focus:ring-[#0050F8]/20"
+                  />
+
                   <div className="space-y-4">
-                    <label className="text-sm font-bold text-[#64748b]">Image</label>
+                    <label className="text-sm font-bold text-[#64748b]">
+                      <FieldLabel tip={CATEGORY_TIPS.image}>Image</FieldLabel>
+                    </label>
                     <div>
                       <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#dbe4ef] bg-white px-6 py-2.5 text-sm font-bold text-[#0050F8] transition hover:bg-[#f8fbff]">
                         Choose Image
@@ -363,6 +413,7 @@ function CategoriesContent() {
                       <CategoryListItem
                         key={category.id}
                         category={category}
+                        schema={categoryCrmSchema}
                         onEdit={onOpenEdit}
                         dragEnabled={!actionLoading}
                         isDragging={dragId === category.id}

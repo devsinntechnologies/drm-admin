@@ -131,7 +131,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     setError(null);
 
     try {
-      const url = new URL(`${BASE_URL}/invoice`);
+      const url = new URL(`${BASE_URL}/software/invoices`);
       url.searchParams.append("page", String(pageNum));
       if (limit) {
         url.searchParams.append("limit", String(limit));
@@ -223,7 +223,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
 
     setActionLoading(true);
     try {
-      const url = new URL(`${BASE_URL}/invoice/${invoiceUuid}`);
+      const url = new URL(`${BASE_URL}/software/invoices/${invoiceUuid}`);
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
@@ -262,7 +262,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
 
     setActionLoading(true);
     try {
-      const url = new URL(`${BASE_URL}/invoice/${invoiceUuid}`);
+      const url = new URL(`${BASE_URL}/software/invoices/${invoiceUuid}`);
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
@@ -296,7 +296,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
       throw new Error("No authentication token available");
     }
 
-    const url = new URL(`${BASE_URL}/invoice/export`);
+    const url = new URL(`${BASE_URL}/software/invoices/export`);
     if (options?.range) url.searchParams.append("range", options.range);
     if (options?.status && options.status !== "all") {
       url.searchParams.append("status", options.status);

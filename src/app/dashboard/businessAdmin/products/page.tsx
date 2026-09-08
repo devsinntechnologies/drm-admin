@@ -37,11 +37,17 @@ import {
   portalInputClass,
   FormField,
 } from "@/components/admin/PortalPage";
+import { FieldLabel } from "@/components/ui/FeatureTip";
+import { CATEGORY_TIPS, PRODUCT_TIPS } from "@/lib/feature-tips";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { Product, useProducts, CreateProductVariantPayload } from "@/hooks/useProducts";
 import { BASE_URL } from "@/lib/constant";
 import { CategoryRecord, useCategories } from "@/hooks/useCategories";
+import { useCrmSchema } from "@/hooks/useCrmSchema";
+import { CrmRecordFields } from "@/components/crm/CrmRecordFields";
+import { CrmCardFields, crmShowsImage } from "@/components/crm/CrmCardFields";
+import { emptyCustomFieldValues, serializeCustomFields, type CrmModuleSchema } from "@/lib/crm";
 import { cn, normalizeErrorMessage } from "@/lib/utils";
 import { DeleteConfirmDialog } from "@/components/common/DeleteConfirmDialog";
 import {
@@ -164,7 +170,7 @@ function VariantsEditor({
       <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4 space-y-3">
         <label className="block space-y-1.5">
           <span className="block text-xs font-semibold text-[var(--text-muted)]">
-            {editingIndex != null ? "Edit variant" : "Variant name"}
+            <FieldLabel tip={PRODUCT_TIPS.variantName}>{editingIndex != null ? "Edit variant" : "Variant name"}</FieldLabel>
           </span>
           <input
             value={vForm.name}
@@ -173,9 +179,11 @@ function VariantsEditor({
             className={portalInputClass}
           />
         </label>
-        <div className={cn("grid gap-3", showCostPrice ? "grid-cols-3" : "grid-cols-2")}>
+        <div className={cn("grid gap-3", showCostPrice ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-2")}>
           <label className="block space-y-1.5">
-            <span className="block text-xs font-semibold text-[var(--text-muted)]">Price</span>
+            <span className="block text-xs font-semibold text-[var(--text-muted)]">
+              <FieldLabel tip={PRODUCT_TIPS.variantPrice}>Price</FieldLabel>
+            </span>
             <NumberInput
               value={vForm.price}
               onChange={(price) => setVForm((p) => ({ ...p, price }))}
@@ -186,7 +194,7 @@ function VariantsEditor({
           {showCostPrice ? (
             <label className="block space-y-1.5">
               <span className="block text-xs font-semibold text-[var(--text-muted)]">
-                Cost price <span className="text-[#dc2626]">*</span>
+                <FieldLabel tip={PRODUCT_TIPS.variantCost} required>Cost price</FieldLabel>
               </span>
               <NumberInput
                 value={vForm.costPrice ?? 0}
@@ -197,7 +205,9 @@ function VariantsEditor({
             </label>
           ) : null}
           <label className="block space-y-1.5">
-            <span className="block text-xs font-semibold text-[var(--text-muted)]">Stock</span>
+            <span className="block text-xs font-semibold text-[var(--text-muted)]">
+              <FieldLabel tip={PRODUCT_TIPS.variantStock}>Stock</FieldLabel>
+            </span>
             <NumberInput
               value={vForm.inStock}
               onChange={(inStock) => setVForm((p) => ({ ...p, inStock }))}
@@ -231,6 +241,8 @@ function VariantsEditor({
 
 function MenuCard({
   item,
+  schema,
+  currency,
   onEdit,
   onDelete,
   deleting,
@@ -243,6 +255,8 @@ function MenuCard({
   onDragEnd,
 }: {
   item: Product;
+  schema: CrmModuleSchema | null;
+  currency: string;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   deleting: boolean;
@@ -256,6 +270,8 @@ function MenuCard({
 }) {
   const imagePath = item.image?.trim();
   const imageUrl = imagePath ? (imagePath.startsWith("http") ? imagePath : `${BASE_URL}/${imagePath}`) : null;
+  const showImage = crmShowsImage(schema, "products");
+  const money = (value: number) => `${currency} ${value}`;
 
   return (
     <article
@@ -267,39 +283,66 @@ function MenuCard({
         isDropTarget ? "ring-2 ring-[#93c5fd]" : "",
       )}
     >
-      <div className="relative h-80 w-full bg-[#f8fafc]">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={item.name} className="absolute inset-0 h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-[#94a3b8]">
-            <ImageIcon className="h-8 w-8 opacity-20" />
-            <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">No Image</span>
-          </div>
-        )}
-        <div className="absolute left-3 top-3 rounded-xl bg-white/90 shadow-sm">
-          <DragSortHandle disabled={!dragEnabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
-        </div>
-      </div>
-
-      <div className="flex flex-col p-5 pt-3">
-        <h3 className="mb-3 text-[22px] font-extrabold leading-tight text-[#111827]">{item.name}</h3>
-
-        <div className="mb-4 space-y-3">
-          {item.variants && item.variants.length > 0 ? (
-            item.variants.map((variant) => (
-              <div key={variant.id} className="flex items-center justify-between">
-                <span className="text-base font-medium text-[#64748b]">{variant.name}</span>
-                <span className="text-base font-extrabold text-[#16a34a]">Rs. {variant.price}</span>
-              </div>
-            ))
+      {showImage ? (
+        <div className="relative h-80 w-full bg-[#f8fafc]">
+          {imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt={item.name} className="absolute inset-0 h-full w-full object-cover" />
           ) : (
-            <div className="flex items-center justify-between">
-              <span className="text-base font-bold text-[#64748b]">Price</span>
-              <span className="text-base font-black text-[#16a34a]">Rs. {item.price}</span>
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-[#94a3b8]">
+              <ImageIcon className="h-8 w-8 opacity-20" />
+              <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">No Image</span>
             </div>
           )}
+          <div className="absolute left-3 top-3 rounded-xl bg-white/90 shadow-sm">
+            <DragSortHandle disabled={!dragEnabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
+          </div>
         </div>
+      ) : (
+        <div className="flex items-center justify-between px-5 pt-4">
+          <DragSortHandle disabled={!dragEnabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
+        </div>
+      )}
+
+      <div className="flex flex-col p-5 pt-3">
+        <CrmCardFields
+          schema={schema}
+          moduleId="products"
+          customFields={item.customFields}
+          className="mb-4 space-y-3"
+          builtin={{
+            name: <h3 className="text-[22px] font-extrabold leading-tight text-[#111827]">{item.name}</h3>,
+            price:
+              item.variants && item.variants.length > 0 ? null : (
+                <div className="flex items-center justify-between">
+                  <span className="text-base font-bold text-[#64748b]">Price</span>
+                  <span className="text-base font-black text-[#16a34a]">{money(item.price)}</span>
+                </div>
+              ),
+            variants:
+              item.variants && item.variants.length > 0 ? (
+                <div className="space-y-3">
+                  {item.variants.map((variant) => (
+                    <div key={variant.id} className="flex items-center justify-between">
+                      <span className="text-base font-medium text-[#64748b]">{variant.name}</span>
+                      <span className="text-base font-extrabold text-[#16a34a]">{money(variant.price)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null,
+            category: item.category?.CategoryName ? (
+              <p className="text-sm text-[#64748b]">{item.category.CategoryName}</p>
+            ) : null,
+            stock: (
+              <p className="text-sm text-[#64748b]">
+                Stock: {item.stockCount ?? item.inStock}
+              </p>
+            ),
+            barcode: item.barcode ? (
+              <p className="text-sm text-[#64748b]">Barcode: {item.barcode}</p>
+            ) : null,
+          }}
+        />
 
         <div className="mt-4 flex items-center gap-3">
           <button
@@ -375,6 +418,8 @@ function MenuItemsContent() {
   const [createVariants, setCreateVariants] = useState<VariantFormItem[]>([]);
   const [editVariants, setEditVariants] = useState<VariantFormItem[]>([]);
   const [deletedVariantIds, setDeletedVariantIds] = useState<string[]>([]);
+  const [createCustomFields, setCreateCustomFields] = useState<Record<string, unknown>>({});
+  const [editCustomFields, setEditCustomFields] = useState<Record<string, unknown>>({});
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [quickCategoryName, setQuickCategoryName] = useState("");
   const [quickCategorySort, setQuickCategorySort] = useState(0);
@@ -397,6 +442,11 @@ function MenuItemsContent() {
     page: 1,
     limit: 100,
   });
+  const { schema: productCrmSchema } = useCrmSchema("products");
+
+  useEffect(() => {
+    setCreateCustomFields(emptyCustomFieldValues(productCrmSchema?.fields ?? []));
+  }, [productCrmSchema]);
 
   const openQuickCategory = () => {
     setQuickCategoryName("");
@@ -492,6 +542,7 @@ function MenuItemsContent() {
     });
     setCreateVariants([]);
     setCreateMedicine(EMPTY_MEDICINE_PROFILE);
+    setCreateCustomFields(emptyCustomFieldValues(productCrmSchema?.fields ?? []));
   };
 
   const resetEditForm = () => {
@@ -510,6 +561,7 @@ function MenuItemsContent() {
     setEditVariants([]);
     setDeletedVariantIds([]);
     setEditMedicine(EMPTY_MEDICINE_PROFILE);
+    setEditCustomFields({});
     setEditId(null);
   };
 
@@ -522,11 +574,12 @@ function MenuItemsContent() {
       if (!createMedicine.saltName.trim()) return toast.error("Salt / composition is required");
     }
     if (requiresCostAndStock) {
-      if (createForm.costPrice == null || Number.isNaN(Number(createForm.costPrice)) || Number(createForm.costPrice) < 0) {
+      if (createVariants.length > 0) {
+        if (createVariants.some((v) => v.costPrice == null || Number(v.costPrice) < 0)) {
+          return toast.error("Cost price is required for each variant");
+        }
+      } else if (createForm.costPrice == null || Number.isNaN(Number(createForm.costPrice)) || Number(createForm.costPrice) < 0) {
         return toast.error("Cost price is required");
-      }
-      if (createVariants.some((v) => v.costPrice == null || Number(v.costPrice) < 0)) {
-        return toast.error("Cost price is required for each variant");
       }
     }
 
@@ -534,10 +587,17 @@ function MenuItemsContent() {
     try {
       await createProduct({
         ...createForm,
+        price: createVariants.length > 0 ? createVariants[0].price : createForm.price,
+        inStock: createVariants.length > 0
+          ? createVariants.reduce((sum, variant) => sum + Number(variant.inStock || 0), 0)
+          : createForm.inStock,
         isKitchen: isPharmacy || isRetail ? false : createForm.isKitchen,
         isStockEnabled: requiresCostAndStock ? createForm.isStockEnabled : undefined,
-        costPrice: requiresCostAndStock ? createForm.costPrice : undefined,
+        costPrice: requiresCostAndStock
+          ? (createVariants.length > 0 ? createVariants[0].costPrice : createForm.costPrice)
+          : undefined,
         variants: createVariants,
+        customFields: serializeCustomFields(productCrmSchema?.fields ?? [], createCustomFields),
       });
       if (isPharmacy) {
         const list = await apiClient.get<any>("/products?limit=100", token, impersonatedBusinessId);
@@ -584,6 +644,10 @@ function MenuItemsContent() {
           costPrice: v.costPrice ?? 0,
         })) || [],
       );
+      setEditCustomFields({
+        ...emptyCustomFieldValues(productCrmSchema?.fields ?? []),
+        ...(product.customFields ?? {}),
+      });
       if (isPharmacy) {
         try {
           const profile = await apiClient.get<any>(`/pharmacy-catalog/products/${id}`, token, impersonatedBusinessId);
@@ -625,11 +689,12 @@ function MenuItemsContent() {
       if (!editMedicine.saltName.trim()) return toast.error("Salt / composition is required");
     }
     if (requiresCostAndStock) {
-      if (editForm.costPrice == null || Number.isNaN(Number(editForm.costPrice)) || Number(editForm.costPrice) < 0) {
+      if (editVariants.length > 0) {
+        if (editVariants.some((v) => v.costPrice == null || Number(v.costPrice) < 0)) {
+          return toast.error("Cost price is required for each variant");
+        }
+      } else if (editForm.costPrice == null || Number.isNaN(Number(editForm.costPrice)) || Number(editForm.costPrice) < 0) {
         return toast.error("Cost price is required");
-      }
-      if (editVariants.some((v) => v.costPrice == null || Number(v.costPrice) < 0)) {
-        return toast.error("Cost price is required for each variant");
       }
     }
 
@@ -637,8 +702,14 @@ function MenuItemsContent() {
     try {
       await updateProduct(editId, {
         ...editForm,
+        price: editVariants.length > 0 ? editVariants[0].price : editForm.price,
+        inStock: editVariants.length > 0
+          ? editVariants.reduce((sum, variant) => sum + Number(variant.inStock || 0), 0)
+          : editForm.inStock,
         isStockEnabled: requiresCostAndStock ? editForm.isStockEnabled : undefined,
-        costPrice: requiresCostAndStock ? editForm.costPrice : undefined,
+        costPrice: requiresCostAndStock
+          ? (editVariants.length > 0 ? editVariants[0].costPrice : editForm.costPrice)
+          : undefined,
         variants: [
           ...editVariants.map((v) =>
             v.id
@@ -658,6 +729,7 @@ function MenuItemsContent() {
           ),
           ...deletedVariantIds.map((id) => ({ id, action: "delete" as const })),
         ],
+        customFields: serializeCustomFields(productCrmSchema?.fields ?? [], editCustomFields),
       });
       if (isPharmacy) {
         await apiClient.put(`/pharmacy-catalog/products/${editId}/profile`, profileToPayload(editMedicine), token, impersonatedBusinessId);
@@ -739,6 +811,8 @@ function MenuItemsContent() {
               <MenuCard
                 key={item.id}
                 item={item}
+                schema={productCrmSchema}
+                currency={currency}
                 onEdit={onOpenEdit}
                 onDelete={onDelete}
                 deleting={actionLoading}
@@ -774,12 +848,13 @@ function MenuItemsContent() {
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
                       <label className="text-sm font-bold">
-                        Category <span className="text-[#dc2626]">*</span>
+                        <FieldLabel tip={PRODUCT_TIPS.category} required>Category</FieldLabel>
                       </label>
                       <button
                         type="button"
                         onClick={openQuickCategory}
                         className="inline-flex items-center gap-1 rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]"
+                        title={PRODUCT_TIPS.addCategory}
                       >
                         <Plus className="h-3.5 w-3.5" /> Add category
                       </button>
@@ -796,7 +871,7 @@ function MenuItemsContent() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-bold">
-                      Name <span className="text-[#dc2626]">*</span>
+                      <FieldLabel tip={PRODUCT_TIPS.name} required>Name</FieldLabel>
                     </label>
                     <input
                       value={createForm.name}
@@ -806,57 +881,75 @@ function MenuItemsContent() {
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-bold">
-                        Price ({currency}) <span className="text-[#dc2626]">*</span>
-                      </label>
-                      <NumberInput
-                        value={createForm.price}
-                        onChange={(price) => setCreateForm((p) => ({ ...p, price }))}
-                        className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                        required
-                        min={0}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-bold">Stock</label>
-                      <NumberInput
-                        value={createForm.inStock}
-                        onChange={(inStock) => setCreateForm((p) => ({ ...p, inStock }))}
-                        className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                        min={0}
-                      />
-                    </div>
-                  </div>
-                  {requiresCostAndStock ? (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-bold">
-                          Cost price ({currency}) <span className="text-[#dc2626]">*</span>
-                        </label>
-                        <NumberInput
-                          value={createForm.costPrice}
-                          onChange={(costPrice) => setCreateForm((p) => ({ ...p, costPrice }))}
-                          className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                          required
-                          min={0}
-                        />
+                  {createVariants.length > 0 ? (
+                    <p className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+                      Price, cost price, and stock are set on each variant below.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-bold">
+                            <FieldLabel tip={PRODUCT_TIPS.price} required>Price ({currency})</FieldLabel>
+                          </label>
+                          <NumberInput
+                            value={createForm.price}
+                            onChange={(price) => setCreateForm((p) => ({ ...p, price }))}
+                            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                            required
+                            min={0}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-bold">
+                            <FieldLabel tip={PRODUCT_TIPS.stock}>Stock</FieldLabel>
+                          </label>
+                          <NumberInput
+                            value={createForm.inStock}
+                            onChange={(inStock) => setCreateForm((p) => ({ ...p, inStock }))}
+                            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                            min={0}
+                          />
+                        </div>
                       </div>
-                      <label className="flex items-center gap-2 self-end rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm font-semibold">
-                        <input
-                          type="checkbox"
-                          checked={createForm.isStockEnabled}
-                          onChange={(e) => setCreateForm((p) => ({ ...p, isStockEnabled: e.target.checked }))}
-                        />
-                        Track inventory on sales <span className="text-[#dc2626]">*</span>
-                      </label>
-                    </div>
+                      {requiresCostAndStock ? (
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-bold">
+                            <FieldLabel tip={PRODUCT_TIPS.cost} required>Cost price ({currency})</FieldLabel>
+                          </label>
+                          <NumberInput
+                            value={createForm.costPrice}
+                            onChange={(costPrice) => setCreateForm((p) => ({ ...p, costPrice }))}
+                            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                            required
+                            min={0}
+                          />
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                  {requiresCostAndStock ? (
+                    <label className="flex items-center gap-2 rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={createForm.isStockEnabled}
+                        onChange={(e) => setCreateForm((p) => ({ ...p, isStockEnabled: e.target.checked }))}
+                      />
+                      <FieldLabel tip={PRODUCT_TIPS.trackStock} required>Track inventory on sales</FieldLabel>
+                    </label>
                   ) : null}
                   <VariantsEditor variants={createVariants} setVariants={setCreateVariants} showCostPrice={requiresCostAndStock} />
                   {isPharmacy ? <MedicineProfileFields value={createMedicine} onChange={setCreateMedicine} /> : null}
+                  <CrmRecordFields
+                    schema={productCrmSchema}
+                    values={createCustomFields}
+                    onChange={setCreateCustomFields}
+                    inputClassName="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                  />
                   <div className="space-y-2">
-                    <label className="text-sm font-bold">Image</label>
+                    <label className="text-sm font-bold">
+                      <FieldLabel tip={PRODUCT_TIPS.image}>Image</FieldLabel>
+                    </label>
                     <div className="flex items-center gap-3">
                       <label className="cursor-pointer bg-[#001840] text-[#ffffff] px-6 py-3.5 rounded-xl text-sm font-bold flex items-center gap-2 transition hover:bg-[#00122E] shadow-md">
                         <ImageIconLucide className="h-5 w-5" /> Choose Image
@@ -888,7 +981,7 @@ function MenuItemsContent() {
               </DialogDescription>
             </DialogHeader>
             <form className="space-y-4" onSubmit={onQuickCreateCategory}>
-              <FormField label="Category name" required>
+              <FormField label="Category name" required tip={CATEGORY_TIPS.name}>
                 <input
                   value={quickCategoryName}
                   onChange={(e) => setQuickCategoryName(e.target.value)}
@@ -897,7 +990,7 @@ function MenuItemsContent() {
                   required
                 />
               </FormField>
-              <FormField label="Sort order">
+              <FormField label="Sort order" tip={CATEGORY_TIPS.sort}>
                 <input
                   type="number"
                   value={quickCategorySort}
@@ -941,12 +1034,13 @@ function MenuItemsContent() {
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
                       <label className="text-sm font-bold">
-                        Category <span className="text-[#dc2626]">*</span>
+                        <FieldLabel tip={PRODUCT_TIPS.category} required>Category</FieldLabel>
                       </label>
                       <button
                         type="button"
                         onClick={openQuickCategory}
                         className="inline-flex items-center gap-1 rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]"
+                        title={PRODUCT_TIPS.addCategory}
                       >
                         <Plus className="h-3.5 w-3.5" /> Add category
                       </button>
@@ -963,7 +1057,7 @@ function MenuItemsContent() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-bold">
-                      Name <span className="text-[#dc2626]">*</span>
+                      <FieldLabel tip={PRODUCT_TIPS.name} required>Name</FieldLabel>
                     </label>
                     <input
                       value={editForm.name}
@@ -972,52 +1066,62 @@ function MenuItemsContent() {
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-bold">
-                        Price ({currency}) <span className="text-[#dc2626]">*</span>
-                      </label>
-                      <NumberInput
-                        value={editForm.price}
-                        onChange={(price) => setEditForm((p) => ({ ...p, price }))}
-                        className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                        required
-                        min={0}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-bold">Stock</label>
-                      <NumberInput
-                        value={editForm.inStock}
-                        onChange={(inStock) => setEditForm((p) => ({ ...p, inStock }))}
-                        className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                        min={0}
-                      />
-                    </div>
-                  </div>
-                  {requiresCostAndStock ? (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-bold">
-                          Cost price ({currency}) <span className="text-[#dc2626]">*</span>
-                        </label>
-                        <NumberInput
-                          value={editForm.costPrice}
-                          onChange={(costPrice) => setEditForm((p) => ({ ...p, costPrice }))}
-                          className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                          required
-                          min={0}
-                        />
+                  {editVariants.length > 0 ? (
+                    <p className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+                      Price, cost price, and stock are set on each variant below.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-bold">
+                            <FieldLabel tip={PRODUCT_TIPS.price} required>Price ({currency})</FieldLabel>
+                          </label>
+                          <NumberInput
+                            value={editForm.price}
+                            onChange={(price) => setEditForm((p) => ({ ...p, price }))}
+                            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                            required
+                            min={0}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-bold">
+                            <FieldLabel tip={PRODUCT_TIPS.stock}>Stock</FieldLabel>
+                          </label>
+                          <NumberInput
+                            value={editForm.inStock}
+                            onChange={(inStock) => setEditForm((p) => ({ ...p, inStock }))}
+                            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                            min={0}
+                          />
+                        </div>
                       </div>
-                      <label className="flex items-center gap-2 self-end rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm font-semibold">
-                        <input
-                          type="checkbox"
-                          checked={editForm.isStockEnabled}
-                          onChange={(e) => setEditForm((p) => ({ ...p, isStockEnabled: e.target.checked }))}
-                        />
-                        Track inventory on sales <span className="text-[#dc2626]">*</span>
-                      </label>
-                    </div>
+                      {requiresCostAndStock ? (
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-bold">
+                            <FieldLabel tip={PRODUCT_TIPS.cost} required>Cost price ({currency})</FieldLabel>
+                          </label>
+                          <NumberInput
+                            value={editForm.costPrice}
+                            onChange={(costPrice) => setEditForm((p) => ({ ...p, costPrice }))}
+                            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                            required
+                            min={0}
+                          />
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                  {requiresCostAndStock ? (
+                    <label className="flex items-center gap-2 rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={editForm.isStockEnabled}
+                        onChange={(e) => setEditForm((p) => ({ ...p, isStockEnabled: e.target.checked }))}
+                      />
+                      <FieldLabel tip={PRODUCT_TIPS.trackStock} required>Track inventory on sales</FieldLabel>
+                    </label>
                   ) : null}
                   <VariantsEditor
                     variants={editVariants}
@@ -1032,8 +1136,16 @@ function MenuItemsContent() {
                     }}
                   />
                   {isPharmacy ? <MedicineProfileFields value={editMedicine} onChange={setEditMedicine} /> : null}
+                  <CrmRecordFields
+                    schema={productCrmSchema}
+                    values={editCustomFields}
+                    onChange={setEditCustomFields}
+                    inputClassName="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                  />
                   <div className="space-y-2">
-                    <label className="text-sm font-bold">Image</label>
+                    <label className="text-sm font-bold">
+                      <FieldLabel tip={PRODUCT_TIPS.image}>Image</FieldLabel>
+                    </label>
                     <div className="flex items-center gap-3">
                       <label className="cursor-pointer bg-[#001840] text-[#ffffff] px-6 py-3.5 rounded-xl text-sm font-bold flex items-center gap-2 transition hover:bg-[#00122E] shadow-md">
                         <ImageIconLucide className="h-5 w-5" /> Choose Image

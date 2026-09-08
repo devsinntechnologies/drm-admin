@@ -21,6 +21,8 @@ import {
   Wifi,
 } from "lucide-react";
 import { toast } from "sonner";
+import { FeatureTip } from "@/components/ui/FeatureTip";
+import { SOFTWARE_TIPS } from "@/lib/feature-tips";
 import { DashboardCardChip } from "@/components/wizard/TemplateConfigChips";
 import { MobileHeaderPreview } from "@/components/business/MobileHeaderPreview";
 import { SoftwareRoleMatrix } from "@/components/business/SoftwareRoleMatrix";
@@ -433,7 +435,10 @@ export function SoftwareControlContent({
       <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
         <div className="mb-1 flex items-center gap-2">
           <Smartphone className="h-4 w-4 text-[var(--brand-secondary)]" />
-          <h2 className="text-base font-semibold text-[#0f172a]">1. Mobile app modules</h2>
+          <h2 className="inline-flex items-center gap-1.5 text-base font-semibold text-[#0f172a]">
+            1. Mobile app modules
+            <FeatureTip text={SOFTWARE_TIPS.modules} />
+          </h2>
         </div>
         <p className="mb-4 text-sm text-[#64748b]">
           Check to enable. Drag items in section 5 (Navigation order) to control tab order.
@@ -491,7 +496,10 @@ export function SoftwareControlContent({
       <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
         <div className="mb-1 flex items-center gap-2">
           <Wifi className="h-4 w-4 text-[var(--brand-secondary)]" />
-          <h2 className="text-base font-semibold text-[#0f172a]">2. Offline sync</h2>
+          <h2 className="inline-flex items-center gap-1.5 text-base font-semibold text-[#0f172a]">
+            2. Offline sync
+            <FeatureTip text={SOFTWARE_TIPS.offline} />
+          </h2>
         </div>
         <label className="mt-3 flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-4">
           <input
@@ -513,7 +521,10 @@ export function SoftwareControlContent({
       <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
         <div className="mb-4 flex items-center gap-2">
           <Palette className="h-4 w-4 text-[var(--brand-secondary)]" />
-          <h2 className="text-base font-semibold text-[#0f172a]">3. Theme</h2>
+          <h2 className="inline-flex items-center gap-1.5 text-base font-semibold text-[#0f172a]">
+            3. Theme
+            <FeatureTip text={SOFTWARE_TIPS.theme} />
+          </h2>
         </div>
         <p className="mb-4 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm text-[#64748b]">
           Logo and business name are edited in Additional details, so portal, website, and software
@@ -552,7 +563,10 @@ export function SoftwareControlContent({
       <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
         <div className="mb-1 flex items-center gap-2">
           <Smartphone className="h-4 w-4 text-[var(--brand-secondary)]" />
-          <h2 className="text-base font-semibold text-[#0f172a]">4. Mobile app header</h2>
+          <h2 className="inline-flex items-center gap-1.5 text-base font-semibold text-[#0f172a]">
+            4. Mobile app header
+            <FeatureTip text={SOFTWARE_TIPS.mobileHeader} />
+          </h2>
         </div>
         <p className="mb-4 text-sm text-[#64748b]">
           Optional. Allow this section to show the branded header (logo, logout, online badge) on the
@@ -579,7 +593,7 @@ export function SoftwareControlContent({
           <div className="grid gap-5 lg:grid-cols-2">
             <div className="space-y-4">
               <label className="flex items-center justify-between rounded-lg border border-[#e2e8f0] px-3 py-2.5 text-sm">
-                <span className="font-medium">Show logout button</span>
+                <span className="inline-flex items-center gap-1.5 font-medium">Show logout button <FeatureTip text={SOFTWARE_TIPS.showLogout} /></span>
                 <input
                   type="checkbox"
                   checked={mobileHeader.showLogout}
@@ -589,7 +603,7 @@ export function SoftwareControlContent({
                 />
               </label>
               <label className="flex items-center justify-between rounded-lg border border-[#e2e8f0] px-3 py-2.5 text-sm">
-                <span className="font-medium">Show online / offline badge</span>
+                <span className="inline-flex items-center gap-1.5 font-medium">Show online / offline badge <FeatureTip text={SOFTWARE_TIPS.showOnline} /></span>
                 <input
                   type="checkbox"
                   checked={mobileHeader.showOnlineStatus}
@@ -599,7 +613,10 @@ export function SoftwareControlContent({
                 />
               </label>
               <div>
-                <p className="mb-2 text-sm font-medium">Logo plate background</p>
+                <p className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium">
+                  Logo plate background
+                  <FeatureTip text={SOFTWARE_TIPS.logoPlate} />
+                </p>
                 <div className="flex flex-wrap items-center gap-2">
                   {[
                     { label: "White", value: "#FFFFFF" },
@@ -666,7 +683,10 @@ export function SoftwareControlContent({
 
       {/* Navigation */}
       <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
-        <h2 className="mb-1 text-base font-semibold text-[#0f172a]">5. Mobile navigation</h2>
+        <h2 className="mb-1 inline-flex items-center gap-1.5 text-base font-semibold text-[#0f172a]">
+          5. Mobile navigation
+          <FeatureTip text={SOFTWARE_TIPS.navigation} />
+        </h2>
         <p className="mb-4 text-sm text-[#64748b]">
           Drag to reorder, rename tabs, toggle visibility. Applies to Flutter bottom nav.
         </p>
@@ -721,7 +741,10 @@ export function SoftwareControlContent({
       <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
         <div className="mb-4 flex items-center gap-2">
           <Shield className="h-4 w-4 text-[var(--brand-secondary)]" />
-          <h2 className="text-base font-semibold text-[#0f172a]">6. Role permissions (mobile app tabs)</h2>
+          <h2 className="text-base font-semibold text-[#0f172a] inline-flex items-center gap-1.5">
+            6. Role permissions (mobile app tabs)
+            <FeatureTip text="Choose which tabs each role can open on the phone. Portal access is separate." />
+          </h2>
         </div>
         <SoftwareRoleMatrix
           businessName={businessName}
@@ -736,7 +759,10 @@ export function SoftwareControlContent({
 
       {/* Per-module settings */}
       <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
-        <h2 className="mb-1 text-base font-semibold text-[#0f172a]">7. Module features (mobile app)</h2>
+        <h2 className="mb-1 inline-flex items-center gap-1.5 text-base font-semibold text-[#0f172a]">
+          7. Module features (mobile app)
+          <FeatureTip text="Fine-tune products, orders, categories, and invoices on the app without turning the whole module off." />
+        </h2>
         <p className="mb-4 text-sm text-[#64748b]">
           Fine-tune each mobile module: dashboard stat cards, product permissions, orders screens
           (POS vs active queue), Reports date filters, and category filters. Save at the bottom to
@@ -901,7 +927,7 @@ export function SoftwareControlContent({
               {expandedModule === "products" ? (
                 <div className="space-y-3 border-t border-[#e2e8f0] p-4">
                   <label className="flex items-center justify-between rounded-lg border border-[#e2e8f0] px-3 py-2 text-sm">
-                    <span>Allow adding products</span>
+                    <span>Allow adding products <FeatureTip text={SOFTWARE_TIPS.allowCreateProducts} /></span>
                     <input
                       type="checkbox"
                       checked={productsSettings.allowCreate}
@@ -911,7 +937,7 @@ export function SoftwareControlContent({
                     />
                   </label>
                   <label className="flex items-center justify-between rounded-lg border border-[#e2e8f0] px-3 py-2 text-sm">
-                    <span>Allow editing products</span>
+                    <span>Allow editing products <FeatureTip text={SOFTWARE_TIPS.allowEditProducts} /></span>
                     <input
                       type="checkbox"
                       checked={productsSettings.allowEdit}
@@ -940,7 +966,10 @@ export function SoftwareControlContent({
                     />
                   </label>
                   <div>
-                    <p className="mb-2 text-sm font-medium">Product layout</p>
+                    <p className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium">
+                      Product layout
+                      <FeatureTip text={SOFTWARE_TIPS.productLayout} />
+                    </p>
                     <div className="flex gap-2">
                       {(["grid", "list"] as const).map((mode) => (
                         <button

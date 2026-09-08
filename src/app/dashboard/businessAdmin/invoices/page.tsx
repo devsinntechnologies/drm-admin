@@ -21,6 +21,7 @@ import { useInvoiceBranding } from "@/hooks/useInvoiceBranding";
 import { downloadInvoicePdf } from "@/lib/invoice-pdf";
 import { formatInvoiceDateTime } from "@/lib/invoice-datetime";
 import { parseSalesSettings } from "@/lib/module-feature-settings";
+import { INVOICE_TIPS } from "@/lib/feature-tips";
 
 type RangeFilter = "day" | "week" | "month";
 
@@ -80,8 +81,13 @@ function displayInvoiceId(raw?: string | null) {
   return value;
 }
 
-function toStatus(_raw: string): InvoiceRow["status"] {
-  return "Paid";
+function toStatus(raw: string): InvoiceRow["status"] {
+  const value = (raw || "").toLowerCase().trim();
+  if (value === "paid" || value === "completed" || value === "complete") {
+    return "Paid";
+  }
+  if (value === "overdue") return "Overdue";
+  return "Pending";
 }
 
 function InvoicesContent() {
@@ -442,7 +448,7 @@ function InvoicesContent() {
                             type="button"
                             onClick={() => openInvoiceDetails(invoice.uuid)}
                             className="dn-btn dn-btn-soft !h-9 !px-3"
-                            title="View details"
+                            title={INVOICE_TIPS.view}
                           >
                             <Eye className="h-4 w-4" />
                           </button>
@@ -453,7 +459,7 @@ function InvoicesContent() {
                               "dn-btn dn-btn-outline !h-9 !px-3",
                               !allowPrinter && "opacity-45",
                             )}
-                            title={allowPrinter ? "Print" : "Printing is disabled — contact your administrator"}
+                            title={allowPrinter ? INVOICE_TIPS.print : "Printing is disabled — contact your administrator"}
                           >
                             <Printer className="h-4 w-4" />
                           </button>
@@ -463,7 +469,7 @@ function InvoicesContent() {
                               onClick={() => handleDeleteInvoice(invoice.uuid, invoice.id)}
                               disabled={actionLoading && deletingInvoiceUuid === invoice.uuid}
                               className="dn-btn dn-btn-outline !h-9 !px-3 text-[#dc2626] border-[#fecaca] hover:bg-[#fef2f2]"
-                              title="Delete invoice"
+                              title={INVOICE_TIPS.delete}
                             >
                               {deletingInvoiceUuid === invoice.uuid ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />

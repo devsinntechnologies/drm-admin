@@ -1,6 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
+import { FeatureTip } from "@/components/ui/FeatureTip";
 import { cn } from "@/lib/utils";
 
 type ControlSectionProps = {
@@ -8,6 +9,8 @@ type ControlSectionProps = {
   index: number;
   title: string;
   description?: string;
+  /** Extra purpose copy on the help icon. Defaults to description. */
+  tip?: string;
   icon?: LucideIcon;
   /** Small note for vertical-specific or role-gated sections, e.g.
    * "Only shown for pharmacy businesses". */
@@ -30,10 +33,12 @@ export function ControlSection({
   title,
   description,
   icon: Icon,
+  tip,
   scopeNote,
   children,
   className,
 }: ControlSectionProps) {
+  const help = tip || description;
   return (
     <section
       className={cn(
@@ -46,8 +51,9 @@ export function ControlSection({
           {Icon ? <Icon className="h-4 w-4" /> : index}
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-semibold text-[#0f172a]">
+          <h2 className="flex items-center gap-1.5 text-base font-semibold text-[#0f172a]">
             {index}. {title}
+            {help ? <FeatureTip text={help} /> : null}
           </h2>
           {description ? (
             <p className="mt-0.5 text-sm text-[#64748b]">{description}</p>

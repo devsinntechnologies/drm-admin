@@ -34,7 +34,9 @@ export interface Product {
   isStockEnabled?: boolean;
   costPrice?: number | null;
   stockCount?: number | null;
+  barcode?: string | null;
   variants: ProductVariant[];
+  customFields?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +48,50 @@ export interface ProductsResponse {
     page: number;
     limit: number;
     totalPages: number;
+  };
+}
+
+function parseStockFlag(value: unknown): boolean {
+  if (value === true || value === 1) return true;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "1" || normalized === "yes";
+  }
+  return false;
+}
+
+function unwrapProductList(payload: unknown): Product[] {
+  if (Array.isArray(payload)) return payload;
+  if (payload && typeof payload === "object") {
+    const record = payload as { data?: unknown };
+    if (Array.isArray(record.data)) return record.data as Product[];
+    if (
+      record.data &&
+      typeof record.data === "object" &&
+      Array.isArray((record.data as { data?: unknown }).data)
+    ) {
+      return (record.data as { data: Product[] }).data;
+    }
+  }
+  return [];
+}
+
+function normalizeProduct(raw: Product): Product {
+  const nested = raw as Product & {
+    is_stock_enabled?: unknown;
+    trackStock?: unknown;
+    stock_count?: number | null;
+    instock?: number;
+  };
+  return {
+    ...raw,
+    status: String(raw.status || "ACTIVE").toUpperCase() as Product["status"],
+    inStock: Number(raw.inStock ?? nested.instock ?? 0),
+    stockCount: raw.stockCount ?? nested.stock_count ?? null,
+    variants: Array.isArray(raw.variants) ? raw.variants : [],
+    isStockEnabled: parseStockFlag(
+      raw.isStockEnabled ?? nested.is_stock_enabled ?? nested.trackStock,
+    ),
   };
 }
 
@@ -88,6 +134,7 @@ export interface CreateProductPayload {
   costPrice?: number | null;
   variants: CreateProductVariantPayload[];
   image?: File | null;
+  customFields?: Record<string, unknown>;
 }
 
 export interface UpdateProductPayload extends Omit<CreateProductPayload, "variants"> {
@@ -159,13 +206,18 @@ export function useProducts(options: UseProductsOptions = {}) {
         throw new Error(`Failed to fetch products: HTTP ${response.status} - ${detail}`);
       }
 
-      const data: ProductsResponse = await response.json();
+      const payload = await response.json();
+      const rows = unwrapProductList(payload).map(normalizeProduct);
 
-      setProducts(data.data ?? []);
+      setProducts(rows);
+      const pagination =
+        payload && typeof payload === "object"
+          ? (payload as ProductsResponse).pagination
+          : undefined;
       setPagination({
-        total: data.pagination?.total ?? 0,
-        page: data.pagination?.page ?? 1,
-        last_page: data.pagination?.totalPages ?? 1,
+        total: pagination?.total ?? rows.length,
+        page: pagination?.page ?? 1,
+        last_page: pagination?.totalPages ?? 1,
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred while fetching products";
@@ -229,6 +281,9 @@ export function useProducts(options: UseProductsOptions = {}) {
       }
       if (payload.image) {
         formData.append("image", payload.image);
+      }
+      if (payload.customFields) {
+        formData.append("customFields", JSON.stringify(payload.customFields));
       }
 
       const url = new URL(buildApiUrl("/products"));
@@ -328,6 +383,9 @@ export function useProducts(options: UseProductsOptions = {}) {
       }
       if (payload.image) {
         formData.append("image", payload.image);
+      }
+      if (payload.customFields) {
+        formData.append("customFields", JSON.stringify(payload.customFields));
       }
 
       const url = new URL(buildApiUrl(`/products/${id}`));

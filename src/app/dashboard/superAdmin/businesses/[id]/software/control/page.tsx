@@ -7,6 +7,9 @@ import { SoftwareAppUpdatePanel } from "@/components/business/SoftwareAppUpdateP
 import { SoftwareControlContent } from "@/components/business/SoftwareControlContent";
 import { SoftwareSyncStatusPanel } from "@/components/business/SoftwareSyncStatusPanel";
 import { SoftwareTemplateNotConfigured } from "@/components/business/SoftwareTemplateNotConfigured";
+import { FbrSettingsPanel } from "@/components/business/FbrSettingsPanel";
+import { FbrActivityPanel } from "@/components/business/FbrActivityPanel";
+import { CrmSchemaPanel } from "@/components/crm/CrmSchemaPanel";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { hydrateWorkspaceTemplate } from "@/lib/hydrate-workspace-template";
 import { getBusinessProfile } from "@/lib/business-profile";
@@ -51,6 +54,16 @@ export default function SoftwareControlPage() {
 
   return (
     <div className="space-y-6">
+      <FbrSettingsPanel
+        sectionIndex={1}
+        businessId={businessId}
+        businessName={business.businessName}
+        address={business.address}
+        fbrSettings={business.fbrSettings}
+      />
+      <FbrActivityPanel sectionIndex={2} businessId={businessId} />
+      <CrmSchemaPanel sectionIndex={3} businessId={businessId} />
+
       {!hasTemplate ? (
         <SoftwareTemplateNotConfigured
           businessId={businessId}

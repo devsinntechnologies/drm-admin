@@ -1,4 +1,10 @@
 import type { ModuleId } from "@/templates/types";
+import {
+  isPharmacyIndustry,
+  isSnookerIndustry,
+  usesProductCatalogInventory,
+  usesRetailWorkspace,
+} from "@/lib/industry-workspace";
 
 export const BUSINESS_ADMIN_BASE = "/dashboard/businessAdmin";
 
@@ -7,7 +13,7 @@ export const MODULE_HREF: Partial<Record<ModuleId, string>> = {
   dashboard: BUSINESS_ADMIN_BASE,
   products: `${BUSINESS_ADMIN_BASE}/products`,
   categories: `${BUSINESS_ADMIN_BASE}/categories`,
-  inventory: `${BUSINESS_ADMIN_BASE}/ingredients`,
+  inventory: `${BUSINESS_ADMIN_BASE}/retail/inventory`,
   orders: `${BUSINESS_ADMIN_BASE}/orders`,
   kitchen: `${BUSINESS_ADMIN_BASE}/kitchen`,
   tables: `${BUSINESS_ADMIN_BASE}/tables`,
@@ -84,17 +90,20 @@ const SNOOKER_MODULE_HREF: Partial<Record<ModuleId, string>> = Object.fromEntrie
 ) as Partial<Record<ModuleId, string>>;
 
 export function getModuleHref(moduleId: ModuleId | string, industryId?: string | null): string {
-  if (industryId === "pharmacy") {
+  if (isPharmacyIndustry(industryId)) {
     const pharmacyHref = PHARMACY_MODULE_HREF[moduleId as ModuleId];
     if (pharmacyHref) return pharmacyHref;
   }
-  if (industryId === "snooker-pos") {
+  if (isSnookerIndustry(industryId)) {
     const snookerHref = SNOOKER_MODULE_HREF[moduleId as ModuleId];
     if (snookerHref) return snookerHref;
   }
-  if (industryId === "retail-store") {
+  if (usesRetailWorkspace(industryId)) {
     const retailHref = RETAIL_MODULE_HREF[moduleId as ModuleId];
     if (retailHref) return retailHref;
+  }
+  if (moduleId === "inventory" && usesProductCatalogInventory(industryId)) {
+    return `${BUSINESS_ADMIN_BASE}/retail/inventory`;
   }
   return MODULE_HREF[moduleId as ModuleId] ?? `${BUSINESS_ADMIN_BASE}/modules/${moduleId}`;
 }
@@ -149,7 +158,6 @@ export function pathnameToModuleId(pathname: string): string | null {
     }
   }
 
-  if (path.includes("/ingredients")) return "inventory";
   if (path.includes("/invoices")) return "sales";
   if (path.includes("/users")) return "staff";
   if (path.includes("/products")) return "products";
@@ -166,8 +174,9 @@ export function pathnameToModuleId(pathname: string): string | null {
 }
 
 export function isDedicatedModuleRoute(moduleId: string, industryId?: string | null): boolean {
-  if (industryId === "pharmacy" && PHARMACY_MODULE_HREF[moduleId as ModuleId]) return true;
-  if (industryId === "snooker-pos" && SNOOKER_MODULE_HREF[moduleId as ModuleId]) return true;
-  if (industryId === "retail-store" && RETAIL_MODULE_HREF[moduleId as ModuleId]) return true;
+  if (isPharmacyIndustry(industryId) && PHARMACY_MODULE_HREF[moduleId as ModuleId]) return true;
+  if (isSnookerIndustry(industryId) && SNOOKER_MODULE_HREF[moduleId as ModuleId]) return true;
+  if (usesRetailWorkspace(industryId) && RETAIL_MODULE_HREF[moduleId as ModuleId]) return true;
+  if (moduleId === "inventory" && usesProductCatalogInventory(industryId)) return true;
   return Boolean(MODULE_HREF[moduleId as ModuleId]);
 }

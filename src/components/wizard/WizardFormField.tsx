@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { FeatureTip } from "@/components/ui/FeatureTip";
 import { cn } from "@/lib/utils";
 
 type WizardFormFieldProps = {
@@ -10,6 +11,7 @@ type WizardFormFieldProps = {
   hintTone?: "default" | "success" | "error";
   className?: string;
   children: ReactNode;
+  tip?: string;
 };
 
 export function WizardFormField({
@@ -19,12 +21,14 @@ export function WizardFormField({
   hintTone = "default",
   className,
   children,
+  tip,
 }: WizardFormFieldProps) {
   return (
     <div className={cn("wizard-field", className)}>
-      <span className="wizard-field-label">
+      <span className="wizard-field-label inline-flex items-center gap-1.5">
         {label}
         {required ? <span className="wizard-required">*</span> : null}
+        {tip ? <FeatureTip text={tip} /> : null}
       </span>
       {children}
       {hint ? (

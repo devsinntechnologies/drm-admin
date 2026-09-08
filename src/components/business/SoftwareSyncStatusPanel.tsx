@@ -2,6 +2,8 @@
 
 import { Loader2, Radio, Smartphone, Wifi, WifiOff } from "lucide-react";
 import { useGetMobileSyncDevicesQuery, useGetMobileSyncLiveStatusQuery } from "@/hooks/useMobileSync";
+import { FeatureTip } from "@/components/ui/FeatureTip";
+import { SOFTWARE_TIPS } from "@/lib/feature-tips";
 import { cn, formatLastActivity } from "@/lib/utils";
 
 type SoftwareSyncStatusPanelProps = {
@@ -33,7 +35,10 @@ export function SoftwareSyncStatusPanel({ businessId }: SoftwareSyncStatusPanelP
         <div>
           <div className="mb-1 flex items-center gap-2">
             <Wifi className="h-4 w-4 text-[var(--brand-secondary)]" />
-            <h2 className="text-base font-semibold text-[#0f172a]">Live device sync</h2>
+            <h2 className="inline-flex items-center gap-1.5 text-base font-semibold text-[#0f172a]">
+              Live device sync
+              <FeatureTip text={SOFTWARE_TIPS.sync} />
+            </h2>
             <span
               className={cn(
                 "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold",

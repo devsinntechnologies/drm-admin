@@ -6,6 +6,32 @@ import { asCredentialsResult } from "@/lib/credentials-result";
 
 export type BusinessStatus = "active" | "inactive" | "expired";
 
+export type FbrSettings = {
+  enabled: boolean;
+  environment: "sandbox" | "production";
+  sandboxToken?: string;
+  productionToken?: string;
+  sellerNtnCnic: string;
+  sellerBusinessName: string;
+  sellerProvince: string;
+  sellerAddress: string;
+  defaultSaleType: string;
+  defaultUom: string;
+  defaultHsCode: string;
+  defaultTaxRate: string;
+  defaultBuyerRegistrationType: "Registered" | "Unregistered";
+  defaultBuyerName: string;
+  defaultBuyerProvince: string;
+  defaultBuyerAddress: string;
+  sandboxScenarioId: string;
+  furtherTaxEnabled: boolean;
+};
+
+export type PublicFbrSettings = Omit<FbrSettings, "sandboxToken" | "productionToken"> & {
+  sandboxTokenConfigured: boolean;
+  productionTokenConfigured: boolean;
+};
+
 export type BusinessRecord = {
   id: string;
   businessName: string;
@@ -26,6 +52,7 @@ export type BusinessRecord = {
   websiteEnabled?: boolean;
   portalEnabled?: boolean;
   softwareEnabled?: boolean;
+  fbrSettings?: PublicFbrSettings | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -84,6 +111,7 @@ export type PatchBusinessPayload = {
     websiteEnabled?: boolean;
     portalEnabled?: boolean;
     softwareEnabled?: boolean;
+    fbrSettings?: Partial<FbrSettings>;
   };
 };
 

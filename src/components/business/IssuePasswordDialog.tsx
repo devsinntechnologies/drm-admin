@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { KeyRound, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import { FormField, portalInputClass } from "@/components/admin/PortalPage";
+import { STAFF_TIPS } from "@/lib/feature-tips";
 import {
   Dialog,
   DialogContent,
@@ -150,7 +151,7 @@ export function IssuePasswordDialog({
             </button>
           </div>
 
-          <FormField label="New password">
+          <FormField label="New password" tip={STAFF_TIPS.issuePassword}>
             <div className="flex gap-2">
               <input
                 type={showPassword ? "text" : "password"}

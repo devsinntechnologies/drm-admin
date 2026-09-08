@@ -12,6 +12,8 @@ import { DASHBOARD_CARD_CATALOG } from "@/templates/modules";
 import type { DashboardCardId } from "@/templates/types";
 import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { usePharmacyQuery } from "@/hooks/usePharmacyQuery";
+import { useProducts } from "@/hooks/useProducts";
+import { summarizeCatalogStock } from "@/lib/retail-stock";
 import { cn } from "@/lib/utils";
 
 type TemplateDashboardProps = {
@@ -44,6 +46,7 @@ type InvoiceDashboard = {
     totalOrdersMonthly?: number;
     completedOrdersMonthly?: number;
   };
+  grossProfit?: number;
   graph?: {
     topSellingProducts?: InvoiceTopProduct[];
   };
@@ -52,6 +55,8 @@ type InvoiceDashboard = {
 type StockSummary = {
   lowStockCount?: number;
   outOfStockCount?: number;
+  attentionCount?: number;
+  inventoryValue?: number;
   recentAlerts?: Array<{
     id?: string;
     productId?: string;
@@ -82,8 +87,10 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
     isPharmacy ? null : "/stock-management/dashboard/summary",
     queryRefreshKey,
   );
+  const { products, loading: productsLoading, error: productsError } = useProducts({ limit: 500 });
+  const catalogStock = summarizeCatalogStock(products);
 
-  const liveLoading = isPharmacy ? pharmacyLoading : invoiceLoading || stockLoading;
+  const liveLoading = isPharmacy ? pharmacyLoading : invoiceLoading || stockLoading || productsLoading;
 
   const formatValue = (id: DashboardCardId) => {
     if (liveLoading) {
@@ -100,7 +107,6 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
 
     const daily = invoiceLive?.revenue?.daily;
     const dailyTotal = Number(daily?.total ?? 0);
-    const dailyPaid = Number(daily?.paid ?? 0);
     const dailyCount = Number(invoiceLive?.orders?.totalOrdersDaily ?? 0);
     const topName = invoiceLive?.graph?.topSellingProducts?.[0]?.name;
     const pendingInvoices = Number(invoiceLive?.invoices?.totalPending ?? 0);
@@ -113,12 +119,18 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
       case "avg-order-value":
         return money(dailyCount > 0 ? dailyTotal / dailyCount : 0);
       case "gross-profit":
-        return money(dailyPaid);
+        return money(Number(invoiceLive?.grossProfit ?? 0));
       case "low-stock":
       case "low-stock-ingredients":
       case "low-stock-sizes":
       case "ingredient-shortage":
-        return String(stockLive?.lowStockCount ?? 0);
+        if (!productsLoading && !productsError) {
+          return String(catalogStock.attention);
+        }
+        return String(
+          stockLive?.attentionCount ??
+            (stockLive?.lowStockCount ?? 0) + (stockLive?.outOfStockCount ?? 0),
+        );
       case "pending-purchases":
         return String(pendingInvoices);
       case "active-orders":
@@ -140,7 +152,10 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
       case "returns-exchanges":
         return "0";
       case "inventory-value":
-        return money(Number(invoiceLive?.revenue?.monthly?.total ?? dailyTotal));
+        if (!productsLoading && !productsError) {
+          return money(catalogStock.inventoryValue);
+        }
+        return money(Number(stockLive?.inventoryValue ?? 0));
       default:
         return "—";
     }
@@ -148,9 +163,14 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
 
   const liveLabel = isPharmacy
     ? " Values below are live pharmacy KPIs."
-    : " Values below are calculated from issued invoices and live stock.";
+    : " Values below use live tracked stock from the product catalog, plus issued invoices.";
 
-  if (!cards.length) {
+  const displayCards =
+    !isPharmacy && cards.length > 0 && !cards.includes("gross-profit")
+      ? [...cards, "gross-profit"]
+      : cards;
+
+  if (!displayCards.length) {
     return (
       <PortalPage className={className}>
         <p className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-8 text-center text-sm text-[var(--text-muted)]">
@@ -160,11 +180,12 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
     );
   }
 
-  const accentCards = cards.slice(0, 2);
-  const statCards = cards.slice(2);
-  const lowStockItems = (stockLive?.recentAlerts ?? []).filter(
-    (item) => item.productName || item.productId,
-  );
+  const accentCards = displayCards.slice(0, 2);
+  const statCards = displayCards.slice(2);
+  const lowStockItems =
+    catalogStock.attentionItems.length > 0
+      ? catalogStock.attentionItems
+      : (stockLive?.recentAlerts ?? []).filter((item) => item.productName || item.productId);
   const topProducts = invoiceLive?.graph?.topSellingProducts ?? [];
 
   return (
@@ -288,7 +309,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
           {liveLabel}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          {cards.map((id) => (
+          {displayCards.map((id) => (
             <span
               key={id}
               className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)]"

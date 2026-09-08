@@ -314,7 +314,6 @@ function PurchasesContent() {
                           {variants.map((variant) => (
                             <option key={variant.id} value={variant.id}>
                               {variant.name} · stock {variant.inStock}
-                              {variant.costPrice != null ? ` · cost ${variant.costPrice}` : ""}
                             </option>
                           ))}
                         </select>

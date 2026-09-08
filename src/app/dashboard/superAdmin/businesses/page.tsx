@@ -20,7 +20,6 @@ import { EmptyState } from "@/components/design-system/EmptyState";
 import { BusinessProductBadges } from "@/components/business/BusinessProductBadges";
 import { toast } from "sonner";
 import { Suspense, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -95,7 +94,6 @@ const planColor: Record<BusinessItem["plan"], string> = {
 };
 
 function BusinessesContent() {
-  const router = useRouter();
   const [isAddBusinessOpen, setIsAddBusinessOpen] = useState(false);
   const [editingBusinessId, setEditingBusinessId] = useState<string | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -818,9 +816,13 @@ function BusinessesContent() {
           <article
             key={business.id}
             id={`business-${business.name.replace(/\s+/g, "-").toLowerCase()}`}
-            onClick={() => router.push(`/dashboard/superAdmin/businesses/${business.id}`)}
-            className="group cursor-pointer overflow-hidden rounded-3xl border border-[#e4ebf4] bg-white/90 shadow-[0_10px_24px_rgba(10,17,31,0.1)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_30px_rgba(10,17,31,0.14)]"
+            className="group relative overflow-hidden rounded-3xl border border-[#e4ebf4] bg-white/90 shadow-[0_10px_24px_rgba(10,17,31,0.1)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_30px_rgba(10,17,31,0.14)]"
           >
+            <Link
+              href={`/dashboard/superAdmin/businesses/${business.id}`}
+              className="absolute inset-0 z-[1]"
+              aria-label={`Open ${business.name}`}
+            />
             <div className="relative h-36 overflow-hidden">
               <Image
                 src={business.background}
@@ -862,10 +864,11 @@ function BusinessesContent() {
                 className="mt-4"
               />
 
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="relative z-[2] mt-4 grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     void openEditDialog(business.id);
                   }}
@@ -877,6 +880,7 @@ function BusinessesContent() {
                   type="button"
                   disabled={isPausingBusiness || isResumingBusiness}
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     if (business.status === "Active") {
                       setPauseTargetBusiness(business);
