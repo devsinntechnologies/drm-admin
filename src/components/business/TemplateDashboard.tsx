@@ -165,7 +165,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
     ? " Values below are live pharmacy KPIs."
     : " Values below use live tracked stock from the product catalog, plus issued invoices.";
 
-  const displayCards =
+  const displayCards: DashboardCardId[] =
     !isPharmacy && cards.length > 0 && !cards.includes("gross-profit")
       ? [...cards, "gross-profit"]
       : cards;
