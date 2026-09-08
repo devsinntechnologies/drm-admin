@@ -4,7 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import { io, type Socket } from "socket.io-client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { BASE_URL } from "@/lib/constant";
+import { SOCKET_URL } from "@/lib/constant";
 import { BUSINESS_INACTIVE_MESSAGE } from "@/lib/business-session";
 import { logout } from "@/lib/features/auth/authSlice";
 import { useAppDispatch } from "@/lib/hooks";
@@ -53,7 +53,7 @@ export default function StaffRealtimeProvider({
         : null);
     if (!namespace || !authToken) return;
 
-    const socket: Socket = io(`${BASE_URL}${namespace}`, {
+    const socket: Socket = io(`${SOCKET_URL}${namespace}`, {
       auth: { token: authToken },
       transports: ["websocket", "polling"],
       reconnection: true,
