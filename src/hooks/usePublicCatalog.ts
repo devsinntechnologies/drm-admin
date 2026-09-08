@@ -212,6 +212,10 @@ export function usePublicCatalog(options: UsePublicCatalogOptions = {}) {
     hasLoadedRef.current = false;
   }, [businessId]);
 
+  const invalidateMeta = useCallback(() => {
+    metaLoadedForBusiness.current = null;
+  }, []);
+
   return {
     businessId,
     storefront,
@@ -222,5 +226,6 @@ export function usePublicCatalog(options: UsePublicCatalogOptions = {}) {
     error,
     pagination,
     fetchCatalog,
+    invalidateMeta,
   };
 }

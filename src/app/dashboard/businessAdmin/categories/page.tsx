@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Box, ChevronLeft, ChevronRight, Edit, Loader2, Plus, Search, Store, Trash2, X, Image as ImageIconLucide, RotateCcw, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -10,7 +10,7 @@ import { PortalPage, PortalErrorAlert } from "@/components/admin/PortalPage";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { CategoryRecord, useCategories } from "@/hooks/useCategories";
-import { normalizeErrorMessage } from "@/lib/utils";
+import { cn, normalizeErrorMessage } from "@/lib/utils";
 import { DeleteConfirmDialog } from "@/components/common/DeleteConfirmDialog";
 import {
   Dialog,
@@ -21,6 +21,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { BASE_URL } from "@/lib/constant";
+import { DragSortHandle } from "@/components/common/DragSortHandle";
+import { useHtml5Reorder } from "@/hooks/useHtml5Reorder";
 
 
 function ErrorAlert({ message }: { message: unknown }) {
@@ -31,17 +33,40 @@ function ErrorAlert({ message }: { message: unknown }) {
 function CategoryListItem({
   category,
   onEdit,
+  dragEnabled,
+  isDragging,
+  isDropTarget,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: {
   category: CategoryRecord;
   onEdit: (id: string) => void;
+  dragEnabled: boolean;
+  isDragging: boolean;
+  isDropTarget: boolean;
+  onDragStart: (event: React.DragEvent) => void;
+  onDragOver: (event: React.DragEvent) => void;
+  onDrop: (event: React.DragEvent) => void;
+  onDragEnd: () => void;
 }) {
   const imageUrl = category.image
     ? (category.image.startsWith("http") ? category.image : `${BASE_URL}/${category.image}`)
     : null;
 
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-[#e2e8f0] bg-white p-4 transition hover:border-[#c7d7f5] hover:shadow-sm">
-      <div className="flex items-center gap-4">
+    <div
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      className={cn(
+        "flex items-center justify-between rounded-2xl border bg-white p-4 transition hover:border-[#c7d7f5] hover:shadow-sm",
+        isDragging ? "border-[#93c5fd] opacity-60" : "border-[#e2e8f0]",
+        isDropTarget ? "ring-2 ring-[#93c5fd]" : "",
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <DragSortHandle disabled={!dragEnabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
         <div className="relative h-12 w-12 overflow-hidden rounded-xl bg-[#f8fafc] flex items-center justify-center border border-[#f1f5f9]">
           {imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -101,6 +126,7 @@ function CategoriesContent() {
     createCategory,
     updateCategory,
     deleteCategory,
+    reorderCategories,
   } = useCategories({ page: currentPage });
 
   useEffect(() => {
@@ -135,6 +161,28 @@ function CategoriesContent() {
       return matchesCategory || matchesBusiness || matchesProduct;
     });
   }, [categories, search]);
+
+  const onReorder = useCallback(
+    async (ids: string[]) => {
+      try {
+        await reorderCategories(ids);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to save category order");
+        throw err;
+      }
+    },
+    [reorderCategories],
+  );
+
+  const {
+    items: orderedCategories,
+    dragId,
+    dropId,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
+  } = useHtml5Reorder(filteredCategories, onReorder, !actionLoading);
 
   const resetCreate = () => {
     setCreateForm({ categoryName: "", sortOrder: 0, image: null });
@@ -302,17 +350,28 @@ function CategoriesContent() {
               <div className="rounded-3xl border border-[#f1f5f9] bg-[#ffffff] p-6 shadow-sm flex flex-col min-h-0">
                 <div className="mb-6 shrink-0">
                   <h3 className="text-xl font-bold text-[#111827]">Category List</h3>
-                  <p className="text-xs text-[#6b7280]">Sorted by sort order from the API</p>
+                  <p className="text-xs text-[#6b7280]">Drag the grip to change display order. The catalog uses this sort order.</p>
                 </div>
 
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
                   {loading ? (
                     <Loading size="sm" />
-                  ) : filteredCategories.length === 0 ? (
+                  ) : orderedCategories.length === 0 ? (
                     <div className="text-center py-12 text-[#94a3b8] text-sm font-medium">No categories found</div>
                   ) : (
-                    filteredCategories.map((category) => (
-                      <CategoryListItem key={category.id} category={category} onEdit={onOpenEdit} />
+                    orderedCategories.map((category) => (
+                      <CategoryListItem
+                        key={category.id}
+                        category={category}
+                        onEdit={onOpenEdit}
+                        dragEnabled={!actionLoading}
+                        isDragging={dragId === category.id}
+                        isDropTarget={dropId === category.id && dragId !== category.id}
+                        onDragStart={(event) => onDragStart(category.id, event)}
+                        onDragOver={(event) => onDragOver(category.id, event)}
+                        onDrop={(event) => onDrop(category.id, event)}
+                        onDragEnd={onDragEnd}
+                      />
                     ))
                   )}
                 </div>

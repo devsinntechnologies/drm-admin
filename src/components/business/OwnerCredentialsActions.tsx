@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Copy, KeyRound, Loader2, Mail } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Copy, KeyRound, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { FormField, portalInputClass } from "@/components/admin/PortalPage";
+import { IssuePasswordDialog } from "@/components/business/IssuePasswordDialog";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ type OwnerCredentialsActionsProps = {
   ownerEmail?: string;
   compact?: boolean;
   selfService?: boolean;
+  hasPendingPassword?: boolean;
 };
 
 export function OwnerCredentialsActions({
@@ -29,15 +30,16 @@ export function OwnerCredentialsActions({
   ownerEmail,
   compact = false,
   selfService = false,
+  hasPendingPassword = false,
 }: OwnerCredentialsActionsProps) {
   const [resetOwner, { isLoading }] = useResetOwnerCredentialsMutation();
   const [setOpen, setSetOpen] = useState(false);
-  const [password, setPassword] = useState("");
-  const [alsoEmail, setAlsoEmail] = useState(true);
   const [shown, setShown] = useState<CredentialsResult | null>(null);
+  const [pending, setPending] = useState(hasPendingPassword);
 
-  const emailLabel = selfService ? "Email me a new password" : "Email new password";
-  const setLabel = selfService ? "Set my password" : "Set password";
+  useEffect(() => {
+    setPending(hasPendingPassword);
+  }, [hasPendingPassword]);
 
   const applyResult = (raw: unknown, fallbackEmail: string) => {
     const result = asCredentialsResult(raw) ?? {
@@ -45,12 +47,15 @@ export function OwnerCredentialsActions({
       temporaryPassword: "",
       credentialsEmailSent: false,
     };
+    setPending(result.hasPendingPassword ?? pending);
     setShown({
       ...result,
       loginEmail: result.loginEmail || fallbackEmail,
     });
-    if (result.credentialsEmailSent) {
-      toast.success("A new password was emailed.");
+    if (result.keepCurrentPassword !== false) {
+      toast.success("Extra password created. The current login still works.");
+    } else if (result.credentialsEmailSent) {
+      toast.success("Password replaced and emailed.");
     } else {
       toast.warning(
         result.credentialsEmailError ||
@@ -59,126 +64,82 @@ export function OwnerCredentialsActions({
     }
   };
 
-  const emailNewPassword = async () => {
-    const toastId = toast.loading("Creating a new password…");
-    try {
-      const raw = await resetOwner({
-        id: businessId,
-        body: { generate: true, sendEmail: true },
-      }).unwrap();
-      toast.dismiss(toastId);
-      applyResult(raw, ownerEmail || "");
-    } catch (err) {
-      toast.error(normalizeErrorMessage(err, "Failed to email a new password."), {
-        id: toastId,
-      });
-    }
-  };
-
-  const onSetPassword = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const next = password.trim();
-    if (next.length < 6) {
-      toast.error("Password must be at least 6 characters.");
-      return;
-    }
-    const toastId = toast.loading("Updating password…");
-    try {
-      const raw = await resetOwner({
-        id: businessId,
-        body: { password: next, sendEmail: alsoEmail },
-      }).unwrap();
-      toast.dismiss(toastId);
-      setSetOpen(false);
-      setPassword("");
-      applyResult(raw, ownerEmail || "");
-    } catch (err) {
-      toast.error(normalizeErrorMessage(err, "Failed to update password."), {
-        id: toastId,
-      });
-    }
-  };
-
   return (
     <>
       <div className={cn("flex flex-wrap items-center gap-2", compact ? "justify-end" : "")}>
+        {pending ? (
+          <span className="rounded-full bg-[#fffbeb] px-2.5 py-0.5 text-[11px] font-semibold text-[#b45309] ring-1 ring-[#fde68a]">
+            Extra password waiting
+          </span>
+        ) : null}
         <button
           type="button"
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-white px-2.5 text-xs font-semibold text-[#334155] hover:bg-[#f8fafc] disabled:opacity-60"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-white px-3 text-sm font-semibold text-[#334155] hover:bg-[#f8fafc] disabled:opacity-60"
           disabled={isLoading}
-          onClick={() => void emailNewPassword()}
+          onClick={() => setSetOpen(true)}
         >
-          {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-          {emailLabel}
-        </button>
-        <button
-          type="button"
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-white px-2.5 text-xs font-semibold text-[#334155] hover:bg-[#f8fafc] disabled:opacity-60"
-          disabled={isLoading}
-          onClick={() => {
-            setPassword("");
-            setAlsoEmail(true);
-            setSetOpen(true);
-          }}
-        >
-          <KeyRound className="h-3.5 w-3.5" />
-          {setLabel}
+          {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
+          Password
         </button>
       </div>
 
-      <Dialog open={setOpen} onOpenChange={setSetOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{selfService ? "Change your password" : "Set owner password"}</DialogTitle>
-            <DialogDescription>
-              {selfService
-                ? "This updates your business admin login."
-                : `Set a password for ${ownerName || "the business admin"}${ownerEmail ? ` (${ownerEmail})` : ""}.`}
-            </DialogDescription>
-          </DialogHeader>
-          <form className="space-y-4" onSubmit={(event) => void onSetPassword(event)}>
-            <FormField label="New password" required>
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className={portalInputClass}
-                placeholder="Min. 6 characters"
-                autoComplete="new-password"
-              />
-            </FormField>
-            <label className="flex items-center gap-2 text-sm text-[#334155]">
-              <input
-                type="checkbox"
-                checked={alsoEmail}
-                onChange={(event) => setAlsoEmail(event.target.checked)}
-              />
-              Email this password to {selfService ? "me" : "the business admin"}
-            </label>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className="dn-btn dn-btn-outline h-9 rounded-lg px-3 text-sm"
-                onClick={() => setSetOpen(false)}
-              >
-                Cancel
-              </button>
-              <button type="submit" className="dn-btn dn-btn-primary h-9 rounded-lg px-3 text-sm" disabled={isLoading}>
-                Save password
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <IssuePasswordDialog
+        open={setOpen}
+        onOpenChange={setSetOpen}
+        personName={ownerName || "the business admin"}
+        personEmail={ownerEmail}
+        selfService={selfService}
+        hasPendingPassword={pending}
+        isLoading={isLoading}
+        onSubmit={async (payload) => {
+          const toastId = toast.loading(
+            payload.keepCurrentPassword ? "Creating extra password…" : "Replacing password…",
+          );
+          try {
+            const raw = await resetOwner({
+              id: businessId,
+              body: payload,
+            }).unwrap();
+            toast.dismiss(toastId);
+            setSetOpen(false);
+            applyResult(raw, ownerEmail || "");
+          } catch (err) {
+            toast.error(normalizeErrorMessage(err, "Failed to update password."), {
+              id: toastId,
+            });
+          }
+        }}
+        onCancelPending={async () => {
+          const toastId = toast.loading("Cancelling extra password…");
+          try {
+            await resetOwner({
+              id: businessId,
+              body: { cancelPending: true, sendEmail: false },
+            }).unwrap();
+            setPending(false);
+            setSetOpen(false);
+            toast.success("Extra password cancelled. Current login is unchanged.", { id: toastId });
+          } catch (err) {
+            toast.error(normalizeErrorMessage(err, "Could not cancel the extra password."), {
+              id: toastId,
+            });
+          }
+        }}
+      />
 
       <Dialog open={Boolean(shown)} onOpenChange={(open) => !open && setShown(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New login password</DialogTitle>
+            <DialogTitle>
+              {shown?.keepCurrentPassword === false ? "Password replaced" : "Extra password ready"}
+            </DialogTitle>
             <DialogDescription>
+              {shown?.keepCurrentPassword === false
+                ? "The previous password no longer works."
+                : "The current password still works until they sign in with this new one."}
               {shown?.credentialsEmailSent
-                ? "The new password was emailed. It is shown once here as a backup."
-                : "Email was not sent. Copy this password and share it securely."}
+                ? " A copy was emailed. It is shown once here as a backup."
+                : " Email was not sent — copy it and share it securely."}
             </DialogDescription>
           </DialogHeader>
           {shown ? (

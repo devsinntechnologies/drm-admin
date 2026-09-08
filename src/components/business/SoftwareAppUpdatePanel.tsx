@@ -11,7 +11,7 @@ import {
   type AppReleaseRecord,
 } from "@/hooks/useAppUpdates";
 import { useAuth } from "@/hooks/useAuth";
-import { cn, normalizeErrorMessage } from "@/lib/utils";
+import { cn, formatLastActivity, normalizeErrorMessage } from "@/lib/utils";
 
 type SoftwareAppUpdatePanelProps = {
   businessId: string;
@@ -88,8 +88,8 @@ export function SoftwareAppUpdatePanel({ businessId }: SoftwareAppUpdatePanelPro
             <h2 className="text-base font-semibold text-[#0f172a]">App version</h2>
           </div>
           <p className="text-sm text-[#64748b]">
-            The installer live for this business. Forced updates show here as soon as they are
-            published — POS apps also prompt on next login.
+            Assigned installer for this business vs what each POS is actually running.
+            Force updates appear here immediately and on POS login within seconds.
           </p>
         </div>
         <button
@@ -122,15 +122,18 @@ export function SoftwareAppUpdatePanel({ businessId }: SoftwareAppUpdatePanelPro
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
               <div>
                 <p className="text-sm font-semibold">
-                  {forced ? "Force update is live" : "Update available"}
+                  {forced ? "Force update assigned" : "Update assigned"}
                   {": "}
-                  {alert.title} ({PLATFORM_LABEL[alert.platform]} {alert.versionName})
+                  {PLATFORM_LABEL[alert.platform]} {alert.versionName} ({alert.versionCode})
                 </p>
                 <p className="mt-0.5 text-sm">
+                  {forced
+                    ? `POS apps must install ${alert.versionName}. `
+                    : `POS apps are offered ${alert.versionName}. `}
                   {alert.deviceCount === 0
-                    ? "No POS devices have checked in yet. They will be required to install this on next login."
+                    ? "No POS devices have checked in yet."
                     : alert.outdatedCount > 0
-                      ? `${alert.outdatedCount} of ${alert.deviceCount} device${alert.deviceCount === 1 ? "" : "s"} still need this version.`
+                      ? `${alert.outdatedCount} of ${alert.deviceCount} device${alert.deviceCount === 1 ? "" : "s"} still on an older build.`
                       : "All checked-in devices are on this version."}
                 </p>
               </div>
@@ -156,7 +159,7 @@ export function SoftwareAppUpdatePanel({ businessId }: SoftwareAppUpdatePanelPro
                       </span>
                     </p>
                     <p className="mt-1 text-xs font-semibold text-[#475569]">
-                      {POLICY_LABEL[row.active.policy] ?? row.active.policy}
+                      Assigned · {POLICY_LABEL[row.active.policy] ?? row.active.policy}
                       {row.active.targetMode === "all" ? " · All businesses" : " · Linked"}
                     </p>
                     <p className="mt-2 text-xs text-[#64748b]">
@@ -231,8 +234,10 @@ export function SoftwareAppUpdatePanel({ businessId }: SoftwareAppUpdatePanelPro
                 <thead className="bg-[#f8fafc] text-xs font-semibold uppercase tracking-wide text-[#64748b]">
                   <tr>
                     <th className="px-3 py-2">Device</th>
-                    <th className="px-3 py-2">Installed</th>
+                    <th className="px-3 py-2">Running</th>
+                    <th className="px-3 py-2">Assigned</th>
                     <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Last activity</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e2e8f0]">
@@ -254,17 +259,42 @@ export function SoftwareAppUpdatePanel({ businessId }: SoftwareAppUpdatePanelPro
                           {device.appVersion ?? "—"}
                           {device.versionCode != null ? ` (${device.versionCode})` : ""}
                         </td>
+                        <td className="px-3 py-2 text-[#475569]">
+                          {device.assignedVersionName
+                            ? `${device.assignedVersionName}${device.assignedVersionCode != null ? ` (${device.assignedVersionCode})` : ""}`
+                            : "—"}
+                          {device.assignedPolicy === "forced" ? (
+                            <span className="ml-1 text-xs font-semibold text-[#dc2626]">Force</span>
+                          ) : null}
+                        </td>
                         <td className="px-3 py-2">
                           <span
                             className={cn(
                               "rounded-full px-2 py-0.5 text-xs font-semibold",
                               device.isUpToDate
                                 ? "bg-[#ecfdf5] text-[#059669]"
-                                : "bg-[#fef2f2] text-[#dc2626]",
+                                : device.assignedPolicy === "forced"
+                                  ? "bg-[#fef2f2] text-[#dc2626]"
+                                  : "bg-[#fffbeb] text-[#b45309]",
                             )}
                           >
-                            {device.isUpToDate ? "Up to date" : "Needs update"}
+                            {device.isUpToDate
+                              ? "Up to date"
+                              : device.assignedPolicy === "forced"
+                                ? "Must update"
+                                : "Needs update"}
                           </span>
+                        </td>
+                        <td className="px-3 py-2 text-xs">
+                          {(() => {
+                            const activity = formatLastActivity(device.lastHeartbeatAt);
+                            return (
+                              <div>
+                                <p className="font-medium text-[#0f172a]">{activity.relative}</p>
+                                <p className="text-[#94a3b8]">{activity.absolute}</p>
+                              </div>
+                            );
+                          })()}
                         </td>
                       </tr>
                     )),

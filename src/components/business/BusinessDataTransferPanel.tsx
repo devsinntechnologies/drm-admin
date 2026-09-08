@@ -95,8 +95,10 @@ export function BusinessDataTransferPanel({
       {mode === "full" ? (
         <div className="rounded-xl border border-[#dbeafe] bg-[#eff6ff] px-4 py-3 text-sm text-[#1e40af]">
           Move data between environments (e.g. staging → production). Export a ZIP from
-          one business, then import into another. Import <strong>appends</strong> — it
-          never wipes the target. Staff emails that already exist are skipped.
+          one business, then import into another. Product, category, logo, table, and
+          receipt images are packed into the ZIP and restored on import. Import{" "}
+          <strong>appends</strong> — it never wipes the target. Staff emails that already
+          exist are skipped.
         </div>
       ) : null}
 
@@ -117,7 +119,8 @@ export function BusinessDataTransferPanel({
           <div>
             <h2 className="text-base font-semibold text-[#0f172a]">Export</h2>
             <p className="text-sm text-[#64748b]">
-              Download a package from {businessName || "this business"}.
+              Download a package from {businessName || "this business"}. Images are
+              included in the ZIP automatically.
             </p>
           </div>
           <button
@@ -203,8 +206,9 @@ export function BusinessDataTransferPanel({
       <section className="rounded-xl border border-[#e2e8f0] bg-white p-5">
         <h2 className="text-base font-semibold text-[#0f172a]">Import (append)</h2>
         <p className="mb-4 text-sm text-[#64748b]">
-          Upload a business-export ZIP into this business. Leave section boxes empty
-          to import everything present in the package.
+          Upload a business-export ZIP into this business. Images in the package are
+          written to this business and linked on products, categories, and logos.
+          Leave section boxes empty to import everything present in the package.
         </p>
 
         <input

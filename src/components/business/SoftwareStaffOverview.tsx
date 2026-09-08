@@ -11,6 +11,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
   UserCheck,
@@ -48,6 +49,7 @@ import { appendBusinessId } from "@/lib/module-routes";
 import { cn, normalizeErrorMessage } from "@/lib/utils";
 import type { ModuleId } from "@/templates/types";
 import { OwnerCredentialsActions } from "@/components/business/OwnerCredentialsActions";
+import { IssuePasswordDialog } from "@/components/business/IssuePasswordDialog";
 import { useAuth } from "@/hooks/useAuth";
 
 type SoftwareStaffOverviewProps = {
@@ -150,14 +152,13 @@ export function SoftwareStaffOverview({
   const [editRole, setEditRole] = useState("");
 
   const [passwordTarget, setPasswordTarget] = useState<StaffAccount | null>(null);
-  const [newPassword, setNewPassword] = useState("");
-  const [emailPassword, setEmailPassword] = useState(true);
   const [shownReset, setShownReset] = useState<{
     name: string;
     email: string;
     password: string;
     emailSent: boolean;
     emailError?: string;
+    keepCurrent?: boolean;
     staff?: StaffAccount;
   } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<StaffAccount | null>(null);
@@ -257,21 +258,33 @@ export function SoftwareStaffOverview({
     }
   };
 
-  const onPasswordSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const onPasswordSubmit = async (payload: {
+    password?: string;
+    generate: boolean;
+    sendEmail: boolean;
+    keepCurrentPassword: boolean;
+  }) => {
     if (!passwordTarget) return;
-    const password = newPassword.trim();
-    if (password.length < 6) {
+    const password = payload.password?.trim() || "";
+    if (password && password.length < 6) {
       toast.error("Password must be at least 6 characters.");
       return;
     }
-    const toastId = toast.loading("Updating password…");
+    const toastId = toast.loading(
+      payload.keepCurrentPassword ? "Creating extra password…" : "Replacing password…",
+    );
     try {
       const result = await updatePassword(passwordTarget, password, {
-        sendEmail: emailPassword,
+        generate: payload.generate,
+        sendEmail: payload.sendEmail,
+        keepCurrentPassword: payload.keepCurrentPassword,
       });
       toast.success(
-        result?.credentialsEmailSent ? "Password updated and emailed." : "Password updated.",
+        payload.keepCurrentPassword
+          ? "Extra password created. Current login still works."
+          : result?.credentialsEmailSent
+            ? "Password replaced and emailed."
+            : "Password replaced.",
         { id: toastId },
       );
       setShownReset({
@@ -280,16 +293,16 @@ export function SoftwareStaffOverview({
         password: result?.temporaryPassword || password,
         emailSent: result?.credentialsEmailSent === true,
         emailError: result?.credentialsEmailError,
+        keepCurrent: payload.keepCurrentPassword,
         staff: passwordTarget,
       });
-      if (result && !result.credentialsEmailSent && emailPassword) {
+      if (result && !result.credentialsEmailSent && payload.sendEmail) {
         toast.warning(
           result.credentialsEmailError ||
             "Password email was not sent. Copy the password from the dialog.",
         );
       }
       setPasswordTarget(null);
-      setNewPassword("");
     } catch (err) {
       toast.error(normalizeErrorMessage(err, "Failed to update password."), { id: toastId });
     }
@@ -298,7 +311,11 @@ export function SoftwareStaffOverview({
   const emailNewStaffPassword = async (staff: StaffAccount) => {
     const toastId = toast.loading("Emailing a new password…");
     try {
-      const result = await updatePassword(staff, "", { generate: true, sendEmail: true });
+      const result = await updatePassword(staff, "", {
+        generate: true,
+        sendEmail: true,
+        keepCurrentPassword: true,
+      });
       toast.dismiss(toastId);
       setShownReset({
         name: staff.name,
@@ -306,14 +323,15 @@ export function SoftwareStaffOverview({
         password: result?.temporaryPassword || "",
         emailSent: result?.credentialsEmailSent === true,
         emailError: result?.credentialsEmailError,
+        keepCurrent: true,
         staff,
       });
       if (result?.credentialsEmailSent) {
-        toast.success("A new password was emailed.");
+        toast.success("Extra password emailed. Current login still works.");
       } else {
         toast.warning(
           result?.credentialsEmailError ||
-            "Password was updated, but the email was not sent. Copy it below.",
+            "Extra password was created, but the email was not sent. Copy it below.",
         );
       }
     } catch (err) {
@@ -359,17 +377,17 @@ export function SoftwareStaffOverview({
   ];
 
   return (
-    <section className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#e2e8f0] px-5 py-4">
+    <section className={cn(!compact && "overflow-hidden rounded-xl border border-[#e2e8f0] bg-white")}>
+      <div className={cn("flex flex-wrap items-start justify-between gap-3", compact ? "pb-4" : "border-b border-[#e2e8f0] px-5 py-4")}>
         <div className="flex min-w-0 items-start gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#eef2ff] text-[#4338ca]">
             <Users className="h-4 w-4" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-[#0f172a]">Staff</h2>
+            <h2 className="text-base font-semibold text-[#0f172a]">People with access</h2>
             <p className="mt-0.5 text-sm text-[#64748b]">
               {compact
-                ? "Create and manage logins for this business."
+                ? "Add teammates, then create an extra password without locking them out."
                 : "People who can sign in to this business."}
             </p>
           </div>
@@ -425,15 +443,29 @@ export function SoftwareStaffOverview({
                 </FormField>
 
                 <FormField label="Password" required>
-                  <input
-                    id="software-staff-password"
-                    type="password"
-                    value={createForm.password}
-                    onChange={(event) => setCreateForm((prev) => ({ ...prev, password: event.target.value }))}
-                    className={portalInputClass}
-                    placeholder="Min. 6 characters"
-                    autoComplete="new-password"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      id="software-staff-password"
+                      type="text"
+                      value={createForm.password}
+                      onChange={(event) => setCreateForm((prev) => ({ ...prev, password: event.target.value }))}
+                      className={portalInputClass}
+                      placeholder="Min. 6 characters"
+                      autoComplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      className="dn-btn dn-btn-outline inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm"
+                      onClick={() => {
+                        const chars = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+                        const next = Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+                        setCreateForm((prev) => ({ ...prev, password: next }));
+                      }}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Generate
+                    </button>
+                  </div>
                 </FormField>
 
                 <FormField label="Login email">
@@ -503,7 +535,7 @@ export function SoftwareStaffOverview({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 border-b border-[#e2e8f0] bg-[#f8fafc] px-5 py-3">
+      <div className={cn("flex flex-wrap items-center gap-3 rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-4", !compact && "mx-0 rounded-none border-x-0")}>
         <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold", avatarTone(ownerName))}>
           {initials(ownerName)}
         </span>
@@ -521,11 +553,12 @@ export function SoftwareStaffOverview({
             ownerEmail={ownerEmail}
             compact
             selfService={role === "business_admin"}
+            hasPendingPassword={business.ownerHasPendingPassword}
           />
         ) : null}
       </div>
 
-      <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className={cn("flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between", !compact && "px-5")}>
         <div className="flex flex-wrap gap-1.5">
           {filters.map((filter) => (
             <button
@@ -620,6 +653,9 @@ export function SoftwareStaffOverview({
                         <div className="min-w-0">
                           <p className="font-semibold text-[#0f172a]">{user.name}</p>
                           <p className="truncate text-xs text-[#64748b]">{user.email || "No email"}</p>
+                          {user.hasPendingPassword ? (
+                            <p className="mt-1 text-[11px] font-semibold text-[#b45309]">Extra password waiting</p>
+                          ) : null}
                         </div>
                       </div>
                     </td>
@@ -641,7 +677,16 @@ export function SoftwareStaffOverview({
                     </td>
                     <td className="hidden px-5 py-3 text-[#64748b] md:table-cell">{formatDate(user.createdAt)}</td>
                     <td className="px-5 py-3">
-                      <div className="flex justify-end">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          className="inline-flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold text-[#334155] hover:bg-[#f1f5f9]"
+                          disabled={actionLoading}
+                          onClick={() => setPasswordTarget(user)}
+                        >
+                          <KeyRound className="h-3.5 w-3.5" />
+                          Password
+                        </button>
                         <StaffRowMenu
                           user={user}
                           open={menuId === user.id}
@@ -656,8 +701,6 @@ export function SoftwareStaffOverview({
                           onPassword={() => {
                             setMenuId(null);
                             setPasswordTarget(user);
-                            setNewPassword("");
-                            setEmailPassword(true);
                           }}
                           onEmailPassword={() => {
                             setMenuId(null);
@@ -733,57 +776,34 @@ export function SoftwareStaffOverview({
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      <IssuePasswordDialog
         open={Boolean(passwordTarget)}
         onOpenChange={(open) => {
-          if (!open) {
-            setPasswordTarget(null);
-            setNewPassword("");
-          }
+          if (!open) setPasswordTarget(null);
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reset password</DialogTitle>
-            <DialogDescription>
-              Set a new password for {passwordTarget?.name}. You can also email it to them.
-            </DialogDescription>
-          </DialogHeader>
-          <form className="space-y-4" onSubmit={(event) => void onPasswordSubmit(event)}>
-            <FormField label="New password" required>
-              <input
-                id="reset-staff-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className={portalInputClass}
-                placeholder="Min. 6 characters"
-                autoComplete="new-password"
-              />
-            </FormField>
-            <label className="flex items-center gap-2 text-sm text-[#334155]">
-              <input
-                type="checkbox"
-                checked={emailPassword}
-                onChange={(event) => setEmailPassword(event.target.checked)}
-              />
-              Email this password to the staff login
-            </label>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className="dn-btn dn-btn-outline h-9 rounded-lg px-3 text-sm"
-                onClick={() => setPasswordTarget(null)}
-              >
-                Cancel
-              </button>
-              <button type="submit" className="dn-btn dn-btn-primary h-9 rounded-lg px-3 text-sm" disabled={actionLoading}>
-                Update password
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+        personName={passwordTarget?.name || "staff"}
+        personEmail={passwordTarget?.email}
+        hasPendingPassword={passwordTarget?.hasPendingPassword}
+        isLoading={actionLoading}
+        onSubmit={(payload) => onPasswordSubmit(payload)}
+        onCancelPending={
+          passwordTarget
+            ? async () => {
+                const staff = passwordTarget;
+                const toastId = toast.loading("Cancelling extra password…");
+                try {
+                  await updatePassword(staff, "", { cancelPending: true, sendEmail: false, generate: false });
+                  setPasswordTarget(null);
+                  toast.success("Extra password cancelled. Current login is unchanged.", { id: toastId });
+                } catch (err) {
+                  toast.error(normalizeErrorMessage(err, "Could not cancel the extra password."), {
+                    id: toastId,
+                  });
+                }
+              }
+            : undefined
+        }
+      />
 
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
@@ -868,11 +888,16 @@ export function SoftwareStaffOverview({
       <Dialog open={Boolean(shownReset)} onOpenChange={(open) => !open && setShownReset(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Staff password updated</DialogTitle>
+            <DialogTitle>
+              {shownReset?.keepCurrent === false ? "Password replaced" : "Extra password ready"}
+            </DialogTitle>
             <DialogDescription>
+              {shownReset?.keepCurrent === false
+                ? "The previous password no longer works."
+                : "The current password still works until they sign in with this new one."}
               {shownReset?.emailSent
-                ? "The new password was emailed. It is shown once here as a backup."
-                : "Email was not sent. Copy this password and share it securely."}
+                ? " A copy was emailed. It is shown once here as a backup."
+                : " Email was not sent. Copy this password and share it securely."}
             </DialogDescription>
           </DialogHeader>
           {shownReset ? (
@@ -1004,7 +1029,7 @@ function StaffRowMenu({
             onClick={onPassword}
           >
             <KeyRound className="h-3.5 w-3.5" />
-            Reset password
+            Create password
           </button>
           <button
             type="button"
@@ -1013,7 +1038,7 @@ function StaffRowMenu({
             onClick={onEmailPassword}
           >
             <Mail className="h-3.5 w-3.5" />
-            Email new password
+            Email extra password
           </button>
           <button
             type="button"

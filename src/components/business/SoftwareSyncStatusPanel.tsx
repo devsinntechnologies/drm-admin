@@ -2,18 +2,11 @@
 
 import { Loader2, Radio, Smartphone, Wifi, WifiOff } from "lucide-react";
 import { useGetMobileSyncDevicesQuery, useGetMobileSyncLiveStatusQuery } from "@/hooks/useMobileSync";
-import { cn } from "@/lib/utils";
+import { cn, formatLastActivity } from "@/lib/utils";
 
 type SoftwareSyncStatusPanelProps = {
   businessId: string;
 };
-
-function formatWhen(iso: string | null) {
-  if (!iso) return "Never";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString();
-}
 
 export function SoftwareSyncStatusPanel({ businessId }: SoftwareSyncStatusPanelProps) {
   const { data: devices = [], isLoading, isError, refetch, isFetching } = useGetMobileSyncDevicesQuery(
@@ -103,7 +96,7 @@ export function SoftwareSyncStatusPanel({ businessId }: SoftwareSyncStatusPanelP
                 <th className="px-4 py-3">Synced</th>
                 <th className="px-4 py-3">Queue</th>
                 <th className="px-4 py-3">Sync</th>
-                <th className="px-4 py-3">Last seen</th>
+                <th className="px-4 py-3">Last activity</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e2e8f0]">
@@ -149,7 +142,17 @@ export function SoftwareSyncStatusPanel({ businessId }: SoftwareSyncStatusPanelP
                     ) : null}
                   </td>
                   <td className="px-4 py-3 capitalize">{device.syncState || "idle"}</td>
-                  <td className="px-4 py-3 text-xs">{formatWhen(device.lastHeartbeatAt)}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {(() => {
+                      const activity = formatLastActivity(device.lastHeartbeatAt);
+                      return (
+                        <div>
+                          <p className="font-medium text-[#0f172a]">{activity.relative}</p>
+                          <p className="text-[#94a3b8]">{activity.absolute}</p>
+                        </div>
+                      );
+                    })()}
+                  </td>
                 </tr>
               ))}
             </tbody>

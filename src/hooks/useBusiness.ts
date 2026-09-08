@@ -19,6 +19,7 @@ export type BusinessRecord = {
   ownerEmail: string;
   ownerPhone: string;
   ownerRole: string;
+  ownerHasPendingPassword?: boolean;
   planId: string;
   planName: string;
   templateConfig?: ApiTemplateConfig | null;
@@ -282,6 +283,7 @@ export const businessApi = createApi({
         }
         return parsed;
       },
+      invalidatesTags: (_result, _error, { id }) => [{ type: "Business", id }],
     }),
   }),
 });

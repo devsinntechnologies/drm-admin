@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { BASE_URL } from "@/lib/constant";
 import { DIGINIZAM_CLIENT, DIGINIZAM_CLIENT_HEADER } from "@/lib/diginizam-client";
+import { normalizeErrorMessage } from "@/lib/utils";
 
 export type LoginCredentials = {
   email: string;
@@ -123,27 +124,31 @@ export const loginUser = createAsyncThunk<
       }
 
       return rejectWithValue(
-        (typeof payload.message === "string" && payload.message) ||
-          payload.error ||
-          "Invalid email or password.",
+        normalizeErrorMessage(payload, "Invalid email or password."),
       );
     }
 
-    const token = 
-      payload.token || 
-      payload.access_token || 
-      payload.data?.token || 
-      payload.data?.access_token || 
+    const token =
+      payload.token ||
+      payload.access_token ||
+      payload.data?.token ||
+      payload.data?.access_token ||
       null;
 
-    if (typeof window !== "undefined" && token) {
+    if (!token) {
+      return rejectWithValue(
+        "Sign in did not create a session. Confirm the API is running.",
+      );
+    }
+
+    if (typeof window !== "undefined") {
       localStorage.setItem("auth_token", token);
       localStorage.setItem("token", token);
     }
 
     return payload;
   } catch {
-    return rejectWithValue("Network error. Please try again.");
+    return rejectWithValue("Cannot reach the API. Make sure the backend is running.");
   }
 });
 

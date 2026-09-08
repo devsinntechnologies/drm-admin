@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { buildApiUrl } from "@/lib/api";
+import { apiClient } from "@/lib/api-client";
+import { applySubsetOrder } from "@/lib/reorder";
 
 export interface ProductVariant {
   id: string;
@@ -413,6 +415,36 @@ export function useProducts(options: UseProductsOptions = {}) {
     }
   }, [fetchProducts, pagination.page, token, activeBusinessId]);
 
+  const reorderProducts = useCallback(
+    async (ids: string[]) => {
+      const authToken = getAuthToken(token);
+      if (!authToken) {
+        throw new Error("No authentication token available");
+      }
+
+      const previous = products;
+      setProducts((prev) => {
+        const order = applySubsetOrder(
+          prev.map((product) => product.id),
+          ids,
+        );
+        const byId = new Map(prev.map((product) => [product.id, product]));
+        return order.map((id, index) => ({
+          ...byId.get(id)!,
+          sortOrder: index,
+        }));
+      });
+
+      try {
+        await apiClient.patch("/products/reorder", { ids }, authToken, activeBusinessId);
+      } catch (err) {
+        setProducts(previous);
+        throw err;
+      }
+    },
+    [activeBusinessId, products, token],
+  );
+
   return {
     products,
     loading,
@@ -426,6 +458,7 @@ export function useProducts(options: UseProductsOptions = {}) {
     getProductById,
     updateProduct,
     deleteProduct,
+    reorderProducts,
     refetch: fetchProducts,
   };
 }

@@ -126,3 +126,30 @@ export function buildOrderPatchItem(
 export function buildOrderRemoveItem(orderItemId: string) {
   return { id: orderItemId, action: "remove" as const };
 }
+
+/** Relative + local timestamp for device last activity. */
+export function formatLastActivity(iso: string | null | undefined): {
+  relative: string;
+  absolute: string;
+} {
+  if (!iso) {
+    return { relative: "Never", absolute: "No activity recorded" };
+  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return { relative: "—", absolute: "—" };
+  }
+  const absolute = date.toLocaleString();
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 0) return { relative: "Just now", absolute };
+  const seconds = Math.floor(diffMs / 1000);
+  if (seconds < 20) return { relative: "Just now", absolute };
+  if (seconds < 60) return { relative: `${seconds}s ago`, absolute };
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return { relative: `${minutes} min ago`, absolute };
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return { relative: `${hours}h ago`, absolute };
+  const days = Math.floor(hours / 24);
+  if (days < 7) return { relative: `${days}d ago`, absolute };
+  return { relative: absolute, absolute };
+}
