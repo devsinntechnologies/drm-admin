@@ -1,22 +1,33 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Clock3, Eye, FileText, Search } from "lucide-react";
+import { Clock3, Eye, FileText, Printer, Search } from "lucide-react";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { PortalPage, PortalPageHeader, portalSearchClass } from "@/components/admin/PortalPage";
 import InvoiceReceipt, { InvoiceDownloadButton, InvoicePrintButton } from "@/components/common/InvoiceReceipt";
 import { PrinterAccessAlert } from "@/components/common/PrinterAccessAlert";
+import { ConnectPrinterDialog } from "@/components/invoices/ConnectPrinterDialog";
 import { useInvoiceBranding } from "@/hooks/useInvoiceBranding";
 import { downloadInvoicePdf } from "@/lib/invoice-pdf";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { useInvoices, type InvoiceRecord } from "@/hooks/useInvoices";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { parseSalesSettings } from "@/lib/module-feature-settings";
 import { formatInvoiceDateTime } from "@/lib/invoice-datetime";
+import { apiClient } from "@/lib/api-client";
+import { cn, normalizeErrorMessage } from "@/lib/utils";
+import type { BusinessPrinter, PrintersPayload } from "@/lib/printers";
+import { STAFF_REALTIME_EVENTS } from "@/lib/staff-realtime";
+import {
+  createPrintJob,
+  invoiceRecordToPrintPayload,
+} from "@/lib/print-jobs";
+import { toast } from "sonner";
 
 type RangeFilter = "day" | "week" | "month";
 
@@ -47,7 +58,7 @@ function formatDate(value: string) {
 
 function SalesContent() {
   const router = useRouter();
-  const { role } = useAuth();
+  const { role, token } = useAuth();
   const branding = useInvoiceBranding();
   const { templateConfig } = useBusinessTemplate();
   const allowPrinter = parseSalesSettings(templateConfig?.moduleSettings).allowPrinter;
@@ -58,6 +69,50 @@ function SalesContent() {
   const [rangeFilter, setRangeFilter] = useState<RangeFilter>("day");
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRecord | null>(null);
   const [printerAlertOpen, setPrinterAlertOpen] = useState(false);
+  const [connectPrinterOpen, setConnectPrinterOpen] = useState(false);
+  const [connectedPrinter, setConnectedPrinter] = useState<BusinessPrinter | null>(null);
+  const [printInFlight, setPrintInFlight] = useState(false);
+  const activeBusinessId = useActiveBusinessId();
+
+  const refreshConnectedPrinter = useCallback(async () => {
+    if (!token || !activeBusinessId || !allowPrinter) return;
+    try {
+      const payload = await apiClient.get<PrintersPayload>("/printers", token, activeBusinessId);
+      setConnectedPrinter(
+        payload.printers.find(
+          (printer) => printer.isConnected && printer.lastStatus !== "unreachable",
+        ) ?? null,
+      );
+    } catch {
+      // ignore
+    }
+  }, [token, activeBusinessId, allowPrinter]);
+
+  useEffect(() => {
+    void refreshConnectedPrinter();
+  }, [refreshConnectedPrinter]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onPrintersChanged = (event: Event) => {
+      const detail = (event as CustomEvent).detail as PrintersPayload | undefined;
+      if (detail?.printers) {
+        setConnectedPrinter(
+          detail.printers.find(
+            (printer) => printer.isConnected && printer.lastStatus !== "unreachable",
+          ) ?? null,
+        );
+        return;
+      }
+      void refreshConnectedPrinter();
+    };
+    window.addEventListener(STAFF_REALTIME_EVENTS.PRINTERS_CHANGED, onPrintersChanged);
+    window.addEventListener("printers:updated", onPrintersChanged);
+    return () => {
+      window.removeEventListener(STAFF_REALTIME_EVENTS.PRINTERS_CHANGED, onPrintersChanged);
+      window.removeEventListener("printers:updated", onPrintersChanged);
+    };
+  }, [refreshConnectedPrinter]);
 
   const { invoices, loading, error, refetch } = useInvoices({
     page: 1,
@@ -113,7 +168,42 @@ function SalesContent() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="dn-tab-bar !rounded-2xl !py-2 lg:w-auto">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (!allowPrinter) {
+                  setPrinterAlertOpen(true);
+                  return;
+                }
+                if (connectedPrinter) {
+                  const suffix = activeBusinessId
+                    ? `?businessId=${encodeURIComponent(activeBusinessId)}`
+                    : "";
+                  router.push(`/dashboard/businessAdmin/software/printers${suffix}`);
+                  return;
+                }
+                setConnectPrinterOpen(true);
+              }}
+              className={cn(
+                "dn-btn !h-9 !px-3",
+                connectedPrinter ? "!bg-[#16a34a] !text-white hover:!bg-[#15803d]" : "dn-btn-soft",
+                !allowPrinter && "opacity-45",
+              )}
+            >
+              <Printer className="h-4 w-4" />
+              {connectedPrinter ? (
+                <>
+                  <span className="max-w-[140px] truncate">{connectedPrinter.name}</span>
+                  <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                    Connected
+                  </span>
+                </>
+              ) : (
+                "Connect Printer"
+              )}
+            </button>
+            <div className="dn-tab-bar !rounded-2xl !py-2 lg:w-auto">
             {(
               [
                 { key: "day" as const, label: "Daily" },
@@ -132,6 +222,7 @@ function SalesContent() {
                 {tab.label}
               </button>
             ))}
+            </div>
           </div>
         </div>
 
@@ -223,7 +314,7 @@ function SalesContent() {
                 contactEmail={branding.contactEmail || selectedInvoice.businessEmail}
                 address={branding.address || selectedInvoice.businessAddress}
                 website={branding.website}
-                footerNote="Thank you for your purchase!"
+                footerNote={branding.businessName || selectedInvoice.businessName}
               />
               <div className="mt-4 flex justify-end gap-2 px-2 pb-2">
                 <InvoiceDownloadButton
@@ -257,7 +348,37 @@ function SalesContent() {
                       setPrinterAlertOpen(true);
                       return;
                     }
-                    window.print();
+                    if (!selectedInvoice || printInFlight) return;
+                    void (async () => {
+                      setPrintInFlight(true);
+                      try {
+                        await createPrintJob(token, activeBusinessId, {
+                          jobType: "INVOICE",
+                          printerId: connectedPrinter?.id,
+                          printerName: connectedPrinter?.name,
+                          referenceNumber:
+                            selectedInvoice.invoiceNumber ||
+                            selectedInvoice.orderNumber ||
+                            selectedInvoice.uuid,
+                          referenceId: selectedInvoice.uuid || selectedInvoice.orderId,
+                          payload: invoiceRecordToPrintPayload(
+                            selectedInvoice as unknown as Record<string, unknown>,
+                          ),
+                        });
+                        window.print();
+                        toast.success(
+                          connectedPrinter
+                            ? "Invoice queued and sent to the connected printer."
+                            : "Invoice added to the print queue.",
+                        );
+                      } catch (err) {
+                        toast.error(
+                          normalizeErrorMessage(err, "Print failed. Check printer connection."),
+                        );
+                      } finally {
+                        setPrintInFlight(false);
+                      }
+                    })();
                   }}
                 />
                 <button
@@ -273,6 +394,11 @@ function SalesContent() {
         </DialogContent>
       </Dialog>
       <PrinterAccessAlert open={printerAlertOpen} onOpenChange={setPrinterAlertOpen} />
+      <ConnectPrinterDialog
+        open={connectPrinterOpen}
+        onOpenChange={setConnectPrinterOpen}
+        onConnectedChange={setConnectedPrinter}
+      />
     </AdminShell>
   );
 }

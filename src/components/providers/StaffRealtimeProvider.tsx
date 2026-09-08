@@ -78,6 +78,17 @@ export default function StaffRealtimeProvider({
         window.dispatchEvent(new CustomEvent("invoices:refetch", { detail: payload }));
       }
     };
+    const onPrintersUpdated = (payload?: unknown) => {
+      emitStaffRealtime(STAFF_REALTIME_EVENTS.PRINTERS_CHANGED, payload);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("printers:updated", { detail: payload }));
+      }
+    };
+    const onPrintJobsUpdated = (payload?: unknown) => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("print_jobs:updated", { detail: payload }));
+      }
+    };
     const onBusinessDeactivated = (payload: NotificationPayload & { product?: string; code?: string }) => {
       const product = payload.product;
       if (product && product !== "portal") return;
@@ -92,6 +103,8 @@ export default function StaffRealtimeProvider({
     socket.on("invoice:generated", onInvoiceChanged);
     socket.on("new_invoice", onInvoiceChanged);
     socket.on("invoice:updated", onInvoiceChanged);
+    socket.on("printers:updated", onPrintersUpdated);
+    socket.on("print_jobs:updated", onPrintJobsUpdated);
     socket.on("business:deactivated", onBusinessDeactivated);
     socket.on("business:product_disabled", onBusinessDeactivated);
 
@@ -102,6 +115,8 @@ export default function StaffRealtimeProvider({
       socket.off("invoice:generated", onInvoiceChanged);
       socket.off("new_invoice", onInvoiceChanged);
       socket.off("invoice:updated", onInvoiceChanged);
+      socket.off("printers:updated", onPrintersUpdated);
+      socket.off("print_jobs:updated", onPrintJobsUpdated);
       socket.off("business:deactivated", onBusinessDeactivated);
       socket.off("business:product_disabled", onBusinessDeactivated);
       socket.disconnect();

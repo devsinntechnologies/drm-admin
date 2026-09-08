@@ -109,7 +109,7 @@ export default function InvoiceReceipt({
   website = "diginizam.com",
   className,
   compact = false,
-  footerNote = "Thank you for your business!",
+  footerNote,
 }: InvoiceReceiptProps) {
   const displayDate =
     date ??
@@ -251,8 +251,12 @@ export default function InvoiceReceipt({
       </div>
 
       <footer className="border-t border-[#edf2f7] bg-[#f8fbff] px-6 py-4 text-center">
-        <p className="text-sm font-medium italic text-[#64748b]">{footerNote}</p>
-        <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#94a3b8]">Powered by DigiNizam</p>
+        <p className="text-sm font-semibold text-[#0f172a]">
+          {(footerNote ?? businessName)?.trim() || businessName}
+        </p>
+        <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#94a3b8]">
+          Powered by DigiNizam
+        </p>
         <p className="mt-0.5 text-[10px] font-bold text-[#0050F8]">{website}</p>
       </footer>
     </article>
@@ -262,7 +266,7 @@ export default function InvoiceReceipt({
 export function InvoicePrintButton({
   onClick,
   loading,
-  label = "Print Receipt",
+  label = "Print",
   className,
 }: {
   onClick?: () => void;
@@ -275,7 +279,10 @@ export function InvoicePrintButton({
       type="button"
       onClick={onClick}
       disabled={loading}
-      className={cn("dn-btn dn-btn-primary gap-2", className)}
+      className={cn(
+        "dn-btn gap-2 !bg-[#16a34a] !text-white hover:!bg-[#15803d]",
+        className,
+      )}
     >
       <Printer className="h-4 w-4" />
       {label}
