@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+import { useDashboardRefresh } from "@/contexts/DashboardRefreshContext";
 import { BASE_URL } from "@/lib/constant";
 import { STAFF_REALTIME_EVENTS } from "@/lib/staff-realtime";
 
@@ -110,6 +111,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
   const { range = "day" } = options;
   const { token } = useAuth();
   const activeBusinessId = useActiveBusinessId();
+  const { bumpDashboardRefresh } = useDashboardRefresh();
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -280,8 +282,8 @@ export function useOrders(options: UseOrdersOptions = {}) {
         // This is best-effort: failures shouldn't block the order status update.
         try {
           const statusLower = status && status.toLowerCase();
-          if (statusLower === "served" || statusLower === "completed") {
-            const invoiceUrl = new URL(`${BASE_URL}/invoice`);
+          if (statusLower === "completed") {
+            const invoiceUrl = new URL(`${BASE_URL}/software/invoices`);
             if (activeBusinessId) invoiceUrl.searchParams.append("businessId", activeBusinessId);
 
             await fetch(invoiceUrl.toString(), {
@@ -305,6 +307,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
             } catch (e) {
               console.error("Failed to dispatch events", e);
             }
+            bumpDashboardRefresh();
           }
         } catch (err) {
           console.error("Failed to create invoice for order", orderId, err);
@@ -316,7 +319,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
         setActionLoading(false);
       }
     },
-    [fetchOrders, range, token, activeBusinessId],
+    [bumpDashboardRefresh, fetchOrders, range, token, activeBusinessId],
   );
 
   const getOrderById = useCallback(async (orderId: string) => {

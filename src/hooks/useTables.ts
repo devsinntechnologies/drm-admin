@@ -171,27 +171,11 @@ export function useTables(options: UseTablesOptions = {}) {
 
       setActionLoading(true);
       try {
-        const useJson = !payload.image;
-        let body: any;
-        let contentType: string | undefined;
-
-        if (useJson) {
-          contentType = "application/json";
-          body = JSON.stringify({
-            tableNumber: payload.tableNumber,
-            capacity: Number(payload.capacity),
-            status: payload.status,
-            businessId: activeBusinessId,
-          });
-        } else {
-          const formData = new FormData();
-          formData.append("tableNumber", payload.tableNumber);
-          formData.append("capacity", String(payload.capacity));
-          formData.append("status", payload.status);
-          if (payload.image) formData.append("image", payload.image);
-          if (activeBusinessId) formData.append("businessId", activeBusinessId);
-          body = formData;
-        }
+        const formData = new FormData();
+        formData.append("tableNumber", payload.tableNumber);
+        formData.append("capacity", String(payload.capacity));
+        formData.append("status", payload.status);
+        if (payload.image) formData.append("image", payload.image);
 
         const url = new URL(`${BASE_URL}/tables/tables`);
         if (activeBusinessId) {
@@ -203,9 +187,8 @@ export function useTables(options: UseTablesOptions = {}) {
           headers: {
             accept: "*/*",
             Authorization: `Bearer ${token}`,
-            ...(contentType ? { "Content-Type": contentType } : {}),
           },
-          body,
+          body: formData,
         });
 
         if (!response.ok) {
@@ -237,27 +220,11 @@ export function useTables(options: UseTablesOptions = {}) {
 
       setActionLoading(true);
       try {
-        const useJson = !payload.image;
-        let body: any;
-        let contentType: string | undefined;
-
-        if (useJson) {
-          contentType = "application/json";
-          body = JSON.stringify({
-            tableNumber: payload.tableNumber,
-            capacity: Number(payload.capacity),
-            status: payload.status,
-            businessId: activeBusinessId,
-          });
-        } else {
-          const formData = new FormData();
-          formData.append("tableNumber", payload.tableNumber);
-          formData.append("capacity", String(payload.capacity));
-          formData.append("status", payload.status);
-          if (payload.image) formData.append("image", payload.image);
-          if (activeBusinessId) formData.append("businessId", activeBusinessId);
-          body = formData;
-        }
+        const formData = new FormData();
+        formData.append("tableNumber", payload.tableNumber);
+        formData.append("capacity", String(payload.capacity));
+        formData.append("status", payload.status);
+        if (payload.image) formData.append("image", payload.image);
 
         const url = new URL(`${BASE_URL}/tables/${id}`);
         if (activeBusinessId) {
@@ -269,9 +236,8 @@ export function useTables(options: UseTablesOptions = {}) {
           headers: {
             accept: "*/*",
             Authorization: `Bearer ${token}`,
-            ...(contentType ? { "Content-Type": contentType } : {}),
           },
-          body,
+          body: formData,
         });
 
         if (!response.ok) {

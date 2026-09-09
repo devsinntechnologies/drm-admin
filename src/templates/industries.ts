@@ -230,7 +230,7 @@ export const INDUSTRY_TEMPLATES: IndustryTemplate[] = [
     labels: { product: "Part", products: "Parts", order: "Order", orders: "Orders" },
     modules: ["dashboard", "pos", "products", "categories", "orders", "brands", "vehicle-compatibility", "inventory", "serial-numbers", "sales", "returns", "warranties", "purchases", "suppliers", "customers", "staff", "reports", "settings"],
     optionalModules: ["delivery", "accounting", "multi-branch"],
-    dashboardCards: ["today-sales", "low-stock", "fast-moving-parts", "warranty-claims", "top-vehicle-brands", "pending-purchases"],
+    dashboardCards: ["today-sales", "gross-profit", "low-stock", "fast-moving-parts", "warranty-claims", "top-vehicle-brands", "pending-purchases"],
     roles: ["Owner", "Counter Sales", "Warehouse", "Technician"],
     workflows: ["Compatibility search", "Part sale", "Warranty return", "OEM lookup"],
     specialScreens: ["Vehicle compatibility selector", "OEM / part number search", "Serial & warranty view"],

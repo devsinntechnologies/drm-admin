@@ -20,6 +20,8 @@ import { canManageSoftwareAndWebsite, normalizePortalRole } from "@/lib/role-acc
 import { toast } from "sonner";
 import { resolveMediaUrl, businessInitials } from "@/lib/media-url";
 import { DocumentBranding } from "@/components/admin/DocumentBranding";
+import { FeatureTip } from "@/components/ui/FeatureTip";
+import { navTip } from "@/lib/feature-tips";
 
 type TabKey = string;
 
@@ -122,96 +124,112 @@ const tabs: Array<WorkspaceNavTab> = [
     label: "Dashboard",
     href: "/dashboard", // This will be dynamically updated in useMemo for Super Admins // This will be dynamically updated in useMemo for Super Admins
     icon: <Crown className="h-5 w-5" />,
+    description: navTip("dashboard"),
   },
   {
     key: "businesses",
     label: "Businesses",
     href: "/dashboard/superAdmin/businesses",
     icon: <Building2 className="h-5 w-5" />,
+    description: navTip("businesses"),
   },
   {
     key: "subscriptions",
     label: "Subscriptions",
     href: "/dashboard/superAdmin/subscriptions",
     icon: <CreditCard className="h-5 w-5" />,
+    description: navTip("subscriptions"),
   },
   {
     key: "industry-templates",
     label: "Industry Templates",
     href: "/dashboard/superAdmin/industry-templates",
     icon: <LayoutTemplate className="h-5 w-5" />,
+    description: navTip("industry-templates"),
   },
   {
     key: "app-updates",
     label: "App Updates",
     href: "/dashboard/superAdmin/app-updates",
     icon: <Download className="h-5 w-5" />,
+    description: navTip("app-updates"),
   },
   {
     key: "action-logs",
     label: "Action Logs",
     href: "/dashboard/superAdmin/action-logs",
     icon: <Activity className="h-5 w-5" />,
+    description: navTip("action-logs"),
   },
   {
     key: "products",
     label: "Products",
     href: "/dashboard/businessAdmin/products",
     icon: <LayoutGrid className="h-5 w-5" />,
+    description: navTip("products"),
   },
   {
     key: "categories",
     label: "Categories",
     href: "/dashboard/businessAdmin/categories",
     icon: <Shapes className="h-5 w-5" />,
+    description: navTip("categories"),
   },
   {
     key: "public-data",
     label: "Public Catalog",
     href: "/dashboard/businessAdmin/public-data",
     icon: <Globe2 className="h-5 w-5" />,
+    description: navTip("public-data"),
   },
   {
     key: "website",
     label: "Website",
     href: "/dashboard/businessAdmin/website",
     icon: <AppWindow className="h-5 w-5" />,
+    description: navTip("website"),
   },
   {
     key: "software",
     label: "Software & Mobile",
     href: "/dashboard/businessAdmin/software/control",
     icon: <Smartphone className="h-5 w-5" />,
+    description: navTip("software"),
   },
   {
     key: "tables",
     label: "Floor & Tables",
     href: "/dashboard/businessAdmin/tables",
     icon: <Store className="h-5 w-5" />,
+    description: navTip("tables"),
   },
   {
     key: "invoices",
     label: "Invoices",
     href: "/dashboard/businessAdmin/invoices",
     icon: <Receipt className="h-5 w-5" />,
+    description: navTip("invoices"),
   },
   {
     key: "orders",
     label: "Orders",
     href: "/dashboard/businessAdmin/orders",
     icon: <ShoppingCart className="h-5 w-5" />,
+    description: navTip("orders"),
   },
   {
     key: "kitchen",
     label: "Kitchen",
     href: "/dashboard/businessAdmin/kitchen",
     icon: <UtensilsCrossed className="h-5 w-5" />,
+    description: navTip("kitchen"),
   },
   {
     key: "users",
     label: "Users",
     href: "/dashboard/businessAdmin/users",
     icon: <Users className="h-5 w-5" />,
+    description: navTip("users"),
   },
 ];
 
@@ -398,12 +416,14 @@ export default function AdminShell({
         label: "Website",
         href: appendBusinessId("/dashboard/businessAdmin/website", businessId),
         icon: <AppWindow className="h-5 w-5" />,
+        description: navTip("website"),
       };
       const softwareTab: WorkspaceNavTab = {
         key: "software",
         label: "Software & Mobile",
         href: appendBusinessId("/dashboard/businessAdmin/software/control", businessId),
         icon: <Smartphone className="h-5 w-5" />,
+        description: navTip("software"),
       };
       const productTabs = canManageSoftwareAndWebsite(resolvedRole)
         ? [websiteTab, softwareTab]
@@ -542,17 +562,14 @@ export default function AdminShell({
           <nav className="admin-shell-nav flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pr-1">
             {visibleTabs.map((tab) => {
               const active = isNavTabActive(tab.key, resolvedActiveTab, activeTab);
-              return (
+              const tip = tab.description ? `${tab.label} — ${tab.description}` : tab.label;
+              const link = (
                 <Link
-                  key={tab.key}
                   href={isMounted ? tab.href : tab.href.split("?")[0]}
-                  title={tab.description ? `${tab.label} — ${tab.description}` : tab.label}
                   className={cn(
-                    "group flex min-w-0 items-center gap-3 py-3 text-sm font-semibold transition-all duration-200",
+                    "group flex min-w-0 items-center gap-3 rounded-lg py-3 text-sm font-semibold transition-all duration-200",
                     sidebarCollapsed ? "justify-center px-2" : "px-4",
-                    active
-                      ? "relative rounded-lg text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-white"
-                      : "rounded-lg text-[var(--text-muted)]",
+                    active ? "text-white" : "text-[var(--text-muted)]",
                   )}
                   style={
                     active
@@ -579,6 +596,14 @@ export default function AdminShell({
                   ) : null}
                 </Link>
               );
+              if (!sidebarCollapsed) {
+                return <div key={tab.key}>{link}</div>;
+              }
+              return (
+                <FeatureTip key={tab.key} text={tip} side="right" className="flex w-full">
+                  {link}
+                </FeatureTip>
+              );
             })}
           </nav>
         </div>
@@ -592,6 +617,7 @@ export default function AdminShell({
                 sidebarCollapsed && "px-0",
               )}
               aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={sidebarCollapsed ? "Show full menu names" : "Hide menu names to save space"}
             >
               {sidebarCollapsed ? <PanelLeftOpen className="h-4.5 w-4.5" /> : <PanelLeftClose className="h-4.5 w-4.5" />}
               {!sidebarCollapsed ? "Collapse" : null}
@@ -604,7 +630,7 @@ export default function AdminShell({
                 router.push("/");
               }}
               className={cn("dn-btn dn-btn-outline w-full", sidebarCollapsed && "px-0")}
-              title="Logout"
+              title="Sign out of this portal"
             >
               <LogOut className="h-4.5 w-4.5" strokeWidth={2} />
               {!sidebarCollapsed ? "Logout" : null}
@@ -622,7 +648,18 @@ export default function AdminShell({
                 </div>
               ) : null}
               <div className="min-w-0">
-                <h1 className="truncate text-lg font-semibold leading-tight text-[var(--text-primary)] md:text-xl">{pageTitle}</h1>
+                <h1 className="inline-flex max-w-full items-center gap-1.5 truncate text-lg font-semibold leading-tight text-[var(--text-primary)] md:text-xl">
+                  <span className="truncate">{pageTitle}</span>
+                  {visibleTabs.find((tab) => isNavTabActive(tab.key, resolvedActiveTab, activeTab))?.description ? (
+                    <FeatureTip
+                      text={
+                        visibleTabs.find((tab) => isNavTabActive(tab.key, resolvedActiveTab, activeTab))!.description!
+                      }
+                    />
+                  ) : pageSubtitle ? (
+                    <FeatureTip text={pageSubtitle} />
+                  ) : null}
+                </h1>
                 {pageSubtitle ? (
                   <p className="mt-0.5 line-clamp-2 text-xs font-medium text-[var(--text-muted)] sm:line-clamp-1 sm:text-sm">
                     {pageSubtitle}
@@ -638,6 +675,7 @@ export default function AdminShell({
                 className="hidden h-10 w-10 items-center justify-center rounded-xl border bg-[var(--surface)] text-[var(--text-muted)] hover:bg-[var(--surface-muted)] sm:inline-flex"
                 style={{ borderColor: "var(--border-subtle)" }}
                 aria-label="Notifications"
+                title="Alerts for this workspace"
               >
                 <Bell className="h-4.5 w-4.5" />
               </button>
@@ -704,12 +742,9 @@ export default function AdminShell({
                       key={tab.key}
                       href={isMounted ? tab.href : tab.href.split("?")[0]}
                       onClick={closeMobileNav}
-                      title={tab.description ? `${tab.label} — ${tab.description}` : tab.label}
                       className={cn(
-                        "group flex min-w-0 items-center gap-3 px-4 py-3 text-sm font-semibold transition-all duration-200",
-                        active
-                          ? "relative rounded-lg text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-white"
-                          : "rounded-lg text-[var(--text-muted)]",
+                        "group flex min-w-0 items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition-all duration-200",
+                        active ? "text-white" : "text-[var(--text-muted)]",
                       )}
                       style={active ? { backgroundColor: primaryColor } : undefined}
                       onMouseEnter={(event) => {

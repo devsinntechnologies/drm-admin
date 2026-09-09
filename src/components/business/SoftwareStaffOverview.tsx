@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { FormField, portalInputClass } from "@/components/admin/PortalPage";
+import { FeatureTip } from "@/components/ui/FeatureTip";
+import { SOFTWARE_TIPS, STAFF_TIPS } from "@/lib/feature-tips";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -384,7 +386,10 @@ export function SoftwareStaffOverview({
             <Users className="h-4 w-4" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-[#0f172a]">People with access</h2>
+            <h2 className="inline-flex items-center gap-1.5 text-base font-semibold text-[#0f172a]">
+              People with access
+              <FeatureTip text={SOFTWARE_TIPS.people} />
+            </h2>
             <p className="mt-0.5 text-sm text-[#64748b]">
               {compact
                 ? "Add teammates, then create an extra password without locking them out."
@@ -431,7 +436,7 @@ export function SoftwareStaffOverview({
                 </DialogDescription>
               </DialogHeader>
               <form className="space-y-4" onSubmit={(event) => void onCreateSubmit(event)}>
-                <FormField label="Name" required>
+                <FormField label="Name" required tip={STAFF_TIPS.name}>
                   <input
                     id="software-staff-name"
                     value={createForm.name}
@@ -442,7 +447,7 @@ export function SoftwareStaffOverview({
                   />
                 </FormField>
 
-                <FormField label="Password" required>
+                <FormField label="Password" required tip={STAFF_TIPS.password}>
                   <div className="flex gap-2">
                     <input
                       id="software-staff-password"
@@ -468,7 +473,7 @@ export function SoftwareStaffOverview({
                   </div>
                 </FormField>
 
-                <FormField label="Login email">
+                <FormField label="Login email" tip={STAFF_TIPS.email}>
                   <input
                     id="software-staff-email"
                     type="email"
@@ -734,7 +739,7 @@ export function SoftwareStaffOverview({
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={(event) => void onEditSubmit(event)}>
-            <FormField label="Name" required>
+            <FormField label="Name" required tip={STAFF_TIPS.name}>
               <input
                 id="edit-staff-name"
                 value={editName}

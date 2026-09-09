@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { Calendar, Globe2, LayoutDashboard, Smartphone } from "lucide-react";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
@@ -19,7 +19,10 @@ import { cn } from "@/lib/utils";
 
 function BusinessProfileContent() {
   const params = useParams();
-  const id = typeof params.id === "string" ? params.id : "";
+  const pathname = usePathname();
+  const paramId = typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
+  const pathId = pathname.match(/\/superAdmin\/businesses\/([^/]+)/)?.[1] ?? "";
+  const id = paramId || (pathId !== "setup" ? pathId : "");
   const { data: business, isLoading, isError } = useGetBusinessByIdQuery(id, { skip: !id });
 
   const workspaceTemplateConfig = useMemo(
@@ -190,5 +193,7 @@ function BusinessProfileContent() {
 }
 
 export default function BusinessProfilePage() {
-  return <BusinessProfileContent />;
+  const params = useParams();
+  const id = typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
+  return <BusinessProfileContent key={id} />;
 }

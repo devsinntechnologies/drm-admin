@@ -10,6 +10,8 @@ import { BASE_URL } from "@/lib/constant";
 import { DIGINIZAM_CLIENT, DIGINIZAM_CLIENT_HEADER } from "@/lib/diginizam-client";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { getStoredAuthToken, normalizeErrorMessage } from "@/lib/utils";
+import { FeatureTip } from "@/components/ui/FeatureTip";
+import { LOGIN_TIPS } from "@/lib/feature-tips";
 import {
   applyDocumentBranding,
   DEFAULT_PORTAL_ICON,
@@ -152,7 +154,10 @@ export function LoginForm() {
 
       <form className="mt-8 space-y-4" onSubmit={handleSubmit} noValidate>
         <label className="block">
-          <span className="mb-2 block text-sm font-semibold text-[#394150]">Email</span>
+          <span className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[#394150]">
+            Email
+            <FeatureTip text={LOGIN_TIPS.email} />
+          </span>
           <span className="flex h-12 items-center gap-3 rounded-2xl border border-[#e5e8f0] bg-[#fafbff] px-4 focus-within:border-[#001840] focus-within:bg-white">
             <Mail className="h-4 w-4 text-[#98a2b3]" />
             <input
@@ -172,7 +177,10 @@ export function LoginForm() {
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-semibold text-[#394150]">Password</span>
+          <span className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[#394150]">
+            Password
+            <FeatureTip text={LOGIN_TIPS.password} />
+          </span>
           <span className="flex h-12 items-center gap-3 rounded-2xl border border-[#e5e8f0] bg-[#fafbff] px-4 focus-within:border-[#001840] focus-within:bg-white">
             <Lock className="h-4 w-4 text-[#98a2b3]" />
             <input

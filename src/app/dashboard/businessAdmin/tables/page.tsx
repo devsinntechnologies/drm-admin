@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { PortalPage, PortalMetricRow, PortalErrorAlert, PortalRefreshFab } from "@/components/admin/PortalPage";
+import { FieldLabel } from "@/components/ui/FeatureTip";
+import { TABLE_TIPS } from "@/lib/feature-tips";
 import { useAuth } from "@/hooks/useAuth";
 import { TableRecord, TableStatus, useTables } from "@/hooks/useTables";
 import { cn, normalizeErrorMessage } from "@/lib/utils";
@@ -268,6 +270,7 @@ function TablesContent() {
 
 function TableForm({ title, subtitle, form, setForm, onSubmit, onClose, loading, existingImage }: any) {
   const displayImage = form.image ? URL.createObjectURL(form.image) : (existingImage ? (existingImage.startsWith("http") ? existingImage : `${BASE_URL}/${existingImage}`) : null);
+  const imageInputId = title === "Update Table" ? "edit-table-image" : "create-table-image";
 
   return (
     <div className="bg-white">
@@ -283,7 +286,9 @@ function TableForm({ title, subtitle, form, setForm, onSubmit, onClose, loading,
 
       <form className="p-8 space-y-6" onSubmit={onSubmit}>
         <div className="space-y-2">
-          <label className="text-sm font-black text-[#111827] uppercase tracking-tighter">Name <span className="text-[#dc2626]">*</span></label>
+          <label className="text-sm font-black text-[#111827] uppercase tracking-tighter">
+            <FieldLabel tip={TABLE_TIPS.name} required>Name</FieldLabel>
+          </label>
           <input
             value={form.tableNumber}
             onChange={(e) => setForm((p: any) => ({ ...p, tableNumber: e.target.value }))}
@@ -294,7 +299,9 @@ function TableForm({ title, subtitle, form, setForm, onSubmit, onClose, loading,
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-black text-[#111827] uppercase tracking-tighter">Seating Capacity <span className="text-[#dc2626]">*</span></label>
+          <label className="text-sm font-black text-[#111827] uppercase tracking-tighter">
+            <FieldLabel tip={TABLE_TIPS.capacity} required>Seating Capacity</FieldLabel>
+          </label>
           <div className="relative">
             <input
               type="number"
@@ -324,23 +331,39 @@ function TableForm({ title, subtitle, form, setForm, onSubmit, onClose, loading,
         </div>
 
         <div className="space-y-3">
-          <label className="text-sm font-black text-[#111827] uppercase tracking-tighter">Image</label>
+          <label className="text-sm font-black text-[#111827] uppercase tracking-tighter">
+            <FieldLabel tip={TABLE_TIPS.image}>Image</FieldLabel>
+          </label>
           <div className="flex items-start gap-6">
             <div>
               <button
                 type="button"
-                onClick={() => document.getElementById("image-input")?.click()}
+                onClick={() => document.getElementById(imageInputId)?.click()}
                 className="flex items-center gap-3 bg-[#001840] text-[#ffffff] px-6 py-3 rounded-2xl text-xs font-black hover:bg-[#00122E] transition-all shadow-lg shadow-slate-200"
               >
                 <ImageIcon className="h-4 w-4" />
-                Choose Image
+                {existingImage ? "Change Image" : "Choose Image"}
               </button>
               <input
-                id="image-input"
+                id={imageInputId}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
                 className="hidden"
-                onChange={(e) => setForm((p: any) => ({ ...p, image: e.target.files?.[0] ?? null }))}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  e.target.value = "";
+                  if (!file) {
+                    setForm((p: any) => ({ ...p, image: null }));
+                    return;
+                  }
+                  const typeOk = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
+                  const nameOk = /\.(jpe?g|png|webp)$/i.test(file.name);
+                  if (!typeOk && !nameOk) {
+                    toast.error("Use a JPEG, PNG, or WebP image");
+                    return;
+                  }
+                  setForm((p: any) => ({ ...p, image: file }));
+                }}
               />
             </div>
 

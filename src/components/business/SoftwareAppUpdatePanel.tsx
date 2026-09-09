@@ -10,6 +10,8 @@ import {
   type AppReleasePlatform,
   type AppReleaseRecord,
 } from "@/hooks/useAppUpdates";
+import { FeatureTip } from "@/components/ui/FeatureTip";
+import { SOFTWARE_TIPS } from "@/lib/feature-tips";
 import { useAuth } from "@/hooks/useAuth";
 import { cn, formatLastActivity, normalizeErrorMessage } from "@/lib/utils";
 
@@ -85,7 +87,10 @@ export function SoftwareAppUpdatePanel({ businessId }: SoftwareAppUpdatePanelPro
         <div>
           <div className="mb-1 flex items-center gap-2">
             <Download className="h-4 w-4 text-[var(--brand-secondary)]" />
-            <h2 className="text-base font-semibold text-[#0f172a]">App version</h2>
+            <h2 className="inline-flex items-center gap-1.5 text-base font-semibold text-[#0f172a]">
+              App version
+              <FeatureTip text={SOFTWARE_TIPS.appVersion} />
+            </h2>
           </div>
           <p className="text-sm text-[#64748b]">
             Assigned installer for this business vs what each POS is actually running.

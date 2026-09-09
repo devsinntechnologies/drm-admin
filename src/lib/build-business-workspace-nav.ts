@@ -8,6 +8,7 @@ import { parseRoleAccess, normalizePortalRole } from "@/lib/role-access";
 import { allowedModulesForRole } from "@/lib/software-role-defaults";
 import { MODULE_CATALOG } from "@/templates/modules";
 import type { ModuleId } from "@/templates/types";
+import { navTip } from "@/lib/feature-tips";
 
 export type WorkspaceNavTab = {
   key: string;
@@ -72,7 +73,7 @@ function modulePurpose(moduleId: ModuleId, industryId?: string | null) {
   if (industryId === "snooker-pos") {
     return SNOOKER_MODULE_PURPOSE[moduleId] ?? MODULE_CATALOG[moduleId]?.description;
   }
-  return undefined;
+  return navTip(moduleId, MODULE_CATALOG[moduleId]?.description);
 }
 
 export function buildBusinessWorkspaceNav(

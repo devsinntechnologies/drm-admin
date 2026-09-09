@@ -43,22 +43,32 @@ export const MODULE_FEATURE_REGISTRY: ModuleFeatureRegistryEntry[] = [
     title: "Products / Menu",
     description: "Create, edit, and layout controls for the product catalog on mobile.",
     features: [
-      {
+        {
         kind: "boolean",
         key: "allowCreate",
         label: "Allow adding products",
+        description: "Staff can create new products from the mobile and desktop app.",
         defaultValue: true,
       },
       {
         kind: "boolean",
         key: "allowEdit",
         label: "Allow editing products",
+        description: "Staff can change name, price, stock, and photo from the app.",
         defaultValue: true,
+      },
+      {
+        kind: "boolean",
+        key: "allowBarcodeOnCreate",
+        label: "Allow barcode on product form",
+        description: "Show a barcode field (USB gun + camera) when adding or editing products.",
+        defaultValue: false,
       },
       {
         kind: "enum",
         key: "viewMode",
         label: "Product layout",
+        description: "Grid shows photos. List is a compact name-and-price view on the app.",
         options: [
           { id: "grid", label: "Grid" },
           { id: "list", label: "List" },
@@ -76,6 +86,7 @@ export const MODULE_FEATURE_REGISTRY: ModuleFeatureRegistryEntry[] = [
         kind: "enum",
         key: "viewType",
         label: "Orders layout",
+        description: "How the order list looks on the phone: stacked list or photo grid.",
         options: [
           { id: "list", label: "List" },
           { id: "grid", label: "Grid" },
@@ -86,12 +97,14 @@ export const MODULE_FEATURE_REGISTRY: ModuleFeatureRegistryEntry[] = [
         kind: "boolean",
         key: "allowProductScopeSwitch",
         label: "Show All / Active products switch",
+        description: "Let staff toggle between selling only active items or the full catalog.",
         defaultValue: true,
       },
       {
         kind: "enum",
         key: "productScopeDefault",
         label: "Default product scope",
+        description: "Whether the POS picker starts with active items only, or every product.",
         options: [
           { id: "activeOnly", label: "Active only" },
           { id: "all", label: "All products" },
@@ -102,6 +115,7 @@ export const MODULE_FEATURE_REGISTRY: ModuleFeatureRegistryEntry[] = [
         kind: "enum",
         key: "completionMode",
         label: "Completion mode",
+        description: "Restaurant lifecycle sends tickets to kitchen. Order-only completes the sale from the cart.",
         options: [
           { id: "restaurantLifecycle", label: "Restaurant lifecycle" },
           { id: "orderOnly", label: "Order only (complete from cart)" },
@@ -123,9 +137,17 @@ export const MODULE_FEATURE_REGISTRY: ModuleFeatureRegistryEntry[] = [
         defaultValue: true,
       },
       {
+        kind: "boolean",
+        key: "allowBarcodeScanner",
+        label: "Allow barcode scanner on Orders",
+        description: "USB/Bluetooth gun and camera scanning to add products to the cart. Off by default.",
+        defaultValue: false,
+      },
+      {
         kind: "enum",
         key: "defaultSection",
         label: "Default orders screen",
+        description: "Which Orders tab opens first: live kitchen queue, or new sale / POS.",
         options: [
           { id: "active", label: "Active orders" },
           { id: "new", label: "New order (POS)" },

@@ -13,6 +13,7 @@ import {
   portalInputClass,
   portalPanelClass,
 } from "@/components/admin/PortalPage";
+import { INVOICE_TIPS } from "@/lib/feature-tips";
 import { DataTable } from "@/components/workspace/DataTable";
 import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { usePharmacyQuery } from "@/hooks/usePharmacyQuery";
@@ -99,7 +100,7 @@ export function WorkspaceReportsPage() {
 
         <div className={`${portalPanelClass} mb-6`}>
           <div className="grid gap-4 sm:grid-cols-3">
-            <FormField label="From">
+            <FormField label="From" tip={INVOICE_TIPS.from}>
               <input
                 type="date"
                 className={portalInputClass}
@@ -107,7 +108,7 @@ export function WorkspaceReportsPage() {
                 onChange={(event) => setFromDate(event.target.value)}
               />
             </FormField>
-            <FormField label="To">
+            <FormField label="To" tip={INVOICE_TIPS.to}>
               <input
                 type="date"
                 className={portalInputClass}

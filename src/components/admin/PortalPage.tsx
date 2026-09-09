@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import Loading from "@/components/common/Loading";
+import { FeatureTip } from "@/components/ui/FeatureTip";
 import { RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -227,19 +228,23 @@ export function FormField({
   children,
   className,
   required,
+  tip,
 }: {
   label: string;
   children: React.ReactNode;
   className?: string;
   required?: boolean;
+  /** Short purpose shown on the help icon. */
+  tip?: string;
 }) {
   return (
-    <label className={cn("block space-y-1.5", className)}>
-      <span className="block text-sm font-semibold text-[var(--text-muted,#64748b)]">
+    <div className={cn("block space-y-1.5", className)}>
+      <span className="flex items-center gap-1.5 text-sm font-semibold text-[var(--text-muted,#64748b)]">
         {label}
-        {required ? <span className="ml-0.5 text-[#dc2626]">*</span> : null}
+        {required ? <span className="text-[#dc2626]">*</span> : null}
+        {tip ? <FeatureTip text={tip} /> : null}
       </span>
       {children}
-    </label>
+    </div>
   );
 }

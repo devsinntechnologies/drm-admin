@@ -5,7 +5,11 @@ const DEFAULT_LOW_STOCK_MIN = 5;
 
 export type StockStatus = "untracked" | "out" | "low" | "ok";
 
-export function isStockTracked(product: Pick<Product, "isStockEnabled">): boolean {
+export function isStockTracked(
+  product: Pick<Product, "isStockEnabled" | "inStock" | "stockCount" | "variants">,
+): boolean {
+  // Only the Track inventory switch counts. Leftover on-hand numbers must not
+  // keep a product limited after tracking is turned off.
   return product.isStockEnabled === true;
 }
 
@@ -34,7 +38,7 @@ export function getLowStockThreshold(product: Product): number {
 export function getOnHandStock(product: Product, variant?: ProductVariant): number | null {
   if (!isStockTracked(product)) return null;
   if (variant) return variant.inStock ?? null;
-  if (hasVariants(product)) return null;
+  if (hasVariants(product)) return getTotalVariantStock(product);
   return product.inStock ?? null;
 }
 
@@ -114,6 +118,101 @@ export function stockStatusLabel(status: StockStatus): string {
     default:
       return "In stock";
   }
+}
+
+export type CatalogAttentionItem = {
+  id: string;
+  productId: string;
+  productName: string;
+  currentStock: number;
+  inStock: number;
+};
+
+export type CatalogStockSummary = {
+  total: number;
+  tracked: number;
+  ok: number;
+  low: number;
+  out: number;
+  untracked: number;
+  attention: number;
+  inventoryValue: number;
+  attentionItems: CatalogAttentionItem[];
+};
+
+type CatalogRow = {
+  id: string;
+  productId: string;
+  productName: string;
+  tracked: boolean;
+  status: StockStatus;
+  onHand: number;
+  unitPrice: number;
+};
+
+function catalogRows(products: Product[]): CatalogRow[] {
+  return products
+    .filter((product) => String(product.status ?? "").toUpperCase() === "ACTIVE")
+    .flatMap((product) => {
+      if (hasVariants(product)) {
+        return getActiveVariants(product).map((variant) => {
+          const tracked = isStockTracked(product);
+          return {
+            id: `${product.id}:${variant.id}`,
+            productId: product.id,
+            productName: variant.name ? `${product.name} (${variant.name})` : product.name,
+            tracked,
+            status: getStockStatus(product, variant),
+            onHand: tracked ? (variant.inStock ?? 0) : 0,
+            unitPrice: Number(variant.price ?? product.price) || 0,
+          };
+        });
+      }
+
+      const tracked = isStockTracked(product);
+      return [
+        {
+          id: product.id,
+          productId: product.id,
+          productName: product.name,
+          tracked,
+          status: getStockStatus(product),
+          onHand: tracked ? (product.inStock ?? 0) : 0,
+          unitPrice: Number(product.price) || 0,
+        },
+      ];
+    });
+}
+
+export function summarizeCatalogStock(products: Product[]): CatalogStockSummary {
+  const rows = catalogRows(products);
+  const trackedRows = rows.filter((row) => row.tracked);
+  const low = trackedRows.filter((row) => row.status === "low");
+  const out = trackedRows.filter((row) => row.status === "out");
+  const attentionItems = [...low, ...out]
+    .sort((a, b) => a.onHand - b.onHand)
+    .map((row) => ({
+      id: row.id,
+      productId: row.productId,
+      productName: row.productName,
+      currentStock: row.onHand,
+      inStock: row.onHand,
+    }));
+
+  return {
+    total: rows.length,
+    tracked: trackedRows.length,
+    ok: trackedRows.filter((row) => row.status === "ok").length,
+    low: low.length,
+    out: out.length,
+    untracked: rows.filter((row) => row.status === "untracked").length,
+    attention: low.length + out.length,
+    inventoryValue: trackedRows.reduce(
+      (sum, row) => sum + row.unitPrice * Math.max(0, row.onHand),
+      0,
+    ),
+    attentionItems,
+  };
 }
 
 export function formatStockLabel(product: Product, variant?: ProductVariant): string {

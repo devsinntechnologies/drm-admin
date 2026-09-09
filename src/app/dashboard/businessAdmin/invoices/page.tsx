@@ -1,7 +1,7 @@
 "use client";
 
 import { Download, FileText, Search, Clock3, Loader2, Eye, Printer, RotateCcw, File, X, Trash2 } from "lucide-react";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
@@ -10,17 +10,29 @@ import {
 } from "@/components/admin/PortalPage";
 import InvoiceReceipt, { InvoiceDownloadButton, InvoicePrintButton } from "@/components/common/InvoiceReceipt";
 import { PrinterAccessAlert } from "@/components/common/PrinterAccessAlert";
+import { ConnectPrinterDialog } from "@/components/invoices/ConnectPrinterDialog";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { useInvoices, type InvoiceRecord } from "@/hooks/useInvoices";
-import { cn } from "@/lib/utils";
+import { cn, normalizeErrorMessage } from "@/lib/utils";
 import { toast } from "sonner";
 import { useInvoiceBranding } from "@/hooks/useInvoiceBranding";
 import { downloadInvoicePdf } from "@/lib/invoice-pdf";
 import { formatInvoiceDateTime } from "@/lib/invoice-datetime";
 import { parseSalesSettings } from "@/lib/module-feature-settings";
+import { INVOICE_TIPS } from "@/lib/feature-tips";
+import type { BusinessPrinter } from "@/lib/printers";
+import { STAFF_REALTIME_EVENTS } from "@/lib/staff-realtime";
+import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+import { apiClient } from "@/lib/api-client";
+import type { PrintersPayload } from "@/lib/printers";
+import {
+  buildDigiNizamTestInvoicePayload,
+  createPrintJob,
+  invoiceRecordToPrintPayload,
+} from "@/lib/print-jobs";
 
 type RangeFilter = "day" | "week" | "month";
 
@@ -80,13 +92,18 @@ function displayInvoiceId(raw?: string | null) {
   return value;
 }
 
-function toStatus(_raw: string): InvoiceRow["status"] {
-  return "Paid";
+function toStatus(raw: string): InvoiceRow["status"] {
+  const value = (raw || "").toLowerCase().trim();
+  if (value === "paid" || value === "completed" || value === "complete") {
+    return "Paid";
+  }
+  if (value === "overdue") return "Overdue";
+  return "Pending";
 }
 
 function InvoicesContent() {
   const router = useRouter();
-  const { role } = useAuth();
+  const { role, token } = useAuth();
   const { templateConfig, currency } = useBusinessTemplate();
   const branding = useInvoiceBranding();
   const isPharmacy = templateConfig?.industryId === "pharmacy";
@@ -105,6 +122,50 @@ function InvoicesContent() {
   const [deletingInvoiceUuid, setDeletingInvoiceUuid] = useState<string | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [printerAlertOpen, setPrinterAlertOpen] = useState(false);
+  const [connectPrinterOpen, setConnectPrinterOpen] = useState(false);
+  const [connectedPrinter, setConnectedPrinter] = useState<BusinessPrinter | null>(null);
+  const [printInFlight, setPrintInFlight] = useState(false);
+  const activeBusinessId = useActiveBusinessId();
+
+  const refreshConnectedPrinter = useCallback(async () => {
+    if (!token || !activeBusinessId || !allowPrinter) return;
+    try {
+      const payload = await apiClient.get<PrintersPayload>("/printers", token, activeBusinessId);
+      const connected =
+        payload.printers.find(
+          (printer) => printer.isConnected && printer.lastStatus !== "unreachable",
+        ) ?? null;
+      setConnectedPrinter(connected);
+    } catch {
+      // Keep last known chip state if refresh fails.
+    }
+  }, [token, activeBusinessId, allowPrinter]);
+
+  useEffect(() => {
+    void refreshConnectedPrinter();
+  }, [refreshConnectedPrinter]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onPrintersChanged = (event: Event) => {
+      const detail = (event as CustomEvent).detail as PrintersPayload | undefined;
+      if (detail?.printers) {
+        const connected =
+          detail.printers.find(
+            (printer) => printer.isConnected && printer.lastStatus !== "unreachable",
+          ) ?? null;
+        setConnectedPrinter(connected);
+        return;
+      }
+      void refreshConnectedPrinter();
+    };
+    window.addEventListener(STAFF_REALTIME_EVENTS.PRINTERS_CHANGED, onPrintersChanged);
+    window.addEventListener("printers:updated", onPrintersChanged);
+    return () => {
+      window.removeEventListener(STAFF_REALTIME_EVENTS.PRINTERS_CHANGED, onPrintersChanged);
+      window.removeEventListener("printers:updated", onPrintersChanged);
+    };
+  }, [refreshConnectedPrinter]);
 
   const canDeleteInvoice =
     (role ?? (typeof window !== "undefined" ? localStorage.getItem("roleName") : null)) ===
@@ -203,13 +264,80 @@ function InvoicesContent() {
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = async (invoice?: InvoiceRecord | null) => {
     if (!allowPrinter) {
       setPrinterAlertOpen(true);
       return;
     }
-    if (typeof window !== "undefined") {
-      window.print();
+    if (printInFlight) return;
+    const target = invoice ?? selectedInvoice;
+    if (!target) {
+      toast.error("Select an invoice to print.");
+      return;
+    }
+    setPrintInFlight(true);
+    try {
+      await createPrintJob(token, activeBusinessId, {
+        jobType: "INVOICE",
+        printerId: connectedPrinter?.id,
+        printerName: connectedPrinter?.name,
+        referenceNumber:
+          displayInvoiceId(target.invoiceNumber) !== "Pending"
+            ? displayInvoiceId(target.invoiceNumber)
+            : target.orderNumber || target.uuid,
+        referenceId: target.uuid || target.orderId,
+        payload: invoiceRecordToPrintPayload(target as unknown as Record<string, unknown>),
+      });
+      if (typeof window !== "undefined") {
+        window.print();
+      }
+      toast.success(
+        connectedPrinter
+          ? "Invoice queued and sent to the connected printer."
+          : "Invoice added to the print queue.",
+      );
+    } catch (err) {
+      toast.error(normalizeErrorMessage(err, "Print failed. Check printer connection and try again."));
+    } finally {
+      setPrintInFlight(false);
+    }
+  };
+
+  const handleTestPrinter = async () => {
+    if (!allowPrinter) {
+      setPrinterAlertOpen(true);
+      return;
+    }
+    if (!connectedPrinter) {
+      setConnectPrinterOpen(true);
+      return;
+    }
+    const testPayload = buildDigiNizamTestInvoicePayload({
+      businessName: branding.businessName,
+      address: branding.address,
+      contactPhone: branding.contactPhone,
+    });
+    setSelectedInvoice(testPayload as InvoiceRecord);
+    setIsDetailsOpen(true);
+    try {
+      await createPrintJob(token, activeBusinessId, {
+        jobType: "TEST_INVOICE",
+        printerId: connectedPrinter.id,
+        printerName: connectedPrinter.name,
+        referenceNumber: String(testPayload.invoiceNumber),
+        referenceId: "test-print",
+        payload: testPayload,
+      });
+      setTimeout(() => {
+        try {
+          window.print();
+          toast.success("Test Print Successful.");
+        } catch {
+          toast.error("Test print failed. Check your browser print dialog and selected printer.");
+        }
+      }, 250);
+    } catch (err) {
+      toast.error(normalizeErrorMessage(err, "Could not queue DigiNizam test invoice."));
     }
   };
 
@@ -347,6 +475,57 @@ function InvoicesContent() {
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!allowPrinter) {
+                    setPrinterAlertOpen(true);
+                    return;
+                  }
+                  if (connectedPrinter) {
+                    const suffix = activeBusinessId
+                      ? `?businessId=${encodeURIComponent(activeBusinessId)}`
+                      : "";
+                    router.push(`/dashboard/businessAdmin/software/printers${suffix}`);
+                    return;
+                  }
+                  setConnectPrinterOpen(true);
+                }}
+                className={cn(
+                  "dn-btn !h-9 !px-3",
+                  connectedPrinter ? "!bg-[#16a34a] !text-white hover:!bg-[#15803d]" : "dn-btn-soft",
+                  !allowPrinter && "opacity-45",
+                )}
+                title={
+                  allowPrinter
+                    ? connectedPrinter
+                      ? `Open Printer Settings · ${connectedPrinter.name}`
+                      : "Connect a printer for invoice printing"
+                    : "Printing is disabled — contact your administrator"
+                }
+              >
+                <Printer className="h-4 w-4" />
+                {connectedPrinter ? (
+                  <>
+                    <span className="max-w-[140px] truncate">{connectedPrinter.name}</span>
+                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                      Connected
+                    </span>
+                  </>
+                ) : (
+                  "Connect Printer"
+                )}
+              </button>
+              {allowPrinter && connectedPrinter ? (
+                <button
+                  type="button"
+                  onClick={() => void handleTestPrinter()}
+                  className="dn-btn !h-9 !px-3 !bg-[#16a34a] !text-white hover:!bg-[#15803d]"
+                >
+                  <Printer className="h-4 w-4" />
+                  Test Printer
+                </button>
+              ) : null}
               {allowInvoiceExport ? (
                 <button
                   type="button"
@@ -442,20 +621,29 @@ function InvoicesContent() {
                             type="button"
                             onClick={() => openInvoiceDetails(invoice.uuid)}
                             className="dn-btn dn-btn-soft !h-9 !px-3"
-                            title="View details"
+                            title={INVOICE_TIPS.view}
                           >
                             <Eye className="h-4 w-4" />
                           </button>
                           <button
                             type="button"
-                            onClick={() => requestPrinterOr(() => openInvoiceDetails(invoice.uuid))}
+                            onClick={() => {
+                              const full = invoices.find((i) => i.uuid === invoice.uuid);
+                              if (!full) return;
+                              requestPrinterOr(() => {
+                                setSelectedInvoice(full);
+                                setIsDetailsOpen(true);
+                                void handlePrint(full);
+                              });
+                            }}
                             className={cn(
-                              "dn-btn dn-btn-outline !h-9 !px-3",
+                              "dn-btn !h-9 !px-3 !bg-[#16a34a] !text-white hover:!bg-[#15803d]",
                               !allowPrinter && "opacity-45",
                             )}
                             title={allowPrinter ? "Print" : "Printing is disabled — contact your administrator"}
                           >
                             <Printer className="h-4 w-4" />
+                            Print
                           </button>
                           {canDeleteInvoice ? (
                             <button
@@ -463,7 +651,7 @@ function InvoicesContent() {
                               onClick={() => handleDeleteInvoice(invoice.uuid, invoice.id)}
                               disabled={actionLoading && deletingInvoiceUuid === invoice.uuid}
                               className="dn-btn dn-btn-outline !h-9 !px-3 text-[#dc2626] border-[#fecaca] hover:bg-[#fef2f2]"
-                              title="Delete invoice"
+                              title={INVOICE_TIPS.delete}
                             >
                               {deletingInvoiceUuid === invoice.uuid ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -539,7 +727,7 @@ function InvoicesContent() {
                 </button>
                 <InvoiceDownloadButton onClick={() => void handleDownloadPdf()} loading={downloadingPdf} />
                 <InvoicePrintButton
-                  onClick={handlePrint}
+                  onClick={() => void handlePrint()}
                   label="Print Receipt"
                   className={!allowPrinter ? "opacity-45" : undefined}
                 />
@@ -549,6 +737,11 @@ function InvoicesContent() {
         </DialogContent>
       </Dialog>
       <PrinterAccessAlert open={printerAlertOpen} onOpenChange={setPrinterAlertOpen} />
+      <ConnectPrinterDialog
+        open={connectPrinterOpen}
+        onOpenChange={setConnectPrinterOpen}
+        onConnectedChange={setConnectedPrinter}
+      />
     </AdminShell>
   );
 }

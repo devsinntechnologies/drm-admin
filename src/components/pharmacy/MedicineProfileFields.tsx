@@ -1,6 +1,8 @@
 "use client";
 
 import { FormField, portalInputClass } from "@/components/admin/PortalPage";
+import { FeatureTip } from "@/components/ui/FeatureTip";
+import { PHARMACY_TIPS } from "@/lib/feature-tips";
 import { NumberInput } from "@/components/common/NumberInput";
 import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 
@@ -47,25 +49,25 @@ export function MedicineProfileFields({
         Medicine details · {market.regulator}
       </p>
       <div className="grid gap-3 md:grid-cols-2">
-        <FormField label="Generic name" required>
+        <FormField label="Generic name" required tip={PHARMACY_TIPS.generic}>
           <input className={portalInputClass} placeholder="e.g. Paracetamol" value={value.genericName} onChange={(e) => set({ genericName: e.target.value })} />
         </FormField>
-        <FormField label="Salt / composition" required>
+        <FormField label="Salt / composition" required tip={PHARMACY_TIPS.salt}>
           <input className={portalInputClass} placeholder="e.g. Acetaminophen" value={value.saltName} onChange={(e) => set({ saltName: e.target.value })} />
         </FormField>
-        <FormField label="Barcode">
+        <FormField label="Barcode" tip={PHARMACY_TIPS.barcode}>
           <input className={portalInputClass} placeholder="Scan or type barcode" value={value.barcode} onChange={(e) => set({ barcode: e.target.value })} />
         </FormField>
-        <FormField label={market.productCodeHint || "Product code"}>
+        <FormField label={market.productCodeHint || "Product code"} tip={PHARMACY_TIPS.hsn}>
           <input className={portalInputClass} placeholder={market.productCodeHint} value={value.hsnCode} onChange={(e) => set({ hsnCode: e.target.value })} />
         </FormField>
-        <FormField label={`${market.taxName} %`}>
+        <FormField label={`${market.taxName} %`} tip={PHARMACY_TIPS.tax}>
           <NumberInput className={portalInputClass} placeholder="0" value={value.gstRate} onChange={(gstRate) => set({ gstRate })} />
         </FormField>
-        <FormField label="Reorder level">
+        <FormField label="Reorder level" tip={PHARMACY_TIPS.reorder}>
           <NumberInput className={portalInputClass} placeholder="0" value={value.reorderLevel} onChange={(reorderLevel) => set({ reorderLevel })} />
         </FormField>
-        <FormField label="Controlled schedule">
+        <FormField label="Controlled schedule" tip={PHARMACY_TIPS.schedule}>
           <select
             className={portalInputClass}
             value={value.controlledSchedule}
@@ -83,11 +85,12 @@ export function MedicineProfileFields({
         <label className="flex items-end gap-2 pb-3 text-sm font-medium">
           <input type="checkbox" checked={value.rxRequired} onChange={(e) => set({ rxRequired: e.target.checked })} />
           Rx / POM required
+          <FeatureTip text={PHARMACY_TIPS.rx} />
         </label>
-        <FormField label="Tablets per strip">
+        <FormField label="Tablets per strip" tip={PHARMACY_TIPS.strip}>
           <NumberInput className={portalInputClass} placeholder="10" value={value.stripToTablet} onChange={(stripToTablet) => set({ stripToTablet })} />
         </FormField>
-        <FormField label="Strips per box">
+        <FormField label="Strips per box" tip={PHARMACY_TIPS.box}>
           <NumberInput className={portalInputClass} placeholder="10" value={value.boxToStrip} onChange={(boxToStrip) => set({ boxToStrip })} />
         </FormField>
       </div>

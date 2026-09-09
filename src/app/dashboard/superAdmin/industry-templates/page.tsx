@@ -25,6 +25,7 @@ import { WizardStepper } from "@/components/wizard/WizardStepper";
 import { DashboardCardChip, ModuleChip } from "@/components/wizard/TemplateConfigChips";
 import { TemplateThemeFields } from "@/components/wizard/TemplateThemeFields";
 import { LogoPickerField } from "@/components/business/LogoPickerField";
+import { IndustryPrinterDefaultsPanel } from "@/components/business/IndustryPrinterDefaultsPanel";
 import { createCustomizedConfig, buildDefaultNavigation } from "@/template-engine/builder";
 import { persistTemplateConfig } from "@/template-engine/persist-template-config";
 import { createDefaultExtensions } from "@/template-engine/template-extensions-storage";
@@ -486,6 +487,7 @@ function IndustryTemplatesContent() {
               })}
             </div>
           </section>
+          <IndustryPrinterDefaultsPanel />
         </div>
       )}
 
