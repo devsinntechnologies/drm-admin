@@ -287,6 +287,74 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     }
   }, [fetchInvoices, pagination.page, token, activeBusinessId]);
 
+  const returnInvoice = useCallback(
+    async (invoiceUuid: string, options?: { clientReturnId?: string; reason?: string }) => {
+      let authToken = token;
+      if (!authToken && typeof window !== "undefined") {
+        authToken = localStorage.getItem("auth_token") || localStorage.getItem("token");
+      }
+
+      if (!authToken) {
+        throw new Error("No authentication token available");
+      }
+
+      setActionLoading(true);
+      try {
+        const url = new URL(`${BASE_URL}/software/invoices/${invoiceUuid}/return`);
+        if (activeBusinessId) {
+          url.searchParams.append("businessId", activeBusinessId);
+        }
+
+        const clientReturnId =
+          options?.clientReturnId ||
+          (typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `ret-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+
+        const response = await fetch(url.toString(), {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+            [DIGINIZAM_CLIENT_HEADER]: DIGINIZAM_CLIENT,
+          },
+          body: JSON.stringify({
+            clientReturnId,
+            source: "web",
+            ...(options?.reason ? { reason: options.reason } : {}),
+          }),
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          let message = text || `Failed to return invoice: ${response.statusText}`;
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed?.message) {
+              message = Array.isArray(parsed.message)
+                ? parsed.message.join(", ")
+                : String(parsed.message);
+            }
+          } catch {
+            /* keep message */
+          }
+          throw new Error(message);
+        }
+
+        await fetchInvoices(pagination.page);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("invoices:refetch"));
+          window.dispatchEvent(new Event(STAFF_REALTIME_EVENTS.INVOICES_CHANGED));
+        }
+        return true;
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [fetchInvoices, pagination.page, token, activeBusinessId],
+  );
+
   const exportExcel = useCallback(async (options?: { range?: "day" | "week" | "month"; status?: string }) => {
     let authToken = token;
     if (!authToken && typeof window !== "undefined") {
@@ -344,6 +412,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     prevPage,
     updateInvoiceStatus,
     deleteInvoice,
+    returnInvoice,
     exportExcel,
     refetch: fetchInvoices,
   };
