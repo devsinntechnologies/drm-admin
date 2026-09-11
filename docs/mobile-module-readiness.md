@@ -8,7 +8,7 @@ Software Control section **1. Mobile app modules** lists only what Flutter ships
 
 | Kind | Modules | Defined in |
 |------|---------|------------|
-| App tabs | dashboard, menu, products, orders, kitchen, sales, tables, staff, inventory, reports | `ModuleScreenRegistry` (Flutter) + `SOFTWARE_SUPPORTED_MODULES` |
+| App tabs | dashboard, menu, products, orders, kitchen, sales, tables, staff, inventory, reports, expenses | `ModuleScreenRegistry` (Flutter) + `SOFTWARE_SUPPORTED_MODULES` |
 | In-app capability | categories | `MOBILE_CAPABILITY_MODULES` — tools inside Products / Orders |
 
 Industry helper: `mobileModulesForIndustry(industryId)` picks the right subset (retail vs restaurant vs pharmacy).
