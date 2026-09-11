@@ -12,6 +12,9 @@ import { NumberInput } from "@/components/common/NumberInput";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { useRetailResource } from "@/hooks/useRetailResource";
+import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+import { apiClient } from "@/lib/api-client";
+import { getStoredAuthToken } from "@/lib/utils";
 
 interface Expense {
   id: string;
@@ -21,6 +24,9 @@ interface Expense {
   amount: number;
   paymentMethod: string;
   expenseDate: string;
+  paidBy?: string;
+  status?: string;
+  employeeId?: string | null;
 }
 
 const CATEGORIES = ["rent", "utilities", "salaries", "supplies", "transport", "marketing", "maintenance", "taxes", "other"];
@@ -31,13 +37,16 @@ const emptyForm = {
   title: "",
   amount: 0,
   paymentMethod: "cash",
+  paidBy: "business",
   expenseDate: new Date().toISOString().slice(0, 10),
   description: "",
 };
 
 function ExpensesContent() {
   const router = useRouter();
-  const { role } = useAuth();
+  const { role, token: reduxToken } = useAuth();
+  const businessId = useActiveBusinessId();
+  const token = reduxToken || getStoredAuthToken();
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -46,7 +55,7 @@ function ExpensesContent() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
-  const { items, loading, actionLoading, error, create, update, remove } =
+  const { items, loading, actionLoading, error, create, update, remove, refresh } =
     useRetailResource<Expense>("/expenses");
 
   useEffect(() => {
@@ -66,8 +75,8 @@ function ExpensesContent() {
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!form.title.trim() || form.amount <= 0) {
-      toast.error("Title and amount are required");
+    if (!form.title.trim() || form.amount <= 0 || !form.expenseDate) {
+      toast.error("Title, amount, and expense date are required");
       return;
     }
     const payload = {
@@ -76,6 +85,7 @@ function ExpensesContent() {
       description: form.description.trim() || undefined,
       amount: form.amount,
       paymentMethod: form.paymentMethod,
+      paidBy: form.paidBy,
       expenseDate: form.expenseDate,
     };
     const toastId = toast.loading(editId ? "Updating expense..." : "Recording expense...");
@@ -101,6 +111,7 @@ function ExpensesContent() {
       title: expense.title,
       amount: Number(expense.amount),
       paymentMethod: expense.paymentMethod,
+      paidBy: expense.paidBy ?? "business",
       expenseDate: expense.expenseDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
       description: expense.description ?? "",
     });
@@ -108,25 +119,44 @@ function ExpensesContent() {
 
   const confirmDelete = async () => {
     if (!deleteId) return;
-    const toastId = toast.loading("Deleting expense...");
+    const toastId = toast.loading("Cancelling expense...");
     try {
       await remove(deleteId);
-      toast.success("Expense deleted", { id: toastId });
+      toast.success("Expense cancelled", { id: toastId });
       setDeleteOpen(false);
       setDeleteId(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete expense", { id: toastId });
+      toast.error(err instanceof Error ? err.message : "Failed to cancel expense", { id: toastId });
     }
   };
 
-  const totalShown = items.reduce((sum, item) => sum + Number(item.amount), 0);
+  const reimburse = async (id: string) => {
+    const toastId = toast.loading("Reimbursing employee...");
+    try {
+      await apiClient.post(`/expenses/${id}/reimburse`, {}, token, businessId);
+      await refresh();
+      toast.success("Reimbursed — payable cleared (net profit unchanged)", { id: toastId });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to reimburse", { id: toastId });
+    }
+  };
+
+  const activeItems = items.filter((i) => i.status !== "cancelled");
+  const totalShown = activeItems.reduce((sum, item) => sum + Number(item.amount), 0);
+  const pendingPayable = activeItems
+    .filter((i) => i.status === "pending_reimbursement")
+    .reduce((sum, item) => sum + Number(item.amount), 0);
 
   if (!isAuthorized) return null;
 
   return (
     <AdminShell activeTab="expenses" pageTitle="Expenses" pageSubtitle="Track rent, utilities, salaries and other store costs">
       <PortalPage>
-        <PortalPageHeader icon={Receipt} title="Expenses" subtitle={`Rs ${totalShown.toLocaleString()} recorded on this page`} />
+        <PortalPageHeader
+          icon={Receipt}
+          title="Expenses"
+          subtitle={`Rs ${totalShown.toLocaleString()} operating · Rs ${pendingPayable.toLocaleString()} pending reimbursement`}
+        />
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.4fr]">
           <div className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-muted,#f8fafc)] p-6">
             <h3 className="mb-6 text-lg font-bold">{editId ? "Edit Expense" : "Record Expense"}</h3>
@@ -173,7 +203,17 @@ function ExpensesContent() {
                   ))}
                 </select>
               </FormField>
-              <FormField label="Date" required>
+              <FormField label="Paid by" required>
+                <select
+                  className={portalInputClass}
+                  value={form.paidBy}
+                  onChange={(e) => setForm((p) => ({ ...p, paidBy: e.target.value }))}
+                >
+                  <option value="business">Business</option>
+                  <option value="employee">Employee (pending reimbursement)</option>
+                </select>
+              </FormField>
+              <FormField label="Expense date" required>
                 <input
                   type="date"
                   className={portalInputClass}
@@ -230,26 +270,40 @@ function ExpensesContent() {
                     <div>
                       <p className="text-sm font-bold">{expense.title}</p>
                       <p className="text-xs capitalize text-[var(--text-muted)]">
-                        {expense.category} · {expense.expenseDate} · {expense.paymentMethod.replace("_", " ")}
+                        {expense.category} · {expense.expenseDate} · {(expense.paymentMethod || "").replace("_", " ")} ·{" "}
+                        {(expense.paidBy || "business").replace("_", " ")} ·{" "}
+                        {(expense.status || "paid").replace(/_/g, " ")}
                       </p>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       <p className="text-sm font-bold">Rs {Number(expense.amount).toLocaleString()}</p>
-                      <button
-                        onClick={() => startEdit(expense)}
-                        className="text-sm font-semibold text-[var(--brand-secondary)]"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => {
-                          setDeleteId(expense.id);
-                          setDeleteOpen(true);
-                        }}
-                        className="text-sm font-semibold text-red-600"
-                      >
-                        Delete
-                      </button>
+                      {expense.status === "pending_reimbursement" ? (
+                        <button
+                          onClick={() => reimburse(expense.id)}
+                          className="text-sm font-semibold text-teal-700"
+                        >
+                          Reimburse
+                        </button>
+                      ) : null}
+                      {expense.status !== "cancelled" ? (
+                        <>
+                          <button
+                            onClick={() => startEdit(expense)}
+                            className="text-sm font-semibold text-[var(--brand-secondary)]"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              setDeleteId(expense.id);
+                              setDeleteOpen(true);
+                            }}
+                            className="text-sm font-semibold text-red-600"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -262,8 +316,8 @@ function ExpensesContent() {
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
           onConfirm={confirmDelete}
-          title="Delete expense?"
-          description="This expense record will be removed permanently."
+          title="Cancel expense?"
+          description="This removes the expense from active Dashboard and Reports calculations. History is retained."
           loading={actionLoading}
         />
       </PortalPage>
