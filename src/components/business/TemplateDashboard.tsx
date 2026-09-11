@@ -39,7 +39,12 @@ type InvoiceDashboard = {
     daily?: InvoiceRevenue;
     monthly?: InvoiceRevenue;
   };
-  invoices?: { totalPending?: number; pendingAmount?: number };
+  invoices?: {
+    totalPending?: number;
+    pendingAmount?: number;
+    returnedToday?: number;
+    returnedAmountToday?: number;
+  };
   orders?: {
     activeOrders?: number;
     totalOrdersDaily?: number;
@@ -66,6 +71,13 @@ type StockSummary = {
   }>;
 };
 
+type RetailDashboardLive = {
+  pendingPurchases?: number;
+  todaySales?: number;
+  totalTransactions?: number;
+  grossProfit?: number;
+};
+
 export function TemplateDashboard({ cards, className }: TemplateDashboardProps) {
   const pathname = usePathname();
   const { refreshKey } = useDashboardRefresh();
@@ -85,6 +97,10 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
   );
   const { data: stockLive, loading: stockLoading } = usePharmacyQuery<StockSummary>(
     isPharmacy ? null : "/stock-management/dashboard/summary",
+    queryRefreshKey,
+  );
+  const { data: retailLive } = usePharmacyQuery<RetailDashboardLive>(
+    isPharmacy ? null : "/retail/reports/dashboard",
     queryRefreshKey,
   );
   const { products, loading: productsLoading, error: productsError } = useProducts({ limit: 500 });
@@ -109,7 +125,8 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
     const dailyTotal = Number(daily?.total ?? 0);
     const dailyCount = Number(invoiceLive?.orders?.totalOrdersDaily ?? 0);
     const topName = invoiceLive?.graph?.topSellingProducts?.[0]?.name;
-    const pendingInvoices = Number(invoiceLive?.invoices?.totalPending ?? 0);
+    const pendingPurchases = Number(retailLive?.pendingPurchases ?? 0);
+    const returnedToday = Number(invoiceLive?.invoices?.returnedToday ?? 0);
 
     switch (id) {
       case "today-sales":
@@ -132,7 +149,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
             (stockLive?.lowStockCount ?? 0) + (stockLive?.outOfStockCount ?? 0),
         );
       case "pending-purchases":
-        return String(pendingInvoices);
+        return String(pendingPurchases);
       case "active-orders":
       case "orders-in-progress":
       case "customer-orders":
@@ -148,9 +165,10 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
       case "best-collection":
         return topName || "—";
       case "warranty-claims":
+        return "0";
       case "product-returns":
       case "returns-exchanges":
-        return "0";
+        return String(returnedToday);
       case "inventory-value":
         if (!productsLoading && !productsError) {
           return money(catalogStock.inventoryValue);

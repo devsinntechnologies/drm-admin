@@ -177,13 +177,16 @@ function InvoicesContent() {
     };
   }, [refreshConnectedPrinter]);
 
+  const resolvedRole =
+    role ?? (typeof window !== "undefined" ? localStorage.getItem("roleName") : null);
+  const roleLower = String(resolvedRole ?? "").toLowerCase().trim();
   const canDeleteInvoice =
-    (role ?? (typeof window !== "undefined" ? localStorage.getItem("roleName") : null)) ===
-      "business_admin" ||
-    (role ?? (typeof window !== "undefined" ? localStorage.getItem("roleName") : null)) ===
-      "super_admin";
-
-  const canReturnInvoice = canDeleteInvoice;
+    roleLower === "business_admin" || roleLower === "super_admin";
+  const canReturnInvoice =
+    canDeleteInvoice ||
+    roleLower === "admin" ||
+    roleLower === "businessadmin" ||
+    roleLower.includes("business");
 
   const { invoices, loading, actionLoading, error, pagination, refetch, deleteInvoice, returnInvoice, exportExcel } = useInvoices({
     page: currentPage,

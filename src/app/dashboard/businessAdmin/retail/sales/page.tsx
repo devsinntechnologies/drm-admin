@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Clock3, Eye, FileText, Printer, Search } from "lucide-react";
+import { Clock3, Eye, FileText, Loader2, Printer, RotateCcw, Search } from "lucide-react";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { PortalPage, PortalPageHeader, portalSearchClass } from "@/components/admin/PortalPage";
@@ -21,6 +21,7 @@ import { parseSalesSettings } from "@/lib/module-feature-settings";
 import { formatInvoiceDateTime } from "@/lib/invoice-datetime";
 import { apiClient } from "@/lib/api-client";
 import { cn, normalizeErrorMessage } from "@/lib/utils";
+import { INVOICE_TIPS } from "@/lib/feature-tips";
 import type { BusinessPrinter, PrintersPayload } from "@/lib/printers";
 import { STAFF_REALTIME_EVENTS } from "@/lib/staff-realtime";
 import {
@@ -56,6 +57,27 @@ function formatDate(value: string) {
   return formatInvoiceDateTime(value);
 }
 
+function isReturnedStatus(raw?: string | null) {
+  const value = String(raw ?? "").toLowerCase().trim();
+  return value === "returned" || value === "refunded";
+}
+
+function canReturnInvoiceRole(roleName?: string | null) {
+  const role = String(roleName ?? "").toLowerCase().trim();
+  return (
+    role === "business_admin" ||
+    role === "super_admin" ||
+    role === "admin" ||
+    role === "businessadmin" ||
+    role.includes("business")
+  );
+}
+
+function isReturnableStatus(raw?: string | null) {
+  const value = String(raw ?? "").toLowerCase().trim();
+  return value === "paid" || value === "pending";
+}
+
 function SalesContent() {
   const router = useRouter();
   const { role, token } = useAuth();
@@ -72,7 +94,13 @@ function SalesContent() {
   const [connectPrinterOpen, setConnectPrinterOpen] = useState(false);
   const [connectedPrinter, setConnectedPrinter] = useState<BusinessPrinter | null>(null);
   const [printInFlight, setPrintInFlight] = useState(false);
+  const [returningInvoiceUuid, setReturningInvoiceUuid] = useState<string | null>(null);
+  const [returnConfirmUuid, setReturnConfirmUuid] = useState<string | null>(null);
   const activeBusinessId = useActiveBusinessId();
+
+  const resolvedRole =
+    role ?? (typeof window !== "undefined" ? localStorage.getItem("roleName") : null);
+  const canReturnInvoice = canReturnInvoiceRole(resolvedRole);
 
   const refreshConnectedPrinter = useCallback(async () => {
     if (!token || !activeBusinessId || !allowPrinter) return;
@@ -114,7 +142,7 @@ function SalesContent() {
     };
   }, [refreshConnectedPrinter]);
 
-  const { invoices, loading, error, refetch } = useInvoices({
+  const { invoices, loading, actionLoading, error, refetch, returnInvoice } = useInvoices({
     page: 1,
     limit: 100,
     range: rangeFilter,
@@ -145,9 +173,36 @@ function SalesContent() {
     );
   }, [invoices, search]);
 
+  const handleConfirmReturn = async () => {
+    if (!returnConfirmUuid) return;
+    if (!canReturnInvoice) {
+      toast.error("Only a business admin can return invoices.");
+      setReturnConfirmUuid(null);
+      return;
+    }
+
+    const invoiceUuid = returnConfirmUuid;
+    setReturnConfirmUuid(null);
+    const toastId = toast.loading("Returning invoice...");
+    try {
+      setReturningInvoiceUuid(invoiceUuid);
+      await returnInvoice(invoiceUuid);
+      toast.success("Invoice returned successfully.", { id: toastId });
+      setSelectedInvoice((prev) =>
+        prev && prev.uuid === invoiceUuid ? { ...prev, status: "returned" } : prev,
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to return invoice.";
+      toast.error(message, { id: toastId });
+    } finally {
+      setReturningInvoiceUuid(null);
+    }
+  };
+
   if (!isAuthorized) return null;
 
   const selectedAmounts = selectedInvoice ? invoiceAmounts(selectedInvoice) : null;
+  const selectedReturned = selectedInvoice ? isReturnedStatus(selectedInvoice.status) : false;
 
   return (
     <AdminShell activeTab="sales" pageTitle="Sales" pageSubtitle="View receipts and past transactions">
@@ -240,7 +295,7 @@ function SalesContent() {
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Amount</th>
-                  <th className="px-4 py-3 text-right">Receipt</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -251,29 +306,73 @@ function SalesContent() {
                     </td>
                   </tr>
                 ) : (
-                  filteredSales.map((invoice) => (
-                    <tr key={invoice.uuid} className="border-t border-[var(--border-subtle)]">
-                      <td className="px-4 py-3 font-semibold">
-                        {invoice.invoiceNumber || invoice.uuid}
-                      </td>
-                      <td className="px-4 py-3">{invoice.orderNumber || "—"}</td>
-                      <td className="px-4 py-3">{formatDate(invoice.createdAt)}</td>
-                      <td className="px-4 py-3 capitalize">{invoice.status}</td>
-                      <td className="px-4 py-3">
-                        Rs {invoiceAmounts(invoice).total.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedInvoice(invoice)}
-                          className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-[var(--surface-muted)]"
-                        >
-                          <Eye className="h-3 w-3" />
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  filteredSales.map((invoice) => {
+                    const returned = isReturnedStatus(invoice.status);
+                    const showReturn =
+                      canReturnInvoice && !returned && isReturnableStatus(invoice.status);
+                    return (
+                      <tr key={invoice.uuid} className="border-t border-[var(--border-subtle)]">
+                        <td className="px-4 py-3 font-semibold">
+                          {invoice.invoiceNumber || invoice.uuid}
+                        </td>
+                        <td className="px-4 py-3">{invoice.orderNumber || "—"}</td>
+                        <td className="px-4 py-3">{formatDate(invoice.createdAt)}</td>
+                        <td className="px-4 py-3">
+                          {returned ? (
+                            <span
+                              className="inline-flex rounded-full bg-[#fef2f2] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#dc2626]"
+                              title={INVOICE_TIPS.returned}
+                            >
+                              RETURNED
+                            </span>
+                          ) : (
+                            <span className="capitalize">{invoice.status}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          Rs {invoiceAmounts(invoice).total.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedInvoice(invoice)}
+                              className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-[var(--surface-muted)]"
+                              title={INVOICE_TIPS.view}
+                            >
+                              <Eye className="h-3 w-3" />
+                              View
+                            </button>
+                            {returned ? (
+                              <span
+                                className="inline-flex items-center rounded-lg bg-[#fef2f2] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-[#dc2626]"
+                                title={INVOICE_TIPS.returned}
+                              >
+                                RETURNED
+                              </span>
+                            ) : showReturn ? (
+                              <button
+                                type="button"
+                                onClick={() => setReturnConfirmUuid(invoice.uuid)}
+                                disabled={actionLoading && returningInvoiceUuid === invoice.uuid}
+                                className="dn-btn !h-9 !px-3 !bg-[#dc2626] !text-white hover:!bg-[#b91c1c]"
+                                title={INVOICE_TIPS.return}
+                              >
+                                {returningInvoiceUuid === invoice.uuid ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <RotateCcw className="h-4 w-4" />
+                                    Return
+                                  </>
+                                )}
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -299,7 +398,7 @@ function SalesContent() {
                 businessName={branding.businessName || selectedInvoice.businessName}
                 logoUrl={branding.logoUrl || selectedInvoice.businessLogo || undefined}
                 date={formatDate(selectedInvoice.createdAt)}
-                status={selectedInvoice.status}
+                status={selectedReturned ? "returned" : selectedInvoice.status}
                 subtotal={selectedAmounts.subtotal}
                 total={selectedAmounts.total}
                 items={selectedAmounts.items.map((item, index) => ({
@@ -316,71 +415,100 @@ function SalesContent() {
                 website={branding.website}
                 footerNote={branding.businessName || selectedInvoice.businessName}
               />
-              <div className="mt-4 flex justify-end gap-2 px-2 pb-2">
-                <InvoiceDownloadButton
-                  onClick={() =>
-                    void downloadInvoicePdf({
-                      fileName: `invoice-${selectedInvoice.invoiceNumber || selectedInvoice.uuid}.pdf`,
-                      orderNumber: selectedInvoice.orderNumber || selectedInvoice.invoiceNumber,
-                      businessName: branding.businessName || selectedInvoice.businessName,
-                      logoUrl: branding.logoUrl || selectedInvoice.businessLogo || undefined,
-                      date: formatDate(selectedInvoice.createdAt),
-                      status: selectedInvoice.status,
-                      items: selectedAmounts.items.map((item) => ({
-                        productName: item.productname,
-                        variantName: item.variantName,
-                        quantity: item.quantity,
-                        price: parsePrice(item.price),
-                        total: Number(item.total) || parsePrice(item.price) * Number(item.quantity || 0),
-                      })),
-                      subtotal: selectedAmounts.subtotal,
-                      total: selectedAmounts.total,
-                      contactPhone: branding.contactPhone || selectedInvoice.businessPhone,
-                      contactEmail: branding.contactEmail || selectedInvoice.businessEmail,
-                      address: branding.address || selectedInvoice.businessAddress,
-                      website: branding.website,
-                    })
-                  }
-                />
-                <InvoicePrintButton
-                  onClick={() => {
-                    if (!allowPrinter) {
-                      setPrinterAlertOpen(true);
-                      return;
-                    }
-                    if (!selectedInvoice || printInFlight) return;
-                    void (async () => {
-                      setPrintInFlight(true);
-                      try {
-                        await createPrintJob(token, activeBusinessId, {
-                          jobType: "INVOICE",
-                          printerId: connectedPrinter?.id,
-                          printerName: connectedPrinter?.name,
-                          referenceNumber:
-                            selectedInvoice.invoiceNumber ||
-                            selectedInvoice.orderNumber ||
-                            selectedInvoice.uuid,
-                          referenceId: selectedInvoice.uuid || selectedInvoice.orderId,
-                          payload: invoiceRecordToPrintPayload(
-                            selectedInvoice as unknown as Record<string, unknown>,
-                          ),
-                        });
-                        window.print();
-                        toast.success(
-                          connectedPrinter
-                            ? "Invoice queued and sent to the connected printer."
-                            : "Invoice added to the print queue.",
-                        );
-                      } catch (err) {
-                        toast.error(
-                          normalizeErrorMessage(err, "Print failed. Check printer connection."),
-                        );
-                      } finally {
-                        setPrintInFlight(false);
+              <div className="mt-4 flex flex-wrap justify-end gap-2 px-2 pb-2">
+                {selectedReturned ? (
+                  <span
+                    className="inline-flex items-center rounded-lg bg-[#fef2f2] px-4 py-2 text-sm font-bold uppercase tracking-wide text-[#dc2626]"
+                    title={INVOICE_TIPS.returned}
+                  >
+                    RETURNED INVOICE
+                  </span>
+                ) : (
+                  <>
+                    <InvoiceDownloadButton
+                      onClick={() =>
+                        void downloadInvoicePdf({
+                          fileName: `invoice-${selectedInvoice.invoiceNumber || selectedInvoice.uuid}.pdf`,
+                          orderNumber: selectedInvoice.orderNumber || selectedInvoice.invoiceNumber,
+                          businessName: branding.businessName || selectedInvoice.businessName,
+                          logoUrl: branding.logoUrl || selectedInvoice.businessLogo || undefined,
+                          date: formatDate(selectedInvoice.createdAt),
+                          status: selectedInvoice.status,
+                          items: selectedAmounts.items.map((item) => ({
+                            productName: item.productname,
+                            variantName: item.variantName,
+                            quantity: item.quantity,
+                            price: parsePrice(item.price),
+                            total: Number(item.total) || parsePrice(item.price) * Number(item.quantity || 0),
+                          })),
+                          subtotal: selectedAmounts.subtotal,
+                          total: selectedAmounts.total,
+                          contactPhone: branding.contactPhone || selectedInvoice.businessPhone,
+                          contactEmail: branding.contactEmail || selectedInvoice.businessEmail,
+                          address: branding.address || selectedInvoice.businessAddress,
+                          website: branding.website,
+                        })
                       }
-                    })();
-                  }}
-                />
+                    />
+                    <InvoicePrintButton
+                      onClick={() => {
+                        if (!allowPrinter) {
+                          setPrinterAlertOpen(true);
+                          return;
+                        }
+                        if (!selectedInvoice || printInFlight) return;
+                        void (async () => {
+                          setPrintInFlight(true);
+                          try {
+                            await createPrintJob(token, activeBusinessId, {
+                              jobType: "INVOICE",
+                              printerId: connectedPrinter?.id,
+                              printerName: connectedPrinter?.name,
+                              referenceNumber:
+                                selectedInvoice.invoiceNumber ||
+                                selectedInvoice.orderNumber ||
+                                selectedInvoice.uuid,
+                              referenceId: selectedInvoice.uuid || selectedInvoice.orderId,
+                              payload: invoiceRecordToPrintPayload(
+                                selectedInvoice as unknown as Record<string, unknown>,
+                              ),
+                            });
+                            window.print();
+                            toast.success(
+                              connectedPrinter
+                                ? "Invoice queued and sent to the connected printer."
+                                : "Invoice added to the print queue.",
+                            );
+                          } catch (err) {
+                            toast.error(
+                              normalizeErrorMessage(err, "Print failed. Check printer connection."),
+                            );
+                          } finally {
+                            setPrintInFlight(false);
+                          }
+                        })();
+                      }}
+                    />
+                    {canReturnInvoice && isReturnableStatus(selectedInvoice.status) ? (
+                      <button
+                        type="button"
+                        onClick={() => setReturnConfirmUuid(selectedInvoice.uuid)}
+                        disabled={returningInvoiceUuid === selectedInvoice.uuid}
+                        className="dn-btn !bg-[#dc2626] !text-white hover:!bg-[#b91c1c]"
+                        title={INVOICE_TIPS.return}
+                      >
+                        {returningInvoiceUuid === selectedInvoice.uuid ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <RotateCcw className="h-4 w-4" />
+                            Return
+                          </>
+                        )}
+                      </button>
+                    ) : null}
+                  </>
+                )}
                 <button
                   type="button"
                   className="rounded-xl border px-4 py-2 text-sm font-semibold"
@@ -393,6 +521,40 @@ function SalesContent() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={Boolean(returnConfirmUuid)} onOpenChange={(open) => !open && setReturnConfirmUuid(null)}>
+        <DialogContent className="max-w-md">
+          <DialogTitle className="text-lg font-bold text-[#0f172a]">Return invoice?</DialogTitle>
+          <p className="mt-2 text-sm text-[#64748b]">
+            Are you sure you want to return this invoice? This action is permanent. The invoice amount will be
+            removed from sales calculations, associated profit will be removed from profit calculations, and
+            purchased products will be added back to inventory. This invoice cannot be restored after it is returned.
+          </p>
+          <div className="mt-6 flex justify-end gap-2">
+            <button
+              type="button"
+              className="dn-btn dn-btn-outline"
+              disabled={Boolean(returningInvoiceUuid)}
+              onClick={() => setReturnConfirmUuid(null)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="dn-btn !bg-[#dc2626] !text-white hover:!bg-[#b91c1c]"
+              disabled={Boolean(returningInvoiceUuid)}
+              onClick={() => void handleConfirmReturn()}
+            >
+              {returningInvoiceUuid ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Confirm Return"
+              )}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <PrinterAccessAlert open={printerAlertOpen} onOpenChange={setPrinterAlertOpen} />
       <ConnectPrinterDialog
         open={connectPrinterOpen}
