@@ -11,7 +11,10 @@ import { getModuleHref } from "@/lib/module-routes";
 
 type InvoiceReports = {
   revenue: { completed: number; open: number; total: number };
-  orders: { total: number; completed: number; open: number };
+  orders: { total: number; completed: number; open: number; returned?: number };
+  grossProfit?: number;
+  totalExpenses?: number;
+  netProfit?: number;
 };
 
 function monthStartIso() {
@@ -102,10 +105,13 @@ export function DashboardReportsSection() {
           <PortalStatCard label="Best-seller revenue" value={money(Number(best?.[0]?.revenue ?? 0))} />
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <PortalStatCard label="Sales" value={money(Number(invoiceReport?.revenue.total ?? 0))} />
           <PortalStatCard label="Invoices" value={invoiceReport?.orders.total ?? 0} />
           <PortalStatCard label="Unpaid" value={money(Number(invoiceReport?.revenue.open ?? 0))} tone="secondary" />
+          <PortalStatCard label="Gross profit" value={money(Number(invoiceReport?.grossProfit ?? 0))} />
+          <PortalStatCard label="Expenses" value={money(Number(invoiceReport?.totalExpenses ?? 0))} tone="accent" />
+          <PortalStatCard label="Net profit" value={money(Number(invoiceReport?.netProfit ?? 0))} tone="secondary" />
         </div>
       )}
     </PortalCard>

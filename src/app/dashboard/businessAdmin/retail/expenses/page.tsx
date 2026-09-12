@@ -55,8 +55,8 @@ function ExpensesContent() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
-  const { items, loading, actionLoading, error, create, update, remove, refresh } =
-    useRetailResource<Expense>("/expenses");
+  const { items, loading, actionLoading, error, create, update, refresh } =
+      useRetailResource<Expense>("/expenses");
 
   useEffect(() => {
     const storedRole = typeof window !== "undefined" ? localStorage.getItem("roleName") : null;
@@ -121,7 +121,8 @@ function ExpensesContent() {
     if (!deleteId) return;
     const toastId = toast.loading("Cancelling expense...");
     try {
-      await remove(deleteId);
+      await apiClient.post(`/expenses/${deleteId}/cancel`, {}, token, businessId);
+      await refresh();
       toast.success("Expense cancelled", { id: toastId });
       setDeleteOpen(false);
       setDeleteId(null);
