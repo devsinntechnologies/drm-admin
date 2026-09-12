@@ -23,6 +23,7 @@ const SNOOKER_NAV_LABELS: Partial<Record<ModuleId, string>> = {
   "credit-udhar": "Credit / Udhar",
   discounts: "Discounts",
   expenses: "Expenses",
+  credits: "Credit",
   shifts: "Daily Opening & Closing",
   reports: "Reports",
   staff: "Staff & Access",

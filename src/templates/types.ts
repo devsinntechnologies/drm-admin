@@ -31,6 +31,7 @@ export type ModuleId =
   | "customers"
   | "returns"
   | "expenses"
+  | "credits"
   | "staff"
   | "reports"
   | "settings"

@@ -68,6 +68,7 @@ export const MODULE_ICONS: Partial<Record<ModuleId | string, LucideIcon>> = {
   "credit-udhar": Wallet,
   discounts: Percent,
   expenses: CreditCard,
+  credits: Wallet,
   "audit-logs": ScrollText,
   notifications: Bell,
   tournaments: Trophy,

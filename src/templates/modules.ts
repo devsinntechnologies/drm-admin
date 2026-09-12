@@ -16,6 +16,7 @@ export const MODULE_CATALOG: Record<
   customers: { id: "customers", label: "Customers", description: "Customer profiles and history", category: "CRM" },
   returns: { id: "returns", label: "Returns", description: "Returns and refunds", category: "Sales" },
   expenses: { id: "expenses", label: "Expenses", description: "Business expense tracking", category: "Finance" },
+  credits: { id: "credits", label: "Credit", description: "Customer credit / udhar balances and repayments", category: "Finance" },
   staff: { id: "staff", label: "Staff", description: "Employees and roles", category: "People" },
   reports: { id: "reports", label: "Reports", description: "Analytics and exports", category: "Insights" },
   settings: { id: "settings", label: "Settings", description: "Business configuration", category: "Core" },

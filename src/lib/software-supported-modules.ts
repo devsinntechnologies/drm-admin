@@ -16,6 +16,7 @@ export const SOFTWARE_SUPPORTED_MODULES = new Set<ModuleId>([
   "inventory",
   "reports",
   "expenses",
+  "credits",
 ]);
 
 /**
@@ -106,7 +107,7 @@ export function mobileModulesForIndustry(industryId?: string | null): ModuleId[]
   }
 
   if (industryId === "pharmacy") {
-    return ["dashboard", "products", "sales", "inventory", "staff", "categories", "expenses", "reports"];
+    return ["dashboard", "products", "sales", "inventory", "staff", "categories", "expenses", "credits", "reports"];
   }
 
   // Retail, auto-parts, book-store, electronics, fashion, grocery, etc.
@@ -119,6 +120,7 @@ export function mobileModulesForIndustry(industryId?: string | null): ModuleId[]
     "staff",
     "categories",
     "expenses",
+    "credits",
     "reports",
   ];
 }
