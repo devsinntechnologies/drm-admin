@@ -258,7 +258,7 @@ function SalesContent() {
                 "Connect Printer"
               )}
             </button>
-            <div className="dn-tab-bar !rounded-2xl !py-2 lg:w-auto">
+          <div className="dn-tab-bar !rounded-2xl !py-2 lg:w-auto">
             {(
               [
                 { key: "day" as const, label: "Daily" },
@@ -311,12 +311,12 @@ function SalesContent() {
                     const showReturn =
                       canReturnInvoice && !returned && isReturnableStatus(invoice.status);
                     return (
-                      <tr key={invoice.uuid} className="border-t border-[var(--border-subtle)]">
-                        <td className="px-4 py-3 font-semibold">
-                          {invoice.invoiceNumber || invoice.uuid}
-                        </td>
-                        <td className="px-4 py-3">{invoice.orderNumber || "—"}</td>
-                        <td className="px-4 py-3">{formatDate(invoice.createdAt)}</td>
+                    <tr key={invoice.uuid} className="border-t border-[var(--border-subtle)]">
+                      <td className="px-4 py-3 font-semibold">
+                        {invoice.invoiceNumber || invoice.uuid}
+                      </td>
+                      <td className="px-4 py-3">{invoice.orderNumber || "—"}</td>
+                      <td className="px-4 py-3">{formatDate(invoice.createdAt)}</td>
                         <td className="px-4 py-3">
                           {returned ? (
                             <span
@@ -329,20 +329,20 @@ function SalesContent() {
                             <span className="capitalize">{invoice.status}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3">
-                          Rs {invoiceAmounts(invoice).total.toLocaleString()}
-                        </td>
+                      <td className="px-4 py-3">
+                        Rs {invoiceAmounts(invoice).total.toLocaleString()}
+                      </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedInvoice(invoice)}
-                              className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-[var(--surface-muted)]"
+                        <button
+                          type="button"
+                          onClick={() => setSelectedInvoice(invoice)}
+                          className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-[var(--surface-muted)]"
                               title={INVOICE_TIPS.view}
-                            >
-                              <Eye className="h-3 w-3" />
-                              View
-                            </button>
+                        >
+                          <Eye className="h-3 w-3" />
+                          View
+                        </button>
                             {returned ? (
                               <span
                                 className="inline-flex items-center rounded-lg bg-[#fef2f2] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-[#dc2626]"
@@ -369,8 +369,8 @@ function SalesContent() {
                               </button>
                             ) : null}
                           </div>
-                        </td>
-                      </tr>
+                      </td>
+                    </tr>
                     );
                   })
                 )}
@@ -425,37 +425,37 @@ function SalesContent() {
                   </span>
                 ) : (
                   <>
-                    <InvoiceDownloadButton
-                      onClick={() =>
-                        void downloadInvoicePdf({
-                          fileName: `invoice-${selectedInvoice.invoiceNumber || selectedInvoice.uuid}.pdf`,
-                          orderNumber: selectedInvoice.orderNumber || selectedInvoice.invoiceNumber,
-                          businessName: branding.businessName || selectedInvoice.businessName,
-                          logoUrl: branding.logoUrl || selectedInvoice.businessLogo || undefined,
-                          date: formatDate(selectedInvoice.createdAt),
-                          status: selectedInvoice.status,
-                          items: selectedAmounts.items.map((item) => ({
-                            productName: item.productname,
-                            variantName: item.variantName,
-                            quantity: item.quantity,
-                            price: parsePrice(item.price),
-                            total: Number(item.total) || parsePrice(item.price) * Number(item.quantity || 0),
-                          })),
-                          subtotal: selectedAmounts.subtotal,
-                          total: selectedAmounts.total,
-                          contactPhone: branding.contactPhone || selectedInvoice.businessPhone,
-                          contactEmail: branding.contactEmail || selectedInvoice.businessEmail,
-                          address: branding.address || selectedInvoice.businessAddress,
-                          website: branding.website,
-                        })
-                      }
-                    />
-                    <InvoicePrintButton
-                      onClick={() => {
-                        if (!allowPrinter) {
-                          setPrinterAlertOpen(true);
-                          return;
-                        }
+                <InvoiceDownloadButton
+                  onClick={() =>
+                    void downloadInvoicePdf({
+                      fileName: `invoice-${selectedInvoice.invoiceNumber || selectedInvoice.uuid}.pdf`,
+                      orderNumber: selectedInvoice.orderNumber || selectedInvoice.invoiceNumber,
+                      businessName: branding.businessName || selectedInvoice.businessName,
+                      logoUrl: branding.logoUrl || selectedInvoice.businessLogo || undefined,
+                      date: formatDate(selectedInvoice.createdAt),
+                      status: selectedInvoice.status,
+                      items: selectedAmounts.items.map((item) => ({
+                        productName: item.productname,
+                        variantName: item.variantName,
+                        quantity: item.quantity,
+                        price: parsePrice(item.price),
+                        total: Number(item.total) || parsePrice(item.price) * Number(item.quantity || 0),
+                      })),
+                      subtotal: selectedAmounts.subtotal,
+                      total: selectedAmounts.total,
+                      contactPhone: branding.contactPhone || selectedInvoice.businessPhone,
+                      contactEmail: branding.contactEmail || selectedInvoice.businessEmail,
+                      address: branding.address || selectedInvoice.businessAddress,
+                      website: branding.website,
+                    })
+                  }
+                />
+                <InvoicePrintButton
+                  onClick={() => {
+                    if (!allowPrinter) {
+                      setPrinterAlertOpen(true);
+                      return;
+                    }
                         if (!selectedInvoice || printInFlight) return;
                         void (async () => {
                           setPrintInFlight(true);
@@ -473,7 +473,7 @@ function SalesContent() {
                                 selectedInvoice as unknown as Record<string, unknown>,
                               ),
                             });
-                            window.print();
+                    window.print();
                             toast.success(
                               connectedPrinter
                                 ? "Invoice queued and sent to the connected printer."

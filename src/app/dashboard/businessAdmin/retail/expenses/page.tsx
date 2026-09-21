@@ -32,12 +32,19 @@ interface Expense {
 const CATEGORIES = ["rent", "utilities", "salaries", "supplies", "transport", "marketing", "maintenance", "taxes", "other"];
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "mobile_wallet", "other"];
 
+type StaffMember = {
+  id: string;
+  name?: string;
+  email?: string;
+};
+
 const emptyForm = {
   category: "rent",
   title: "",
   amount: 0,
   paymentMethod: "cash",
   paidBy: "business",
+  employeeId: "",
   expenseDate: new Date().toISOString().slice(0, 10),
   description: "",
 };
@@ -57,6 +64,8 @@ function ExpensesContent() {
 
   const { items, loading, actionLoading, error, create, update, refresh } =
       useRetailResource<Expense>("/expenses");
+  const { items: staffMembers, loading: staffLoading } =
+      useRetailResource<StaffMember>("/retail/staff");
 
   useEffect(() => {
     const storedRole = typeof window !== "undefined" ? localStorage.getItem("roleName") : null;
@@ -79,6 +88,10 @@ function ExpensesContent() {
       toast.error("Title, amount, and expense date are required");
       return;
     }
+    if (form.paidBy === "employee" && !form.employeeId) {
+      toast.error("Select the employee who paid this expense");
+      return;
+    }
     const payload = {
       category: form.category,
       title: form.title.trim(),
@@ -87,6 +100,7 @@ function ExpensesContent() {
       paymentMethod: form.paymentMethod,
       paidBy: form.paidBy,
       expenseDate: form.expenseDate,
+      ...(form.employeeId ? { employeeId: form.employeeId } : {}),
     };
     const toastId = toast.loading(editId ? "Updating expense..." : "Recording expense...");
     try {
@@ -112,6 +126,7 @@ function ExpensesContent() {
       amount: Number(expense.amount),
       paymentMethod: expense.paymentMethod,
       paidBy: expense.paidBy ?? "business",
+      employeeId: expense.employeeId ?? "",
       expenseDate: expense.expenseDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
       description: expense.description ?? "",
     });
@@ -208,12 +223,37 @@ function ExpensesContent() {
                 <select
                   className={portalInputClass}
                   value={form.paidBy}
-                  onChange={(e) => setForm((p) => ({ ...p, paidBy: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      paidBy: e.target.value,
+                      employeeId: e.target.value === "employee" ? p.employeeId : "",
+                    }))
+                  }
                 >
                   <option value="business">Business</option>
                   <option value="employee">Employee (pending reimbursement)</option>
                 </select>
               </FormField>
+              {form.paidBy === "employee" ? (
+                <FormField label="Employee who paid" required>
+                  <select
+                    className={portalInputClass}
+                    value={form.employeeId}
+                    onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))}
+                    disabled={staffLoading}
+                  >
+                    <option value="">
+                      {staffLoading ? "Loading staff…" : "Select employee"}
+                    </option>
+                    {staffMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name?.trim() || member.email || member.id}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+              ) : null}
               <FormField label="Expense date" required>
                 <input
                   type="date"
