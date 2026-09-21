@@ -42,6 +42,11 @@ import {
   withDependentsDisabled,
 } from "@/templates/module-dependencies";
 import {
+  mergeDashboardCardOrder,
+  orderedSelectedDashboardCards,
+  EXPENSE_DASHBOARD_CARD_IDS,
+} from "@/lib/mobile-dashboard-cards";
+import {
   ACCENT_COLORS,
   colorsFromAccent,
   DASHBOARD_CARD_CATALOG,
@@ -142,7 +147,7 @@ function IndustryTemplatesContent() {
     setThemeMode("light");
     setEnabledModules([...tpl.modules]);
     setDashboardCards([...tpl.dashboardCards]);
-    setDashboardCardOrder([...tpl.dashboardCards]);
+    setDashboardCardOrder(mergeDashboardCardOrder([...tpl.dashboardCards]));
     setProductLabel(tpl.labels.product);
     setProductsLabel(tpl.labels.products);
     if (tpl.id === "pharmacy") {
@@ -226,6 +231,9 @@ function IndustryTemplatesContent() {
         );
       }
       applyModuleSelection(next);
+      if (moduleId === "expenses") {
+        setDashboardCards((prev) => prev.filter((id) => !EXPENSE_DASHBOARD_CARD_IDS.includes(id)));
+      }
       return;
     }
 
@@ -235,12 +243,23 @@ function IndustryTemplatesContent() {
       toast.message(`Also enabled: ${added.map(moduleLabel).join(", ")}`);
     }
     applyModuleSelection(next);
+    if (moduleId === "expenses") {
+      setDashboardCards((prev) => {
+        const merged = [...prev];
+        for (const id of EXPENSE_DASHBOARD_CARD_IDS) {
+          if (!merged.includes(id)) merged.push(id);
+        }
+        return merged;
+      });
+      setDashboardCardOrder((prev) => mergeDashboardCardOrder(prev));
+    }
   }
 
   function toggleDashboardCard(cardId: DashboardCardId) {
     setDashboardCards((prev) =>
       prev.includes(cardId) ? prev.filter((id) => id !== cardId) : [...prev, cardId],
     );
+    setDashboardCardOrder((prev) => (prev.includes(cardId) ? prev : [...prev, cardId]));
   }
 
   function reorderDashboardCards(fromId: DashboardCardId, toId: DashboardCardId) {
@@ -257,7 +276,7 @@ function IndustryTemplatesContent() {
   }
 
   const orderedEnabledDashboardCards = useMemo(
-    () => dashboardCardOrder.filter((id) => dashboardCards.includes(id)),
+    () => orderedSelectedDashboardCards(dashboardCardOrder, dashboardCards),
     [dashboardCardOrder, dashboardCards],
   );
 
@@ -770,7 +789,7 @@ function IndustryTemplatesContent() {
                   Choose KPI cards for the business dashboard. Toggle cards on or off and drag to set display order.
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {dashboardCardOrder.map((id) => {
+                  {mergeDashboardCardOrder(dashboardCardOrder).map((id) => {
                     const selected = dashboardCards.includes(id);
                     return (
                       <DashboardCardChip

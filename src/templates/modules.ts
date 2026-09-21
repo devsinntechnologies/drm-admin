@@ -150,6 +150,13 @@ export const DASHBOARD_CARD_CATALOG: Record<
   "today-sales": { id: "today-sales", label: "Today’s Sales", description: "Revenue for the current day" },
   "total-transactions": { id: "total-transactions", label: "Total Transactions", description: "Number of sales today" },
   "gross-profit": { id: "gross-profit", label: "Gross Profit", description: "Estimated gross profit" },
+  "today-expenses": { id: "today-expenses", label: "Today's Expenses", description: "Operating expenses for today" },
+  "net-profit": { id: "net-profit", label: "Net Profit", description: "Gross profit minus expenses" },
+  "pending-reimbursements": {
+    id: "pending-reimbursements",
+    label: "Employee Payables",
+    description: "Pending employee reimbursements",
+  },
   "low-stock": { id: "low-stock", label: "Low-stock Items", description: "Items below reorder level" },
   "top-products": { id: "top-products", label: "Top-selling Products", description: "Best performers today" },
   "pending-purchases": { id: "pending-purchases", label: "Pending Purchases", description: "Open purchase orders" },

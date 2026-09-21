@@ -30,6 +30,7 @@ export function DashboardReportsSection() {
   const { money } = usePharmacyMarket();
   const industryId = templateConfig?.industryId;
   const reportsOn = (templateConfig?.enabledModules ?? []).includes("reports");
+  const expensesOn = (templateConfig?.enabledModules ?? []).includes("expenses");
   const pharmacy = industryId === "pharmacy";
   const [fromDate, setFromDate] = useState(monthStartIso);
   const [toDate, setToDate] = useState(todayIso);
@@ -105,13 +106,23 @@ export function DashboardReportsSection() {
           <PortalStatCard label="Best-seller revenue" value={money(Number(best?.[0]?.revenue ?? 0))} />
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div
+          className={
+            expensesOn
+              ? "grid gap-3 sm:grid-cols-3 lg:grid-cols-6"
+              : "grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+          }
+        >
           <PortalStatCard label="Sales" value={money(Number(invoiceReport?.revenue.total ?? 0))} />
           <PortalStatCard label="Invoices" value={invoiceReport?.orders.total ?? 0} />
           <PortalStatCard label="Unpaid" value={money(Number(invoiceReport?.revenue.open ?? 0))} tone="secondary" />
           <PortalStatCard label="Gross profit" value={money(Number(invoiceReport?.grossProfit ?? 0))} />
-          <PortalStatCard label="Expenses" value={money(Number(invoiceReport?.totalExpenses ?? 0))} tone="accent" />
-          <PortalStatCard label="Net profit" value={money(Number(invoiceReport?.netProfit ?? 0))} tone="secondary" />
+          {expensesOn ? (
+            <>
+              <PortalStatCard label="Expenses" value={money(Number(invoiceReport?.totalExpenses ?? 0))} tone="accent" />
+              <PortalStatCard label="Net profit" value={money(Number(invoiceReport?.netProfit ?? 0))} tone="secondary" />
+            </>
+          ) : null}
         </div>
       )}
     </PortalCard>
