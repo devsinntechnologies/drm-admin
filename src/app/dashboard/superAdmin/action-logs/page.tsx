@@ -85,10 +85,28 @@ const formatWhen = (timestamp: string) =>
     hour12: true,
   }).format(new Date(timestamp));
 
-const inferActionTag = (method: string, endpoint: string) => {
+const inferActionTag = (method: string, endpoint: string, description?: string | null) => {
+  if (description) return description;
   const upperMethod = method.toUpperCase();
   const lowerEndpoint = endpoint.toLowerCase();
 
+  if (
+    upperMethod === "SYSTEM" ||
+    lowerEndpoint.includes("/device-lifecycle/") ||
+    lowerEndpoint.includes("/device-system/")
+  ) {
+    if (lowerEndpoint.includes("unexpected_stop")) return "App unexpected stop";
+    if (lowerEndpoint.includes("crashed")) return "App crashed";
+    if (lowerEndpoint.includes("stopped")) return "App stopped";
+    if (lowerEndpoint.includes("started")) return "App started";
+    if (lowerEndpoint.includes("resumed")) return "App resumed";
+    if (lowerEndpoint.includes("sqlite_open_failed")) return "SQLite open failed";
+    if (lowerEndpoint.includes("sqlite_recovered")) return "SQLite recovered";
+    if (lowerEndpoint.includes("outbox_error")) return "Outbox error";
+    if (lowerEndpoint.includes("sync_error")) return "Sync error";
+    if (lowerEndpoint.includes("bootstrap_error")) return "Bootstrap error";
+    return "Device event";
+  }
   if (upperMethod === "POST" && lowerEndpoint.includes("/login")) return "Signed in";
   if (upperMethod === "POST" && lowerEndpoint.includes("/logout")) return "Signed out";
   if (upperMethod === "GET") return "Viewed";
@@ -99,7 +117,11 @@ const inferActionTag = (method: string, endpoint: string) => {
 };
 
 const mapLogToRow = (log: ActionLogRecord): UiRow => {
-  const actionTag = log.actionDescription ?? inferActionTag(log.method, log.endpoint);
+  const actionTag = inferActionTag(
+    log.method,
+    log.endpoint,
+    log.actionDescription,
+  );
   const durationType: UiRow["durationType"] =
     (log.durationMs ?? 0) > 1000 ? "slow" : (log.durationMs ?? 0) > 500 ? "warning" : "normal";
 
@@ -113,7 +135,7 @@ const mapLogToRow = (log: ActionLogRecord): UiRow => {
     section: log.section ?? log.module?.split("?")[0] ?? "unknown",
     result: log.responseStatus === "success" ? "Succeeded" : "Failed",
     resultSub: log.errorMessage ?? "",
-    duration: log.durationMs ? `${log.durationMs}ms` : "-",
+    duration: log.method === "SYSTEM" ? "-" : log.durationMs ? `${log.durationMs}ms` : "-",
     durationType,
     requestId: log.requestId ?? log.id,
     method: log.method,
@@ -143,6 +165,17 @@ const actionStyles: Record<string, string> = {
   Deleted: "bg-[#ffe5e7] text-[#e11d48]",
   Updated: "bg-[#e1effe] text-[#2563eb]",
   Created: "bg-[#fff4d8] text-[#b45309]",
+  "App started": "bg-[#ecfdf5] text-[#059669]",
+  "App stopped": "bg-[#f1f5f9] text-[#475569]",
+  "App crashed": "bg-[#fee2e2] text-[#dc2626]",
+  "App unexpected stop": "bg-[#fff7ed] text-[#c2410c]",
+  "App resumed": "bg-[#eff6ff] text-[#2563eb]",
+  "SQLite open failed": "bg-[#fee2e2] text-[#b91c1c]",
+  "SQLite recovered": "bg-[#fff7ed] text-[#c2410c]",
+  "Outbox error": "bg-[#fef3c7] text-[#b45309]",
+  "Sync error": "bg-[#fef3c7] text-[#a16207]",
+  "Bootstrap error": "bg-[#fee2e2] text-[#dc2626]",
+  "Device event": "bg-[#f5f3ff] text-[#6d28d9]",
 };
 
 const resultStyles: Record<string, string> = {
@@ -219,11 +252,15 @@ export default function ActionLogsPage() {
   const [selected, setSelected] = useState<UiRow | null>(null);
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
+  const [apiOnly, setApiOnly] = useState(false);
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
 
   const updateFilter = <Key extends keyof FilterState>(key: Key, value: FilterState[Key]) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
     setPage(1);
+    if (key === "module" || key === "status" || key === "actionType") {
+      setApiOnly(false);
+    }
   };
 
   const requestParams = useMemo<ActionLogsQueryParams>(
@@ -248,15 +285,25 @@ export default function ActionLogsPage() {
 
   const filteredRows = useMemo(() => {
     const search = query.trim().toLowerCase();
-    if (!search) return rows;
+    let next = rows;
 
-    return rows.filter((row) =>
-      [row.who, row.user, row.action, row.section, row.result, row.endpoint, row.requestId]
-        .join(" ")
-        .toLowerCase()
-        .includes(search),
-    );
-  }, [rows, query]);
+    if (apiOnly) {
+      next = next.filter(
+        (row) => row.section !== "device-lifecycle" && row.section !== "device-system",
+      );
+    }
+
+    if (search) {
+      next = next.filter((row) =>
+        [row.who, row.user, row.action, row.section, row.result, row.endpoint, row.requestId]
+          .join(" ")
+          .toLowerCase()
+          .includes(search),
+      );
+    }
+
+    return next;
+  }, [rows, query, apiOnly]);
 
   const getActionStyle = (action: string) => actionStyles[action] ?? "bg-[#eef2f7] text-[#475467]";
   const getResultStyle = (result: string) => resultStyles[result] ?? "bg-[#eef2f7] text-[#475467]";
@@ -289,6 +336,8 @@ export default function ActionLogsPage() {
 
   const resetFilters = () => {
     setFilters(INITIAL_FILTERS);
+    setQuery("");
+    setApiOnly(false);
     setPage(1);
   };
 
@@ -321,7 +370,12 @@ export default function ActionLogsPage() {
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-[#0f172a]">
             <Filter className="h-4 w-4" />
-            <h2 className="text-sm font-semibold tracking-[0.08em] uppercase">Log Filters</h2>
+            <div>
+              <h2 className="text-sm font-semibold tracking-[0.08em] uppercase">Log Filters</h2>
+              <p className="mt-0.5 text-xs font-normal normal-case tracking-normal text-[#64748b]">
+                API requests, DigiNizam start/stop/crash, and system errors in one list
+              </p>
+            </div>
             <span className="rounded-lg border border-[#c7d2fe] bg-white/80 px-2 py-1 text-xs font-semibold text-[#4338ca]">
               {activeFilterCount} active
             </span>
@@ -340,6 +394,109 @@ export default function ActionLogsPage() {
               <Download className="h-4 w-4" /> Export
             </button>
           </div>
+        </div>
+
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[#94a3b8]">
+            Quick filters
+          </span>
+          {(() => {
+            const chips = [
+              { id: "all", label: "All logs" },
+              { id: "api", label: "API only" },
+              { id: "device", label: "Device lifecycle" },
+              { id: "system", label: "System errors" },
+              { id: "crash", label: "Crashes / unexpected" },
+              { id: "fail", label: "Failures" },
+            ] as const;
+
+            const activeId =
+              filters.module === "device-lifecycle" && filters.status === "failure"
+                ? "crash"
+                : filters.module === "device-system"
+                  ? "system"
+                  : filters.module === "device-lifecycle"
+                    ? "device"
+                    : filters.status === "failure" && !filters.module && !apiOnly
+                      ? "fail"
+                      : apiOnly
+                        ? "api"
+                        : "all";
+
+            return chips.map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => {
+                  setPage(1);
+                  if (chip.id === "all") {
+                    setApiOnly(false);
+                    setFilters((prev) => ({
+                      ...prev,
+                      module: "",
+                      actionType: "",
+                      status: "",
+                    }));
+                    return;
+                  }
+                  if (chip.id === "api") {
+                    setApiOnly(true);
+                    setFilters((prev) => ({
+                      ...prev,
+                      module: "",
+                      actionType: "",
+                      status: "",
+                    }));
+                    return;
+                  }
+                  if (chip.id === "device") {
+                    setApiOnly(false);
+                    setFilters((prev) => ({
+                      ...prev,
+                      module: "device-lifecycle",
+                      actionType: "",
+                      status: "",
+                    }));
+                    return;
+                  }
+                  if (chip.id === "system") {
+                    setApiOnly(false);
+                    setFilters((prev) => ({
+                      ...prev,
+                      module: "device-system",
+                      actionType: "",
+                      status: "",
+                    }));
+                    return;
+                  }
+                  if (chip.id === "crash") {
+                    setApiOnly(false);
+                    setFilters((prev) => ({
+                      ...prev,
+                      module: "device-lifecycle",
+                      actionType: "",
+                      status: "failure",
+                    }));
+                    return;
+                  }
+                  setApiOnly(false);
+                  setFilters((prev) => ({
+                    ...prev,
+                    module: "",
+                    actionType: "",
+                    status: "failure",
+                  }));
+                }}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                  activeId === chip.id
+                    ? "bg-[#001840] text-white"
+                    : "border border-[#d5e0ee] bg-white text-[#334155] hover:bg-[#f8fbff]"
+                }`}
+              >
+                {chip.label}
+              </button>
+            ));
+          })()}
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
@@ -372,12 +529,19 @@ export default function ActionLogsPage() {
           </label>
           <label className="block space-y-1.5">
             <span className="block text-sm font-semibold text-[#64748b]">Module</span>
-            <input
+            <select
               value={filters.module}
               onChange={(event) => updateFilter("module", event.target.value)}
-              placeholder="Module"
               className="rounded-xl border border-[#d5e0ee] bg-white/85 px-3 py-2 text-sm outline-none focus:border-[#7dd3fc]"
-            />
+            >
+              <option value="">Module: all</option>
+              <option value="device-lifecycle">device-lifecycle</option>
+              <option value="device-system">device-system</option>
+              <option value="users">users</option>
+              <option value="products">products</option>
+              <option value="orders">orders</option>
+              <option value="business">business</option>
+            </select>
           </label>
 
           <label className="block space-y-1.5">
