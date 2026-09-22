@@ -52,6 +52,7 @@ const RETAIL_MODULE_IDS = [
   "customers",
   "returns",
   "expenses",
+  "credits",
   "reports",
   "staff",
   "settings",

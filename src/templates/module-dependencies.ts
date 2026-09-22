@@ -32,6 +32,7 @@ export const INDUSTRY_MODULE_PLANS: Record<string, IndustryModulePlan> = {
       categories: ["products"],
       purchases: ["suppliers", "inventory", "products"],
       expenses: ["reports"],
+      credits: ["customers", "sales"],
       delivery: ["sales", "customers"],
       accounting: ["sales", "reports"],
       hr: ["staff"],

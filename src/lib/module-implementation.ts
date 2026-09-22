@@ -33,6 +33,7 @@ export const IMPLEMENTED_MODULES = new Set<ModuleId>([
   "branches",
   "settings",
   "expenses",
+  "credits",
 ]);
 
 export const SNOOKER_IMPLEMENTED_MODULES = new Set<ModuleId>([

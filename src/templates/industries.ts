@@ -14,7 +14,7 @@ export const INDUSTRY_TEMPLATES: IndustryTemplate[] = [
     family: "general-retail",
     theme: { accent: "blue", icon: "store" },
     labels: { product: "Product", products: "Products" },
-    modules: ["dashboard", "pos", "sales", "products", "categories", "orders", "inventory", "purchases", "suppliers", "customers", "returns", "expenses", "staff", "reports", "settings"],
+    modules: ["dashboard", "pos", "sales", "products", "categories", "orders", "inventory", "purchases", "suppliers", "customers", "returns", "expenses", "credits", "staff", "reports", "settings"],
     optionalModules: ["accounting", "hr", "multi-branch", "delivery"],
     dashboardCards: ["today-sales", "total-transactions", "gross-profit", "low-stock", "top-products", "pending-purchases"],
     roles: ["Owner", "Cashier", "Store Manager", "Inventory Clerk"],
