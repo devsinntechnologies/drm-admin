@@ -136,9 +136,15 @@ function CreditsContent() {
     setSaving(true);
     const toastId = toast.loading("Recording repayment...");
     try {
+      const party = parties.find((row) => row.id === partyId);
       await apiClient.post(
         "/credits/repayments",
-        { partyId, amount: repayAmount, notes: repayNotes.trim() || undefined },
+        {
+          partyId,
+          phone: party?.phone?.trim() || undefined,
+          amount: repayAmount,
+          notes: repayNotes.trim() || undefined,
+        },
         token,
         businessId,
       );
