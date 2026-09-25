@@ -55,6 +55,7 @@ export type ModuleId =
   | "memberships"
   | "commissions"
   | "production"
+  | "production-job-work"
   | "custom-orders"
   | "wastage"
   | "brands"

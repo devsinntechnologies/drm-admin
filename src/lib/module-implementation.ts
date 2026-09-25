@@ -34,6 +34,7 @@ export const IMPLEMENTED_MODULES = new Set<ModuleId>([
   "settings",
   "expenses",
   "credits",
+  "production-job-work",
 ]);
 
 export const SNOOKER_IMPLEMENTED_MODULES = new Set<ModuleId>([

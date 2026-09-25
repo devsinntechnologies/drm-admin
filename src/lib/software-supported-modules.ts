@@ -17,6 +17,7 @@ export const SOFTWARE_SUPPORTED_MODULES = new Set<ModuleId>([
   "reports",
   "expenses",
   "credits",
+  "production-job-work",
 ]);
 
 /**

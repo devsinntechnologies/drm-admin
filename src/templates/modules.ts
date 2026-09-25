@@ -42,6 +42,12 @@ export const MODULE_CATALOG: Record<
   memberships: { id: "memberships", label: "Memberships", description: "Membership plans and balances", category: "CRM" },
   commissions: { id: "commissions", label: "Commissions", description: "Staff commission tracking", category: "People" },
   production: { id: "production", label: "Production", description: "Production planning board", category: "Production" },
+  "production-job-work": {
+    id: "production-job-work",
+    label: "Production & Job Work",
+    description: "Batches, vendor job work, material issue and receive",
+    category: "Production",
+  },
   "custom-orders": { id: "custom-orders", label: "Custom Orders", description: "Made-to-order workflows", category: "Sales" },
   wastage: { id: "wastage", label: "Wastage", description: "Waste and spoilage logs", category: "Inventory" },
   brands: { id: "brands", label: "Brands", description: "Brand catalog", category: "Catalog" },
