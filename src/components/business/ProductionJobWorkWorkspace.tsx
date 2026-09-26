@@ -327,12 +327,24 @@ export function ProductionJobWorkWorkspace() {
     }
   };
 
+  if (!businessId) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-950">
+        <p className="font-semibold">Select a business to continue</p>
+        <p className="mt-2 text-amber-900/80">
+          Open this module from a business workspace (with <code className="text-xs">?businessId=…</code> in the
+          URL) or pick a business under Super Admin → Businesses.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       <PortalPageHeader
+        icon={Factory}
         title="Production & Job Work"
-        description="Batches, vendor job work, material issue/receive, and stock with karigars."
-        icon={<Factory className="h-6 w-6" />}
+        subtitle="Batches, vendor job work, material issue/receive, and stock with karigars."
       />
 
       {summary && (

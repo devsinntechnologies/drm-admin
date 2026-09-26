@@ -398,12 +398,33 @@ export default function AdminShell({
   }, [isMounted, resolvedRole, pathname, templateConfig, businessId, router]);
 
   const visibleTabs = useMemo(() => {
-    // During SSR and first paint, we MUST return a static set of tabs that match the server
+    const pathForNav = pathname || (typeof window !== "undefined" ? window.location.pathname : "");
+    const onBusinessAdminPath = pathForNav.includes("/businessAdmin");
+
+    // During SSR and first paint, avoid super-admin nav on business workspace routes.
     if (!isMounted) {
-      return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "industry-templates" || tab.key === "app-updates" || tab.key === "action-logs");
+      if (onBusinessAdminPath) {
+        return tabs.filter(
+          (tab) =>
+            tab.key === "dashboard" ||
+            tab.key === "products" ||
+            tab.key === "invoices" ||
+            tab.key === "orders" ||
+            tab.key === "users",
+        );
+      }
+      return tabs.filter(
+        (tab) =>
+          tab.key === "dashboard" ||
+          tab.key === "businesses" ||
+          tab.key === "subscriptions" ||
+          tab.key === "industry-templates" ||
+          tab.key === "app-updates" ||
+          tab.key === "action-logs",
+      );
     }
 
-    const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+    const currentPath = typeof window !== "undefined" ? window.location.pathname : pathForNav;
     const isSuperAdminRoute = currentPath.includes("/superAdmin");
     const isBusinessAdminRoute = currentPath.includes("/businessAdmin");
 

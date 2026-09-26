@@ -122,6 +122,7 @@ export function mobileModulesForIndustry(industryId?: string | null): ModuleId[]
     "categories",
     "expenses",
     "credits",
+    "production-job-work",
     "reports",
   ];
 }
