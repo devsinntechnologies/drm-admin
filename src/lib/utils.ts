@@ -21,8 +21,23 @@ function firstUsefulText(...values: unknown[]): string | undefined {
     }
 
     if (value && typeof value === "object") {
-      const nested = value as { message?: unknown; error?: unknown; details?: unknown };
-      const nestedText = firstUsefulText(nested.message, nested.error, nested.details);
+      const nested = value as {
+        message?: unknown;
+        error?: unknown;
+        details?: unknown;
+        driverError?: { detail?: unknown; message?: unknown };
+      };
+      const pgDetail =
+        nested.driverError && typeof nested.driverError.detail === "string"
+          ? nested.driverError.detail.trim()
+          : undefined;
+      const nestedText = firstUsefulText(
+        pgDetail,
+        nested.message,
+        nested.error,
+        nested.details,
+        nested.driverError?.message,
+      );
       if (nestedText) {
         return nestedText;
       }

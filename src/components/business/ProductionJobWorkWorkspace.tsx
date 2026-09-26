@@ -22,6 +22,7 @@ import { NumberInput } from "@/components/common/NumberInput";
 import { useProducts } from "@/hooks/useProducts";
 import { useRetailResource } from "@/hooks/useRetailResource";
 import { apiClient } from "@/lib/api-client";
+import { asList } from "@/lib/api";
 import { getStoredAuthToken } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
@@ -105,7 +106,7 @@ export function ProductionJobWorkWorkspace() {
 
   const [issueProductId, setIssueProductId] = useState("");
   const [issueVariantId, setIssueVariantId] = useState("");
-  const [issueQty, setIssueQty] = useState(0);
+  const [issueQty, setIssueQty] = useState(1);
   const [receiveAccepted, setReceiveAccepted] = useState(0);
   const [receiveRejected, setReceiveRejected] = useState(0);
   const [receiveWastage, setReceiveWastage] = useState(0);
@@ -139,28 +140,30 @@ export function ProductionJobWorkWorkspace() {
     try {
       const [sumRes, batchRes, jobRes, vendorRes, procRes] = await Promise.all([
         apiClient.get<Summary>("/production-job-work/dashboard/summary", token, businessId),
-        apiClient.get<{ data: BatchRow[] }>(
-          "/production-job-work/batches?limit=50",
-          token,
-          businessId,
-        ),
-        apiClient.get<{ data: JobRow[] }>(
-          "/production-job-work/jobs?limit=50",
-          token,
-          businessId,
-        ),
-        apiClient.get<VendorStockRow[]>(
+        apiClient.get<unknown>("/production-job-work/batches?limit=50", token, businessId),
+        apiClient.get<unknown>("/production-job-work/jobs?limit=50", token, businessId),
+        apiClient.get<unknown>(
           "/production-job-work/reports/stock-with-vendors",
           token,
           businessId,
         ),
-        apiClient.get<ProcessType[]>("/production-job-work/process-types", token, businessId),
+        apiClient.get<unknown>("/production-job-work/process-types", token, businessId),
       ]);
       setSummary(sumRes ?? null);
-      setBatches(batchRes?.data ?? []);
-      setJobs(jobRes?.data ?? []);
-      setVendorStock(Array.isArray(vendorRes) ? vendorRes : []);
-      setProcessTypes(Array.isArray(procRes) ? procRes : []);
+      setBatches(asList<BatchRow>(batchRes));
+      setJobs(asList<JobRow>(jobRes));
+      setVendorStock(asList<VendorStockRow>(vendorRes));
+      const processes = asList<ProcessType>(procRes);
+      setProcessTypes(processes);
+      if (processes.length === 0) {
+        toast.message("No process types yet — saving defaults…");
+        const retry = await apiClient.get<unknown>(
+          "/production-job-work/process-types",
+          token,
+          businessId,
+        );
+        setProcessTypes(asList<ProcessType>(retry));
+      }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to load production data");
     } finally {
@@ -171,6 +174,12 @@ export function ProductionJobWorkWorkspace() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (jobs.length === 1 && !selectedJobId) {
+      setSelectedJobId(jobs[0].id);
+    }
+  }, [jobs, selectedJobId]);
 
   const createBatch = async () => {
     if (!batchProductId) {
@@ -207,6 +216,10 @@ export function ProductionJobWorkWorkspace() {
       toast.error("Batch, process, and vendor are required");
       return;
     }
+    if (processTypes.length === 0) {
+      toast.error("Process list is empty — refresh the page or enable Production & Job Work");
+      return;
+    }
     setSubmitting(true);
     try {
       await apiClient.post(
@@ -232,8 +245,20 @@ export function ProductionJobWorkWorkspace() {
   };
 
   const issueMaterial = async () => {
-    if (!selectedJobId || !issueProductId || issueQty <= 0) {
-      toast.error("Select job, material, and quantity");
+    if (!selectedJobId) {
+      toast.error("Select a job row in the table first");
+      return;
+    }
+    if (!issueProductId) {
+      toast.error("Select material product");
+      return;
+    }
+    if (issueQty <= 0) {
+      toast.error("Enter issue quantity greater than 0");
+      return;
+    }
+    if (productVariants.length > 0 && !issueVariantId) {
+      toast.error("Select a variant (this product has sizes/packs)");
       return;
     }
     setSubmitting(true);
@@ -249,7 +274,7 @@ export function ProductionJobWorkWorkspace() {
         businessId,
       );
       toast.success("Material issued — warehouse stock updated");
-      setIssueQty(0);
+      setIssueQty(1);
       await load();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Issue failed");
@@ -259,10 +284,23 @@ export function ProductionJobWorkWorkspace() {
   };
 
   const receiveMaterial = async () => {
-    if (!selectedJobId) return;
+    if (!selectedJobId || !selectedJob) return;
     const total = receiveAccepted + receiveRejected + receiveWastage;
     if (total <= 0) {
       toast.error("Enter received quantities");
+      return;
+    }
+    if ((selectedJob.issuedQuantity ?? 0) <= 0) {
+      toast.error("Pehle Issue from warehouse karein — Sent abhi 0 hai.");
+      return;
+    }
+    const pending = selectedJob.pendingQuantity ?? 0;
+    if (pending <= 0) {
+      toast.error("Vendor ke paas pending maal nahi — pehle issue karein ya sab receive ho chuka hai.");
+      return;
+    }
+    if (total > pending + 0.0001) {
+      toast.error(`Sirf ${pending} pending hai — receive total is se zyada nahi ho sakta.`);
       return;
     }
     setSubmitting(true);
@@ -466,6 +504,12 @@ export function ProductionJobWorkWorkspace() {
                   </option>
                 ))}
               </select>
+              {processTypes.length === 0 ? (
+                <p className="mt-1 text-xs text-amber-700">
+                  Processes load from the server (Embroidery, Cutting, etc.). Click Refresh above or check that
+                  Production module is enabled.
+                </p>
+              ) : null}
             </FormField>
             <FormField label="Vendor / worker">
               <select className={portalInputClass} value={jobSupplierId} onChange={(e) => setJobSupplierId(e.target.value)}>
@@ -614,8 +658,15 @@ export function ProductionJobWorkWorkspace() {
                   className={portalInputClass}
                   value={issueProductId}
                   onChange={(e) => {
-                    setIssueProductId(e.target.value);
-                    setIssueVariantId("");
+                    const id = e.target.value;
+                    setIssueProductId(id);
+                    const p = products.find((x) => x.id === id);
+                    const vars = p?.variants ?? [];
+                    if (vars.length === 1) {
+                      setIssueVariantId(vars[0].id);
+                    } else {
+                      setIssueVariantId("");
+                    }
                   }}
                 >
                   <option value="">Material product</option>
@@ -630,16 +681,19 @@ export function ProductionJobWorkWorkspace() {
                     className={portalInputClass}
                     value={issueVariantId}
                     onChange={(e) => setIssueVariantId(e.target.value)}
+                    required
                   >
-                    <option value="">Variant (optional)</option>
+                    <option value="">Select variant (required)</option>
                     {productVariants.map((v) => (
                       <option key={v.id} value={v.id}>
-                        {v.name ?? v.id}
+                        {v.name ?? v.id} · stock {v.inStock ?? 0}
                       </option>
                     ))}
                   </select>
                 )}
-                <NumberInput value={issueQty} onChange={setIssueQty} min={0} />
+                <FormField label="Issue quantity">
+                  <NumberInput value={issueQty} onChange={setIssueQty} min={1} />
+                </FormField>
                 <button type="button" disabled={submitting} onClick={() => void issueMaterial()} className={portalBtnPrimaryClass}>
                   Issue from warehouse
                 </button>
@@ -658,6 +712,11 @@ export function ProductionJobWorkWorkspace() {
                 <FormField label="Wastage">
                   <NumberInput value={receiveWastage} onChange={setReceiveWastage} min={0} />
                 </FormField>
+                {(selectedJob?.issuedQuantity ?? 0) <= 0 ? (
+                  <p className="text-xs text-amber-700">
+                    Step 1: Issue material first (Sent is 0). Then record receipt.
+                  </p>
+                ) : null}
                 <button type="button" disabled={submitting} onClick={() => void receiveMaterial()} className={portalBtnPrimaryClass}>
                   Record receipt
                 </button>
