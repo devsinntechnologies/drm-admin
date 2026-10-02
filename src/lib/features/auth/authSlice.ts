@@ -43,34 +43,15 @@ type AuthState = {
   error: string | null;
 };
 
-function getInitialAuthState(): AuthState {
-  if (typeof window === "undefined") {
-    return {
-      user: null,
-      token: null,
-      role: null,
-      isLoading: false,
-      error: null,
-    };
-  }
-
-  const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
-  const role =
-    localStorage.getItem("roleName") ||
-    localStorage.getItem("auth_role") ||
-    null;
-  const businessId = localStorage.getItem("businessId");
-
-  return {
-    user: businessId ? ({ businessId } as any) : null,
-    token,
-    role,
-    isLoading: false,
-    error: null,
-  };
-}
-
-const initialState: AuthState = getInitialAuthState();
+// The server and first client render must use the same auth snapshot.
+// ReduxProvider restores the persisted session after hydration.
+const initialState: AuthState = {
+  user: null,
+  token: null,
+  role: null,
+  isLoading: false,
+  error: null,
+};
 
 export const loginUser = createAsyncThunk<
   LoginResponse,
@@ -156,6 +137,11 @@ const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
+    restoreSession: (state, action: PayloadAction<Pick<AuthState, "token" | "role" | "user">>) => {
+      state.token = action.payload.token;
+      state.role = action.payload.role;
+      state.user = action.payload.user;
+    },
     clearAuthError: (state) => {
       state.error = null;
     },
@@ -238,5 +224,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearAuthError, logout, setToken } = authSlice.actions;
+export const { clearAuthError, logout, setToken, restoreSession } = authSlice.actions;
 export default authSlice.reducer;

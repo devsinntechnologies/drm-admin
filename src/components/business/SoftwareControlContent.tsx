@@ -70,9 +70,14 @@ import {
   type SalesModuleSettings,
 } from "@/lib/module-feature-settings";
 import {
+  EXPENSE_DASHBOARD_CARD_IDS,
+  listMobileDashboardCardIds,
+  mergeDashboardCardOrder,
+  orderedSelectedDashboardCards,
+} from "@/lib/mobile-dashboard-cards";
+import {
   getMobileReadiness,
   mobileReadinessLabel,
-  MOBILE_DASHBOARD_CARDS,
   isSoftwareControlModule,
   softwareControlRoleModules,
   industryUsesMobileOrders,
@@ -151,6 +156,12 @@ export function SoftwareControlContent({
   const [dashboardCards, setDashboardCards] = useState<DashboardCardId[]>(
     (templateConfig?.dashboardCards ?? industry?.dashboardCards ?? []) as DashboardCardId[],
   );
+  const [dashboardCardOrder, setDashboardCardOrder] = useState<DashboardCardId[]>(() =>
+    mergeDashboardCardOrder(
+      (templateConfig?.dashboardCards ?? industry?.dashboardCards ?? []) as DashboardCardId[],
+    ),
+  );
+  const [dragDashboardCardId, setDragDashboardCardId] = useState<DashboardCardId | null>(null);
   const [offlineSyncEnabled, setOfflineSyncEnabled] = useState(
     (templateConfig?.moduleSettings?.offlineSync?.enabled as boolean | undefined) ?? true,
   );
@@ -205,7 +216,9 @@ export function SoftwareControlContent({
         industryId,
       ),
     );
-    setDashboardCards((templateConfig?.dashboardCards ?? industry?.dashboardCards ?? []) as DashboardCardId[]);
+    const savedCards = (templateConfig?.dashboardCards ?? industry?.dashboardCards ?? []) as DashboardCardId[];
+    setDashboardCards(savedCards);
+    setDashboardCardOrder(mergeDashboardCardOrder(savedCards));
     setOfflineSyncEnabled(
       (templateConfig?.moduleSettings?.offlineSync?.enabled as boolean | undefined) ?? true,
     );
@@ -284,6 +297,9 @@ export function SoftwareControlContent({
       const next = disableMobileModule(moduleId, enabledModules, mobileCatalog);
       setEnabledModules(next);
       setRoleAccess((prev) => normalizeRoleAccessForModules(prev, next, industryId));
+      if (moduleId === "expenses") {
+        setDashboardCards((prev) => prev.filter((id) => !EXPENSE_DASHBOARD_CARD_IDS.includes(id)));
+      }
       return;
     }
     const next = enableMobileModule(moduleId, enabledModules, mobileCatalog);
@@ -291,6 +307,16 @@ export function SoftwareControlContent({
     // Turning a module on also grants it to business admin / store manager so it
     // shows in the app immediately after save + refresh (role matrix still editable).
     setRoleAccess((prev) => grantModuleToOwnerRoles(prev, moduleId, next));
+    if (moduleId === "expenses") {
+      setDashboardCards((prev) => {
+        const merged = [...prev];
+        for (const id of EXPENSE_DASHBOARD_CARD_IDS) {
+          if (!merged.includes(id)) merged.push(id);
+        }
+        return merged;
+      });
+      setDashboardCardOrder((prev) => mergeDashboardCardOrder(prev));
+    }
   };
 
   const reorderNav = (fromId: string, toId: string) => {
@@ -314,10 +340,31 @@ export function SoftwareControlContent({
   };
 
   const toggleDashboardCard = (cardId: DashboardCardId) => {
-    setDashboardCards((prev) =>
-      prev.includes(cardId) ? prev.filter((id) => id !== cardId) : [...prev, cardId],
-    );
+    setDashboardCards((prev) => {
+      if (prev.includes(cardId)) return prev.filter((id) => id !== cardId);
+      return [...prev, cardId];
+    });
+    setDashboardCardOrder((prev) => (prev.includes(cardId) ? prev : [...prev, cardId]));
   };
+
+  const reorderDashboardCards = (fromId: DashboardCardId, toId: DashboardCardId) => {
+    if (fromId === toId) return;
+    setDashboardCardOrder((prev) => {
+      const from = prev.findIndex((id) => id === fromId);
+      const to = prev.findIndex((id) => id === toId);
+      if (from < 0 || to < 0) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
+  const mobileDashboardCards = useMemo(() => listMobileDashboardCardIds(), []);
+  const dashboardCardsForSave = useMemo(
+    () => orderedSelectedDashboardCards(dashboardCardOrder, dashboardCards),
+    [dashboardCardOrder, dashboardCards],
+  );
 
   const hasProducts =
     enabledModules.includes("menu") || enabledModules.includes("products");
@@ -390,7 +437,7 @@ export function SoftwareControlContent({
       themeMode,
       enabledModules: mergedEnabled,
       navigation: syncedNavigation,
-      dashboardCards,
+      dashboardCards: dashboardCardsForSave,
       labels: syncedLabels as IndustryTemplate["labels"],
       currency: templateConfig?.currency,
       location: templateConfig?.location,
@@ -424,9 +471,6 @@ export function SoftwareControlContent({
     );
   }
 
-  const mobileDashboardCards = (
-    Object.keys(DASHBOARD_CARD_CATALOG) as DashboardCardId[]
-  ).filter((cardId) => MOBILE_DASHBOARD_CARDS.has(cardId));
   const softwareControlModules = mobileCatalog;
 
   return (
@@ -771,9 +815,8 @@ export function SoftwareControlContent({
           <FeatureTip text="Fine-tune products, orders, categories, and invoices on the app without turning the whole module off." />
         </h2>
         <p className="mb-4 text-sm text-[#64748b]">
-          Fine-tune each mobile module: dashboard stat cards, product permissions, orders screens
-          (POS vs active queue), Reports date filters, and category filters. Save at the bottom to
-          push changes to Flutter.
+          Fine-tune dashboard KPI cards, product permissions, orders screens (POS vs active queue),
+          Reports date filters, and category filters. Save at the bottom to push changes to Flutter.
         </p>
         <div className="space-y-2">
           {enabledModules.includes("dashboard") ? (
@@ -791,17 +834,30 @@ export function SoftwareControlContent({
                   <ChevronRight className="h-4 w-4" />
                 )}
                 <LayoutDashboard className="h-4 w-4 text-[var(--brand-secondary)]" />
-                Dashboard — stat cards (mobile)
+                Dashboard — KPI stat cards (mobile + portal)
               </button>
               {expandedModule === "dashboard" ? (
-                <div className="border-t border-[#e2e8f0] p-4">
+                <div className="space-y-3 border-t border-[#e2e8f0] p-4">
+                  <p className="text-sm text-[#64748b]">
+                    Toggle cards on or off and drag to reorder. Expense cards require the{" "}
+                    <strong>Expenses</strong> module and hide automatically when it is off.
+                  </p>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {mobileDashboardCards.map((cardId) => (
+                    {mergeDashboardCardOrder(dashboardCardOrder).map((cardId) => (
                       <DashboardCardChip
                         key={cardId}
                         id={cardId}
                         checked={dashboardCards.includes(cardId)}
+                        dragging={dragDashboardCardId === cardId}
                         onToggle={() => toggleDashboardCard(cardId)}
+                        onDragStart={() => setDragDashboardCardId(cardId)}
+                        onDragEnd={() => setDragDashboardCardId(null)}
+                        onDrop={() => {
+                          if (dragDashboardCardId) {
+                            reorderDashboardCards(dragDashboardCardId, cardId);
+                          }
+                          setDragDashboardCardId(null);
+                        }}
                       />
                     ))}
                   </div>

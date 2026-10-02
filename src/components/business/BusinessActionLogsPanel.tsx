@@ -36,6 +36,7 @@ export function BusinessActionLogsPanel({
 }: BusinessActionLogsPanelProps) {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<"" | "success" | "failure">("");
+  const [module, setModule] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -45,11 +46,12 @@ export function BusinessActionLogsPanel({
       page,
       limit: 50,
       status: status || undefined,
+      module: module || undefined,
       startDate: startDate ? new Date(startDate).toISOString() : undefined,
       endDate: endDate ? new Date(endDate).toISOString() : undefined,
-      includeNormalized: false,
+      includeNormalized: true,
     }),
-    [businessId, page, status, startDate, endDate],
+    [businessId, page, status, module, startDate, endDate],
   );
 
   const { data, isFetching, error, refetch } = useGetActionLogsQuery(params);
@@ -62,7 +64,8 @@ export function BusinessActionLogsPanel({
         <div>
           <h2 className="text-base font-semibold text-[#0f172a]">Activity logs</h2>
           <p className="mt-1 text-sm text-[#64748b]">
-            API actions for {businessName ?? "this business"}. Filter by date or status.
+            API actions and DigiNizam app start/stop/crash events for{" "}
+            {businessName ?? "this business"}.
           </p>
         </div>
         <button
@@ -76,6 +79,24 @@ export function BusinessActionLogsPanel({
       </div>
 
       <div className="flex flex-wrap gap-3">
+        <label className="text-sm">
+          <span className="mb-1 block text-xs font-semibold uppercase text-[#94a3b8]">Type</span>
+          <select
+            value={module}
+            onChange={(e) => {
+              setModule(e.target.value);
+              setPage(1);
+            }}
+            className="rounded-lg border border-[#e2e8f0] px-3 py-2"
+          >
+            <option value="">All</option>
+            <option value="device-lifecycle">Device lifecycle</option>
+            <option value="device-system">System errors</option>
+            <option value="users">API: users</option>
+            <option value="products">API: products</option>
+            <option value="orders">API: orders</option>
+          </select>
+        </label>
         <label className="text-sm">
           <span className="mb-1 block text-xs font-semibold uppercase text-[#94a3b8]">From</span>
           <input

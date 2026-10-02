@@ -205,7 +205,7 @@ export function SoftwareAppUpdatePanel({ businessId }: SoftwareAppUpdatePanelPro
                 <select
                   value={selectedId}
                   onChange={(event) => setSelectedId(event.target.value)}
-                  className="h-9 min-w-[16rem] rounded-lg border border-[#e2e8f0] bg-white px-3 text-sm"
+                  className="h-11 min-w-0 w-full rounded-lg border border-[#e2e8f0] bg-white px-3 text-sm sm:w-auto sm:min-w-[16rem]"
                 >
                   <option value="">Select a published installer</option>
                   {assignable.map((release) => (

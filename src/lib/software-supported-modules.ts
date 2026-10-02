@@ -15,6 +15,9 @@ export const SOFTWARE_SUPPORTED_MODULES = new Set<ModuleId>([
   "staff",
   "inventory",
   "reports",
+  "expenses",
+  "credits",
+  "production-job-work",
 ]);
 
 /**
@@ -56,6 +59,9 @@ export const MOBILE_DASHBOARD_CARDS = new Set<string>([
   "pending-purchases",
   "total-transactions",
   "gross-profit",
+  "today-expenses",
+  "net-profit",
+  "pending-reimbursements",
   "avg-order-value",
   "inventory-value",
   "recently-added",
@@ -102,7 +108,7 @@ export function mobileModulesForIndustry(industryId?: string | null): ModuleId[]
   }
 
   if (industryId === "pharmacy") {
-    return ["dashboard", "products", "sales", "inventory", "staff", "categories", "reports"];
+    return ["dashboard", "products", "sales", "inventory", "staff", "categories", "expenses", "credits", "reports"];
   }
 
   // Retail, auto-parts, book-store, electronics, fashion, grocery, etc.
@@ -114,6 +120,9 @@ export function mobileModulesForIndustry(industryId?: string | null): ModuleId[]
     "inventory",
     "staff",
     "categories",
+    "expenses",
+    "credits",
+    "production-job-work",
     "reports",
   ];
 }

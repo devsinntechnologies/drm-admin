@@ -14,6 +14,7 @@ import type { DashboardCardId } from "@/templates/types";
 import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { usePharmacyQuery } from "@/hooks/usePharmacyQuery";
 import { useProducts } from "@/hooks/useProducts";
+import { getDashboardGridClassName, resolveDashboardCards } from "@/lib/resolve-dashboard-cards";
 import { summarizeCatalogStock } from "@/lib/retail-stock";
 import { cn } from "@/lib/utils";
 
@@ -40,7 +41,12 @@ type InvoiceDashboard = {
     daily?: InvoiceRevenue;
     monthly?: InvoiceRevenue;
   };
-  invoices?: { totalPending?: number; pendingAmount?: number };
+  invoices?: {
+    totalPending?: number;
+    pendingAmount?: number;
+    returnedToday?: number;
+    returnedAmountToday?: number;
+  };
   orders?: {
     activeOrders?: number;
     totalOrdersDaily?: number;
@@ -48,6 +54,9 @@ type InvoiceDashboard = {
     completedOrdersMonthly?: number;
   };
   grossProfit?: number;
+  todayExpenses?: number;
+  netProfit?: number;
+  pendingEmployeeReimbursements?: number;
   graph?: {
     topSellingProducts?: InvoiceTopProduct[];
   };
@@ -76,6 +85,13 @@ type RetailPurchase = {
   updatedAt?: string;
 };
 
+type RetailDashboardLive = {
+  pendingPurchases?: number;
+  todaySales?: number;
+  totalTransactions?: number;
+  grossProfit?: number;
+};
+
 export function TemplateDashboard({ cards, className }: TemplateDashboardProps) {
   const pathname = usePathname();
   const { refreshKey } = useDashboardRefresh();
@@ -84,6 +100,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
   const industryId = templateConfig?.industryId;
   const isPharmacy = industryId === "pharmacy";
   const isRetail = industryId === "retail-store";
+  const expensesEnabled = (templateConfig?.enabledModules ?? []).includes("expenses");
   const queryRefreshKey = `${refreshKey}:${pathname}`;
   const { products, loading: productsLoading, error: productsError } = useProducts({
     limit: 500,
@@ -104,6 +121,10 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
   );
   const { data: retailPurchases, loading: purchasesLoading } = usePharmacyQuery<RetailPurchase[]>(
     isRetail ? "/retail/purchases?page=1&limit=500" : null,
+    queryRefreshKey,
+  );
+  const { data: retailLive, loading: retailLoading } = usePharmacyQuery<RetailDashboardLive>(
+    isPharmacy ? null : "/retail/reports/dashboard",
     queryRefreshKey,
   );
 
@@ -127,7 +148,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
 
   const liveLoading = isPharmacy
     ? pharmacyLoading
-    : invoiceLoading || stockLoading || productsLoading || (isRetail && purchasesLoading);
+    : invoiceLoading || stockLoading || productsLoading || retailLoading || (isRetail && purchasesLoading);
 
   const formatValue = (id: DashboardCardId) => {
     if (liveLoading) {
@@ -146,7 +167,12 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
     const dailyTotal = Number(daily?.total ?? 0);
     const dailyCount = Number(invoiceLive?.orders?.totalOrdersDaily ?? 0);
     const topName = invoiceLive?.graph?.topSellingProducts?.[0]?.name;
-    const pendingInvoices = Number(invoiceLive?.invoices?.totalPending ?? 0);
+    const pendingPurchases = Number(retailLive?.pendingPurchases ?? (isRetail ? purchaseSummary.pending : 0));
+    const returnedToday = Number(invoiceLive?.invoices?.returnedToday ?? 0);
+    const grossProfit = Number(invoiceLive?.grossProfit ?? 0);
+    const todayExpenses = Number(invoiceLive?.todayExpenses ?? 0);
+    const netProfit = Number(invoiceLive?.netProfit ?? grossProfit - todayExpenses);
+    const pendingReimbursements = Number(invoiceLive?.pendingEmployeeReimbursements ?? 0);
 
     switch (id) {
       case "today-sales":
@@ -156,7 +182,13 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
       case "avg-order-value":
         return money(dailyCount > 0 ? dailyTotal / dailyCount : 0);
       case "gross-profit":
-        return money(Number(invoiceLive?.grossProfit ?? 0));
+        return money(grossProfit);
+      case "today-expenses":
+        return money(todayExpenses);
+      case "net-profit":
+        return money(netProfit);
+      case "pending-reimbursements":
+        return money(pendingReimbursements);
       case "low-stock":
       case "low-stock-ingredients":
       case "low-stock-sizes":
@@ -169,7 +201,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
             (stockLive?.lowStockCount ?? 0) + (stockLive?.outOfStockCount ?? 0),
         );
       case "pending-purchases":
-        return String(isRetail ? purchaseSummary.pending : pendingInvoices);
+        return String(pendingPurchases);
       case "purchase-value":
         return money(isRetail ? purchaseSummary.receivedToday : 0);
       case "active-orders":
@@ -187,9 +219,10 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
       case "best-collection":
         return topName || "—";
       case "warranty-claims":
+        return "0";
       case "product-returns":
       case "returns-exchanges":
-        return "0";
+        return String(returnedToday);
       case "inventory-value":
         if (!productsLoading && !productsError) {
           return money(catalogStock.inventoryValue);
@@ -204,10 +237,11 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
     ? " Values below are live pharmacy KPIs."
     : " Values below use live tracked stock from the product catalog, plus issued invoices.";
 
-  const displayCards: DashboardCardId[] =
-    !isPharmacy && cards.length > 0 && !cards.includes("gross-profit")
-      ? [...cards, "gross-profit"]
-      : cards;
+  const displayCards = resolveDashboardCards({
+    configuredCards: cards,
+    industryId,
+    expensesEnabled,
+  });
 
   if (!displayCards.length) {
     return (
@@ -219,8 +253,11 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
     );
   }
 
-  const accentCards = displayCards.slice(0, 2);
-  const statCards = displayCards.slice(2);
+  const useAccentLayout = displayCards.length <= 3;
+  const accentCards = useAccentLayout ? displayCards.slice(0, 2) : [];
+  const statCards = useAccentLayout ? displayCards.slice(2) : displayCards;
+  const compactGrid = displayCards.length > 3;
+
   const lowStockItems =
     catalogStock.attentionItems.length > 0
       ? catalogStock.attentionItems
@@ -265,7 +302,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
       ) : null}
 
       {statCards.length ? (
-        <div className={cn("grid grid-cols-1 gap-4", statCards.length >= 3 ? "md:grid-cols-3" : "md:grid-cols-2")}>
+        <div className={cn(getDashboardGridClassName(displayCards.length))}>
           {statCards.map((id, index) => {
             const meta = DASHBOARD_CARD_CATALOG[id];
             const value = formatValue(id);
@@ -277,6 +314,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
                 value={value}
                 icon={Activity}
                 tone={tone}
+                compact={compactGrid}
               />
             );
           })}

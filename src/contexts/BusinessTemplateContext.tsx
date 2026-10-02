@@ -59,12 +59,12 @@ export function BusinessTemplateProvider({ children, businessId = null }: Busine
     (error as { status?: number }).status === 401;
 
   useEffect(() => {
-    if (!businessId) return;
+    if (!hasHydrated || !businessId) return;
     if (!authToken) {
       const returnTo = `/dashboard/businessAdmin?businessId=${encodeURIComponent(businessId)}`;
       router.replace(`/login?returnTo=${encodeURIComponent(returnTo)}`);
     }
-  }, [authToken, businessId, router]);
+  }, [authToken, businessId, hasHydrated, router]);
 
   const templateConfig = hydrateWorkspaceTemplate(business?.templateConfig ?? null);
 
@@ -72,7 +72,9 @@ export function BusinessTemplateProvider({ children, businessId = null }: Busine
     const primaryColor = templateConfig?.primaryColor ?? DEFAULT_PRIMARY;
     const secondaryColor = templateConfig?.secondaryColor ?? DEFAULT_SECONDARY;
     const themeMode = templateConfig?.themeMode ?? "light";
-    const isWorkspaceLoading = Boolean(businessId && authToken && !isError && isLoading);
+    const isWorkspaceLoading = Boolean(
+      hasHydrated && businessId && authToken && !isError && isLoading,
+    );
 
     return {
       businessId: businessId ?? null,
@@ -89,7 +91,7 @@ export function BusinessTemplateProvider({ children, businessId = null }: Busine
       isUnauthorized,
       themeStyle: buildWorkspaceThemeStyle(primaryColor, secondaryColor, themeMode) as CSSProperties,
     };
-  }, [authToken, business, businessId, isError, isLoading, isUnauthorized, templateConfig]);
+  }, [authToken, business, businessId, hasHydrated, isError, isLoading, isUnauthorized, templateConfig]);
 
   return (
     <BusinessTemplateContext.Provider value={value}>{children}</BusinessTemplateContext.Provider>

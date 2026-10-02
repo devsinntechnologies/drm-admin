@@ -26,9 +26,19 @@ type InvoiceReports = {
   fromDate: string;
   toDate: string;
   revenue: { completed: number; open: number; total: number };
-  orders: { total: number; completed: number; cancelled: number; open: number };
+  orders: {
+    total: number;
+    completed: number;
+    cancelled: number;
+    open: number;
+    returned?: number;
+  };
   topProducts: Array<{ productId: string; name: string; quantity: number; revenue: number }>;
   byOrderType: Array<{ orderType: string; count: number; revenue: number }>;
+  grossProfit?: number;
+  totalExpenses?: number;
+  expensesByCategory?: Array<{ category: string; amount: number }>;
+  netProfit?: number;
 };
 
 function monthStartIso() {
@@ -133,7 +143,7 @@ export function WorkspaceReportsPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-4 xl:grid-cols-7">
           <PortalStatCard label="Sales" value={money(Number(invoiceReport?.revenue.total ?? 0))} />
           <PortalStatCard label="Unpaid" value={money(Number(invoiceReport?.revenue.open ?? 0))} tone="accent" />
           <PortalStatCard label="Invoices" value={invoiceReport?.orders.total ?? 0} />
@@ -142,7 +152,43 @@ export function WorkspaceReportsPage() {
             value={invoiceReport?.orders.completed ?? 0}
             tone="secondary"
           />
+          <PortalStatCard
+            label="Gross profit"
+            value={money(Number(invoiceReport?.grossProfit ?? 0))}
+          />
+          <PortalStatCard
+            label="Expenses"
+            value={money(Number(invoiceReport?.totalExpenses ?? 0))}
+            tone="accent"
+          />
+          <PortalStatCard
+            label="Net profit"
+            value={money(Number(invoiceReport?.netProfit ?? 0))}
+            tone="secondary"
+          />
         </div>
+        {(invoiceReport?.orders.returned ?? 0) > 0 ? (
+          <p className="mt-3 text-sm text-[#64748b]">
+            Returns in period: {invoiceReport?.orders.returned}
+          </p>
+        ) : null}
+        {(invoiceReport?.expensesByCategory ?? []).length ? (
+          <>
+            <h2 className="mt-6 text-sm font-semibold text-[#64748b]">Expenses by category</h2>
+            <DataTable
+              columns={[
+                { key: "category", label: "Category" },
+                { key: "amount", label: "Amount", className: "text-right" },
+              ]}
+              rows={asList<NonNullable<InvoiceReports["expensesByCategory"]>[number]>(
+                invoiceReport?.expensesByCategory,
+              ).map((row) => ({
+                category: String(row.category ?? "—"),
+                amount: money(Number(row.amount)),
+              }))}
+            />
+          </>
+        ) : null}
         <h2 className="mt-6 text-sm font-semibold text-[#64748b]">Top items</h2>
         <DataTable
           columns={[

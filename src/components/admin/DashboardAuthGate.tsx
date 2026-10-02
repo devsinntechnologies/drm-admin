@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
 import Loading from "@/components/common/Loading";
 import { getStoredAuthToken } from "@/lib/utils";
 
@@ -12,7 +11,6 @@ import { getStoredAuthToken } from "@/lib/utils";
  * while the URL still changed.
  */
 export function DashboardAuthGate({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
@@ -28,7 +26,7 @@ export function DashboardAuthGate({ children }: { children: ReactNode }) {
   return (
     <>
       {!allowed ? <Loading fullScreen label="Opening workspace…" /> : null}
-      <div key={pathname} hidden={!allowed} className={allowed ? "contents" : undefined}>
+      <div hidden={!allowed} className={allowed ? "contents" : undefined}>
         {children}
       </div>
     </>

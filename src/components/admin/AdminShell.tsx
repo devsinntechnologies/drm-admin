@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
+import * as NavigationDialog from "@radix-ui/react-dialog";
 import { Activity, AppWindow, Building2, Crown, CreditCard, Download, Globe2, LayoutGrid, LayoutTemplate, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Receipt, Bell, Shapes, ShoppingCart, Smartphone, Store, Users, UtensilsCrossed, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { buildBusinessWorkspaceNav, canAccessWorkspaceModule, type WorkspaceNavTab } from "@/lib/build-business-workspace-nav";
@@ -304,6 +305,26 @@ export default function AdminShell({
   const hookBusinessId = useActiveBusinessId();
   const businessId = contextBusinessId ?? hookBusinessId;
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const routeKey = `${pathname}?${searchParams.toString()}`;
+  const [mobileNavRoute, setMobileNavRoute] = useState(routeKey);
+  const navigationOpen = mobileNavOpen && mobileNavRoute === routeKey;
+  // Forget the open state on any route change, including query-only history
+  // navigation, so returning to an old URL cannot reopen an obsolete drawer.
+  if (mobileNavRoute !== routeKey) {
+    setMobileNavRoute(routeKey);
+    setMobileNavOpen(false);
+  }
+
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 1280px)");
+    const closeOnDesktop = () => {
+      if (desktop.matches) setMobileNavOpen(false);
+    };
+    closeOnDesktop();
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
+  }, []);
   const router = useRouter();
   const { data: activeBusiness } = useGetBusinessByIdQuery(businessId || "", {
     skip: !businessId,
@@ -398,17 +419,38 @@ export default function AdminShell({
   }, [isMounted, resolvedRole, pathname, templateConfig, businessId, router]);
 
   const visibleTabs = useMemo(() => {
-    // During SSR and first paint, we MUST return a static set of tabs that match the server
+    const pathForNav = pathname || (typeof window !== "undefined" ? window.location.pathname : "");
+    const onBusinessAdminPath = pathForNav.includes("/businessAdmin");
+
+    // During SSR and first paint, avoid super-admin nav on business workspace routes.
     if (!isMounted) {
-      return tabs.filter((tab) => tab.key === "dashboard" || tab.key === "businesses" || tab.key === "subscriptions" || tab.key === "industry-templates" || tab.key === "app-updates" || tab.key === "action-logs");
+      if (onBusinessAdminPath) {
+        return tabs.filter(
+          (tab) =>
+            tab.key === "dashboard" ||
+            tab.key === "products" ||
+            tab.key === "invoices" ||
+            tab.key === "orders" ||
+            tab.key === "users",
+        );
+      }
+      return tabs.filter(
+        (tab) =>
+          tab.key === "dashboard" ||
+          tab.key === "businesses" ||
+          tab.key === "subscriptions" ||
+          tab.key === "industry-templates" ||
+          tab.key === "app-updates" ||
+          tab.key === "action-logs",
+      );
     }
 
-    const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+    const currentPath = pathForNav;
     const isSuperAdminRoute = currentPath.includes("/superAdmin");
     const isBusinessAdminRoute = currentPath.includes("/businessAdmin");
 
     const isImpersonating = !!businessId && resolvedRole === "super_admin";
-    const shouldShowBusinessTabs = isBusinessAdminRoute || isImpersonating || resolvedRole === "business_admin";
+    const shouldShowBusinessTabs = !isSuperAdminRoute && (isBusinessAdminRoute || isImpersonating || resolvedRole === "business_admin");
 
     if (shouldShowBusinessTabs && templateConfig && businessId) {
       const websiteTab: WorkspaceNavTab = {
@@ -482,7 +524,7 @@ export default function AdminShell({
     if (!isSuperAdminRoute && (isImpersonating || shouldShowBusinessTabs || resolvedRole === "business_admin")) {
       baseTabs = baseTabs.map(tab => {
         if (tab.key === "dashboard") {
-          return { ...tab, href: "/dashboard/businessAdmin" };
+          return { ...tab, href: appendBusinessId("/dashboard/businessAdmin", businessId) };
         }
         if (businessId && (tab.href.includes("businessAdmin") || tab.href === "/dashboard")) {
           const separator = tab.href.includes("?") ? "&" : "?";
@@ -529,6 +571,10 @@ export default function AdminShell({
     : pageTitle || "DigiNizam Admin";
 
   return (
+    <NavigationDialog.Root open={navigationOpen} onOpenChange={(open) => {
+      setMobileNavRoute(routeKey);
+      setMobileNavOpen(open);
+    }}>
     <div className="admin-shell min-h-screen bg-[var(--app-bg)] text-[var(--text-primary)]">
       <DocumentBranding title={documentTitle} faviconUrl={isBusinessBranded ? shellLogo : null} />
       <aside
@@ -566,6 +612,9 @@ export default function AdminShell({
               const link = (
                 <Link
                   href={isMounted ? tab.href : tab.href.split("?")[0]}
+                  aria-label={tab.label}
+                  aria-current={active ? "page" : undefined}
+                  data-active={active}
                   className={cn(
                     "group flex min-w-0 items-center gap-3 rounded-lg py-3 text-sm font-semibold transition-all duration-200",
                     sidebarCollapsed ? "justify-center px-2" : "px-4",
@@ -640,7 +689,7 @@ export default function AdminShell({
 
       <div className={cn("transition-[padding] duration-200", sidebarCollapsed ? "xl:pl-[4.5rem]" : "xl:pl-72")}>
         <header className="admin-shell-header sticky top-0 z-30 border-b bg-[var(--surface)] py-3" style={{ borderColor: "var(--border-subtle)" }}>
-          <div className="flex w-full items-center justify-between gap-3 px-4 lg:px-6">
+          <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 lg:px-6">
             <div className="flex min-w-0 flex-1 items-center gap-3">
               {HeaderIcon ? (
                 <div className="portal-icon-box !h-10 !w-10 shrink-0 !rounded-xl">
@@ -668,8 +717,8 @@ export default function AdminShell({
               </div>
             </div>
 
+            {headerActions ? <div className="order-last flex w-full flex-wrap items-center gap-2 sm:order-none sm:w-auto">{headerActions}</div> : null}
             <div className="flex shrink-0 items-center gap-2">
-              {headerActions ? <div className="hidden items-center gap-2 sm:flex">{headerActions}</div> : null}
               <button
                 type="button"
                 className="hidden h-10 w-10 items-center justify-center rounded-xl border bg-[var(--surface)] text-[var(--text-muted)] hover:bg-[var(--surface-muted)] sm:inline-flex"
@@ -679,34 +728,27 @@ export default function AdminShell({
               >
                 <Bell className="h-4.5 w-4.5" />
               </button>
-              <button
+              <NavigationDialog.Trigger asChild><button
                 type="button"
-                onClick={() => setMobileNavOpen(true)}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-xl border bg-[var(--surface)] text-[var(--text-primary)] xl:hidden"
                 style={{ borderColor: "var(--border-subtle)" }}
                 aria-label="Open navigation menu"
               >
                 <Menu className="h-5 w-5" />
-              </button>
+              </button></NavigationDialog.Trigger>
             </div>
           </div>
         </header>
 
-        <main className="px-4 pb-8 pt-6 sm:px-6 lg:px-10 lg:pb-11">
+        <main className="min-w-0 px-4 pb-8 pt-6 sm:px-6 lg:px-10 lg:pb-11">
           {children}
         </main>
       </div>
 
-      {mobileNavOpen ? (
-        <div className="fixed inset-0 z-50 xl:hidden">
-          <button
-            type="button"
-            aria-label="Close navigation menu"
-            className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]"
-            onClick={closeMobileNav}
-          />
+          <NavigationDialog.Overlay className="admin-nav-overlay fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-[1px] xl:hidden" />
 
-          <aside className="admin-shell-mobile absolute left-0 top-0 flex h-full w-[88vw] max-w-sm flex-col overflow-hidden border-r bg-[var(--surface)] shadow-[0_20px_40px_rgba(15,23,42,0.18)]" style={{ borderColor: "var(--border-subtle)" }}>
+          <NavigationDialog.Content aria-describedby={undefined} className="admin-shell-mobile fixed left-0 top-0 z-50 flex h-dvh w-[88vw] max-w-sm flex-col overflow-hidden border-r bg-[var(--surface)] shadow-[0_20px_40px_rgba(15,23,42,0.18)] xl:hidden" style={{ borderColor: "var(--border-subtle)" }}>
+            <NavigationDialog.Title className="sr-only">Workspace navigation</NavigationDialog.Title>
             <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "var(--border-subtle)" }}>
               <div className="flex min-w-0 items-center gap-3">
                 <SidebarBrand
@@ -741,6 +783,8 @@ export default function AdminShell({
                     <Link
                       key={tab.key}
                       href={isMounted ? tab.href : tab.href.split("?")[0]}
+                      aria-current={active ? "page" : undefined}
+                      data-active={active}
                       onClick={closeMobileNav}
                       className={cn(
                         "group flex min-w-0 items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition-all duration-200",
@@ -780,9 +824,8 @@ export default function AdminShell({
                 </button>
               </div>
             </div>
-          </aside>
-        </div>
-      ) : null}
+          </NavigationDialog.Content>
     </div>
+    </NavigationDialog.Root>
   );
 }

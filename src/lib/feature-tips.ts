@@ -117,6 +117,9 @@ export const INVOICE_TIPS = {
   view: "Open the full bill: items, totals, and payment status.",
   print: "Send this invoice to a connected printer. Disabled if Software Control turns printing off.",
   delete: "Remove this invoice. Use only for mistakes — this cannot be undone from here.",
+  return:
+    "Permanently return this invoice. Removes it from sales/profit and restores stock. Cannot be undone.",
+  returned: "This invoice was returned. Print and return are no longer available.",
   from: "Start of the report period (inclusive).",
   to: "End of the report period (inclusive).",
 };

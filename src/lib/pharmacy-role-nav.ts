@@ -79,6 +79,8 @@ export const PHARMACY_ROLE_NAV: Record<string, string[]> = {
     "sales",
     "invoices",
     "expenses",
+    "credits",
+    "production-job-work",
     "reports",
     "staff",
     "users",
@@ -90,6 +92,7 @@ export const PHARMACY_ROLE_NAV: Record<string, string[]> = {
     "inventory",
     "purchases",
     "suppliers",
+    "production-job-work",
     "reports",
   ],
 };

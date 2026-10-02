@@ -18,8 +18,26 @@ export type MobileDeviceSyncRecord = {
   lastHeartbeatAt: string | null;
   lastSuccessfulSyncAt: string | null;
   lastError: string | null;
+  lastLifecycleEvent: string | null;
+  lastStoppedAt: string | null;
+  lastStopReason: string | null;
   versionCode: number | null;
   updatedAt: string;
+};
+
+export type MobileDeviceLifecycleEvent = {
+  id: string;
+  businessId: string;
+  deviceId: string;
+  deviceName: string | null;
+  platform: string | null;
+  appVersion: string | null;
+  eventType: string;
+  sessionId: string;
+  reason: string | null;
+  details: Record<string, unknown> | null;
+  occurredAt: string;
+  createdAt: string;
 };
 
 export type BusinessLiveStatus = {
@@ -37,7 +55,7 @@ function unwrapData<T>(response: unknown): T {
 export const mobileSyncApi = createApi({
   reducerPath: "mobileSyncApi",
   baseQuery: authenticatedBaseQueryWithReauth,
-  tagTypes: ["MobileSyncDevices", "MobileSyncLiveStatus"],
+  tagTypes: ["MobileSyncDevices", "MobileSyncLiveStatus", "MobileSyncLifecycle"],
   endpoints: (builder) => ({
     getMobileSyncDevices: builder.query<MobileDeviceSyncRecord[], string | void>({
       query: (businessId) =>
@@ -47,6 +65,22 @@ export const mobileSyncApi = createApi({
       transformResponse: (response: unknown) => unwrapData<MobileDeviceSyncRecord[]>(response),
       providesTags: (_result, _error, businessId) => [
         { type: "MobileSyncDevices", id: businessId || "ALL" },
+      ],
+    }),
+    getMobileSyncLifecycleEvents: builder.query<
+      MobileDeviceLifecycleEvent[],
+      { businessId: string; deviceId?: string; limit?: number }
+    >({
+      query: ({ businessId, deviceId, limit }) => {
+        const params = new URLSearchParams({ businessId });
+        if (deviceId) params.set("deviceId", deviceId);
+        if (limit) params.set("limit", String(limit));
+        return `/mobile-sync/lifecycle-events?${params.toString()}`;
+      },
+      transformResponse: (response: unknown) =>
+        unwrapData<MobileDeviceLifecycleEvent[]>(response),
+      providesTags: (_result, _error, arg) => [
+        { type: "MobileSyncLifecycle", id: arg.businessId },
       ],
     }),
     // The "Live" half of the Live/Synced status pair -- whether any
@@ -62,4 +96,8 @@ export const mobileSyncApi = createApi({
   }),
 });
 
-export const { useGetMobileSyncDevicesQuery, useGetMobileSyncLiveStatusQuery } = mobileSyncApi;
+export const {
+  useGetMobileSyncDevicesQuery,
+  useGetMobileSyncLiveStatusQuery,
+  useGetMobileSyncLifecycleEventsQuery,
+} = mobileSyncApi;

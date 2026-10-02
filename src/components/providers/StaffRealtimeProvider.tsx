@@ -103,6 +103,7 @@ export default function StaffRealtimeProvider({
     socket.on("invoice:generated", onInvoiceChanged);
     socket.on("new_invoice", onInvoiceChanged);
     socket.on("invoice:updated", onInvoiceChanged);
+    socket.on("invoice:returned", onInvoiceChanged);
     socket.on("printers:updated", onPrintersUpdated);
     socket.on("print_jobs:updated", onPrintJobsUpdated);
     socket.on("business:deactivated", onBusinessDeactivated);
@@ -115,6 +116,7 @@ export default function StaffRealtimeProvider({
       socket.off("invoice:generated", onInvoiceChanged);
       socket.off("new_invoice", onInvoiceChanged);
       socket.off("invoice:updated", onInvoiceChanged);
+      socket.off("invoice:returned", onInvoiceChanged);
       socket.off("printers:updated", onPrintersUpdated);
       socket.off("print_jobs:updated", onPrintJobsUpdated);
       socket.off("business:deactivated", onBusinessDeactivated);

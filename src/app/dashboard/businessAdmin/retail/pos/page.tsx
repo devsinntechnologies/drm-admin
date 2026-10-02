@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Minus, Plus, Search, ShoppingCart, Trash2, X } from "lucide-react";
+import { Loader2, Minus, Plus, Search, ShoppingCart, Trash2, Wallet, X } from "lucide-react";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
@@ -29,6 +29,8 @@ import {
   isStockTracked,
   hasVariants,
 } from "@/lib/retail-stock";
+import CreditPartyDialog from "@/components/retail/CreditPartyDialog";
+import { hasCreditIdentifier, type OrderCreditDetails } from "@/lib/credit-types";
 
 type CartLine = {
   lineKey: string;
@@ -96,6 +98,9 @@ function PosContent() {
   const [submitting, setSubmitting] = useState(false);
   const [receipt, setReceipt] = useState<RetailSaleReceipt | null>(null);
   const [variantPicker, setVariantPicker] = useState<Product | null>(null);
+  const [creditDetails, setCreditDetails] = useState<OrderCreditDetails | null>(null);
+  const [creditDialogOpen, setCreditDialogOpen] = useState(false);
+  const [creditDialogForCheckout, setCreditDialogForCheckout] = useState(false);
 
   useEffect(() => {
     const storedRole = typeof window !== "undefined" ? localStorage.getItem("roleName") : null;
@@ -222,12 +227,22 @@ function PosContent() {
   const subtotal = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
   const total = Math.max(0, subtotal - discountAmount + taxAmount);
 
-  const checkout = async () => {
+  const checkout = async (creditOverride?: OrderCreditDetails | null) => {
     if (!cart.length) {
       toast.error("Cart is empty");
       return;
     }
-    const toastId = toast.loading("Processing sale...");
+
+    const isCredit = paymentMethod === "credit";
+    const resolvedCredit = creditOverride ?? creditDetails;
+
+    if (isCredit && !hasCreditIdentifier(resolvedCredit ?? {})) {
+      setCreditDialogForCheckout(true);
+      setCreditDialogOpen(true);
+      return;
+    }
+
+    const toastId = toast.loading(isCredit ? "Recording credit sale..." : "Processing sale...");
     setSubmitting(true);
     try {
       const sale = await apiClient.post<RetailSaleReceipt>(
@@ -243,16 +258,35 @@ function PosContent() {
           taxAmount,
           paymentMethod,
           ...(customerId ? { customerId } : {}),
+          ...(isCredit && resolvedCredit
+            ? {
+                credit: {
+                  partyId: resolvedCredit.partyId,
+                  name: resolvedCredit.name,
+                  phone: resolvedCredit.phone,
+                  email: resolvedCredit.email,
+                  dueDate: resolvedCredit.dueDate,
+                  clientCreditId: resolvedCredit.clientCreditId,
+                },
+              }
+            : {}),
         },
         token,
         businessId,
       );
-      toast.success(`Sale ${sale.saleNumber} completed`, { id: toastId });
+      toast.success(
+        isCredit
+          ? `Credit sale ${sale.saleNumber} recorded`
+          : `Sale ${sale.saleNumber} completed`,
+        { id: toastId },
+      );
       setReceipt(sale);
       setCart([]);
       setDiscountAmount(0);
       setTaxAmount(0);
       setCustomerId("");
+      setCreditDetails(null);
+      setPaymentMethod("cash");
       bumpDashboardRefresh();
       await refetchProducts(1);
     } catch (err) {
@@ -415,29 +449,92 @@ function PosContent() {
               </div>
               <div className="flex items-center justify-between">
                 <label className="text-sm font-semibold">Payment</label>
-                <select className={`${portalInputClass} w-40`} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                <select
+                  className={`${portalInputClass} w-40`}
+                  value={paymentMethod}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setPaymentMethod(next);
+                    if (next !== "credit") {
+                      setCreditDetails(null);
+                    }
+                  }}
+                >
                   <option value="cash">Cash</option>
                   <option value="card">Card</option>
                   <option value="bank_transfer">Bank transfer</option>
                   <option value="mobile_wallet">Mobile wallet</option>
+                  <option value="credit">Credit (Udhaar)</option>
                 </select>
               </div>
+              {paymentMethod === "credit" ? (
+                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase text-[var(--text-muted)]">Bill to</p>
+                      {creditDetails && hasCreditIdentifier(creditDetails) ? (
+                        <>
+                          <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">
+                            {creditDetails.name || creditDetails.phone || creditDetails.email}
+                          </p>
+                          {creditDetails.phone ? (
+                            <p className="text-xs text-[var(--text-muted)]">{creditDetails.phone}</p>
+                          ) : null}
+                          {creditDetails.dueDate ? (
+                            <p className="mt-1 text-xs text-[var(--text-muted)]">
+                              Due {new Date(`${creditDetails.dueDate}T00:00:00`).toLocaleDateString("en-GB")}
+                            </p>
+                          ) : null}
+                        </>
+                      ) : (
+                        <p className="mt-1 text-sm text-[var(--text-muted)]">Select who this credit sale is for</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCreditDialogForCheckout(false);
+                        setCreditDialogOpen(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-semibold"
+                    >
+                      <Wallet className="h-3.5 w-3.5" />
+                      {creditDetails ? "Change" : "Select"}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               <div className="flex items-center justify-between text-lg font-bold">
                 <span>Total</span>
                 <span>Rs {total.toLocaleString()}</span>
               </div>
               <button
-                onClick={checkout}
+                onClick={() => void checkout()}
                 disabled={submitting || !cart.length}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand-primary)] py-3.5 text-sm font-bold text-white disabled:opacity-60"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Complete Sale
+                {paymentMethod === "credit" ? "Complete Credit Sale" : "Complete Sale"}
               </button>
             </div>
           </div>
         </div>
       </PortalPage>
+
+      <CreditPartyDialog
+        open={creditDialogOpen}
+        onOpenChange={setCreditDialogOpen}
+        token={token}
+        businessId={businessId}
+        initial={creditDetails}
+        onSave={(details) => {
+          setCreditDetails(details);
+          if (creditDialogForCheckout && paymentMethod === "credit" && cart.length > 0) {
+            void checkout(details);
+          }
+          setCreditDialogForCheckout(false);
+        }}
+      />
 
       <Dialog open={!!variantPicker} onOpenChange={(open) => !open && setVariantPicker(null)}>
         <DialogContent className="max-w-md">

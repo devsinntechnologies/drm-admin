@@ -48,12 +48,14 @@ export function PortalStatCard({
   value,
   icon: Icon,
   tone = "primary",
+  compact = false,
   className,
 }: {
   label: string;
   value: React.ReactNode;
   icon?: LucideIcon;
   tone?: "primary" | "secondary" | "accent" | "neutral";
+  compact?: boolean;
   className?: string;
 }) {
   const tones = {
@@ -64,16 +66,26 @@ export function PortalStatCard({
   };
 
   return (
-    <article className={cn("portal-stat-card", className)}>
-      <div className="flex items-center gap-4">
+    <article className={cn("portal-stat-card", compact && "p-3 sm:p-4", className)}>
+      <div className={cn("flex items-center", compact ? "gap-2.5" : "gap-4")}>
         {Icon ? (
-          <div className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-white/10 text-white", tones[tone])}>
-            <Icon className="h-5 w-5" strokeWidth={1.8} />
+          <div
+            className={cn(
+              "grid shrink-0 place-items-center rounded-lg border border-white/10 text-white",
+              compact ? "h-9 w-9" : "h-12 w-12",
+              tones[tone],
+            )}
+          >
+            <Icon className={cn(compact ? "h-4 w-4" : "h-5 w-5")} strokeWidth={1.8} />
           </div>
         ) : null}
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">{label}</p>
-          <p className="mt-1 text-2xl font-bold text-[var(--text-primary)]">{value}</p>
+        <div className="min-w-0">
+          <p className={cn("font-semibold uppercase tracking-wider text-[var(--text-muted)]", compact ? "text-[10px]" : "text-xs")}>
+            {label}
+          </p>
+          <p className={cn("mt-1 font-bold text-[var(--text-primary)] truncate", compact ? "text-lg" : "text-2xl")}>
+            {value}
+          </p>
         </div>
       </div>
     </article>
@@ -211,7 +223,7 @@ export const portalBtnOutlineClass =
 export const portalLinkClass = "text-sm font-semibold text-[var(--brand-secondary)] hover:underline";
 
 export const portalTableWrapClass =
-  "overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)]";
+  "min-w-0 max-w-full overflow-x-auto rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)]";
 
 export const portalTableHeadClass =
   "bg-[var(--surface-muted)] text-left text-xs uppercase text-[var(--text-muted)]";

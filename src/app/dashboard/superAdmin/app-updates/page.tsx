@@ -308,7 +308,7 @@ function AppUpdatesContent() {
               No POS devices have checked in yet. Versions appear here after the Flutter app sends a heartbeat.
             </p>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white">
+            <div className="max-w-full overflow-x-auto rounded-2xl border border-[#e2e8f0] bg-white">
               <table className="w-full text-left text-sm">
                 <thead className="bg-[#f8fafc] text-xs uppercase tracking-wider text-[#64748b]">
                   <tr>
@@ -401,7 +401,7 @@ function AppUpdatesContent() {
               }
             />
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white">
+            <div className="max-w-full overflow-x-auto rounded-2xl border border-[#e2e8f0] bg-white">
               <table className="w-full text-left text-sm">
                 <thead className="bg-[#f8fafc] text-xs uppercase tracking-wider text-[#64748b]">
                   <tr>

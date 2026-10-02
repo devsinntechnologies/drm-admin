@@ -1,5 +1,32 @@
 @import "tailwindcss";
 
+/* Keep shared portal surfaces within narrow viewports; tables scroll locally. */
+.portal-page, .portal-card, .portal-header, .dn-tab-bar {
+  min-width: 0;
+}
+
+.admin-shell-mobile {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@keyframes admin-nav-enter {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes admin-nav-exit {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .admin-shell-mobile[data-state="open"] { animation: admin-nav-enter 180ms ease-out; }
+  .admin-shell-mobile[data-state="closed"] { animation: admin-nav-exit 150ms ease-in; }
+}
+
+@media (max-width: 639px) {
+  .admin-shell-header { position: relative; }
+  .portal-input, .wizard-input { font-size: 1rem; }
+}
+
 :root {
   /* DigiNizam logo palette — flat, no gradients */
   --brand-primary: #001840;
@@ -1722,7 +1749,8 @@ button.portal-industry-card:hover {
 }
 
 .snooker-table-wrap {
-  overflow: hidden;
+  max-width: 100%;
+  overflow-x: auto;
   border-radius: 1.25rem;
   border: 1px solid var(--border-subtle);
   background: var(--surface);
