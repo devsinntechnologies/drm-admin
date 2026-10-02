@@ -220,6 +220,7 @@ export type IndustryTemplate = {
     delivery?: boolean;
     timeBilling?: boolean;
     creditLedger?: boolean;
+    productionJobWork?: boolean;
   };
   /** Full product-scope modules (may be more granular than the sidebar). */
   productScope?: IndustryProductScopeItem[];

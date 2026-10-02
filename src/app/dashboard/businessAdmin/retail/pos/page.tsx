@@ -236,7 +236,7 @@ function PosContent() {
     const isCredit = paymentMethod === "credit";
     const resolvedCredit = creditOverride ?? creditDetails;
 
-    if (isCredit && !hasCreditIdentifier(resolvedCredit ?? {})) {
+    if (isCredit && (!resolvedCredit || !hasCreditIdentifier(resolvedCredit))) {
       setCreditDialogForCheckout(true);
       setCreditDialogOpen(true);
       return;
