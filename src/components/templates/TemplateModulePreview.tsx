@@ -227,7 +227,7 @@ function MockTable({
   const columns = Object.keys(rows[0]);
 
   return (
-    <div className={cn("overflow-hidden rounded-xl border", dark ? "border-white/10 bg-white/5" : "border-[#e2e8f0] bg-white")}>
+    <div className={cn("max-w-full overflow-x-auto rounded-xl border", dark ? "border-white/10 bg-white/5" : "border-[#e2e8f0] bg-white")}>
       <table className="w-full text-left">
         <thead className={cn(dark ? "bg-white/5 text-white/50" : "bg-[#f8fafc] text-[#64748b]")}>
           <tr>

@@ -286,7 +286,7 @@ function SalesContent() {
         ) : error ? (
           <p className="text-sm text-red-600">{error}</p>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)]">
+          <div className="max-w-full overflow-x-auto rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)]">
             <table className="w-full text-sm">
               <thead className="bg-[var(--surface-muted)] text-left text-xs uppercase text-[var(--text-muted)]">
                 <tr>

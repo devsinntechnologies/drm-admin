@@ -42,7 +42,7 @@ const DialogContent = React.forwardRef<
         "fixed left-1/2 z-[200] w-[92vw] max-w-lg -translate-x-1/2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 text-[var(--text-primary)] shadow-[0_24px_60px_rgba(0,0,0,0.35)]",
         align === "top"
           ? "top-6 max-h-[calc(100dvh-3rem)] translate-y-0 overflow-y-auto"
-          : "top-1/2 -translate-y-1/2",
+          : "top-1/2 max-h-[calc(100dvh-2rem)] -translate-y-1/2 overflow-y-auto",
         className,
       )}
       {...props}

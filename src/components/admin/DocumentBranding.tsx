@@ -6,16 +6,22 @@ export const DEFAULT_PORTAL_TITLE = "DigiNizam Admin";
 export const DEFAULT_PORTAL_ICON = "/logo-mark.svg";
 
 function upsertIconLink(rel: string, href: string) {
-  document.querySelectorAll(`link[rel="${rel}"]`).forEach((node) => node.remove());
-  const link = document.createElement("link");
-  link.rel = rel;
+  // Next/React owns metadata links. Removing them breaks later route commits
+  // when React tries to reconcile the detached nodes (removeChild errors).
+  let link = document.head.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = rel;
+    document.head.appendChild(link);
+  }
   link.href = href;
   if (href.startsWith("data:image")) {
     link.type = href.slice(5).split(";")[0] || "image/png";
-  } else if (!href.endsWith(".svg")) {
+  } else if (href.split(/[?#]/)[0].endsWith(".svg")) {
+    link.type = "image/svg+xml";
+  } else {
     link.type = "image/png";
   }
-  document.head.appendChild(link);
 }
 
 /** Browser tab title + favicon. Driven by the business logo/name from admin. */

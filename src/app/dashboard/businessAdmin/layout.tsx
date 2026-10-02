@@ -74,6 +74,7 @@ function BusinessAdminLayoutContent({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (urlBusinessId) {
       localStorage.setItem("businessId", urlBusinessId);
+      setStoredBusinessId(urlBusinessId);
       return;
     }
     setStoredBusinessId(localStorage.getItem("businessId")?.trim() || null);

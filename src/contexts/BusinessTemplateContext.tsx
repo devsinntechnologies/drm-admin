@@ -59,12 +59,12 @@ export function BusinessTemplateProvider({ children, businessId = null }: Busine
     (error as { status?: number }).status === 401;
 
   useEffect(() => {
-    if (!businessId) return;
+    if (!hasHydrated || !businessId) return;
     if (!authToken) {
       const returnTo = `/dashboard/businessAdmin?businessId=${encodeURIComponent(businessId)}`;
       router.replace(`/login?returnTo=${encodeURIComponent(returnTo)}`);
     }
-  }, [authToken, businessId, router]);
+  }, [authToken, businessId, hasHydrated, router]);
 
   const templateConfig = hydrateWorkspaceTemplate(business?.templateConfig ?? null);
 

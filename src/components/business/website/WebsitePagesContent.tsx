@@ -101,7 +101,7 @@ export function WebsitePagesContent({ businessId }: { businessId?: string } = {}
         </button>
       </form>
 
-      <section className="overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white">
+      <section className="max-w-full overflow-x-auto rounded-2xl border border-[#e2e8f0] bg-white">
         {pages.length === 0 ? (
           <p className="p-6 text-sm text-[#64748b]">No pages yet. Create your first DigiNizam page.</p>
         ) : (

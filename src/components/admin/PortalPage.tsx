@@ -223,7 +223,7 @@ export const portalBtnOutlineClass =
 export const portalLinkClass = "text-sm font-semibold text-[var(--brand-secondary)] hover:underline";
 
 export const portalTableWrapClass =
-  "overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)]";
+  "min-w-0 max-w-full overflow-x-auto rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)]";
 
 export const portalTableHeadClass =
   "bg-[var(--surface-muted)] text-left text-xs uppercase text-[var(--text-muted)]";

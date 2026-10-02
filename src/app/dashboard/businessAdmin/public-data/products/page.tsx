@@ -322,7 +322,7 @@ export default function PublicDataProductsPage() {
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <label className="block min-w-[240px] space-y-1.5">
+          <label className="block min-w-0 space-y-1.5 sm:min-w-[240px]">
             <span className="block text-sm font-semibold text-[#64748b]">Search</span>
             <span className="relative block">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />

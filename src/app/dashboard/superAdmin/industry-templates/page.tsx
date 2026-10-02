@@ -598,7 +598,7 @@ function IndustryTemplatesContent() {
                     <p className="mb-3 text-xs text-[#64748b]">
                       Sidebar combines related areas into {industry.modules.length} workspace modules. Every catalog module is listed below.
                     </p>
-                    <div className="overflow-hidden rounded-xl border border-[#e2e8f0]">
+                    <div className="max-w-full overflow-x-auto rounded-xl border border-[#e2e8f0]">
                       <table className="w-full text-left text-sm">
                         <thead className="bg-[#f8fafc] text-[11px] font-semibold uppercase tracking-wider text-[#94a3b8]">
                           <tr>
