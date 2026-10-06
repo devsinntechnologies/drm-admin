@@ -14,6 +14,17 @@ const SALON_ONLY_MODULES = new Set<string>([
 
 const PHARMACY_CORE = ["pos", "batches", "expiry", "prescriptions", "products"] as const;
 
+const SNOOKER_CORE = ["products", "categories", "orders", "credits", "expenses"] as const;
+const SNOOKER_LEGACY_ONLY = new Set([
+  "tables",
+  "pos",
+  "billing-pricing",
+  "discounts",
+  "shifts",
+  "audit-logs",
+  "notifications",
+]);
+
 const PRODUCTION_JOB_WORK_ID = "production-job-work" as ModuleId;
 
 const PRODUCTION_ELIGIBLE_INDUSTRIES = new Set([
@@ -29,6 +40,15 @@ function pharmacyConfigLooksIncomplete(config: ApiTemplateConfig, defaultModules
   const missingCore = PHARMACY_CORE.filter((id) => !enabled.has(id));
   const navCount = config.navigation?.filter((item) => item.visible).length ?? 0;
   return hasSalonLeftovers || missingCore.length > 0 || missingDefaults.length > 0 || navCount < defaultModules.length;
+}
+
+function snookerConfigLooksIncomplete(config: ApiTemplateConfig, defaultModules: ModuleId[]) {
+  const enabled = new Set(config.enabledModules ?? []);
+  const missingDefaults = defaultModules.filter((id) => !enabled.has(id));
+  const missingCore = SNOOKER_CORE.filter((id) => !enabled.has(id));
+  const hasLegacy = (config.enabledModules ?? []).some((id) => SNOOKER_LEGACY_ONLY.has(id));
+  const navCount = config.navigation?.filter((item) => item.visible).length ?? 0;
+  return hasLegacy || missingCore.length > 0 || missingDefaults.length > 0 || navCount < defaultModules.length;
 }
 
 function ensureProductionJobWorkInConfig(config: ApiTemplateConfig): ApiTemplateConfig {
@@ -59,11 +79,42 @@ function ensureProductionJobWorkInConfig(config: ApiTemplateConfig): ApiTemplate
   };
 }
 
-/** Make a saved pharmacy workspace match the local pharmacy blueprint. */
+/** Make a saved pharmacy/snooker workspace match the local industry blueprint. */
 export function hydrateWorkspaceTemplate(config: ApiTemplateConfig | null | undefined): ApiTemplateConfig | null {
   if (!config) return null;
 
   let next = ensureProductionJobWorkInConfig(config);
+
+  if (next.industryId === "snooker-pos") {
+    const industry = getIndustryById("snooker-pos");
+    if (!industry) return next;
+    const defaultModules = [...industry.modules] as ModuleId[];
+    if (!snookerConfigLooksIncomplete(next, defaultModules)) {
+      return next;
+    }
+    const optional = new Set<string>([...(industry.optionalModules ?? []), "branches"]);
+    const extras = (next.enabledModules ?? []).filter(
+      (id) => optional.has(id) && !defaultModules.includes(id as ModuleId),
+    ) as ModuleId[];
+    const enabledModules = Array.from(new Set([...defaultModules, ...extras]));
+    const labels = {
+      ...industry.labels,
+      ...next.labels,
+      product: "Product",
+      products: "Products",
+      customer: "Player",
+      customers: "Players",
+      order: "Order",
+      orders: "Counter / POS",
+    };
+    return {
+      ...next,
+      enabledModules,
+      navigation: buildDefaultNavigation(enabledModules, labels, "snooker-pos"),
+      dashboardCards: [...industry.dashboardCards],
+      labels,
+    };
+  }
 
   if (next.industryId !== "pharmacy") return next;
 

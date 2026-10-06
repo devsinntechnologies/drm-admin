@@ -1,35 +1,21 @@
-"use client";
-
-import { Suspense } from "react";
-import { useParams } from "next/navigation";
-import Loading from "@/components/common/Loading";
-import AdminShell from "@/components/admin/AdminShell";
-import { SnookerWorkspace } from "@/components/snooker/SnookerWorkspace";
-import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
-import { MODULE_CATALOG } from "@/templates/modules";
+import { redirectWithBusinessId } from "@/lib/redirect-with-business";
+import { getModuleHref } from "@/lib/module-routes";
 import type { ModuleId } from "@/templates/types";
 
-function SnookerModuleContent() {
-  const params = useParams<{ moduleId: string }>();
-  const moduleId = params.moduleId;
-  const { templateConfig } = useBusinessTemplate();
-  const navItem = templateConfig?.navigation.find((item) => item.moduleId === moduleId);
-  const moduleLabel =
-    navItem?.label ??
-    MODULE_CATALOG[moduleId as ModuleId]?.label ??
-    moduleId.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+type SearchParams = { businessId?: string | string[] };
 
-  return (
-    <AdminShell activeTab={moduleId} pageTitle={moduleLabel}>
-      <SnookerWorkspace moduleId={moduleId} moduleLabel={moduleLabel} />
-    </AdminShell>
-  );
-}
-
-export default function SnookerModulePage() {
-  return (
-    <Suspense fallback={<Loading fullScreen />}>
-      <SnookerModuleContent />
-    </Suspense>
-  );
+/**
+ * Legacy /snooker/* routes redirect to shared tables/products/orders UIs.
+ * Snooker-pos day-to-day ops use the same modules as food/retail (Option A).
+ */
+export default async function SnookerModuleRedirectPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ moduleId: string }>;
+  searchParams: Promise<SearchParams>;
+}) {
+  const { moduleId } = await params;
+  const href = getModuleHref(moduleId as ModuleId, "snooker-pos");
+  await redirectWithBusinessId(href, searchParams);
 }

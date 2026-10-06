@@ -18,7 +18,6 @@ import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { DashboardReportsSection } from "@/components/business/DashboardReportsSection";
 import { TemplateDashboard } from "@/components/business/TemplateDashboard";
-import { SnookerWorkspace } from "@/components/snooker/SnookerWorkspace";
 import {
   PortalPage,
   PortalStatCard,
@@ -76,18 +75,19 @@ function DonutChart({ slices }: { slices: { color: string; value: number }[] }) 
 
 function DashboardContent() {
   const { templateConfig } = useBusinessTemplate();
-
-  if (templateConfig?.industryId === "snooker-pos") {
-    return (
-      <AdminShell activeTab="dashboard" pageTitle="Dashboard" pageSubtitle="Live tables, sessions, cash, and credit">
-        <SnookerWorkspace moduleId="dashboard" moduleLabel="Dashboard" />
-      </AdminShell>
-    );
-  }
+  const isSnooker = templateConfig?.industryId === "snooker-pos";
 
   if (templateConfig?.dashboardCards?.length) {
     return (
-      <AdminShell activeTab="dashboard" pageTitle="Dashboard" pageSubtitle="Today’s sales, expiry, and stock at a glance">
+      <AdminShell
+        activeTab="dashboard"
+        pageTitle="Dashboard"
+        pageSubtitle={
+          isSnooker
+            ? "Catalog products, counter orders, sales, and credit at a glance"
+            : "Today’s sales, expiry, and stock at a glance"
+        }
+      >
         <TemplateDashboard cards={templateConfig.dashboardCards} />
       </AdminShell>
     );

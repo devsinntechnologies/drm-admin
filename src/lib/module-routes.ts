@@ -65,31 +65,24 @@ const RETAIL_MODULE_HREF: Partial<Record<ModuleId, string>> = {
   inventory: `${BUSINESS_ADMIN_BASE}/retail/inventory`,
 } as Partial<Record<ModuleId, string>>;
 
-const SNOOKER_MODULE_IDS = [
-  "tables",
-  "pos",
-  "billing-pricing",
-  "customers",
-  "credit-udhar",
-  "discounts",
-  "expenses",
-  "shifts",
-  "reports",
-  "staff",
-  "audit-logs",
-  "notifications",
-  "branches",
-  "settings",
-  "memberships",
-  "loyalty",
-  "tournaments",
-  "table-booking",
-  "subscriptions",
-] as const;
-
-const SNOOKER_MODULE_HREF: Partial<Record<ModuleId, string>> = Object.fromEntries(
-  SNOOKER_MODULE_IDS.map((id) => [id, `${BUSINESS_ADMIN_BASE}/snooker/${id}`]),
-) as Partial<Record<ModuleId, string>>;
+/** Snooker-pos → shared retail-style routes (products catalog; no restaurant tables). */
+const SNOOKER_MODULE_HREF: Partial<Record<ModuleId, string>> = {
+  dashboard: BUSINESS_ADMIN_BASE,
+  products: `${BUSINESS_ADMIN_BASE}/products`,
+  menu: `${BUSINESS_ADMIN_BASE}/products`,
+  categories: `${BUSINESS_ADMIN_BASE}/categories`,
+  orders: `${BUSINESS_ADMIN_BASE}/orders`,
+  pos: `${BUSINESS_ADMIN_BASE}/orders`,
+  sales: `${BUSINESS_ADMIN_BASE}/invoices`,
+  staff: `${BUSINESS_ADMIN_BASE}/users`,
+  expenses: `${BUSINESS_ADMIN_BASE}/retail/expenses`,
+  credits: `${BUSINESS_ADMIN_BASE}/retail/credits`,
+  "credit-udhar": `${BUSINESS_ADMIN_BASE}/retail/credits`,
+  customers: `${BUSINESS_ADMIN_BASE}/retail/customers`,
+  reports: `${BUSINESS_ADMIN_BASE}/restaurant/reports`,
+  settings: `${BUSINESS_ADMIN_BASE}/settings`,
+  inventory: `${BUSINESS_ADMIN_BASE}/retail/inventory`,
+};
 
 export function getModuleHref(moduleId: ModuleId | string, industryId?: string | null): string {
   if (isPharmacyIndustry(industryId)) {
