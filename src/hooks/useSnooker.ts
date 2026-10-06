@@ -17,6 +17,7 @@ export type SnookerCategory = {
   roundingSeconds: number;
   pauseStopsBilling: boolean;
   isActive: boolean;
+  sortOrder?: number;
 };
 
 export type SnookerGameTypeRow = {
@@ -32,6 +33,13 @@ export type SnookerSessionDecorated = {
   tableId: string;
   gameTypeCode: string;
   billingKind: string;
+  billingUnit?: "session" | "hour" | "minute";
+  orderCategoryId?: string | null;
+  customFixedPrice?: number | null;
+  customHourlyRate?: number | null;
+  customRatePerMinute?: number | null;
+  categoryReview?: string | null;
+  packageSeconds?: number | null;
   status: "scheduled" | "active" | "paused" | "time_expired" | "ended";
   timingMode?: "timed" | "open";
   listBucket?: "upcoming" | "running" | "awaiting_checkout" | "ended";
@@ -309,6 +317,24 @@ export function useSnooker(pollMs = 8000) {
     [token, businessId, refresh],
   );
 
+  const resolveConflict = useCallback(
+    async (id: string, note: string) => {
+      setBusy(true);
+      try {
+        await apiClient.post(
+          `/snooker/sessions/${id}/resolve-conflict`,
+          { note },
+          token,
+          businessId,
+        );
+        await refresh();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [token, businessId, refresh],
+  );
+
   const acknowledgeExpiry = useCallback(
     async (id: string) => {
       setBusy(true);
@@ -343,6 +369,7 @@ export function useSnooker(pollMs = 8000) {
     addLineItem,
     payBill,
     acknowledgeExpiry,
+    resolveConflict,
     businessId,
   };
 }

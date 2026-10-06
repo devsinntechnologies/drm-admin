@@ -177,16 +177,47 @@ export function LivePricingView() {
         <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
       ) : null}
       <GlassPanel>
-        <HudLabel>Table categories & rates</HudLabel>
+        <HudLabel>Session categories</HudLabel>
+        <p className="mt-1 text-xs text-[#64748b]">
+          Counter staff pick an enabled category when creating an order. The category does not set the price or duration. Existing minimum time and rounding on a category still apply to time-based charges.
+        </p>
         <div className="mt-4 space-y-3">
           {categories.map((cat) => (
             <div key={cat.id} className="grid gap-2 rounded-xl border border-[#e2e8f0] p-3 md:grid-cols-4">
               <div>
-                <p className="font-semibold text-[#0f172a]">{cat.name}</p>
-                <p className="text-xs text-[#64748b]">
-                  Min {cat.minDurationMinutes}m · round {cat.roundingSeconds}s · pause{" "}
-                  {cat.pauseStopsBilling ? "stops billing" : "keeps billing"}
+                <input
+                  className="portal-input"
+                  defaultValue={cat.name}
+                  onBlur={async (e) => {
+                    const name = e.target.value.trim();
+                    if (!name || name === cat.name) return;
+                    try {
+                      await updateCategory(cat.id, { name });
+                      toast.success("Category renamed. Past orders keep the previous name.");
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : "Rename failed");
+                    }
+                  }}
+                />
+                <p className="mt-1 text-xs text-[#64748b]">
+                  {cat.isActive ? "Enabled" : "Disabled"} · order {cat.sortOrder ?? 0} · min {cat.minDurationMinutes}m · round {cat.roundingSeconds}s
                 </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-[#0f766e]"
+                    onClick={() => void updateCategory(cat.id, { isActive: !cat.isActive })}
+                  >
+                    {cat.isActive ? "Disable" : "Enable"}
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-[#0f766e]"
+                    onClick={() => void updateCategory(cat.id, { sortOrder: (cat.sortOrder ?? 0) - 1 })}
+                  >
+                    Move up
+                  </button>
+                </div>
               </div>
               {(
                 [
@@ -269,7 +300,7 @@ export function LivePricingView() {
 export function LivePosSessionView() {
   const {
     tables,
-    gameTypes,
+    categories,
     startSession,
     previewSession,
     pauseSession,
@@ -279,6 +310,7 @@ export function LivePosSessionView() {
     addLineItem,
     payBill,
     acknowledgeExpiry,
+    resolveConflict,
     dashboard,
     busy,
     error,
@@ -292,16 +324,15 @@ export function LivePosSessionView() {
 
   const [step, setStep] = useState(0);
   const [tableId, setTableId] = useState<string | null>(null);
-  const [gameType, setGameType] = useState("single");
-  const [billingKind, setBillingKind] = useState<
-    "standard_flat" | "standard_per_minute" | "custom_fixed" | "custom_rate"
-  >("standard_flat");
+  const [categoryId, setCategoryId] = useState("");
+  const [pricingMethod, setPricingMethod] = useState<"fixed" | "time_based">("fixed");
+  const [billingUnit, setBillingUnit] = useState<"hour" | "minute">("hour");
   const [playerLabel, setPlayerLabel] = useState("");
-  const [timingMode, setTimingMode] = useState<"timed" | "open">("timed");
-  const [startLocal, setStartLocal] = useState("");
   const [packageMinutes, setPackageMinutes] = useState(45);
-  const [customFixedPrice, setCustomFixedPrice] = useState(350);
-  const [customRatePerMinute, setCustomRatePerMinute] = useState(8);
+  const [customMinutes, setCustomMinutes] = useState("");
+  const [price, setPrice] = useState(500);
+  const [extraMinutes, setExtraMinutes] = useState(15);
+  const [extraPrice, setExtraPrice] = useState(0);
   const [previewAmount, setPreviewAmount] = useState<number | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [billId, setBillId] = useState<string | null>(null);
@@ -311,6 +342,10 @@ export function LivePosSessionView() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
 
+  const enabledCategories = categories.filter((c) => c.isActive);
+  const durationMinutes = customMinutes.trim()
+    ? Number(customMinutes)
+    : packageMinutes;
   const available = tables.filter((t) => t.status === "available" && t.isActive);
   const live = tables.filter((t) => t.session && t.session.listBucket !== "upcoming" && t.session.status !== "scheduled");
   const running = live.filter((t) => t.session?.status === "active" || t.session?.status === "paused");
@@ -320,19 +355,18 @@ export function LivePosSessionView() {
   const activeLive = live.find((t) => t.session?.id === activeSessionId)?.session;
 
   async function runPreview() {
-    if (!tableId) return;
-    const kind =
-      billingKind === "standard_flat" && gameType === "century"
-        ? "standard_per_minute"
-        : billingKind;
+    if (!tableId || !categoryId) return;
     const result = await previewSession({
       tableId,
-      gameTypeCode: gameType,
-      billingKind: kind,
-      timingMode,
-      packageMinutes: timingMode === "timed" ? packageMinutes : undefined,
-      customFixedPrice: kind === "custom_fixed" ? customFixedPrice : undefined,
-      customRatePerMinute: kind === "custom_rate" ? customRatePerMinute : undefined,
+      categoryId,
+      gameTypeCode: "session",
+      billingKind: pricingMethod === "fixed" ? "custom_fixed" : "custom_rate",
+      billingUnit: pricingMethod === "fixed" ? "session" : billingUnit,
+      timingMode: "timed",
+      packageMinutes: durationMinutes,
+      customFixedPrice: pricingMethod === "fixed" ? price : undefined,
+      customHourlyRate: pricingMethod === "time_based" && billingUnit === "hour" ? price : undefined,
+      customRatePerMinute: pricingMethod === "time_based" && billingUnit === "minute" ? price : undefined,
     });
     setPreviewAmount(result.estimatedAmount);
   }
@@ -340,8 +374,8 @@ export function LivePosSessionView() {
   function reset() {
     setStep(0);
     setTableId(null);
-    setGameType("single");
-    setBillingKind("standard_flat");
+    setCategoryId("");
+    setPricingMethod("fixed");
     setPlayerLabel("");
     setPreviewAmount(null);
     setActiveSessionId(null);
@@ -382,119 +416,113 @@ export function LivePosSessionView() {
 
           {step === 1 ? (
             <div className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-3">
-                {(gameTypes.length
-                  ? gameTypes
-                  : [
-                      { id: "1", code: "single", name: "Single", billingMode: "flat" as const, isActive: true },
-                      { id: "2", code: "double", name: "Double", billingMode: "flat" as const, isActive: true },
-                      { id: "3", code: "century", name: "Century", billingMode: "per_minute" as const, isActive: true },
-                    ]
-                ).map((model) => (
-                  <button
-                    key={model.code}
-                    type="button"
-                    onClick={() => {
-                      setGameType(model.code);
-                      setBillingKind(
-                        model.billingMode === "per_minute"
-                          ? "standard_per_minute"
-                          : "standard_flat",
-                      );
-                    }}
-                    className={cn(
-                      "snooker-glass p-4 text-left",
-                      gameType === model.code && "snooker-table-card-selected",
-                    )}
-                  >
-                    <p className="text-lg font-semibold text-[#0f172a]">{model.name}</p>
-                    <p className="mt-1 text-xs text-[#64748b]">{model.billingMode}</p>
-                  </button>
-                ))}
-              </div>
+              <p className="text-sm text-[#64748b]">
+                {selectedTable?.name}. The price and duration are saved on this order only.
+              </p>
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="text-sm">
-                  Player / group
+                  Category
+                  <select
+                    className="portal-input mt-1"
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                  >
+                    <option value="">Select an enabled category</option>
+                    {enabledCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-sm">
+                  Customer (optional)
                   <input
                     className="portal-input mt-1"
                     value={playerLabel}
                     onChange={(e) => setPlayerLabel(e.target.value)}
+                    placeholder="Required only for credit"
                   />
                 </label>
                 <label className="text-sm">
-                  Billing
+                  Pricing method
                   <select
                     className="portal-input mt-1"
-                    value={billingKind}
-                    onChange={(e) =>
-                      setBillingKind(e.target.value as typeof billingKind)
-                    }
+                    value={pricingMethod}
+                    onChange={(e) => setPricingMethod(e.target.value as "fixed" | "time_based")}
                   >
-                    <option value="standard_flat">Standard flat</option>
-                    <option value="standard_per_minute">Standard per-minute</option>
-                    <option value="custom_fixed">Custom duration + price</option>
-                    <option value="custom_rate">Open-ended custom rate</option>
+                    <option value="fixed">Fixed session price</option>
+                    <option value="time_based">Time-based rate</option>
                   </select>
                 </label>
+                {pricingMethod === "time_based" ? (
+                  <label className="text-sm">
+                    Billing unit
+                    <select
+                      className="portal-input mt-1"
+                      value={billingUnit}
+                      onChange={(e) => setBillingUnit(e.target.value as "hour" | "minute")}
+                    >
+                      <option value="hour">Per hour</option>
+                      <option value="minute">Per minute</option>
+                    </select>
+                  </label>
+                ) : (
+                  <p className="self-end text-xs text-[#64748b]">
+                    One price for the whole session, for example PKR 500 for 45 minutes.
+                  </p>
+                )}
                 <label className="text-sm">
-                  Session clock
-                  <select
-                    className="portal-input mt-1"
-                    value={timingMode}
-                    onChange={(e) => setTimingMode(e.target.value as "timed" | "open")}
-                  >
-                    <option value="timed">Timed — stops at the end time</option>
-                    <option value="open">Open-ended — staff stop it</option>
-                  </select>
-                </label>
-                <label className="text-sm">
-                  Start time
+                  {pricingMethod === "fixed" ? "Session price" : billingUnit === "hour" ? "Rate per hour" : "Rate per minute"}
                   <input
-                    type="datetime-local"
+                    type="number"
+                    min={1}
                     className="portal-input mt-1"
-                    value={startLocal}
-                    onChange={(e) => setStartLocal(e.target.value)}
+                    value={price}
+                    onChange={(e) => setPrice(Number(e.target.value) || 0)}
                   />
                 </label>
-                {timingMode === "timed" ? (
-                  <label className="text-sm">
-                    Minutes
+                <div className="text-sm">
+                  Duration
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {[30, 45, 60].map((mins) => (
+                      <button
+                        key={mins}
+                        type="button"
+                        className={cn(
+                          "rounded-lg border px-3 py-2 text-xs",
+                          !customMinutes && packageMinutes === mins
+                            ? "border-[#0f766e] bg-[#ecfdf5]"
+                            : "border-[#e2e8f0]",
+                        )}
+                        onClick={() => {
+                          setPackageMinutes(mins);
+                          setCustomMinutes("");
+                        }}
+                      >
+                        {mins} min
+                      </button>
+                    ))}
                     <input
                       type="number"
-                      className="portal-input mt-1"
-                      value={packageMinutes}
-                      onChange={(e) => setPackageMinutes(Number(e.target.value) || 0)}
+                      min={1}
+                      className="portal-input max-w-28"
+                      placeholder="Custom"
+                      value={customMinutes}
+                      onChange={(e) => setCustomMinutes(e.target.value)}
                     />
-                  </label>
-                ) : null}
-                {billingKind === "custom_fixed" ? (
-                  <label className="text-sm">
-                    Agreed price
-                    <input
-                      type="number"
-                      className="portal-input mt-1"
-                      value={customFixedPrice}
-                      onChange={(e) => setCustomFixedPrice(Number(e.target.value) || 0)}
-                    />
-                  </label>
-                ) : null}
-                {billingKind === "custom_rate" ? (
-                  <label className="text-sm">
-                    Rate / minute
-                    <input
-                      type="number"
-                      className="portal-input mt-1"
-                      value={customRatePerMinute}
-                      onChange={(e) => setCustomRatePerMinute(Number(e.target.value) || 0)}
-                    />
-                  </label>
-                ) : null}
+                  </div>
+                </div>
               </div>
+              <p className="text-xs text-[#64748b]">
+                Starts now. Ends after {Number.isFinite(durationMinutes) ? durationMinutes : 0} minutes.
+                {pricingMethod === "time_based"
+                  ? ` ${price} per ${billingUnit} is not the same as a fixed price for that duration.`
+                  : ` Fixed price stays ${price} for the whole session.`}
+              </p>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   className="dn-btn dn-btn-outline"
-                  disabled={busy || !tableId}
+                  disabled={busy || !tableId || !categoryId}
                   onClick={() => void runPreview().then(() => toast.message(`Preview ${money(previewAmount ?? 0)}`)).catch((e) => toast.error(String(e.message || e)))}
                 >
                   Preview {previewAmount != null ? money(previewAmount) : ""}
@@ -502,35 +530,34 @@ export function LivePosSessionView() {
                 <button
                   type="button"
                   className="dn-btn dn-btn-primary"
-                  disabled={busy || !tableId}
+                  disabled={busy || !tableId || !categoryId || price <= 0 || !(durationMinutes > 0)}
                   onClick={async () => {
                     try {
-                      const kind =
-                        billingKind === "standard_flat" && gameType === "century"
-                          ? "standard_per_minute"
-                          : billingKind;
                       const session = await startSession({
                         tableId,
-                        gameTypeCode: gameType,
-                        billingKind: kind,
+                        categoryId,
+                        categoryName: enabledCategories.find((c) => c.id === categoryId)?.name,
+                        gameTypeCode: "session",
+                        billingKind: pricingMethod === "fixed" ? "custom_fixed" : "custom_rate",
+                        billingUnit: pricingMethod === "fixed" ? "session" : billingUnit,
                         playerLabel: playerLabel || undefined,
-                        timingMode,
-                        startedAt: startLocal ? new Date(startLocal).toISOString() : undefined,
-                        packageMinutes: timingMode === "timed" ? packageMinutes : undefined,
-                        customFixedPrice:
-                          kind === "custom_fixed" ? customFixedPrice : undefined,
+                        timingMode: "timed",
+                        packageMinutes: durationMinutes,
+                        customFixedPrice: pricingMethod === "fixed" ? price : undefined,
+                        customHourlyRate:
+                          pricingMethod === "time_based" && billingUnit === "hour" ? price : undefined,
                         customRatePerMinute:
-                          kind === "custom_rate" ? customRatePerMinute : undefined,
+                          pricingMethod === "time_based" && billingUnit === "minute" ? price : undefined,
                       });
                       setActiveSessionId(session.id);
                       setStep(2);
-                      toast.success("Session started");
+                      toast.success("Order created");
                     } catch (e) {
                       toast.error(e instanceof Error ? e.message : "Start failed");
                     }
                   }}
                 >
-                  Start session
+                  Create order
                 </button>
               </div>
             </div>
@@ -538,15 +565,13 @@ export function LivePosSessionView() {
 
           {step >= 2 && step <= 3 && activeSessionId ? (
             <div className="grid gap-4 md:grid-cols-[auto_1fr] md:items-center">
-              {gameType === "century" || billingKind.includes("minute") || billingKind === "custom_rate" ? (
-                <CenturyTimer
-                  minutes={Math.floor((activeLive?.timing?.billableSeconds ?? 0) / 60)}
-                  paused={activeLive?.status === "paused"}
-                />
-              ) : null}
+              <CenturyTimer
+                minutes={Math.floor((activeLive?.timing?.remainingSeconds ?? activeLive?.timing?.billableSeconds ?? 0) / 60)}
+                paused={activeLive?.status === "paused"}
+              />
               <div>
                 <p className="text-xl font-semibold text-[#0f172a]">
-                  {selectedTable?.name} · {gameType}
+                  {selectedTable?.name} · {(activeLive?.rateSnapshot?.orderCategoryName as string) || "Session"}
                 </p>
                 <p className="mt-1 text-sm text-[#64748b]">
                   {activeLive?.status ?? "active"} · now{" "}
@@ -570,24 +595,40 @@ export function LivePosSessionView() {
                   >
                     <Pause className="h-3.5 w-3.5" /> Pause
                   </button>
+                  <input
+                    type="number"
+                    min={1}
+                    className="portal-input !h-10 w-20 text-xs"
+                    value={extraMinutes}
+                    onChange={(e) => setExtraMinutes(Number(e.target.value) || 0)}
+                    title="Extra minutes"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    className="portal-input !h-10 w-24 text-xs"
+                    value={extraPrice}
+                    onChange={(e) => setExtraPrice(Number(e.target.value) || 0)}
+                    title="Additional price"
+                  />
                   <button
                     type="button"
                     className="dn-btn dn-btn-outline !h-10 px-3 text-xs"
-                    disabled={busy}
+                    disabled={busy || extraMinutes < 1}
                     onClick={async () => {
                       try {
                         await extendSession(activeSessionId, {
-                          extraMinutes: 5,
-                          agreedAmount: 50,
-                          reason: "+5 min",
+                          extraMinutes,
+                          agreedAmount: extraPrice,
+                          reason: `+${extraMinutes} min`,
                         });
-                        toast.success("Extended +5 min");
+                        toast.success(`Extended +${extraMinutes} min`);
                       } catch (e) {
                         toast.error(e instanceof Error ? e.message : "Extend failed");
                       }
                     }}
                   >
-                    +5 min
+                    Extend
                   </button>
                   <button
                     type="button"
@@ -742,10 +783,14 @@ export function LivePosSessionView() {
             rows={running}
             nowMs={nowMs}
             empty="No running sessions"
+            onResolve={(id) =>
+              void resolveConflict(id, "Reviewed overlapping session").catch((e) =>
+                toast.error(e instanceof Error ? e.message : "Resolve failed"),
+              )
+            }
             onManage={(t) => {
               setActiveSessionId(t.session!.id);
               setTableId(t.id);
-              setGameType(t.session!.gameTypeCode);
               setStep(2);
             }}
           />
@@ -757,10 +802,14 @@ export function LivePosSessionView() {
             nowMs={nowMs}
             empty="No sessions waiting for checkout"
             expired
+            onResolve={(id) =>
+              void resolveConflict(id, "Reviewed overlapping session").catch((e) =>
+                toast.error(e instanceof Error ? e.message : "Resolve failed"),
+              )
+            }
             onManage={(t) => {
               setActiveSessionId(t.session!.id);
               setTableId(t.id);
-              setGameType(t.session!.gameTypeCode);
               setStep(2);
             }}
           />
@@ -782,12 +831,14 @@ function SessionList({
   empty,
   expired,
   onManage,
+  onResolve,
 }: {
   rows: SnookerTableRow[];
   nowMs: number;
   empty: string;
   expired?: boolean;
   onManage: (row: SnookerTableRow) => void;
+  onResolve?: (sessionId: string) => void;
 }) {
   return (
     <ul className="mt-3 space-y-3">
@@ -816,15 +867,31 @@ function SessionList({
               </span>
             </div>
             <p className="text-xs text-[#64748b]">
-              {session?.id?.slice(0, 8)} · {session?.playerLabel || "Walk-in"} ·{" "}
-              {expired ? "Time Ended" : session?.status} · {session?.timingMode || "open"} ·{" "}
+              {session?.id?.slice(0, 8)} · {(session?.rateSnapshot?.orderCategoryName as string) || session?.gameTypeCode} · {session?.playerLabel || "Walk-in"} ·{" "}
+              {expired ? "Time Ended / Awaiting Checkout" : session?.status} ·{" "}
+              {session?.billingUnit === "hour"
+                ? `${session.customHourlyRate}/hour`
+                : session?.billingKind === "custom_fixed"
+                  ? `${session.customFixedPrice} fixed`
+                  : session?.billingKind} ·{" "}
               {Math.floor(elapsed / 60)}m elapsed
               {remaining != null ? ` · ${Math.floor(remaining / 60)}m left` : ""}
             </p>
             {session?.conflictFlag ? (
-              <p className="mt-1 text-xs font-semibold text-[#b45309]">
-                Conflict: {session.conflictNote || "Overlapping session"}
-              </p>
+              <div className="mt-1">
+                <p className="text-xs font-semibold text-[#b45309]">
+                  Conflict: {session.conflictNote || session.categoryReview || "Overlapping session"}
+                </p>
+                {onResolve && session.id ? (
+                  <button
+                    type="button"
+                    className="mt-1 text-xs font-semibold text-[#0f766e]"
+                    onClick={() => onResolve(session.id)}
+                  >
+                    Mark resolved
+                  </button>
+                ) : null}
+              </div>
             ) : null}
             <button
               type="button"
