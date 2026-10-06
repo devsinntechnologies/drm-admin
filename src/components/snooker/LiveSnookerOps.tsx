@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, Pause, Play, Plus, Square, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -278,9 +278,17 @@ export function LivePosSessionView() {
     endSession,
     addLineItem,
     payBill,
+    acknowledgeExpiry,
+    dashboard,
     busy,
     error,
   } = useSnooker(5000);
+
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const [step, setStep] = useState(0);
   const [tableId, setTableId] = useState<string | null>(null);
@@ -289,6 +297,8 @@ export function LivePosSessionView() {
     "standard_flat" | "standard_per_minute" | "custom_fixed" | "custom_rate"
   >("standard_flat");
   const [playerLabel, setPlayerLabel] = useState("");
+  const [timingMode, setTimingMode] = useState<"timed" | "open">("timed");
+  const [startLocal, setStartLocal] = useState("");
   const [packageMinutes, setPackageMinutes] = useState(45);
   const [customFixedPrice, setCustomFixedPrice] = useState(350);
   const [customRatePerMinute, setCustomRatePerMinute] = useState(8);
@@ -302,7 +312,10 @@ export function LivePosSessionView() {
   const [customerPhone, setCustomerPhone] = useState("");
 
   const available = tables.filter((t) => t.status === "available" && t.isActive);
-  const live = tables.filter((t) => t.session);
+  const live = tables.filter((t) => t.session && t.session.listBucket !== "upcoming" && t.session.status !== "scheduled");
+  const running = live.filter((t) => t.session?.status === "active" || t.session?.status === "paused");
+  const awaiting = live.filter((t) => t.session?.status === "time_expired");
+  const upcoming = tables.filter((t) => t.session?.status === "scheduled");
   const selectedTable = tables.find((t) => t.id === tableId) ?? null;
   const activeLive = live.find((t) => t.session?.id === activeSessionId)?.session;
 
@@ -316,10 +329,8 @@ export function LivePosSessionView() {
       tableId,
       gameTypeCode: gameType,
       billingKind: kind,
-      packageMinutes:
-        kind === "custom_fixed" || kind === "custom_rate" || kind === "standard_per_minute"
-          ? packageMinutes
-          : undefined,
+      timingMode,
+      packageMinutes: timingMode === "timed" ? packageMinutes : undefined,
       customFixedPrice: kind === "custom_fixed" ? customFixedPrice : undefined,
       customRatePerMinute: kind === "custom_rate" ? customRatePerMinute : undefined,
     });
@@ -425,7 +436,27 @@ export function LivePosSessionView() {
                     <option value="custom_rate">Open-ended custom rate</option>
                   </select>
                 </label>
-                {billingKind === "custom_fixed" || billingKind === "custom_rate" || billingKind === "standard_per_minute" ? (
+                <label className="text-sm">
+                  Session clock
+                  <select
+                    className="portal-input mt-1"
+                    value={timingMode}
+                    onChange={(e) => setTimingMode(e.target.value as "timed" | "open")}
+                  >
+                    <option value="timed">Timed — stops at the end time</option>
+                    <option value="open">Open-ended — staff stop it</option>
+                  </select>
+                </label>
+                <label className="text-sm">
+                  Start time
+                  <input
+                    type="datetime-local"
+                    className="portal-input mt-1"
+                    value={startLocal}
+                    onChange={(e) => setStartLocal(e.target.value)}
+                  />
+                </label>
+                {timingMode === "timed" ? (
                   <label className="text-sm">
                     Minutes
                     <input
@@ -483,10 +514,9 @@ export function LivePosSessionView() {
                         gameTypeCode: gameType,
                         billingKind: kind,
                         playerLabel: playerLabel || undefined,
-                        packageMinutes:
-                          kind === "custom_fixed" || kind === "custom_rate"
-                            ? packageMinutes
-                            : undefined,
+                        timingMode,
+                        startedAt: startLocal ? new Date(startLocal).toISOString() : undefined,
+                        packageMinutes: timingMode === "timed" ? packageMinutes : undefined,
                         customFixedPrice:
                           kind === "custom_fixed" ? customFixedPrice : undefined,
                         customRatePerMinute:
@@ -694,39 +724,119 @@ export function LivePosSessionView() {
       </GlassPanel>
 
       <aside className="space-y-4">
+        {(dashboard?.alerts ?? []).map((alert) => (
+          <div key={alert.id} className="rounded-lg border border-[#fecaca] bg-[#fff5f5] px-3 py-2 text-sm text-[#991b1b]">
+            <p className="font-semibold">{alert.message}</p>
+            <button
+              type="button"
+              className="mt-2 text-xs font-semibold underline"
+              onClick={() => void acknowledgeExpiry(alert.sessionId)}
+            >
+              Acknowledge
+            </button>
+          </div>
+        ))}
         <GlassPanel>
-          <HudLabel>Live sessions</HudLabel>
-          <ul className="mt-3 space-y-3">
-            {live.map((t) => (
-              <li key={t.id} className="rounded-lg border border-[#e2e8f0] px-3 py-2 text-sm">
-                <div className="flex justify-between gap-2">
-                  <span className="font-semibold">{t.name}</span>
-                  <span className="font-mono text-[#0f766e]">
-                    {money(t.session?.amounts?.currentAmount ?? 0)}
-                  </span>
-                </div>
-                <p className="text-xs text-[#64748b]">
-                  {t.session?.gameTypeCode} · {t.session?.status} ·{" "}
-                  {Math.floor((t.session?.timing?.billableSeconds ?? 0) / 60)}m
-                </p>
-                <button
-                  type="button"
-                  className="mt-2 text-xs font-semibold text-[#0f766e]"
-                  onClick={() => {
-                    setActiveSessionId(t.session!.id);
-                    setTableId(t.id);
-                    setGameType(t.session!.gameTypeCode);
-                    setStep(2);
-                  }}
-                >
-                  Manage
-                </button>
-              </li>
-            ))}
-            {!live.length ? <li className="text-sm text-[#64748b]">No active sessions</li> : null}
-          </ul>
+          <HudLabel>Running</HudLabel>
+          <SessionList
+            rows={running}
+            nowMs={nowMs}
+            empty="No running sessions"
+            onManage={(t) => {
+              setActiveSessionId(t.session!.id);
+              setTableId(t.id);
+              setGameType(t.session!.gameTypeCode);
+              setStep(2);
+            }}
+          />
         </GlassPanel>
+        <GlassPanel>
+          <HudLabel>Ended / awaiting checkout</HudLabel>
+          <SessionList
+            rows={awaiting}
+            nowMs={nowMs}
+            empty="No sessions waiting for checkout"
+            expired
+            onManage={(t) => {
+              setActiveSessionId(t.session!.id);
+              setTableId(t.id);
+              setGameType(t.session!.gameTypeCode);
+              setStep(2);
+            }}
+          />
+        </GlassPanel>
+        {upcoming.length ? (
+          <GlassPanel>
+            <HudLabel>Upcoming</HudLabel>
+            <SessionList rows={upcoming} nowMs={nowMs} empty="" onManage={() => undefined} />
+          </GlassPanel>
+        ) : null}
       </aside>
     </div>
+  );
+}
+
+function SessionList({
+  rows,
+  nowMs,
+  empty,
+  expired,
+  onManage,
+}: {
+  rows: SnookerTableRow[];
+  nowMs: number;
+  empty: string;
+  expired?: boolean;
+  onManage: (row: SnookerTableRow) => void;
+}) {
+  return (
+    <ul className="mt-3 space-y-3">
+      {rows.map((t) => {
+        const session = t.session;
+        const ends = session?.endsAt ? new Date(session.endsAt).getTime() : null;
+        const started = session?.startedAt ? new Date(session.startedAt).getTime() : nowMs;
+        const remaining =
+          session?.timingMode === "timed" && ends != null
+            ? Math.max(0, Math.floor((ends - nowMs) / 1000))
+            : null;
+        const elapsed = Math.max(0, Math.floor((nowMs - started) / 1000));
+        return (
+          <li
+            key={t.id}
+            className={
+              expired
+                ? "rounded-lg border border-[#fecaca] bg-[#fff5f5] px-3 py-2 text-sm"
+                : "rounded-lg border border-[#e2e8f0] px-3 py-2 text-sm"
+            }
+          >
+            <div className="flex justify-between gap-2">
+              <span className="font-semibold">{t.name}</span>
+              <span className="font-mono text-[#0f766e]">
+                {money(session?.amounts?.currentAmount ?? 0)}
+              </span>
+            </div>
+            <p className="text-xs text-[#64748b]">
+              {session?.id?.slice(0, 8)} · {session?.playerLabel || "Walk-in"} ·{" "}
+              {expired ? "Time Ended" : session?.status} · {session?.timingMode || "open"} ·{" "}
+              {Math.floor(elapsed / 60)}m elapsed
+              {remaining != null ? ` · ${Math.floor(remaining / 60)}m left` : ""}
+            </p>
+            {session?.conflictFlag ? (
+              <p className="mt-1 text-xs font-semibold text-[#b45309]">
+                Conflict: {session.conflictNote || "Overlapping session"}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              className="mt-2 text-xs font-semibold text-[#0f766e]"
+              onClick={() => onManage(t)}
+            >
+              Manage
+            </button>
+          </li>
+        );
+      })}
+      {!rows.length && empty ? <li className="text-sm text-[#64748b]">{empty}</li> : null}
+    </ul>
   );
 }

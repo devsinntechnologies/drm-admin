@@ -32,9 +32,16 @@ export type SnookerSessionDecorated = {
   tableId: string;
   gameTypeCode: string;
   billingKind: string;
-  status: "active" | "paused" | "time_expired" | "ended";
+  status: "scheduled" | "active" | "paused" | "time_expired" | "ended";
+  timingMode?: "timed" | "open";
+  listBucket?: "upcoming" | "running" | "awaiting_checkout" | "ended";
   playerLabel?: string | null;
   startedAt: string;
+  endsAt?: string | null;
+  expiredAt?: string | null;
+  expiryAckAt?: string | null;
+  conflictFlag?: boolean;
+  conflictNote?: string | null;
   rateSnapshot?: Record<string, unknown>;
   timing?: {
     elapsedSeconds: number;
@@ -83,6 +90,16 @@ export type SnookerDashboard = {
   tablesOccupied: number;
   tablesMaintenance: number;
   activeSessions: number;
+  awaitingCheckout?: number;
+  alerts?: Array<{
+    id: string;
+    sessionId: string;
+    tableId: string;
+    tableName: string;
+    message: string;
+    expiredAt?: string | null;
+    acknowledged: boolean;
+  }>;
   salesToday: number;
   collectionsToday: number;
   creditSalesToday: number;
@@ -292,6 +309,19 @@ export function useSnooker(pollMs = 8000) {
     [token, businessId, refresh],
   );
 
+  const acknowledgeExpiry = useCallback(
+    async (id: string) => {
+      setBusy(true);
+      try {
+        await apiClient.post(`/snooker/sessions/${id}/ack-expiry`, {}, token, businessId);
+        await refresh();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [token, businessId, refresh],
+  );
+
   return {
     tables,
     categories,
@@ -312,6 +342,7 @@ export function useSnooker(pollMs = 8000) {
     endSession,
     addLineItem,
     payBill,
+    acknowledgeExpiry,
     businessId,
   };
 }
