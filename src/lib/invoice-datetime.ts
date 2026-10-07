@@ -23,6 +23,17 @@ export function machineTzOffsetMinutes(): number {
   return -new Date().getTimezoneOffset();
 }
 
+/** YYYY-MM-DD in this machine's calendar, not UTC. */
+export function localIsoDate(date = new Date()): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+export function localMonthStartIso(date = new Date()): string {
+  return localIsoDate(new Date(date.getFullYear(), date.getMonth(), 1));
+}
+
 function parseUtcInstant(raw: string): Date {
   const value = raw.trim();
   if (!value) return new Date(NaN);

@@ -18,6 +18,7 @@ import { DataTable } from "@/components/workspace/DataTable";
 import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { usePharmacyQuery } from "@/hooks/usePharmacyQuery";
 import { asList } from "@/lib/api";
+import { localIsoDate, localMonthStartIso, machineTzOffsetMinutes } from "@/lib/invoice-datetime";
 import { downloadSalesReportPdf } from "@/lib/sales-report-pdf";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { toast } from "sonner";
@@ -42,11 +43,11 @@ type InvoiceReports = {
 };
 
 function monthStartIso() {
-  return new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  return localMonthStartIso();
 }
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return localIsoDate();
 }
 
 export function WorkspaceReportsPage() {
@@ -58,7 +59,7 @@ export function WorkspaceReportsPage() {
   const [appliedTo, setAppliedTo] = useState(toDate);
   const rangeKey = `${appliedFrom}:${appliedTo}`;
 
-  const invoicePath = `/dashboard/reports?fromDate=${appliedFrom}&toDate=${appliedTo}`;
+  const invoicePath = `/dashboard/reports?fromDate=${appliedFrom}&toDate=${appliedTo}&tzOffsetMinutes=${machineTzOffsetMinutes()}`;
   const { data: invoiceReport, loading } = usePharmacyQuery<InvoiceReports>(invoicePath, rangeKey);
 
   const topRows = useMemo(

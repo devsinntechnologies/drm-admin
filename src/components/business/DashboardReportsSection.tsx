@@ -7,6 +7,7 @@ import { PortalCard, PortalStatCard, portalBtnPrimaryClass, portalInputClass } f
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { usePharmacyQuery } from "@/hooks/usePharmacyQuery";
+import { localIsoDate, localMonthStartIso, machineTzOffsetMinutes } from "@/lib/invoice-datetime";
 import { getModuleHref } from "@/lib/module-routes";
 
 type InvoiceReports = {
@@ -18,11 +19,11 @@ type InvoiceReports = {
 };
 
 function monthStartIso() {
-  return new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  return localMonthStartIso();
 }
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return localIsoDate();
 }
 
 export function DashboardReportsSection() {
@@ -38,7 +39,8 @@ export function DashboardReportsSection() {
   const [appliedTo, setAppliedTo] = useState(toDate);
   const rangeKey = `${appliedFrom}:${appliedTo}`;
 
-  const invoicePath = reportsOn && !pharmacy ? `/dashboard/reports?fromDate=${appliedFrom}&toDate=${appliedTo}` : null;
+  const tz = machineTzOffsetMinutes();
+  const invoicePath = reportsOn && !pharmacy ? `/dashboard/reports?fromDate=${appliedFrom}&toDate=${appliedTo}&tzOffsetMinutes=${tz}` : null;
   const pharmacyBestPath =
     reportsOn && pharmacy
       ? `/pharmacy-reports/best-sellers?fromDate=${appliedFrom}&toDate=${appliedTo}`
