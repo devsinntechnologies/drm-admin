@@ -374,6 +374,7 @@ function MenuItemsContent() {
   const { market, currency } = usePharmacyMarket();
   const isPharmacy = templateConfig?.industryId === "pharmacy";
   const isRetail = templateConfig?.industryId === "retail-store";
+  const isSnooker = templateConfig?.industryId === "snooker-pos";
   const requiresCostAndStock = !isPharmacy;
   const productLabel = isPharmacy ? "Medicine" : isRetail ? "Product" : "Menu Item";
   const [createMedicine, setCreateMedicine] = useState<MedicineProfileForm>(EMPTY_MEDICINE_PROFILE);
@@ -398,6 +399,7 @@ function MenuItemsContent() {
     categoryId: "",
     isKitchen: true,
     isStockEnabled: true,
+    isSessionService: false,
     costPrice: 0,
     image: null as File | null,
   });
@@ -411,6 +413,7 @@ function MenuItemsContent() {
     categoryId: "",
     isKitchen: true,
     isStockEnabled: true,
+    isSessionService: false,
     costPrice: 0,
     image: null as File | null,
   });
@@ -573,7 +576,7 @@ function MenuItemsContent() {
       if (!createMedicine.genericName.trim()) return toast.error("Generic name is required");
       if (!createMedicine.saltName.trim()) return toast.error("Salt / composition is required");
     }
-    if (requiresCostAndStock) {
+    if (requiresCostAndStock && !createForm.isSessionService) {
       if (createVariants.length > 0) {
         if (createVariants.some((v) => v.costPrice == null || Number(v.costPrice) < 0)) {
           return toast.error("Cost price is required for each variant");
@@ -591,8 +594,13 @@ function MenuItemsContent() {
         inStock: createVariants.length > 0
           ? createVariants.reduce((sum, variant) => sum + Number(variant.inStock || 0), 0)
           : createForm.inStock,
-        isKitchen: isPharmacy || isRetail ? false : createForm.isKitchen,
-        isStockEnabled: requiresCostAndStock ? createForm.isStockEnabled : undefined,
+        isKitchen: createForm.isSessionService || isPharmacy || isRetail ? false : createForm.isKitchen,
+        isStockEnabled: createForm.isSessionService
+          ? false
+          : requiresCostAndStock
+            ? createForm.isStockEnabled
+            : undefined,
+        isSessionService: createForm.isSessionService,
         costPrice: requiresCostAndStock
           ? (createVariants.length > 0 ? createVariants[0].costPrice : createForm.costPrice)
           : undefined,
@@ -632,6 +640,7 @@ function MenuItemsContent() {
         categoryId: product.categoryId || "",
         isKitchen: product.isKitchen || true,
         isStockEnabled: product.isStockEnabled ?? true,
+        isSessionService: Boolean((product as { isSessionService?: boolean }).isSessionService),
         costPrice: product.costPrice ?? 0,
         image: null,
       });
@@ -706,7 +715,12 @@ function MenuItemsContent() {
         inStock: editVariants.length > 0
           ? editVariants.reduce((sum, variant) => sum + Number(variant.inStock || 0), 0)
           : editForm.inStock,
-        isStockEnabled: requiresCostAndStock ? editForm.isStockEnabled : undefined,
+        isStockEnabled: editForm.isSessionService
+          ? false
+          : requiresCostAndStock
+            ? editForm.isStockEnabled
+            : undefined,
+        isSessionService: editForm.isSessionService,
         costPrice: requiresCostAndStock
           ? (editVariants.length > 0 ? editVariants[0].costPrice : editForm.costPrice)
           : undefined,
@@ -928,7 +942,24 @@ function MenuItemsContent() {
                       ) : null}
                     </>
                   )}
-                  {requiresCostAndStock ? (
+                  {isSnooker ? (
+                    <label className="flex items-center gap-2 rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={createForm.isSessionService}
+                        onChange={(e) =>
+                          setCreateForm((p) => ({
+                            ...p,
+                            isSessionService: e.target.checked,
+                            isStockEnabled: e.target.checked ? false : p.isStockEnabled,
+                            isKitchen: e.target.checked ? false : p.isKitchen,
+                          }))
+                        }
+                      />
+                      Table session. Add each physical table once. Stock is not deducted.
+                    </label>
+                  ) : null}
+                  {requiresCostAndStock && !createForm.isSessionService ? (
                     <label className="flex items-center gap-2 rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm font-semibold">
                       <input
                         type="checkbox"

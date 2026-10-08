@@ -22,7 +22,11 @@ export default function PortalFeaturesPage() {
 
   return (
     <div className="space-y-5">
-      <BusinessEntitlements templateConfig={templateConfig} industryId={profile.industryId} />
+      <BusinessEntitlements
+        businessId={businessId}
+        templateConfig={templateConfig}
+        industryId={profile.industryId}
+      />
       <PortalFeaturesContent
         businessId={businessId}
         businessName={business.businessName}

@@ -1,5 +1,5 @@
 import type { ModuleId } from "@/templates/types";
-import { SNOOKER_OPTIONAL_MODULES, SNOOKER_SIDEBAR_MODULES } from "@/templates/snooker-pos";
+import { SNOOKER_SIDEBAR_MODULES } from "@/templates/snooker-pos";
 
 /**
  * Modules with a fully built business workspace page (API-backed or dedicated UI).
@@ -37,9 +37,13 @@ export const IMPLEMENTED_MODULES = new Set<ModuleId>([
   "production-job-work",
 ]);
 
+/** Shared modules that are live for snooker-pos (Option A). */
 export const SNOOKER_IMPLEMENTED_MODULES = new Set<ModuleId>([
   ...SNOOKER_SIDEBAR_MODULES,
-  ...SNOOKER_OPTIONAL_MODULES,
+  "menu",
+  "inventory",
+  "credit-udhar",
+  "customers",
 ]);
 
 /** Core restaurant sidebar modules that match the live business workspace. */

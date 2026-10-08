@@ -214,22 +214,21 @@ export const SNOOKER_PRODUCT_SCOPE: IndustryProductScopeItem[] = [
   },
 ];
 
-/** Combined workspace sidebar — 15 user-facing modules. */
+/**
+ * Shared-module sidebar for snooker-pos (Option A).
+ * Product catalog (snooker tables + games/refreshments as SKUs) + orders.
+ * Restaurant floor `tables` module is not used — physical tables are products.
+ */
 export const SNOOKER_SIDEBAR_MODULES: ModuleId[] = [
   "dashboard",
-  "tables",
-  "pos",
-  "billing-pricing",
-  "customers",
-  "credit-udhar",
-  "discounts",
+  "products",
+  "categories",
+  "orders",
+  "sales",
+  "credits",
   "expenses",
-  "shifts",
-  "reports",
   "staff",
-  "audit-logs",
-  "notifications",
-  "branches",
+  "reports",
   "settings",
 ];
 

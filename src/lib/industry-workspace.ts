@@ -19,14 +19,19 @@ export function isSnookerIndustry(industryId?: string | null): boolean {
  * on-hand product stock, not pharmacy batches or kitchen ingredients.
  */
 export function usesProductCatalogInventory(industryId?: string | null): boolean {
-  if (isPharmacyIndustry(industryId) || isSnookerIndustry(industryId)) {
+  if (isPharmacyIndustry(industryId)) {
     return false;
   }
+  // Snooker reuses the same product catalog as retail/food (games & refreshments).
   return true;
 }
 
 export function usesRetailWorkspace(industryId?: string | null): boolean {
-  if (isPharmacyIndustry(industryId) || isSnookerIndustry(industryId)) {
+  if (isPharmacyIndustry(industryId)) {
+    return false;
+  }
+  // Snooker uses product-catalog + orders routes (not restaurant tables floor).
+  if (isSnookerIndustry(industryId)) {
     return false;
   }
   if (industryId === "retail-store") return true;

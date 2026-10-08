@@ -133,6 +133,7 @@ export interface CreateProductPayload {
   categoryId: string;
   isKitchen: boolean;
   isStockEnabled?: boolean;
+  isSessionService?: boolean;
   costPrice?: number | null;
   variants: CreateProductVariantPayload[];
   image?: File | null;
@@ -284,6 +285,9 @@ export function useProducts(options: UseProductsOptions = {}) {
       if (payload.isStockEnabled !== undefined) {
         formData.append("isStockEnabled", String(payload.isStockEnabled));
       }
+      if (payload.isSessionService !== undefined) {
+        formData.append("isSessionService", String(payload.isSessionService));
+      }
       if (payload.costPrice !== undefined && payload.costPrice !== null) {
         formData.append("costPrice", String(payload.costPrice));
       }
@@ -385,6 +389,9 @@ export function useProducts(options: UseProductsOptions = {}) {
       formData.append("isKitchen", String(payload.isKitchen));
       if (payload.isStockEnabled !== undefined) {
         formData.append("isStockEnabled", String(payload.isStockEnabled));
+      }
+      if (payload.isSessionService !== undefined) {
+        formData.append("isSessionService", String(payload.isSessionService));
       }
       if (payload.costPrice !== undefined && payload.costPrice !== null) {
         formData.append("costPrice", String(payload.costPrice));

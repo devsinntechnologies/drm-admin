@@ -60,14 +60,22 @@ export const DEFAULT_CATEGORIES_SETTINGS: CategoriesModuleSettings = {
 export function defaultOrdersSettingsForIndustry(
   industryId: string | null | undefined,
 ): OrdersModuleSettings {
-  const retailLike =
-    industryId &&
-    !["restaurant", "food-cafe", "bakery"].includes(industryId) &&
-    industryId !== "pharmacy";
-  // Food ops keep full lifecycle; others using orders default to order-only.
-  if (["restaurant", "food-cafe", "bakery"].includes(industryId ?? "")) {
-    return { ...DEFAULT_ORDERS_SETTINGS };
+  // Food + snooker keep Active Orders / restaurant lifecycle.
+  if (
+    industryId === "restaurant" ||
+    industryId === "food-cafe" ||
+    industryId === "bakery" ||
+    industryId === "snooker-pos"
+  ) {
+    return {
+      ...DEFAULT_ORDERS_SETTINGS,
+      completionMode: "restaurantLifecycle",
+      showActiveOrders: true,
+      showNewOrders: true,
+      defaultSection: industryId === "snooker-pos" ? "new" : "active",
+    };
   }
+  const retailLike = industryId && industryId !== "pharmacy";
   if (retailLike) {
     return {
       ...DEFAULT_ORDERS_SETTINGS,

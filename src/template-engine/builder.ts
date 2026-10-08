@@ -16,26 +16,18 @@ const WORKSPACE_NAV_LABELS: Partial<Record<ModuleId, string>> = {
 };
 
 const SNOOKER_NAV_LABELS: Partial<Record<ModuleId, string>> = {
-  tables: "Table Management",
-  pos: "POS Sessions",
-  "billing-pricing": "Billing & Pricing",
-  customers: "Customers",
+  dashboard: "Dashboard",
+  /** Physical snooker tables + games/refreshments are catalog products. */
+  products: "Products",
+  categories: "Categories",
+  orders: "Counter / POS",
+  sales: "Invoices",
+  credits: "Credit / Udhar",
   "credit-udhar": "Credit / Udhar",
-  discounts: "Discounts",
   expenses: "Expenses",
-  credits: "Credit",
-  shifts: "Daily Opening & Closing",
   reports: "Reports",
   staff: "Staff & Access",
-  "audit-logs": "Audit Logs",
-  notifications: "Notifications",
-  branches: "Branches",
   settings: "Settings",
-  memberships: "Memberships",
-  loyalty: "Loyalty Programme",
-  tournaments: "Tournaments",
-  "table-booking": "Online Booking",
-  subscriptions: "Subscriptions",
 };
 
 export function buildDefaultNavigation(

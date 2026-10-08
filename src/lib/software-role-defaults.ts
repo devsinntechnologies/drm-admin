@@ -92,6 +92,19 @@ export function mergeRoleAccessPreservingPortal(
   const merged: RoleAccessMap = { ...existing };
 
   for (const role of keys) {
+    // Business owner always keeps the full portal module set. Mobile checkbox
+    // matrices must not overwrite that grant when Software Control is saved.
+    if (role === "business_admin") {
+      merged[role] = normalizeRoleEntry(
+        {
+          modules: allEnabledModules,
+          defaultModule: "dashboard",
+        },
+        allEnabledModules,
+      );
+      continue;
+    }
+
     const mobileEntry = resolveRoleEntry(mobileRoleAccess, role, mobileModules);
     const portalModules = (existing[role]?.modules ?? []).filter(
       (id) => !isSoftwareControlModule(id) && allEnabledModules.includes(id),
@@ -272,15 +285,21 @@ export function allowedModulesForRole(
   const normalized = String(role ?? "")
     .toLowerCase()
     .trim();
-  if (!normalized || normalized === "super_admin") return null;
-  if (normalized === "businessadmin" || normalized === "admin") {
-    const entry = roleAccess.business_admin;
-    if (!entry || !Array.isArray(entry.modules)) return null;
-    return normalizeRoleEntry(entry, enabledModules).modules;
+  // Portal owners must see every enabled portal module. Mobile roleAccess
+  // matrices (often Dashboard/Reports-only after Software Control save) must
+  // not clip the business_admin web sidebar. Super-admin impersonation already
+  // skipped this filter — keep both entry paths identical.
+  if (
+    !normalized ||
+    normalized === "super_admin" ||
+    normalized === "business_admin" ||
+    normalized === "businessadmin" ||
+    normalized === "admin"
+  ) {
+    return null;
   }
   const entry = roleAccess[normalized];
-  if (!entry || !Array.isArray(entry.modules)) {
-    if (normalized === "business_admin") return null;
+  if (!entry?.modules?.length) {
     const defaults = resolveRoleEntry({}, normalized, enabledModules).modules;
     return defaults.length ? defaults : [];
   }

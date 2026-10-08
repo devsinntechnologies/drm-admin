@@ -44,12 +44,22 @@ import {
   type SnookerGameType,
   type SnookerTable,
 } from "./snooker-mock";
+import {
+  LiveDashboardView,
+  LivePosSessionView,
+  LivePricingView,
+  LiveTablesView,
+} from "./LiveSnookerOps";
 
 type SnookerWorkspaceProps = {
   moduleId: string;
   moduleLabel: string;
 };
 
+/**
+ * @deprecated Option A: snooker-pos uses shared Tables / Products / Orders routes.
+ * Legacy /snooker/* pages redirect away; this UI is not the primary product path.
+ */
 export function SnookerWorkspace({ moduleId, moduleLabel }: SnookerWorkspaceProps) {
   const catalog = MODULE_CATALOG[moduleId as ModuleId];
   const [clock, setClock] = useState("14:38:00");
@@ -68,6 +78,11 @@ export function SnookerWorkspace({ moduleId, moduleLabel }: SnookerWorkspaceProp
 
   return (
     <PortalPage className="snooker-workspace">
+      <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        Snooker club ops now use shared <strong>Tables &amp; products</strong> (Products catalog) and{" "}
+        <strong>Counter / POS</strong> (Orders). Physical snooker tables are products — not the restaurant
+        Tables module. This legacy session workspace is no longer the primary path.
+      </div>
       <header className="snooker-hud-bar">
         <div className="flex items-center gap-3">
           <span className="snooker-led snooker-led-occupied">
@@ -85,10 +100,10 @@ export function SnookerWorkspace({ moduleId, moduleLabel }: SnookerWorkspaceProp
         </div>
       </header>
 
-      {moduleId === "dashboard" ? <DashboardView /> : null}
-      {moduleId === "tables" ? <TablesView /> : null}
-      {moduleId === "pos" ? <PosSessionView /> : null}
-      {moduleId === "billing-pricing" ? <PricingView /> : null}
+      {moduleId === "dashboard" ? <LiveDashboardView /> : null}
+      {moduleId === "tables" ? <LiveTablesView /> : null}
+      {moduleId === "pos" ? <LivePosSessionView /> : null}
+      {moduleId === "billing-pricing" ? <LivePricingView /> : null}
       {moduleId === "customers" ? <CustomersView /> : null}
       {moduleId === "credit-udhar" ? <CreditView /> : null}
       {moduleId === "discounts" ? <DiscountsView /> : null}
