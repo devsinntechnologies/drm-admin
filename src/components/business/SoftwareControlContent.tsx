@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useDispatch } from "react-redux";
@@ -195,6 +195,15 @@ export function SoftwareControlContent({
   const [updateConfig, { isLoading: savingUpdate }] = useUpdateTemplateConfigMutation();
   const [createConfig, { isLoading: savingCreate }] = useCreateTemplateConfigMutation();
   const saving = savingUpdate || savingCreate;
+  const skipServerHydrateRef = useRef(false);
+  /** Full template enabled list from server — used to preserve portal-only modules on save. */
+  const serverEnabledRef = useRef<ModuleId[]>(
+    (templateConfig?.enabledModules ?? []) as ModuleId[],
+  );
+  const persistQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const pendingPersistRef = useRef<{ enabled: ModuleId[]; roles: RoleAccessMap } | null>(
+    null,
+  );
 
   const configSyncKey = [
     templateConfig?.id ?? "",
@@ -203,6 +212,11 @@ export function SoftwareControlContent({
   ].join("|");
 
   useEffect(() => {
+    if (skipServerHydrateRef.current) {
+      skipServerHydrateRef.current = false;
+      return;
+    }
+    serverEnabledRef.current = (templateConfig?.enabledModules ?? []) as ModuleId[];
     const modules = initialMobileEnabled(
       (templateConfig?.enabledModules ?? []) as ModuleId[],
       mobileCatalog,
@@ -295,18 +309,19 @@ export function SoftwareControlContent({
         return;
       }
       const next = disableMobileModule(moduleId, enabledModules, mobileCatalog);
+      const nextRoles = normalizeRoleAccessForModules(roleAccess, next, industryId);
       setEnabledModules(next);
-      setRoleAccess((prev) => normalizeRoleAccessForModules(prev, next, industryId));
+      setRoleAccess(nextRoles);
       if (moduleId === "expenses") {
         setDashboardCards((prev) => prev.filter((id) => !EXPENSE_DASHBOARD_CARD_IDS.includes(id)));
       }
+      void persist({ enabled: next, roles: nextRoles });
       return;
     }
     const next = enableMobileModule(moduleId, enabledModules, mobileCatalog);
+    const nextRoles = grantModuleToOwnerRoles(roleAccess, moduleId, next);
     setEnabledModules(next);
-    // Turning a module on also grants it to business admin / store manager so it
-    // shows in the app immediately after save + refresh (role matrix still editable).
-    setRoleAccess((prev) => grantModuleToOwnerRoles(prev, moduleId, next));
+    setRoleAccess(nextRoles);
     if (moduleId === "expenses") {
       setDashboardCards((prev) => {
         const merged = [...prev];
@@ -317,6 +332,7 @@ export function SoftwareControlContent({
       });
       setDashboardCardOrder((prev) => mergeDashboardCardOrder(prev));
     }
+    void persist({ enabled: next, roles: nextRoles });
   };
 
   const reorderNav = (fromId: string, toId: string) => {
@@ -383,21 +399,29 @@ export function SoftwareControlContent({
     setRoleAccess(mobileView);
   };
 
-  const save = async () => {
+  const runPersist = async (snapshot: { enabled: ModuleId[]; roles: RoleAccessMap }) => {
     if (!industry) {
       toast.error("This business has no industry template to edit.");
       return;
     }
 
+    const nextEnabled = snapshot.enabled;
+    const nextRoles = snapshot.roles;
     const mergedEnabled = applyMobileModuleToggles(
-      (templateConfig?.enabledModules ?? []) as ModuleId[],
-      enabledModules,
+      serverEnabledRef.current,
+      nextEnabled,
       mobileCatalog,
     );
     const mergedRoleAccess = mergeRoleAccessPreservingPortal(
       parseRoleAccess(templateConfig?.moduleSettings),
-      roleAccess,
-      roleModules,
+      nextRoles,
+      softwareControlRoleModules(mergedEnabled, {
+        includeCategories:
+          mobileCatalog.includes("categories") &&
+          (mergedEnabled.includes("categories") ||
+            mergedEnabled.includes("menu") ||
+            mergedEnabled.includes("products")),
+      }),
       mergedEnabled,
       industryId,
     );
@@ -449,17 +473,38 @@ export function SoftwareControlContent({
 
     const toastId = toast.loading("Saving software control…");
     try {
-      if (templateConfig?.id) {
-        await updateConfig({ id: templateConfig.id, body: payload }).unwrap();
-      } else {
-        await createConfig(payload).unwrap();
-      }
+      skipServerHydrateRef.current = true;
+      const saved = templateConfig?.id
+        ? await updateConfig({ id: templateConfig.id, body: payload }).unwrap()
+        : await createConfig(payload).unwrap();
+      serverEnabledRef.current = saved.enabledModules as ModuleId[];
       dispatch(businessApi.util.invalidateTags([{ type: "Business", id: businessId }]));
-      toast.success("Saved. Portal and Flutter app sync on next login or refresh.", { id: toastId });
+      toast.success("Saved. App hides disabled modules after refresh.", { id: toastId });
     } catch (error) {
+      skipServerHydrateRef.current = false;
       toast.error(normalizeErrorMessage(error, "Could not save software control."), { id: toastId });
+      throw error;
     }
   };
+
+  const persist = (overrides?: { enabled?: ModuleId[]; roles?: RoleAccessMap }) => {
+    pendingPersistRef.current = {
+      enabled: overrides?.enabled ?? enabledModules,
+      roles: overrides?.roles ?? roleAccess,
+    };
+    persistQueueRef.current = persistQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        while (pendingPersistRef.current) {
+          const snapshot = pendingPersistRef.current;
+          pendingPersistRef.current = null;
+          await runPersist(snapshot);
+        }
+      });
+    return persistQueueRef.current;
+  };
+
+  const save = () => persist();
 
   if (!industry) {
     return (
@@ -476,10 +521,10 @@ export function SoftwareControlContent({
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-[#dbeafe] bg-[#eff6ff] px-4 py-3 text-sm text-[#1e40af]">
-        These are the <strong>mobile app screens</strong> DigiNizam Flutter ships (including{" "}
-        <strong>Staff</strong>, <strong>Inventory</strong>, and <strong>Reports</strong>). Turn a module
-        on → it appears in the app after save + refresh. Turn it off → it hides. Role access below
-        further limits cashiers and other staff roles.
+        These are the <strong>mobile app screens</strong> for this business. Turning a module off
+        saves immediately and hides it in Super Admin, the web portal, and the Flutter app after
+        refresh. Industry Templates only set defaults for <strong>new</strong> businesses — they do
+        not overwrite this saved control.
       </div>
 
       {/* Modules */}
@@ -977,6 +1022,35 @@ export function SoftwareControlContent({
                       </Link>
                     ) : null}
                   </div>
+                  <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                    Invoice buttons
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {(
+                      [
+                        ["allowPreview", "Preview invoices"],
+                        ["allowRefresh", "Refresh invoices"],
+                        ["allowFilters", "Date filters"],
+                        ["allowPrinterSetup", "Printer setup and test"],
+                        ["allowPrint", "Print invoices"],
+                        ["allowDownloadPdf", "Download PDF"],
+                        ["allowReturn", "Return invoices"],
+                        ["allowDelete", "Delete invoices"],
+                        ["showRevenue", "Show revenue totals"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
+                        <input
+                          type="checkbox"
+                          checked={salesSettings[key]}
+                          onChange={(event) =>
+                            setSalesSettings((prev) => ({ ...prev, [key]: event.target.checked }))
+                          }
+                        />
+                        <span className="text-sm font-medium text-[#0f172a]">{label}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -1306,6 +1380,64 @@ export function SoftwareControlContent({
                       </span>
                     </span>
                   </label>
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                      Active order buttons
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(
+                        [
+                          ["allowViewDetails", "View details"],
+                          ["allowRefresh", "Refresh queue"],
+                          ["allowCreate", "Create order"],
+                          ["allowEdit", "Edit items and prices"],
+                          ["allowChangeTable", "Change table"],
+                          ["allowRemove", "Remove order"],
+                          ["allowComplete", "Complete order"],
+                          ["allowPrint", "Print order"],
+                          ["allowDownloadPdf", "Download order PDF"],
+                          ["allowSelfOrderApprove", "Approve self-order"],
+                          ["allowSelfOrderReject", "Reject self-order"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <label key={key} className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
+                          <input
+                            type="checkbox"
+                            checked={ordersSettings[key]}
+                            onChange={(event) =>
+                              setOrdersSettings((prev) => ({ ...prev, [key]: event.target.checked }))
+                            }
+                          />
+                          <span className="text-sm font-medium text-[#0f172a]">{label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                      Playing time controls
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {(
+                        [
+                          ["allowSessionEditTime", "Edit time"],
+                          ["allowSessionAddTime", "Add time (+5)"],
+                          ["allowSessionPause", "Pause / resume"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <label key={key} className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
+                          <input
+                            type="checkbox"
+                            checked={ordersSettings[key]}
+                            onChange={(event) =>
+                              setOrdersSettings((prev) => ({ ...prev, [key]: event.target.checked }))
+                            }
+                          />
+                          <span className="text-sm font-medium text-[#0f172a]">{label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               ) : null}
             </div>

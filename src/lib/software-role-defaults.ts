@@ -94,12 +94,12 @@ export function mergeRoleAccessPreservingPortal(
   for (const role of keys) {
     // Business owner always keeps the full portal module set. Mobile checkbox
     // matrices must not overwrite that grant when Software Control is saved.
+    // Mobile Software Control saves the business_admin matrix like other roles.
+    // Granting every portal module here made the Flutter app show tabs the
+    // super admin had turned off (explicit roleAccess bypasses defaults).
     if (role === "business_admin") {
       merged[role] = normalizeRoleEntry(
-        {
-          modules: allEnabledModules,
-          defaultModule: "dashboard",
-        },
+        resolveRoleEntry(mobileRoleAccess, role, mobileModules),
         allEnabledModules,
       );
       continue;

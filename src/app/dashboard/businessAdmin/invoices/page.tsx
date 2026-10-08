@@ -118,7 +118,7 @@ function InvoicesContent() {
   const isRetail = templateConfig?.industryId === "retail-store";
   const salesSettings = parseSalesSettings(templateConfig?.moduleSettings);
   const allowInvoiceExport = salesSettings.allowExport;
-  const allowPrinter = salesSettings.allowPrinter;
+  const allowPrinter = salesSettings.allowPrinter && salesSettings.allowPrint;
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -522,7 +522,7 @@ function InvoicesContent() {
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button
+              {salesSettings.allowPrinterSetup ? <button
                 type="button"
                 onClick={() => {
                   if (!allowPrinter) {
@@ -562,8 +562,8 @@ function InvoicesContent() {
                 ) : (
                   "Connect Printer"
                 )}
-              </button>
-              {allowPrinter && connectedPrinter ? (
+              </button> : null}
+              {salesSettings.allowPrinterSetup && allowPrinter && connectedPrinter ? (
                 <button
                   type="button"
                   onClick={() => void handleTestPrinter()}
@@ -583,10 +583,10 @@ function InvoicesContent() {
                   Export Excel
                 </button>
               ) : null}
-              <button type="button" onClick={() => refetch()} className="dn-btn dn-btn-soft !h-9 !px-3">
+              {salesSettings.allowRefresh ? <button type="button" onClick={() => refetch()} className="dn-btn dn-btn-soft !h-9 !px-3">
                 <RotateCcw className={cn("h-4 w-4", loading && "animate-spin")} />
                 Refresh
-              </button>
+              </button> : null}
             </div>
           </div>
 
@@ -666,14 +666,14 @@ function InvoicesContent() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-center gap-2">
-                          <button
+                          {salesSettings.allowPreview ? <button
                             type="button"
                             onClick={() => openInvoiceDetails(invoice.uuid)}
                             className="dn-btn dn-btn-soft !h-9 !px-3"
                             title={INVOICE_TIPS.view}
                           >
                             <Eye className="h-4 w-4" />
-                          </button>
+                          </button> : null}
                           {invoice.status === "Returned" ? (
                             <span
                               className="inline-flex items-center rounded-lg bg-[#fef2f2] px-3 py-2 text-xs font-bold uppercase tracking-wide text-[#dc2626]"
@@ -683,7 +683,7 @@ function InvoicesContent() {
                             </span>
                           ) : (
                             <>
-                              <button
+                              {allowPrinter ? <button
                                 type="button"
                                 onClick={() => {
                                   const full = invoices.find((i) => i.uuid === invoice.uuid);
@@ -702,8 +702,8 @@ function InvoicesContent() {
                               >
                                 <Printer className="h-4 w-4" />
                                 Print
-                              </button>
-                              {canReturnInvoice ? (
+                              </button> : null}
+                              {canReturnInvoice && salesSettings.allowReturn ? (
                                 <button
                                   type="button"
                                   onClick={() => setReturnConfirmUuid(invoice.uuid)}
@@ -723,7 +723,7 @@ function InvoicesContent() {
                               ) : null}
                             </>
                           )}
-                          {canDeleteInvoice && invoice.status !== "Returned" ? (
+                          {canDeleteInvoice && salesSettings.allowDelete && invoice.status !== "Returned" ? (
                             <button
                               type="button"
                               onClick={() => handleDeleteInvoice(invoice.uuid, invoice.id)}
@@ -809,13 +809,13 @@ function InvoicesContent() {
                   </span>
                 ) : (
                   <>
-                    <InvoiceDownloadButton onClick={() => void handleDownloadPdf()} loading={downloadingPdf} />
-                    <InvoicePrintButton
+                    {salesSettings.allowDownloadPdf ? <InvoiceDownloadButton onClick={() => void handleDownloadPdf()} loading={downloadingPdf} /> : null}
+                    {allowPrinter ? <InvoicePrintButton
                       onClick={() => void handlePrint()}
                       label="Print Receipt"
                       className={!allowPrinter ? "opacity-45" : undefined}
-                    />
-                    {canReturnInvoice ? (
+                    /> : null}
+                    {canReturnInvoice && salesSettings.allowReturn ? (
                       <button
                         type="button"
                         onClick={() => setReturnConfirmUuid(selectedInvoice.uuid)}

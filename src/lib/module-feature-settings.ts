@@ -24,6 +24,20 @@ export type OrdersModuleSettings = {
   defaultSection: "active" | "new";
   /** USB gun + camera add-to-cart on the POS screen */
   allowBarcodeScanner: boolean;
+  allowViewDetails: boolean;
+  allowRefresh: boolean;
+  allowCreate: boolean;
+  allowEdit: boolean;
+  allowChangeTable: boolean;
+  allowRemove: boolean;
+  allowComplete: boolean;
+  allowPrint: boolean;
+  allowDownloadPdf: boolean;
+  allowSelfOrderApprove: boolean;
+  allowSelfOrderReject: boolean;
+  allowSessionEditTime: boolean;
+  allowSessionAddTime: boolean;
+  allowSessionPause: boolean;
 };
 
 /** Categories capability — lives inside Products/Orders on mobile (not a nav tab). */
@@ -50,6 +64,20 @@ export const DEFAULT_ORDERS_SETTINGS: OrdersModuleSettings = {
   showNewOrders: true,
   defaultSection: "active",
   allowBarcodeScanner: false,
+  allowViewDetails: true,
+  allowRefresh: true,
+  allowCreate: true,
+  allowEdit: true,
+  allowChangeTable: true,
+  allowRemove: true,
+  allowComplete: true,
+  allowPrint: true,
+  allowDownloadPdf: true,
+  allowSelfOrderApprove: true,
+  allowSelfOrderReject: true,
+  allowSessionEditTime: true,
+  allowSessionAddTime: true,
+  allowSessionPause: true,
 };
 
 export const DEFAULT_CATEGORIES_SETTINGS: CategoriesModuleSettings = {
@@ -133,6 +161,20 @@ export function parseOrdersSettings(
       typeof raw.allowBarcodeScanner === "boolean"
         ? raw.allowBarcodeScanner
         : defaults.allowBarcodeScanner,
+    allowViewDetails: raw.allowViewDetails !== false,
+    allowRefresh: raw.allowRefresh !== false,
+    allowCreate: raw.allowCreate !== false,
+    allowEdit: raw.allowEdit !== false,
+    allowChangeTable: raw.allowChangeTable !== false,
+    allowRemove: raw.allowRemove !== false,
+    allowComplete: raw.allowComplete !== false,
+    allowPrint: raw.allowPrint !== false,
+    allowDownloadPdf: raw.allowDownloadPdf !== false,
+    allowSelfOrderApprove: raw.allowSelfOrderApprove !== false,
+    allowSelfOrderReject: raw.allowSelfOrderReject !== false,
+    allowSessionEditTime: raw.allowSessionEditTime !== false,
+    allowSessionAddTime: raw.allowSessionAddTime !== false,
+    allowSessionPause: raw.allowSessionPause !== false,
   };
 }
 
@@ -166,6 +208,20 @@ export function serializeOrdersSettings(settings: OrdersModuleSettings): Record<
     showNewOrders: settings.showNewOrders,
     defaultSection: settings.defaultSection,
     allowBarcodeScanner: settings.allowBarcodeScanner,
+    allowViewDetails: settings.allowViewDetails,
+    allowRefresh: settings.allowRefresh,
+    allowCreate: settings.allowCreate,
+    allowEdit: settings.allowEdit,
+    allowChangeTable: settings.allowChangeTable,
+    allowRemove: settings.allowRemove,
+    allowComplete: settings.allowComplete,
+    allowPrint: settings.allowPrint,
+    allowDownloadPdf: settings.allowDownloadPdf,
+    allowSelfOrderApprove: settings.allowSelfOrderApprove,
+    allowSelfOrderReject: settings.allowSelfOrderReject,
+    allowSessionEditTime: settings.allowSessionEditTime,
+    allowSessionAddTime: settings.allowSessionAddTime,
+    allowSessionPause: settings.allowSessionPause,
   };
 }
 
@@ -183,11 +239,29 @@ export type SalesModuleSettings = {
   allowExport: boolean;
   /** Staff can connect a printer and print invoices */
   allowPrinter: boolean;
+  allowPreview: boolean;
+  allowRefresh: boolean;
+  allowFilters: boolean;
+  allowPrinterSetup: boolean;
+  allowPrint: boolean;
+  allowDownloadPdf: boolean;
+  allowReturn: boolean;
+  allowDelete: boolean;
+  showRevenue: boolean;
 };
 
 export const DEFAULT_SALES_SETTINGS: SalesModuleSettings = {
   allowExport: true,
   allowPrinter: true,
+  allowPreview: true,
+  allowRefresh: true,
+  allowFilters: true,
+  allowPrinterSetup: true,
+  allowPrint: true,
+  allowDownloadPdf: true,
+  allowReturn: true,
+  allowDelete: true,
+  showRevenue: true,
 };
 
 export function parseSalesSettings(
@@ -198,6 +272,15 @@ export function parseSalesSettings(
   return {
     allowExport: raw.allowExport !== false,
     allowPrinter: raw.allowPrinter !== false,
+    allowPreview: raw.allowPreview !== false,
+    allowRefresh: raw.allowRefresh !== false,
+    allowFilters: raw.allowFilters !== false,
+    allowPrinterSetup: raw.allowPrinterSetup !== false,
+    allowPrint: raw.allowPrint !== false,
+    allowDownloadPdf: raw.allowDownloadPdf !== false,
+    allowReturn: raw.allowReturn !== false,
+    allowDelete: raw.allowDelete !== false,
+    showRevenue: raw.showRevenue !== false,
   };
 }
 
@@ -205,5 +288,14 @@ export function serializeSalesSettings(settings: SalesModuleSettings): Record<st
   return {
     allowExport: settings.allowExport,
     allowPrinter: settings.allowPrinter,
+    allowPreview: settings.allowPreview,
+    allowRefresh: settings.allowRefresh,
+    allowFilters: settings.allowFilters,
+    allowPrinterSetup: settings.allowPrinterSetup,
+    allowPrint: settings.allowPrint,
+    allowDownloadPdf: settings.allowDownloadPdf,
+    allowReturn: settings.allowReturn,
+    allowDelete: settings.allowDelete,
+    showRevenue: settings.showRevenue,
   };
 }
