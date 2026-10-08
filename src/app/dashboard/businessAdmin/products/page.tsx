@@ -540,6 +540,7 @@ function MenuItemsContent() {
       categoryId: "",
       isKitchen: true,
       isStockEnabled: true,
+      isSessionService: false,
       costPrice: 0,
       image: null,
     });
@@ -558,6 +559,7 @@ function MenuItemsContent() {
       categoryId: "",
       isKitchen: true,
       isStockEnabled: true,
+      isSessionService: false,
       costPrice: 0,
       image: null,
     });
