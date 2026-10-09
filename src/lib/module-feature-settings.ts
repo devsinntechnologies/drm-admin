@@ -24,6 +24,8 @@ export type OrdersModuleSettings = {
   defaultSection: "active" | "new";
   /** USB gun + camera add-to-cart on the POS screen */
   allowBarcodeScanner: boolean;
+
+  // ── Active order queue buttons ─────────────────────────────────────────
   allowViewDetails: boolean;
   allowRefresh: boolean;
   allowCreate: boolean;
@@ -35,9 +37,30 @@ export type OrdersModuleSettings = {
   allowDownloadPdf: boolean;
   allowSelfOrderApprove: boolean;
   allowSelfOrderReject: boolean;
+
+  // ── Cart / order actions ──────────────────────────────────────────────
+  allowExtraCharges: boolean;
+  /** Delivery charge row inside Extra Charges */
+  allowDeliveryCharge: boolean;
+  /** Packing charge row inside Extra Charges */
+  allowPackingCharge: boolean;
+  /** Put-on-credit checkbox / party dialog on cart */
+  allowCreditSale: boolean;
+  allowPriceOverride: boolean;
+  allowLineDiscount: boolean;
+
+  // ── Timed table sessions (snooker Counter / POS) ───────────────────────
+  /** Master: show Table session block when placing an order */
+  enableTableSession: boolean;
+  allowSessionDuration: boolean;
+  allowOpenEndedSession: boolean;
+  allowSessionGameType: boolean;
   allowSessionEditTime: boolean;
   allowSessionAddTime: boolean;
   allowSessionPause: boolean;
+  allowSessionTimeUpAlert: boolean;
+  /** BOOKED / OVERTIME ribbon + live timer on product cards */
+  showTableBookingStatus: boolean;
 };
 
 /** Categories capability — lives inside Products/Orders on mobile (not a nav tab). */
@@ -75,10 +98,26 @@ export const DEFAULT_ORDERS_SETTINGS: OrdersModuleSettings = {
   allowDownloadPdf: true,
   allowSelfOrderApprove: true,
   allowSelfOrderReject: true,
+  allowExtraCharges: true,
+  allowDeliveryCharge: true,
+  allowPackingCharge: true,
+  allowCreditSale: true,
+  allowPriceOverride: true,
+  allowLineDiscount: true,
+  enableTableSession: false,
+  allowSessionDuration: true,
+  allowOpenEndedSession: true,
+  allowSessionGameType: true,
   allowSessionEditTime: true,
   allowSessionAddTime: true,
   allowSessionPause: true,
+  allowSessionTimeUpAlert: true,
+  showTableBookingStatus: false,
 };
+
+function boolOr(raw: unknown, fallback: boolean): boolean {
+  return typeof raw === "boolean" ? raw : fallback;
+}
 
 export const DEFAULT_CATEGORIES_SETTINGS: CategoriesModuleSettings = {
   allowManage: true,
@@ -95,12 +134,25 @@ export function defaultOrdersSettingsForIndustry(
     industryId === "bakery" ||
     industryId === "snooker-pos"
   ) {
+    const snooker = industryId === "snooker-pos";
+    // Restaurant / food-cafe / bakery: same Orders module, sessions OFF.
+    // Only snooker-pos defaults sessions ON — admin can still toggle either way.
     return {
       ...DEFAULT_ORDERS_SETTINGS,
       completionMode: "restaurantLifecycle",
       showActiveOrders: true,
       showNewOrders: true,
-      defaultSection: industryId === "snooker-pos" ? "new" : "active",
+      defaultSection: snooker ? "new" : "active",
+      enableTableSession: snooker,
+      showTableBookingStatus: snooker,
+      // Child flags only matter when enableTableSession is on.
+      allowSessionDuration: true,
+      allowOpenEndedSession: true,
+      allowSessionGameType: true,
+      allowSessionEditTime: true,
+      allowSessionAddTime: true,
+      allowSessionPause: true,
+      allowSessionTimeUpAlert: true,
     };
   }
   const retailLike = industryId && industryId !== "pharmacy";
@@ -139,42 +191,83 @@ export function parseOrdersSettings(
   if (!raw || typeof raw !== "object") return defaults;
   return {
     viewType: raw.viewType === "grid" ? "grid" : "list",
-    allowProductScopeSwitch:
-      typeof raw.allowProductScopeSwitch === "boolean"
-        ? raw.allowProductScopeSwitch
-        : defaults.allowProductScopeSwitch,
+    allowProductScopeSwitch: boolOr(
+      raw.allowProductScopeSwitch,
+      defaults.allowProductScopeSwitch,
+    ),
     productScopeDefault:
       raw.productScopeDefault === "all" ? "all" : defaults.productScopeDefault,
     completionMode:
       raw.completionMode === "orderOnly" ? "orderOnly" : defaults.completionMode,
-    showActiveOrders:
-      typeof raw.showActiveOrders === "boolean"
-        ? raw.showActiveOrders
-        : defaults.showActiveOrders,
-    showNewOrders:
-      typeof raw.showNewOrders === "boolean" ? raw.showNewOrders : defaults.showNewOrders,
+    showActiveOrders: boolOr(raw.showActiveOrders, defaults.showActiveOrders),
+    showNewOrders: boolOr(raw.showNewOrders, defaults.showNewOrders),
     defaultSection:
       raw.defaultSection === "new" || raw.defaultSection === "active"
         ? raw.defaultSection
         : defaults.defaultSection,
-    allowBarcodeScanner:
-      typeof raw.allowBarcodeScanner === "boolean"
-        ? raw.allowBarcodeScanner
-        : defaults.allowBarcodeScanner,
-    allowViewDetails: raw.allowViewDetails !== false,
-    allowRefresh: raw.allowRefresh !== false,
-    allowCreate: raw.allowCreate !== false,
-    allowEdit: raw.allowEdit !== false,
-    allowChangeTable: raw.allowChangeTable !== false,
-    allowRemove: raw.allowRemove !== false,
-    allowComplete: raw.allowComplete !== false,
-    allowPrint: raw.allowPrint !== false,
-    allowDownloadPdf: raw.allowDownloadPdf !== false,
-    allowSelfOrderApprove: raw.allowSelfOrderApprove !== false,
-    allowSelfOrderReject: raw.allowSelfOrderReject !== false,
-    allowSessionEditTime: raw.allowSessionEditTime !== false,
-    allowSessionAddTime: raw.allowSessionAddTime !== false,
-    allowSessionPause: raw.allowSessionPause !== false,
+    allowBarcodeScanner: boolOr(
+      raw.allowBarcodeScanner,
+      defaults.allowBarcodeScanner,
+    ),
+    allowViewDetails: boolOr(raw.allowViewDetails, defaults.allowViewDetails),
+    allowRefresh: boolOr(raw.allowRefresh, defaults.allowRefresh),
+    allowCreate: boolOr(raw.allowCreate, defaults.allowCreate),
+    allowEdit: boolOr(raw.allowEdit, defaults.allowEdit),
+    allowChangeTable: boolOr(raw.allowChangeTable, defaults.allowChangeTable),
+    allowRemove: boolOr(raw.allowRemove, defaults.allowRemove),
+    allowComplete: boolOr(raw.allowComplete, defaults.allowComplete),
+    allowPrint: boolOr(raw.allowPrint, defaults.allowPrint),
+    allowDownloadPdf: boolOr(raw.allowDownloadPdf, defaults.allowDownloadPdf),
+    allowSelfOrderApprove: boolOr(
+      raw.allowSelfOrderApprove,
+      defaults.allowSelfOrderApprove,
+    ),
+    allowSelfOrderReject: boolOr(
+      raw.allowSelfOrderReject,
+      defaults.allowSelfOrderReject,
+    ),
+    allowExtraCharges: boolOr(raw.allowExtraCharges, defaults.allowExtraCharges),
+    allowDeliveryCharge: boolOr(
+      raw.allowDeliveryCharge,
+      defaults.allowDeliveryCharge,
+    ),
+    allowPackingCharge: boolOr(
+      raw.allowPackingCharge,
+      defaults.allowPackingCharge,
+    ),
+    allowCreditSale: boolOr(raw.allowCreditSale, defaults.allowCreditSale),
+    allowPriceOverride: boolOr(raw.allowPriceOverride, defaults.allowPriceOverride),
+    allowLineDiscount: boolOr(raw.allowLineDiscount, defaults.allowLineDiscount),
+    enableTableSession: boolOr(raw.enableTableSession, defaults.enableTableSession),
+    allowSessionDuration: boolOr(
+      raw.allowSessionDuration,
+      defaults.allowSessionDuration,
+    ),
+    allowOpenEndedSession: boolOr(
+      raw.allowOpenEndedSession,
+      defaults.allowOpenEndedSession,
+    ),
+    allowSessionGameType: boolOr(
+      raw.allowSessionGameType,
+      defaults.allowSessionGameType,
+    ),
+    allowSessionEditTime: boolOr(
+      raw.allowSessionEditTime,
+      defaults.allowSessionEditTime,
+    ),
+    allowSessionAddTime: boolOr(
+      raw.allowSessionAddTime,
+      defaults.allowSessionAddTime,
+    ),
+    allowSessionPause: boolOr(raw.allowSessionPause, defaults.allowSessionPause),
+    allowSessionTimeUpAlert: boolOr(
+      raw.allowSessionTimeUpAlert,
+      defaults.allowSessionTimeUpAlert,
+    ),
+    showTableBookingStatus: boolOr(
+      raw.showTableBookingStatus,
+      defaults.showTableBookingStatus,
+    ),
   };
 }
 
@@ -219,9 +312,21 @@ export function serializeOrdersSettings(settings: OrdersModuleSettings): Record<
     allowDownloadPdf: settings.allowDownloadPdf,
     allowSelfOrderApprove: settings.allowSelfOrderApprove,
     allowSelfOrderReject: settings.allowSelfOrderReject,
+    allowExtraCharges: settings.allowExtraCharges,
+    allowDeliveryCharge: settings.allowDeliveryCharge,
+    allowPackingCharge: settings.allowPackingCharge,
+    allowCreditSale: settings.allowCreditSale,
+    allowPriceOverride: settings.allowPriceOverride,
+    allowLineDiscount: settings.allowLineDiscount,
+    enableTableSession: settings.enableTableSession,
+    allowSessionDuration: settings.allowSessionDuration,
+    allowOpenEndedSession: settings.allowOpenEndedSession,
+    allowSessionGameType: settings.allowSessionGameType,
     allowSessionEditTime: settings.allowSessionEditTime,
     allowSessionAddTime: settings.allowSessionAddTime,
     allowSessionPause: settings.allowSessionPause,
+    allowSessionTimeUpAlert: settings.allowSessionTimeUpAlert,
+    showTableBookingStatus: settings.showTableBookingStatus,
   };
 }
 

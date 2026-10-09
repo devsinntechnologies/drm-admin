@@ -43,7 +43,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { Product, useProducts, CreateProductVariantPayload } from "@/hooks/useProducts";
 import { BASE_URL } from "@/lib/constant";
-import { CategoryRecord, useCategories } from "@/hooks/useCategories";
+import { CategoryPosMode, CategoryRecord, useCategories } from "@/hooks/useCategories";
 import { useCrmSchema } from "@/hooks/useCrmSchema";
 import { CrmRecordFields } from "@/components/crm/CrmRecordFields";
 import { CrmCardFields, crmShowsImage } from "@/components/crm/CrmCardFields";
@@ -243,6 +243,7 @@ function MenuCard({
   item,
   schema,
   currency,
+  categoryTimed = false,
   onEdit,
   onDelete,
   deleting,
@@ -257,6 +258,7 @@ function MenuCard({
   item: Product;
   schema: CrmModuleSchema | null;
   currency: string;
+  categoryTimed?: boolean;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   deleting: boolean;
@@ -331,7 +333,14 @@ function MenuCard({
                 </div>
               ) : null,
             category: item.category?.CategoryName ? (
-              <p className="text-sm text-[#64748b]">{item.category.CategoryName}</p>
+              <p className="text-sm text-[#64748b]">
+                {item.category.CategoryName}
+                {categoryTimed ? (
+                  <span className="ml-2 rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[10px] font-bold uppercase text-[#047857]">
+                    Timed
+                  </span>
+                ) : null}
+              </p>
             ) : null,
             stock: (
               <p className="text-sm text-[#64748b]">
@@ -424,8 +433,11 @@ function MenuItemsContent() {
   const [createCustomFields, setCreateCustomFields] = useState<Record<string, unknown>>({});
   const [editCustomFields, setEditCustomFields] = useState<Record<string, unknown>>({});
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [categoryDialogMode, setCategoryDialogMode] = useState<"create" | "edit">("create");
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [quickCategoryName, setQuickCategoryName] = useState("");
   const [quickCategorySort, setQuickCategorySort] = useState(0);
+  const [quickCategoryPosMode, setQuickCategoryPosMode] = useState<CategoryPosMode>("standard");
 
   const {
     products,
@@ -441,7 +453,13 @@ function MenuItemsContent() {
     refetch,
   } = useProducts({ page: currentPage, limit: isRetail ? 100 : undefined });
 
-  const { categories, createCategory, actionLoading: categorySaving, fetchCategories } = useCategories({
+  const {
+    categories,
+    createCategory,
+    updateCategory,
+    actionLoading: categorySaving,
+    fetchCategories,
+  } = useCategories({
     page: 1,
     limit: 100,
   });
@@ -452,19 +470,54 @@ function MenuItemsContent() {
   }, [productCrmSchema]);
 
   const openQuickCategory = () => {
+    setCategoryDialogMode("create");
+    setEditingCategoryId(null);
     setQuickCategoryName("");
     setQuickCategorySort(0);
+    setQuickCategoryPosMode("standard");
     setCategoryDialogOpen(true);
   };
 
-  const onQuickCreateCategory = async (e: React.FormEvent) => {
+  const openEditCategory = (categoryId: string) => {
+    const category = categories.find((c) => c.id === categoryId);
+    if (!category) {
+      toast.error("Select a category first");
+      return;
+    }
+    setCategoryDialogMode("edit");
+    setEditingCategoryId(category.id);
+    setQuickCategoryName(category.CategoryName);
+    setQuickCategorySort(category.sortOrder ?? 0);
+    setQuickCategoryPosMode(category.posMode === "timed_session" ? "timed_session" : "standard");
+    setCategoryDialogOpen(true);
+  };
+
+  const onQuickSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickCategoryName.trim()) return toast.error("Category name is required");
-    const toastId = toast.loading("Creating category...");
+    const toastId = toast.loading(
+      categoryDialogMode === "edit" ? "Updating category..." : "Creating category...",
+    );
     try {
+      if (categoryDialogMode === "edit" && editingCategoryId) {
+        await updateCategory(editingCategoryId, {
+          categoryName: quickCategoryName.trim(),
+          sortOrder: quickCategorySort,
+          posMode: quickCategoryPosMode,
+        });
+        await fetchCategories(1);
+        setCategoryDialogOpen(false);
+        toast.success(
+          "Category updated. All products in this category now use this POS behavior.",
+          { id: toastId },
+        );
+        return;
+      }
+
       const created = await createCategory({
         categoryName: quickCategoryName.trim(),
         sortOrder: quickCategorySort,
+        posMode: quickCategoryPosMode,
       });
       await fetchCategories(1);
       if (created && typeof created === "object" && "id" in created) {
@@ -474,7 +527,7 @@ function MenuItemsContent() {
       setCategoryDialogOpen(false);
       toast.success("Category created", { id: toastId });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create category", { id: toastId });
+      toast.error(err instanceof Error ? err.message : "Failed to save category", { id: toastId });
     }
   };
 
@@ -827,6 +880,10 @@ function MenuItemsContent() {
                 item={item}
                 schema={productCrmSchema}
                 currency={currency}
+                categoryTimed={
+                  categories.find((c) => c.id === item.categoryId)?.posMode ===
+                  "timed_session"
+                }
                 onEdit={onOpenEdit}
                 onDelete={onDelete}
                 deleting={actionLoading}
@@ -860,18 +917,29 @@ function MenuItemsContent() {
               <form className="flex flex-col max-h-[80vh]" onSubmit={onCreateSubmit}>
                 <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <label className="text-sm font-bold">
                         <FieldLabel tip={PRODUCT_TIPS.category} required>Category</FieldLabel>
                       </label>
-                      <button
-                        type="button"
-                        onClick={openQuickCategory}
-                        className="inline-flex items-center gap-1 rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]"
-                        title={PRODUCT_TIPS.addCategory}
-                      >
-                        <Plus className="h-3.5 w-3.5" /> Add category
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditCategory(createForm.categoryId)}
+                          disabled={!createForm.categoryId}
+                          className="inline-flex items-center gap-1 rounded-lg border border-[#e2e8f0] bg-white px-2.5 py-1 text-xs font-semibold text-[#0f172a] hover:bg-[#f8fafc] disabled:opacity-40"
+                          title="Edit selected category (name + POS behavior). Linked products inherit it."
+                        >
+                          <Edit className="h-3.5 w-3.5" /> Edit category
+                        </button>
+                        <button
+                          type="button"
+                          onClick={openQuickCategory}
+                          className="inline-flex items-center gap-1 rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]"
+                          title={PRODUCT_TIPS.addCategory}
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Add category
+                        </button>
+                      </div>
                     </div>
                     <select
                       value={createForm.categoryId}
@@ -880,8 +948,16 @@ function MenuItemsContent() {
                       required
                     >
                       <option value="">Select Category</option>
-                      {categories.map(c => <option key={c.id} value={c.id}>{c.CategoryName}</option>)}
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.CategoryName}
+                          {c.posMode === "timed_session" ? " · Timed session" : ""}
+                        </option>
+                      ))}
                     </select>
+                    <p className="text-xs text-[#64748b]">
+                      POS behavior (Standard / Timed) is set on the category — every product in it uses that mode.
+                    </p>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-bold">
@@ -1004,19 +1080,23 @@ function MenuItemsContent() {
         </Dialog>
 
         <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
-          <DialogContent className="max-w-md rounded-2xl">
+          <DialogContent className="max-w-lg rounded-2xl">
             <DialogHeader>
-              <DialogTitle>Add category</DialogTitle>
+              <DialogTitle>
+                {categoryDialogMode === "edit" ? "Edit category" : "Add category"}
+              </DialogTitle>
               <DialogDescription>
-                Create a category without leaving this form. It will be selected automatically.
+                {categoryDialogMode === "edit"
+                  ? "Update name and POS behavior. Every product already linked to this category inherits the mode."
+                  : "Create a category without leaving this form. It will be selected automatically."}
               </DialogDescription>
             </DialogHeader>
-            <form className="space-y-4" onSubmit={onQuickCreateCategory}>
+            <form className="space-y-4" onSubmit={onQuickSaveCategory}>
               <FormField label="Category name" required tip={CATEGORY_TIPS.name}>
                 <input
                   value={quickCategoryName}
                   onChange={(e) => setQuickCategoryName(e.target.value)}
-                  placeholder={isPharmacy ? "e.g. Tablets" : "e.g. Starters"}
+                  placeholder={isPharmacy ? "e.g. Tablets" : "e.g. Snooker"}
                   className={portalInputClass}
                   required
                 />
@@ -1029,6 +1109,43 @@ function MenuItemsContent() {
                   className={portalInputClass}
                 />
               </FormField>
+              <div className="space-y-2">
+                <p className="text-sm font-bold text-[#64748b]">POS behavior</p>
+                <p className="text-xs text-[#64748b]">
+                  One mode for all products in this category. Restaurant / drinks = Standard. Tables = Timed session.
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {(
+                    [
+                      {
+                        id: "standard" as const,
+                        title: "Standard products",
+                        body: "Qty +/-, override & discount follow Software Control.",
+                      },
+                      {
+                        id: "timed_session" as const,
+                        title: "Timed table / session",
+                        body: "No qty / override / discount. Duration & game pricing on Counter.",
+                      },
+                    ] as const
+                  ).map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setQuickCategoryPosMode(option.id)}
+                      className={cn(
+                        "rounded-xl border p-3 text-left transition",
+                        quickCategoryPosMode === option.id
+                          ? "border-[#0050F8] bg-[#eef3ff] ring-2 ring-[#0050F8]/20"
+                          : "border-[#e2e8f0] bg-white hover:border-[#c7d7f5]",
+                      )}
+                    >
+                      <span className="block text-sm font-bold text-[#111827]">{option.title}</span>
+                      <span className="mt-1 block text-xs text-[#64748b]">{option.body}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -1042,7 +1159,11 @@ function MenuItemsContent() {
                   disabled={categorySaving}
                   className="flex-1 rounded-xl bg-[#001840] py-2.5 text-sm font-semibold text-white disabled:opacity-60"
                 >
-                  {categorySaving ? "Saving…" : "Save category"}
+                  {categorySaving
+                    ? "Saving…"
+                    : categoryDialogMode === "edit"
+                      ? "Update category"
+                      : "Save category"}
                 </button>
               </div>
             </form>
@@ -1063,18 +1184,29 @@ function MenuItemsContent() {
               <form className="flex flex-col max-h-[80vh]" onSubmit={onEditSubmit}>
                 <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <label className="text-sm font-bold">
                         <FieldLabel tip={PRODUCT_TIPS.category} required>Category</FieldLabel>
                       </label>
-                      <button
-                        type="button"
-                        onClick={openQuickCategory}
-                        className="inline-flex items-center gap-1 rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]"
-                        title={PRODUCT_TIPS.addCategory}
-                      >
-                        <Plus className="h-3.5 w-3.5" /> Add category
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditCategory(editForm.categoryId)}
+                          disabled={!editForm.categoryId}
+                          className="inline-flex items-center gap-1 rounded-lg border border-[#e2e8f0] bg-white px-2.5 py-1 text-xs font-semibold text-[#0f172a] hover:bg-[#f8fafc] disabled:opacity-40"
+                          title="Edit selected category (name + POS behavior). Linked products inherit it."
+                        >
+                          <Edit className="h-3.5 w-3.5" /> Edit category
+                        </button>
+                        <button
+                          type="button"
+                          onClick={openQuickCategory}
+                          className="inline-flex items-center gap-1 rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]"
+                          title={PRODUCT_TIPS.addCategory}
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Add category
+                        </button>
+                      </div>
                     </div>
                     <select
                       value={editForm.categoryId}
@@ -1083,7 +1215,12 @@ function MenuItemsContent() {
                       required
                     >
                       <option value="">Select Category</option>
-                      {categories.map(c => <option key={c.id} value={c.id}>{c.CategoryName}</option>)}
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.CategoryName}
+                          {c.posMode === "timed_session" ? " · Timed session" : ""}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="space-y-1.5">

@@ -1380,6 +1380,7 @@ export function SoftwareControlContent({
                       </span>
                     </span>
                   </label>
+
                   <div>
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
                       Active order buttons
@@ -1400,12 +1401,18 @@ export function SoftwareControlContent({
                           ["allowSelfOrderReject", "Reject self-order"],
                         ] as const
                       ).map(([key, label]) => (
-                        <label key={key} className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
+                        <label
+                          key={key}
+                          className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3"
+                        >
                           <input
                             type="checkbox"
                             checked={ordersSettings[key]}
                             onChange={(event) =>
-                              setOrdersSettings((prev) => ({ ...prev, [key]: event.target.checked }))
+                              setOrdersSettings((prev) => ({
+                                ...prev,
+                                [key]: event.target.checked,
+                              }))
                             }
                           />
                           <span className="text-sm font-medium text-[#0f172a]">{label}</span>
@@ -1413,30 +1420,176 @@ export function SoftwareControlContent({
                       ))}
                     </div>
                   </div>
+
                   <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                      Playing time controls
+                    <p className="mb-2 text-sm font-medium text-[#0f172a]">Cart &amp; order actions</p>
+                    <p className="mb-3 text-xs text-[#64748b]">
+                      Turn individual Counter / POS cart features on or off for this business.
                     </p>
-                    <div className="grid gap-2 sm:grid-cols-3">
+                    <div className="grid gap-2 sm:grid-cols-2">
                       {(
                         [
-                          ["allowSessionEditTime", "Edit time"],
-                          ["allowSessionAddTime", "Add time (+5)"],
-                          ["allowSessionPause", "Pause / resume"],
+                          {
+                            key: "allowExtraCharges" as const,
+                            title: "Extra charges section",
+                            body: "Master: show Extra Charges accordion on the cart.",
+                          },
+                          {
+                            key: "allowDeliveryCharge" as const,
+                            title: "Delivery charge",
+                            body: "Delivery Charge field inside Extra Charges.",
+                          },
+                          {
+                            key: "allowPackingCharge" as const,
+                            title: "Packing charge",
+                            body: "Packing Charge field inside Extra Charges.",
+                          },
+                          {
+                            key: "allowCreditSale" as const,
+                            title: "Put on credit",
+                            body: "Credit checkbox + party dialog on the cart.",
+                          },
+                          {
+                            key: "allowPriceOverride" as const,
+                            title: "Price override",
+                            body: "Manual line price on cart items.",
+                          },
+                          {
+                            key: "allowLineDiscount" as const,
+                            title: "Line discount",
+                            body: "Per-item discount field on the cart.",
+                          },
                         ] as const
-                      ).map(([key, label]) => (
-                        <label key={key} className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
+                      ).map((feature) => (
+                        <label
+                          key={feature.key}
+                          className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3"
+                        >
                           <input
                             type="checkbox"
-                            checked={ordersSettings[key]}
+                            className="mt-1 h-4 w-4"
+                            checked={ordersSettings[feature.key]}
                             onChange={(event) =>
-                              setOrdersSettings((prev) => ({ ...prev, [key]: event.target.checked }))
+                              setOrdersSettings((prev) => ({
+                                ...prev,
+                                [feature.key]: event.target.checked,
+                              }))
                             }
                           />
-                          <span className="text-sm font-medium text-[#0f172a]">{label}</span>
+                          <span>
+                            <span className="block text-sm font-medium text-[#0f172a]">
+                              {feature.title}
+                            </span>
+                            <span className="block text-xs text-[#64748b]">{feature.body}</span>
+                          </span>
                         </label>
                       ))}
                     </div>
+                  </div>
+
+                  <div className="rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] p-4">
+                    <p className="mb-1 text-sm font-semibold text-[#14532d]">
+                      Timed table sessions
+                    </p>
+                    <p className="mb-3 text-xs text-[#166534]">
+                      Optional add-on on the shared Orders API (same products / orders / database).
+                      <strong> Restaurant &amp; cafe: off by default</strong> — dining tables, kitchen
+                      flow, and invoices stay unchanged. Turn the master switch on only for pool /
+                      snooker-style timed billing; child toggles then control Duration, Game type,
+                      pause, +5, Time Up, and booked cards.
+                    </p>
+                    <label className="mb-3 flex items-start gap-3 rounded-lg border border-[#86efac] bg-white p-3">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4"
+                        checked={ordersSettings.enableTableSession}
+                        onChange={(event) =>
+                          setOrdersSettings((prev) => ({
+                            ...prev,
+                            enableTableSession: event.target.checked,
+                          }))
+                        }
+                      />
+                      <span>
+                        <span className="block text-sm font-medium text-[#0f172a]">
+                          Enable timed table sessions
+                        </span>
+                        <span className="block text-xs text-[#64748b]">
+                          Master on/off for table session block, timers, and booking status.
+                        </span>
+                      </span>
+                    </label>
+                    {ordersSettings.enableTableSession ? (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {(
+                          [
+                            {
+                              key: "allowSessionDuration" as const,
+                              title: "Duration picker",
+                              body: "15 / 30 / 60 min dropdown when placing an order.",
+                            },
+                            {
+                              key: "allowOpenEndedSession" as const,
+                              title: "Open-ended (∞)",
+                              body: "Include ∞ open-ended in the duration list.",
+                            },
+                            {
+                              key: "allowSessionGameType" as const,
+                              title: "Game type picker",
+                              body: "Single / Double (and pricing) dropdown.",
+                            },
+                            {
+                              key: "allowSessionEditTime" as const,
+                              title: "Edit remaining time",
+                              body: "Set remaining minutes on Active Orders.",
+                            },
+                            {
+                              key: "allowSessionAddTime" as const,
+                              title: "+5 minutes",
+                              body: "Quick-extend on the session card.",
+                            },
+                            {
+                              key: "allowSessionPause" as const,
+                              title: "Pause / resume",
+                              body: "Pause button on Active Orders cards.",
+                            },
+                            {
+                              key: "allowSessionTimeUpAlert" as const,
+                              title: "Time Up alert",
+                              body: "Global popup + beep when time expires.",
+                            },
+                            {
+                              key: "showTableBookingStatus" as const,
+                              title: "Booked / overtime cards",
+                              body: "BOOKED ribbon + live timer on product cards.",
+                            },
+                          ] as const
+                        ).map((feature) => (
+                          <label
+                            key={feature.key}
+                            className="flex items-start gap-3 rounded-lg border border-[#86efac] bg-white p-3"
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-1 h-4 w-4"
+                              checked={ordersSettings[feature.key]}
+                              onChange={(event) =>
+                                setOrdersSettings((prev) => ({
+                                  ...prev,
+                                  [feature.key]: event.target.checked,
+                                }))
+                              }
+                            />
+                            <span>
+                              <span className="block text-sm font-medium text-[#0f172a]">
+                                {feature.title}
+                              </span>
+                              <span className="block text-xs text-[#64748b]">{feature.body}</span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               ) : null}

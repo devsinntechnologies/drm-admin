@@ -11,7 +11,7 @@ import { FieldLabel } from "@/components/ui/FeatureTip";
 import { CATEGORY_TIPS } from "@/lib/feature-tips";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
-import { CategoryRecord, useCategories } from "@/hooks/useCategories";
+import { CategoryPosMode, CategoryRecord, useCategories } from "@/hooks/useCategories";
 import { useCrmSchema } from "@/hooks/useCrmSchema";
 import { CrmRecordFields } from "@/components/crm/CrmRecordFields";
 import { CrmCardFields, crmShowsImage } from "@/components/crm/CrmCardFields";
@@ -93,7 +93,16 @@ function CategoryListItem({
             customFields={category.customFields}
             className="space-y-1"
             builtin={{
-              name: <h4 className="text-sm font-bold text-[#111827]">{category.CategoryName}</h4>,
+              name: (
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="text-sm font-bold text-[#111827]">{category.CategoryName}</h4>
+                  {category.posMode === "timed_session" ? (
+                    <span className="rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#047857]">
+                      Timed session
+                    </span>
+                  ) : null}
+                </div>
+              ),
               sortOrder: (
                 <p className="text-xs text-[#111827]">Sort order: {category.sortOrder}</p>
               ),
@@ -128,6 +137,7 @@ function CategoriesContent() {
   const [createForm, setCreateForm] = useState({
     categoryName: "",
     sortOrder: 0,
+    posMode: "standard" as CategoryPosMode,
     image: null as File | null,
   });
   const [createCustomFields, setCreateCustomFields] = useState<Record<string, unknown>>({});
@@ -135,6 +145,7 @@ function CategoriesContent() {
   const [editForm, setEditForm] = useState({
     categoryName: "",
     sortOrder: 0,
+    posMode: "standard" as CategoryPosMode,
     image: null as File | null,
   });
   const [editCustomFields, setEditCustomFields] = useState<Record<string, unknown>>({});
@@ -214,12 +225,12 @@ function CategoriesContent() {
   } = useHtml5Reorder(filteredCategories, onReorder, !actionLoading);
 
   const resetCreate = () => {
-    setCreateForm({ categoryName: "", sortOrder: 0, image: null });
+    setCreateForm({ categoryName: "", sortOrder: 0, posMode: "standard", image: null });
     setCreateCustomFields(emptyCustomFieldValues(categoryCrmSchema?.fields ?? []));
   };
 
   const resetEdit = () => {
-    setEditForm({ categoryName: "", sortOrder: 0, image: null });
+    setEditForm({ categoryName: "", sortOrder: 0, posMode: "standard", image: null });
     setEditCustomFields({});
     setEditId(null);
   };
@@ -235,6 +246,7 @@ function CategoriesContent() {
       await createCategory({
         categoryName: createForm.categoryName.trim(),
         sortOrder: Number(createForm.sortOrder),
+        posMode: createForm.posMode,
         image: createForm.image,
         customFields: serializeCustomFields(categoryCrmSchema?.fields ?? [], createCustomFields),
       });
@@ -253,6 +265,7 @@ function CategoriesContent() {
       setEditForm({
         categoryName: category.CategoryName,
         sortOrder: category.sortOrder ?? 0,
+        posMode: category.posMode === "timed_session" ? "timed_session" : "standard",
         image: null,
       });
       setEditCustomFields({
@@ -276,6 +289,7 @@ function CategoriesContent() {
       await updateCategory(editId, {
         categoryName: editForm.categoryName.trim(),
         sortOrder: Number(editForm.sortOrder),
+        posMode: editForm.posMode,
         image: editForm.image,
         customFields: serializeCustomFields(categoryCrmSchema?.fields ?? [], editCustomFields),
       });
@@ -342,6 +356,52 @@ function CategoriesContent() {
                       onChange={(e) => editId ? setEditForm(p => ({ ...p, sortOrder: Number(e.target.value) })) : setCreateForm(p => ({ ...p, sortOrder: Number(e.target.value) }))}
                       className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm font-medium outline-none transition focus:border-[#0050F8] focus:ring-2 focus:ring-[#0050F8]/20"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-[#64748b]">POS behavior</label>
+                    <p className="text-xs text-[#64748b]">
+                      One mode for every product in this category. Restaurant / drinks stay{" "}
+                      <strong>Standard</strong>. Snooker tables use <strong>Timed table / session</strong>.
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(
+                        [
+                          {
+                            id: "standard" as const,
+                            title: "Standard products",
+                            body: "Qty +/-, price override & discount follow Software Control.",
+                          },
+                          {
+                            id: "timed_session" as const,
+                            title: "Timed table / session",
+                            body: "No qty, no line discount/override. Duration & game pricing from Orders session settings.",
+                          },
+                        ] as const
+                      ).map((option) => {
+                        const selected = (editId ? editForm.posMode : createForm.posMode) === option.id;
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() =>
+                              editId
+                                ? setEditForm((p) => ({ ...p, posMode: option.id }))
+                                : setCreateForm((p) => ({ ...p, posMode: option.id }))
+                            }
+                            className={cn(
+                              "rounded-xl border p-3 text-left transition",
+                              selected
+                                ? "border-[#0050F8] bg-[#eef3ff] ring-2 ring-[#0050F8]/20"
+                                : "border-[#e2e8f0] bg-white hover:border-[#c7d7f5]",
+                            )}
+                          >
+                            <span className="block text-sm font-bold text-[#111827]">{option.title}</span>
+                            <span className="mt-1 block text-xs text-[#64748b]">{option.body}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <CrmRecordFields
