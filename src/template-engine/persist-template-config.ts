@@ -9,6 +9,12 @@ import { saveTemplateExtensions, loadTemplateExtensions } from "@/template-engin
 import { INDUSTRY_TEMPLATES } from "@/templates/industries";
 import type { CustomizedTemplateConfig } from "@/templates/types";
 import { isEmbeddedLogoData } from "@/lib/logo-upload";
+import {
+  DEFAULT_ORDERS_SETTINGS,
+  DEFAULT_SALES_SETTINGS,
+  serializeOrdersSettings,
+  serializeSalesSettings,
+} from "@/lib/module-feature-settings";
 
 function usableStoredLogo(value?: string): string | undefined {
   if (!value || isEmbeddedLogoData(value)) return undefined;
@@ -42,7 +48,11 @@ function configToApiPayload(
     branchCount: config.branchCount,
     businessId,
     logoUrl: usableStoredLogo(config.logoDataUrl),
-    ...(moduleSettings ? { moduleSettings } : {}),
+    moduleSettings: {
+      orders: serializeOrdersSettings(DEFAULT_ORDERS_SETTINGS),
+      sales: serializeSalesSettings(DEFAULT_SALES_SETTINGS),
+      ...(moduleSettings ?? {}),
+    },
   };
 }
 

@@ -176,9 +176,15 @@ export const industryTemplateApi = createApi({
     >({
       query: ({ id, body }) => ({ url: `/industry-template/${id}`, method: "PATCH", body }),
       transformResponse: (response: unknown) => apiConfigToCustomized(unwrapData<ApiTemplateConfig>(response)),
-      invalidatesTags: (_result, _error, { id }) => [
+      invalidatesTags: (_result, _error, { id, body }) => [
         { type: "TemplateConfig", id },
         { type: "TemplateConfig", id: "LIST" },
+        ...(body.businessId
+          ? [
+              { type: "TemplateConfig" as const, id: `business-${body.businessId}` },
+              { type: "Business" as const, id: body.businessId },
+            ]
+          : []),
       ],
     }),
     deleteTemplateConfig: builder.mutation<void, string>({

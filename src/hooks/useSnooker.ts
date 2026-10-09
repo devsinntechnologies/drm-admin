@@ -25,7 +25,19 @@ export type SnookerGameTypeRow = {
   code: string;
   name: string;
   billingMode: "flat" | "per_frame" | "per_minute";
+  billingMethod?: "fixed" | "fixed_plus_overtime" | "per_minute";
+  basePrice?: number;
+  includedMinutes?: number;
+  maxDurationMinutes?: number | null;
+  perMinuteRate?: number;
+  overtimeEnabled?: boolean;
+  overtimeRate?: number;
+  pauseBillable?: boolean;
+  allowManualAdjust?: boolean;
+  autoStopAtMax?: boolean;
+  roundingMode?: "ceil_minute" | "floor_minute" | "nearest_minute";
   isActive: boolean;
+  sortOrder?: number;
 };
 
 export type SnookerSessionDecorated = {
@@ -198,6 +210,19 @@ export function useSnooker(pollMs = 8000) {
     [token, businessId, refresh],
   );
 
+  const updateGameType = useCallback(
+    async (id: string, body: Record<string, unknown>) => {
+      setBusy(true);
+      try {
+        await apiClient.patch(`/snooker/game-types/${id}`, body, token, businessId);
+        await refresh();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [token, businessId, refresh],
+  );
+
   const startSession = useCallback(
     async (body: Record<string, unknown>) => {
       setBusy(true);
@@ -360,6 +385,7 @@ export function useSnooker(pollMs = 8000) {
     createTable,
     createCategory,
     updateCategory,
+    updateGameType,
     startSession,
     previewSession,
     pauseSession,

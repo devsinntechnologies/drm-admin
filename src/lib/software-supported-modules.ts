@@ -313,9 +313,12 @@ export function initialMobileEnabled(
   catalog: ModuleId[],
   industryId?: string | null,
 ): ModuleId[] {
-  const fromTemplate = (templateEnabled ?? []).filter((id) => catalog.includes(id));
-  if (fromTemplate.length) {
-    return ensureMobileOrdersModule(fromTemplate, industryId);
+  const saved = templateEnabled ?? [];
+  const fromTemplate = saved.filter((id) => catalog.includes(id));
+  // A saved business config is authoritative, even if Super Admin turned
+  // most mobile modules off. Do not refill industry defaults on refresh.
+  if (saved.length > 0) {
+    return fromTemplate;
   }
   // New / empty: turn on the primary retail tabs that exist in this catalog
   const defaults = MOBILE_APP_PRIMARY_MODULES.filter((id) => catalog.includes(id));

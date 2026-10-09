@@ -64,7 +64,7 @@ import { BASE_URL } from "@/lib/constant";
 import { cn, buildOrderPatchItem, buildOrderRemoveItem, isUuid } from "@/lib/utils";
 import { SelfOrderRequestsPanel } from "@/components/orders/SelfOrderRequestsPanel";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
-import { parseSalesSettings } from "@/lib/module-feature-settings";
+import { parseOrdersSettings, parseSalesSettings } from "@/lib/module-feature-settings";
 
 const CustomTrashIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -127,7 +127,12 @@ function OrdersContent() {
   const { role, token } = useAuth();
   const branding = useInvoiceBranding();
   const { templateConfig } = useBusinessTemplate();
-  const allowPrinter = parseSalesSettings(templateConfig?.moduleSettings).allowPrinter;
+  const salesSettings = parseSalesSettings(templateConfig?.moduleSettings);
+  const ordersSettings = parseOrdersSettings(
+    templateConfig?.moduleSettings,
+    templateConfig?.industryId,
+  );
+  const allowPrinter = salesSettings.allowPrinter && salesSettings.allowPrint && ordersSettings.allowPrint;
   const activeBusinessId = useActiveBusinessId();
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
@@ -1479,11 +1484,11 @@ function OrdersContent() {
 
           {variantPickerDialog}
 
-          <div className="fixed bottom-6 right-6 z-50 print:hidden">
+          {ordersSettings.allowRefresh ? <div className="fixed bottom-6 right-6 z-50 print:hidden">
             <button type="button" onClick={() => refetch()} className="dn-btn dn-btn-primary !h-[50px] !w-[50px] !rounded-xl !p-0">
               <RotateCw className={cn("h-6 w-6", ordersLoading && "animate-spin")} />
             </button>
-          </div>
+          </div> : null}
         </main>
       </AdminShell>
     );
@@ -1540,7 +1545,7 @@ function OrdersContent() {
                         <span className={cn("px-3 py-1 rounded-xl text-2xl font-black bg-[#EEF3FF] border shadow-lg", priceChipText, "border-[#c7d7f5]")}>Rs. {Number(order.totalPrice)}</span>
                         <h3 className="text-[#0050F8] font-black text-5xl sm:text-4xl tracking-tight">{order.table || "Take Away"}</h3>
                       </div>
-                      <button type="button" onClick={() => void openOrderDetails(order.id)} className="bg-[#EEF3FF] p-2.5 rounded-xl text-[#0050F8] shadow-sm hover:bg-[#e8effe] transition" aria-label="Open order details"><Eye className="h-6 w-6" /></button>
+                      {ordersSettings.allowViewDetails ? <button type="button" onClick={() => void openOrderDetails(order.id)} className="bg-[#EEF3FF] p-2.5 rounded-xl text-[#0050F8] shadow-sm hover:bg-[#e8effe] transition" aria-label="Open order details"><Eye className="h-6 w-6" /></button> : null}
                     </div>
 
                     <div className="flex items-center gap-6 text-gray-600 text-lg font-bold mb-5 sm:mb-6">
@@ -1575,7 +1580,7 @@ function OrdersContent() {
                       </div>
 
                       <div className="flex items-center gap-4">
-                        <button
+                        {ordersSettings.allowEdit ? <button
                           onClick={() => {
                             if (expandedOrderId === order.id) {
                               collapseOrderEditor();
@@ -1587,13 +1592,13 @@ function OrdersContent() {
                         >
                           {expandedOrderId === order.id ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                           {expandedOrderId === order.id ? "Order Details" : "Edit Order"}
-                        </button>
-                        <button
+                        </button> : null}
+                        {ordersSettings.allowComplete ? <button
                           onClick={() => updateOrderStatus(order.id, "COMPLETED")}
                           className="dn-btn dn-btn-secondary !rounded-full !px-8 !py-4 !text-lg"
                         >
                           <CheckCircle2 className="h-6 w-6" /> Complete
-                        </button>
+                        </button> : null}
                         {/* {!expandedOrderId && (
                           <button
                             onClick={() => updateOrderStatus(order.id, "COMPLETED")}
@@ -1768,11 +1773,11 @@ function OrdersContent() {
           </div>
         )}
 
-        <div className="fixed bottom-8 right-12 z-50 print:hidden">
+        {ordersSettings.allowRefresh ? <div className="fixed bottom-8 right-12 z-50 print:hidden">
           <button type="button" onClick={() => refetch()} className="dn-btn dn-btn-primary !h-[50px] !w-[50px] !rounded-xl !p-0">
             <RotateCw className={cn("h-6 w-6", ordersLoading && "animate-spin")} />
           </button>
-        </div>
+        </div> : null}
       </main>
 
       {orderDetailsDialog}

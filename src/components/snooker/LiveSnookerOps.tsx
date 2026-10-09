@@ -24,7 +24,12 @@ function toUiTable(row: SnookerTableRow): SnookerTable {
   const snap = row.session?.rateSnapshot as
     | { singleRate?: number; doubleRate?: number; centuryPerMinute?: number }
     | undefined;
-  const code = (row.session?.gameTypeCode ?? "single") as SnookerGameType;
+  const rawCode = row.session?.gameTypeCode ?? "single";
+  const code = (
+    ["single", "double", "fifty", "century"].includes(rawCode)
+      ? rawCode
+      : "single"
+  ) as SnookerGameType;
   return {
     id: row.id,
     name: row.name,
@@ -35,9 +40,7 @@ function toUiTable(row: SnookerTableRow): SnookerTable {
     centuryPerMinute: Number(row.centuryPerMinute ?? snap?.centuryPerMinute ?? 20),
     session: row.session
       ? {
-          gameType: (["single", "double", "century"].includes(code)
-            ? code
-            : "single") as SnookerGameType,
+          gameType: code,
           player: row.session.playerLabel || "Guest",
           startedAt: new Date(row.session.startedAt).toLocaleTimeString("en-GB", {
             hour: "2-digit",
@@ -163,12 +166,20 @@ export function LiveTablesView() {
 }
 
 export function LivePricingView() {
-  const { categories, updateCategory, createCategory, busy, error } = useSnooker();
+  const {
+    categories,
+    gameTypes,
+    updateCategory,
+    updateGameType,
+    createCategory,
+    busy,
+    error,
+  } = useSnooker();
   const [draft, setDraft] = useState({
     name: "VIP",
-    defaultSingleRate: 350,
-    defaultDoubleRate: 600,
-    defaultCenturyPerMinute: 25,
+    defaultSingleRate: 100,
+    defaultDoubleRate: 200,
+    defaultCenturyPerMinute: 12,
   });
 
   return (
@@ -177,9 +188,147 @@ export function LivePricingView() {
         <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
       ) : null}
       <GlassPanel>
-        <HudLabel>Session categories</HudLabel>
+        <HudLabel>Game types & billing</HudLabel>
         <p className="mt-1 text-xs text-[#64748b]">
-          Counter staff pick an enabled category when creating an order. The category does not set the price or duration. Existing minimum time and rounding on a category still apply to time-based charges.
+          Configure Single, Double, Fifty, and Century. Included minutes and maximum duration are separate.
+          Prices are snapshotted onto each session so later edits do not change past bills.
+        </p>
+        <div className="mt-4 space-y-3">
+          {gameTypes.map((game) => (
+            <div
+              key={game.id}
+              className="grid gap-2 rounded-xl border border-[#e2e8f0] p-3 md:grid-cols-3 lg:grid-cols-6"
+            >
+              <div className="lg:col-span-2">
+                <p className="text-sm font-bold text-[#0f172a]">
+                  {game.name}{" "}
+                  <span className="font-normal text-[#64748b]">({game.code})</span>
+                </p>
+                <select
+                  className="portal-input mt-2"
+                  defaultValue={game.billingMethod || "fixed"}
+                  onChange={(e) =>
+                    void updateGameType(game.id, {
+                      billingMethod: e.target.value,
+                    }).then(() => toast.success(`${game.name} billing method updated`))
+                  }
+                >
+                  <option value="fixed">Fixed price</option>
+                  <option value="fixed_plus_overtime">Fixed + overtime</option>
+                  <option value="per_minute">Per minute</option>
+                </select>
+                <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                  <label className="inline-flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      defaultChecked={game.isActive}
+                      onChange={(e) =>
+                        void updateGameType(game.id, { isActive: e.target.checked })
+                      }
+                    />
+                    Enabled
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      defaultChecked={game.overtimeEnabled}
+                      onChange={(e) =>
+                        void updateGameType(game.id, {
+                          overtimeEnabled: e.target.checked,
+                        })
+                      }
+                    />
+                    Overtime
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      defaultChecked={game.pauseBillable}
+                      onChange={(e) =>
+                        void updateGameType(game.id, {
+                          pauseBillable: e.target.checked,
+                        })
+                      }
+                    />
+                    Pause billable
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      defaultChecked={game.autoStopAtMax}
+                      onChange={(e) =>
+                        void updateGameType(game.id, {
+                          autoStopAtMax: e.target.checked,
+                        })
+                      }
+                    />
+                    Auto-stop at max
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      defaultChecked={game.allowManualAdjust !== false}
+                      onChange={(e) =>
+                        void updateGameType(game.id, {
+                          allowManualAdjust: e.target.checked,
+                        })
+                      }
+                    />
+                    Manual duration
+                  </label>
+                </div>
+              </div>
+              {(
+                [
+                  ["basePrice", "Base price"],
+                  ["includedMinutes", "Included minutes"],
+                  ["maxDurationMinutes", "Max minutes"],
+                  ["perMinuteRate", "Per-minute rate"],
+                  ["overtimeRate", "Overtime / min"],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="text-xs font-semibold text-[#64748b]">
+                  {label}
+                  <input
+                    type="number"
+                    className="portal-input mt-1"
+                    defaultValue={
+                      key === "maxDurationMinutes"
+                        ? Number(game.maxDurationMinutes ?? "") || ""
+                        : Number((game as Record<string, unknown>)[key] ?? 0)
+                    }
+                    onBlur={async (e) => {
+                      const raw = e.target.value.trim();
+                      const value =
+                        key === "maxDurationMinutes" && raw === ""
+                          ? null
+                          : Number(raw);
+                      if (value !== null && !Number.isFinite(value)) return;
+                      try {
+                        await updateGameType(game.id, { [key]: value });
+                        toast.success(`${game.name} ${label} updated`);
+                      } catch (err) {
+                        toast.error(
+                          err instanceof Error ? err.message : "Update failed",
+                        );
+                      }
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+          ))}
+          {gameTypes.length === 0 ? (
+            <p className="text-sm text-[#64748b]">
+              Game types will appear after the snooker module loads for this business.
+            </p>
+          ) : null}
+        </div>
+      </GlassPanel>
+      <GlassPanel>
+        <HudLabel>Session categories (optional)</HudLabel>
+        <p className="mt-1 text-xs text-[#64748b]">
+          Optional labels for custom counter orders. Primary pricing is controlled by game types above.
         </p>
         <div className="mt-4 space-y-3">
           {categories.map((cat) => (

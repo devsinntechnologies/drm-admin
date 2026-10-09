@@ -11,7 +11,6 @@ import { FbrSettingsPanel } from "@/components/business/FbrSettingsPanel";
 import { FbrActivityPanel } from "@/components/business/FbrActivityPanel";
 import { CrmSchemaPanel } from "@/components/crm/CrmSchemaPanel";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
-import { hydrateWorkspaceTemplate } from "@/lib/hydrate-workspace-template";
 import { getBusinessProfile } from "@/lib/business-profile";
 import { getIndustryById } from "@/templates/industries";
 
@@ -49,7 +48,7 @@ export default function SoftwareControlPage() {
     getIndustryById(profile.industryId)?.id ??
     getBusinessProfile(businessId, business.businessName).industryId;
 
-  const templateConfig = hydrateWorkspaceTemplate(business.templateConfig) ?? business.templateConfig;
+  const templateConfig = business.templateConfig ?? null;
   const hasTemplate = Boolean(templateConfig?.id);
 
   return (

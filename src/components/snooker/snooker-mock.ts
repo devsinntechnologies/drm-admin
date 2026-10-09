@@ -1,6 +1,6 @@
 export type SnookerTableStatus = "available" | "occupied" | "reserved" | "maintenance";
 export type SnookerTableType = "snooker" | "pool" | "century";
-export type SnookerGameType = "single" | "double" | "century";
+export type SnookerGameType = "single" | "double" | "fifty" | "century";
 
 export type SnookerTable = {
   id: string;
@@ -214,7 +214,8 @@ export function tableStatusLabel(status: SnookerTableStatus) {
 }
 
 export function gameTypeLabel(type: SnookerGameType) {
-  if (type === "single") return "Single Game";
-  if (type === "double") return "Double Game";
+  if (type === "single") return "Single";
+  if (type === "double") return "Double";
+  if (type === "fifty") return "Fifty";
   return "Century";
 }

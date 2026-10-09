@@ -19,9 +19,13 @@ export interface CategoryProduct {
   updatedAt: string;
 }
 
+export type CategoryPosMode = "standard" | "timed_session";
+
 export interface CategoryRecord {
   id: string;
   CategoryName: string;
+  /** POS behavior: standard products vs timed table/session */
+  posMode?: CategoryPosMode;
   sortOrder: number;
   businessId: string;
   businessName: string;
@@ -164,7 +168,13 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     return (res.data ?? res) as CategoryRecord;
   }, [activeBusinessId]);
 
-  const createCategory = useCallback(async (payload: { categoryName: string; sortOrder: number; image?: File | null; customFields?: Record<string, unknown> }) => {
+  const createCategory = useCallback(async (payload: {
+    categoryName: string;
+    sortOrder: number;
+    posMode?: CategoryPosMode;
+    image?: File | null;
+    customFields?: Record<string, unknown>;
+  }) => {
     const token = getAuthToken(reduxToken);
     if (!token) {
       throw new Error("No authentication token available");
@@ -175,6 +185,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
       const formData = new FormData();
       formData.append("categoryName", payload.categoryName);
       formData.append("sortOrder", String(payload.sortOrder));
+      formData.append("posMode", payload.posMode === "timed_session" ? "timed_session" : "standard");
       if (payload.image) {
         formData.append("image", payload.image);
       }
@@ -219,7 +230,13 @@ export function useCategories(options: UseCategoriesOptions = {}) {
     }
   }, [fetchCategories, pagination.page, activeBusinessId, reduxToken]);
 
-  const updateCategory = useCallback(async (id: string, payload: { categoryName: string; sortOrder: number; image?: File | null; customFields?: Record<string, unknown> }) => {
+  const updateCategory = useCallback(async (id: string, payload: {
+    categoryName: string;
+    sortOrder: number;
+    posMode?: CategoryPosMode;
+    image?: File | null;
+    customFields?: Record<string, unknown>;
+  }) => {
     const token = getAuthToken(reduxToken);
     if (!token) {
       throw new Error("No authentication token available");
@@ -230,6 +247,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
       const formData = new FormData();
       formData.append("categoryName", payload.categoryName);
       formData.append("sortOrder", String(payload.sortOrder));
+      formData.append("posMode", payload.posMode === "timed_session" ? "timed_session" : "standard");
       if (payload.image) {
         formData.append("image", payload.image);
       }

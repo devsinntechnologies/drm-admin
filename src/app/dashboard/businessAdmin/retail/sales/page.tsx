@@ -83,7 +83,10 @@ function SalesContent() {
   const { role, token } = useAuth();
   const branding = useInvoiceBranding();
   const { templateConfig } = useBusinessTemplate();
-  const allowPrinter = parseSalesSettings(templateConfig?.moduleSettings).allowPrinter;
+  const salesSettings = parseSalesSettings(templateConfig?.moduleSettings);
+  const allowPrinterSetup =
+    salesSettings.allowPrinter && salesSettings.allowPrinterSetup;
+  const allowPrinter = salesSettings.allowPrinter && salesSettings.allowPrint;
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -103,7 +106,7 @@ function SalesContent() {
   const canReturnInvoice = canReturnInvoiceRole(resolvedRole);
 
   const refreshConnectedPrinter = useCallback(async () => {
-    if (!token || !activeBusinessId || !allowPrinter) return;
+    if (!token || !activeBusinessId || !allowPrinterSetup) return;
     try {
       const payload = await apiClient.get<PrintersPayload>("/printers", token, activeBusinessId);
       setConnectedPrinter(
@@ -114,7 +117,7 @@ function SalesContent() {
     } catch {
       // ignore
     }
-  }, [token, activeBusinessId, allowPrinter]);
+  }, [token, activeBusinessId, allowPrinterSetup]);
 
   useEffect(() => {
     void refreshConnectedPrinter();
@@ -214,7 +217,7 @@ function SalesContent() {
         />
 
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative max-w-md flex-1">
+          {salesSettings.allowFilters ? <div className="relative max-w-md flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
             <input
               className={portalSearchClass}
@@ -222,12 +225,13 @@ function SalesContent() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </div>
+          </div> : <div className="flex-1" />}
           <div className="flex flex-wrap items-center gap-2">
+            {allowPrinterSetup ? (
             <button
               type="button"
               onClick={() => {
-                if (!allowPrinter) {
+                if (!allowPrinterSetup) {
                   setPrinterAlertOpen(true);
                   return;
                 }
@@ -243,7 +247,7 @@ function SalesContent() {
               className={cn(
                 "dn-btn !h-9 !px-3",
                 connectedPrinter ? "!bg-[#16a34a] !text-white hover:!bg-[#15803d]" : "dn-btn-soft",
-                !allowPrinter && "opacity-45",
+                !allowPrinterSetup && "opacity-45",
               )}
             >
               <Printer className="h-4 w-4" />
@@ -258,6 +262,8 @@ function SalesContent() {
                 "Connect Printer"
               )}
             </button>
+            ) : null}
+          {salesSettings.allowFilters ? (
           <div className="dn-tab-bar !rounded-2xl !py-2 lg:w-auto">
             {(
               [
@@ -278,6 +284,7 @@ function SalesContent() {
               </button>
             ))}
             </div>
+          ) : null}
           </div>
         </div>
 
@@ -309,7 +316,10 @@ function SalesContent() {
                   filteredSales.map((invoice) => {
                     const returned = isReturnedStatus(invoice.status);
                     const showReturn =
-                      canReturnInvoice && !returned && isReturnableStatus(invoice.status);
+                      salesSettings.allowReturn &&
+                      canReturnInvoice &&
+                      !returned &&
+                      isReturnableStatus(invoice.status);
                     return (
                     <tr key={invoice.uuid} className="border-t border-[var(--border-subtle)]">
                       <td className="px-4 py-3 font-semibold">
@@ -334,7 +344,7 @@ function SalesContent() {
                       </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-2">
-                        <button
+                        {salesSettings.allowPreview ? <button
                           type="button"
                           onClick={() => setSelectedInvoice(invoice)}
                           className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-[var(--surface-muted)]"
@@ -342,7 +352,7 @@ function SalesContent() {
                         >
                           <Eye className="h-3 w-3" />
                           View
-                        </button>
+                        </button> : null}
                             {returned ? (
                               <span
                                 className="inline-flex items-center rounded-lg bg-[#fef2f2] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-[#dc2626]"
@@ -379,13 +389,13 @@ function SalesContent() {
           </div>
         )}
 
-        <button
+        {salesSettings.allowRefresh ? <button
           type="button"
           onClick={() => refetch()}
           className="mt-4 text-sm font-semibold text-[var(--brand-secondary)]"
         >
           Refresh list
-        </button>
+        </button> : null}
       </PortalPage>
 
       <Dialog open={!!selectedInvoice} onOpenChange={(open) => !open && setSelectedInvoice(null)}>
@@ -425,7 +435,7 @@ function SalesContent() {
                   </span>
                 ) : (
                   <>
-                <InvoiceDownloadButton
+                {salesSettings.allowDownloadPdf ? <InvoiceDownloadButton
                   onClick={() =>
                     void downloadInvoicePdf({
                       fileName: `invoice-${selectedInvoice.invoiceNumber || selectedInvoice.uuid}.pdf`,
@@ -449,8 +459,8 @@ function SalesContent() {
                       website: branding.website,
                     })
                   }
-                />
-                <InvoicePrintButton
+                /> : null}
+                {salesSettings.allowPrint ? <InvoicePrintButton
                   onClick={() => {
                     if (!allowPrinter) {
                       setPrinterAlertOpen(true);
@@ -488,8 +498,10 @@ function SalesContent() {
                           }
                         })();
                       }}
-                    />
-                    {canReturnInvoice && isReturnableStatus(selectedInvoice.status) ? (
+                    /> : null}
+                    {salesSettings.allowReturn &&
+                    canReturnInvoice &&
+                    isReturnableStatus(selectedInvoice.status) ? (
                       <button
                         type="button"
                         onClick={() => setReturnConfirmUuid(selectedInvoice.uuid)}
