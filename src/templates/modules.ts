@@ -226,6 +226,11 @@ export const DASHBOARD_CARD_CATALOG: Record<
   "century-running": { id: "century-running", label: "Century Timers", description: "Premium tables with live timers" },
   "cash-on-hand": { id: "cash-on-hand", label: "Cash on Hand", description: "Drawer cash since daily opening" },
   "overdue-credit": { id: "overdue-credit", label: "Overdue Credit", description: "Udhar balances past due" },
+  "pending-credits": {
+    id: "pending-credits",
+    label: "Pending Credits",
+    description: "Customers with open udhar and due dates",
+  },
 };
 
 /** Industry colour presets — solid primary + secondary (no gradients). */

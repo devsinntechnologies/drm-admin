@@ -1446,8 +1446,8 @@ export function SoftwareControlContent({
                           },
                           {
                             key: "allowCreditSale" as const,
-                            title: "Put on credit",
-                            body: "Credit checkbox + party dialog on the cart.",
+                            title: "Credit / udhar",
+                            body: "Cart credit checkbox (inside Extra charges) and Credit on Complete-order payment.",
                           },
                           {
                             key: "allowPriceOverride" as const,

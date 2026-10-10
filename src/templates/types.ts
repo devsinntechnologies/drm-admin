@@ -172,7 +172,8 @@ export type DashboardCardId =
   | "active-sessions"
   | "century-running"
   | "cash-on-hand"
-  | "overdue-credit";
+  | "overdue-credit"
+  | "pending-credits";
 
 export type IndustryProductScopeGroup = "core" | "future" | "platform";
 

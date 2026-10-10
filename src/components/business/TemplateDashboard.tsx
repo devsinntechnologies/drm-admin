@@ -1,6 +1,7 @@
 "use client";
 
-import { Activity, Flame, TriangleAlert } from "lucide-react";
+import { Activity, Flame, TriangleAlert, Wallet } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Loading from "@/components/common/Loading";
 import { PortalCard, PortalPage, PortalStatCard } from "@/components/admin/PortalPage";
@@ -82,6 +83,15 @@ type RetailDashboardLive = {
   grossProfit?: number;
 };
 
+type OutstandingCreditParty = {
+  id: string;
+  name: string;
+  phone?: string | null;
+  outstanding: number;
+  dueDate?: string | null;
+  isOverdue?: boolean;
+};
+
 export function TemplateDashboard({ cards, className }: TemplateDashboardProps) {
   const pathname = usePathname();
   const { refreshKey } = useDashboardRefresh();
@@ -90,6 +100,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
   const industryId = templateConfig?.industryId;
   const isPharmacy = industryId === "pharmacy";
   const expensesEnabled = (templateConfig?.enabledModules ?? []).includes("expenses");
+  const creditsEnabled = (templateConfig?.enabledModules ?? []).includes("credits");
   const queryRefreshKey = `${refreshKey}:${pathname}`;
 
   const { data: pharmacyLive, loading: pharmacyLoading } = usePharmacyQuery<Record<string, number>>(
@@ -110,6 +121,19 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
   );
   const { products, loading: productsLoading, error: productsError } = useProducts({ limit: 500 });
   const catalogStock = summarizeCatalogStock(products);
+
+  const displayCards = resolveDashboardCards({
+    configuredCards: cards,
+    industryId,
+    expensesEnabled,
+  });
+  const showPendingCreditsPanel =
+    creditsEnabled &&
+    displayCards.some((id) => id === "pending-credits" || id === "overdue-credit");
+
+  const { data: outstandingCredits, loading: creditsLoading } = usePharmacyQuery<
+    OutstandingCreditParty[]
+  >(showPendingCreditsPanel ? "/credits/outstanding" : null, queryRefreshKey);
 
   const liveLoading = isPharmacy ? pharmacyLoading : invoiceLoading || stockLoading || productsLoading;
 
@@ -189,6 +213,17 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
           return money(catalogStock.inventoryValue);
         }
         return money(Number(stockLive?.inventoryValue ?? 0));
+      case "pending-credits":
+      case "overdue-credit": {
+        const rows = Array.isArray(outstandingCredits) ? outstandingCredits : [];
+        if (id === "overdue-credit") {
+          const overdueTotal = rows
+            .filter((row) => row.isOverdue)
+            .reduce((sum, row) => sum + Number(row.outstanding ?? 0), 0);
+          return money(overdueTotal);
+        }
+        return String(rows.length);
+      }
       default:
         return "—";
     }
@@ -197,12 +232,6 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
   const liveLabel = isPharmacy
     ? " Values below are live pharmacy KPIs."
     : " Values below use live tracked stock from the product catalog, plus issued invoices.";
-
-  const displayCards = resolveDashboardCards({
-    configuredCards: cards,
-    industryId,
-    expensesEnabled,
-  });
 
   if (!displayCards.length) {
     return (
@@ -224,6 +253,16 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
       ? catalogStock.attentionItems
       : (stockLive?.recentAlerts ?? []).filter((item) => item.productName || item.productId);
   const topProducts = invoiceLive?.graph?.topSellingProducts ?? [];
+  const creditRows = Array.isArray(outstandingCredits) ? outstandingCredits : [];
+
+  const formatDueLabel = (dueDate?: string | null) => {
+    if (!dueDate) return "No due date";
+    try {
+      return new Date(`${dueDate}T00:00:00`).toLocaleDateString("en-GB");
+    } catch {
+      return dueDate;
+    }
+  };
 
   return (
     <PortalPage className={className}>
@@ -280,6 +319,55 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
             );
           })}
         </div>
+      ) : null}
+
+      {showPendingCreditsPanel ? (
+        <PortalCard
+          title="Pending Credits"
+          subtitle="Open udhar balances — overdue names highlighted"
+          icon={Wallet}
+        >
+          {creditsLoading ? (
+            <Loading size="sm" />
+          ) : creditRows.length ? (
+            <div className="space-y-2">
+              {creditRows.map((row) => (
+                <div
+                  key={row.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3"
+                >
+                  <div>
+                    <p
+                      className={cn(
+                        "text-sm font-semibold",
+                        row.isOverdue
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-[var(--text-primary)]",
+                      )}
+                    >
+                      {row.name?.trim() || "Unnamed party"}
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      Due {formatDueLabel(row.dueDate)}
+                      {row.phone ? ` · ${row.phone}` : ""}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-[var(--brand-primary-soft)] px-2.5 py-1 text-xs font-bold text-[var(--brand-secondary)]">
+                    {money(Number(row.outstanding ?? 0))}
+                  </span>
+                </div>
+              ))}
+              <Link
+                href="/dashboard/businessAdmin/retail/credits"
+                className="mt-2 inline-block text-xs font-semibold text-[var(--brand-secondary)] hover:underline"
+              >
+                Open full credit ledger →
+              </Link>
+            </div>
+          ) : (
+            <p className="py-6 text-center text-sm text-[var(--text-muted)]">No pending credit balances</p>
+          )}
+        </PortalCard>
       ) : null}
 
       {!isPharmacy ? (

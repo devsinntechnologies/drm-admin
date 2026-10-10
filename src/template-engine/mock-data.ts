@@ -68,6 +68,7 @@ const MOCK_VALUES: Partial<Record<DashboardCardId, string>> = {
   "century-running": "2 timers",
   "cash-on-hand": "Rs 42,800",
   "overdue-credit": "Rs 18,500",
+  "pending-credits": "4 parties",
 };
 
 export function getMockDashboardCards(config: CustomizedTemplateConfig) {

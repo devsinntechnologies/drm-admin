@@ -197,7 +197,8 @@ export const MODULE_FEATURE_REGISTRY: ModuleFeatureRegistryEntry[] = [
         kind: "boolean",
         key: "allowCreditSale",
         label: "Allow put on credit",
-        description: "Credit checkbox and party dialog on the cart.",
+        description:
+          "Credit on cart (with Extra charges) and Credit / Udhaar on Complete order payment.",
         defaultValue: true,
       },
       {

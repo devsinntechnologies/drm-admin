@@ -67,6 +67,7 @@ export const PREVIEW_CARD_VALUES: Partial<Record<DashboardCardId, string>> = {
   "century-running": "2",
   "cash-on-hand": "Rs 42.8K",
   "overdue-credit": "Rs 18.5K",
+  "pending-credits": "4 parties",
 };
 
 export type PreviewOrderSlice = { color: string; value: number; label: string };
