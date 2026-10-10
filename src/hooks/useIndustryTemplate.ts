@@ -1,4 +1,5 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
+import { businessApi } from "@/hooks/useBusiness";
 import { authenticatedBaseQueryWithReauth } from "@/lib/authenticated-base-query";
 import type {
   CustomizedTemplateConfig,
@@ -180,12 +181,21 @@ export const industryTemplateApi = createApi({
         { type: "TemplateConfig", id },
         { type: "TemplateConfig", id: "LIST" },
         ...(body.businessId
-          ? [
-              { type: "TemplateConfig" as const, id: `business-${body.businessId}` },
-              { type: "Business" as const, id: body.businessId },
-            ]
+          ? [{ type: "TemplateConfig" as const, id: `business-${body.businessId}` }]
           : []),
       ],
+      async onQueryStarted({ body }, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          if (body.businessId) {
+            dispatch(
+              businessApi.util.invalidateTags([{ type: "Business", id: body.businessId }]),
+            );
+          }
+        } catch {
+          // PATCH failed — do not refresh business cache
+        }
+      },
     }),
     deleteTemplateConfig: builder.mutation<void, string>({
       query: (id) => ({ url: `/industry-template/${id}`, method: "DELETE" }),
