@@ -216,6 +216,7 @@ export type IndustryTemplate = {
     appointments?: boolean;
     production?: boolean;
     variants?: boolean;
+    productionJobWork?: boolean;
     serialNumbers?: boolean;
     delivery?: boolean;
     timeBilling?: boolean;
