@@ -44,11 +44,12 @@ export default function SoftwareControlPage() {
     ? { industryId: business.templateConfig.industryId }
     : getBusinessProfile(businessId, business.businessName);
 
+  const templateConfig = business.templateConfig ?? null;
+
   const industryId =
+    getIndustryById(templateConfig?.industryId ?? profile.industryId)?.id ??
     getIndustryById(profile.industryId)?.id ??
     getBusinessProfile(businessId, business.businessName).industryId;
-
-  const templateConfig = business.templateConfig ?? null;
   const hasTemplate = Boolean(templateConfig?.id);
 
   return (
