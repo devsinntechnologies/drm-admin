@@ -209,18 +209,18 @@ export type IndustryTemplate = {
   specialScreens: string[];
   defaultPrinterRoles?: Array<"receipt" | "kitchen">;
   features: {
+    appointments?: boolean;
     batchTracking?: boolean;
+    creditLedger?: boolean;
+    delivery?: boolean;
     expiryTracking?: boolean;
     kitchen?: boolean;
-    tables?: boolean;
-    appointments?: boolean;
     production?: boolean;
-    variants?: boolean;
     productionJobWork?: boolean;
     serialNumbers?: boolean;
-    delivery?: boolean;
+    tables?: boolean;
     timeBilling?: boolean;
-    creditLedger?: boolean;
+    variants?: boolean;
   };
   /** Full product-scope modules (may be more granular than the sidebar). */
   productScope?: IndustryProductScopeItem[];
