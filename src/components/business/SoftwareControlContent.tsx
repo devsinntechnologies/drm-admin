@@ -861,7 +861,9 @@ export function SoftwareControlContent({
         </h2>
         <p className="mb-4 text-sm text-[#64748b]">
           Fine-tune dashboard KPI cards, product permissions, orders screens (POS vs active queue),
-          Reports date filters, and category filters. Save at the bottom to push changes to Flutter.
+          <strong> Active order button permissions</strong>, <strong>invoice button permissions</strong>,
+          Reports date filters, and category filters. Save at the bottom to push changes to Flutter
+          and the business portal.
         </p>
         <div className="space-y-2">
           {enabledModules.includes("dashboard") ? (
@@ -950,21 +952,11 @@ export function SoftwareControlContent({
 
           {enabledModules.includes("sales") ? (
             <div className="rounded-lg border border-[#e2e8f0]">
-              <button
-                type="button"
-                onClick={() => setExpandedModule((m) => (m === "sales" ? null : "sales"))}
-                className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-[#0f172a]"
-              >
-                {expandedModule === "sales" ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
+              <div className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-[#0f172a]">
                 <FileSpreadsheet className="h-4 w-4 text-[var(--brand-secondary)]" />
                 Invoices / Sales
-              </button>
-              {expandedModule === "sales" ? (
-                <div className="space-y-3 border-t border-[#e2e8f0] p-4">
+              </div>
+              <div className="space-y-3 border-t border-[#e2e8f0] p-4">
                   <label className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
                     <input
                       type="checkbox"
@@ -1052,7 +1044,6 @@ export function SoftwareControlContent({
                     ))}
                   </div>
                 </div>
-              ) : null}
             </div>
           ) : null}
 
@@ -1253,8 +1244,57 @@ export function SoftwareControlContent({
                 ) : null}
               </div>
 
+              <div className="space-y-3 border-t border-[#e2e8f0] px-4 py-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                  Active order buttons
+                </p>
+                <p className="text-xs text-[#64748b]">
+                  Controls which actions appear on Active Orders in the Flutter app and the business
+                  portal (Complete, Edit, Print, etc.). Applies to all roles unless a module tab is
+                  turned off in section 6.
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {(
+                    [
+                      ["allowViewDetails", "View details"],
+                      ["allowRefresh", "Refresh queue"],
+                      ["allowCreate", "Create order"],
+                      ["allowEdit", "Edit items and prices"],
+                      ["allowChangeTable", "Change table"],
+                      ["allowRemove", "Remove order"],
+                      ["allowComplete", "Complete order"],
+                      ["allowPrint", "Print order"],
+                      ["allowDownloadPdf", "Download order PDF"],
+                      ["allowSelfOrderApprove", "Approve self-order"],
+                      ["allowSelfOrderReject", "Reject self-order"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label
+                      key={key}
+                      className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={ordersSettings[key]}
+                        onChange={(event) =>
+                          setOrdersSettings((prev) => ({
+                            ...prev,
+                            [key]: event.target.checked,
+                          }))
+                        }
+                      />
+                      <span className="text-sm font-medium text-[#0f172a]">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               {expandedModule === "orders" ? (
                 <div className="space-y-5 border-t border-[#e2e8f0] p-4">
+                  <p className="text-xs text-[#64748b]">
+                    Layout, cart extras, and timed table sessions (expand/collapse with the Orders
+                    header above).
+                  </p>
                   <div>
                     <p className="mb-2 text-sm font-medium">Orders layout</p>
                     <div className="flex gap-2">
@@ -1380,46 +1420,6 @@ export function SoftwareControlContent({
                       </span>
                     </span>
                   </label>
-
-                  <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                      Active order buttons
-                    </p>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {(
-                        [
-                          ["allowViewDetails", "View details"],
-                          ["allowRefresh", "Refresh queue"],
-                          ["allowCreate", "Create order"],
-                          ["allowEdit", "Edit items and prices"],
-                          ["allowChangeTable", "Change table"],
-                          ["allowRemove", "Remove order"],
-                          ["allowComplete", "Complete order"],
-                          ["allowPrint", "Print order"],
-                          ["allowDownloadPdf", "Download order PDF"],
-                          ["allowSelfOrderApprove", "Approve self-order"],
-                          ["allowSelfOrderReject", "Reject self-order"],
-                        ] as const
-                      ).map(([key, label]) => (
-                        <label
-                          key={key}
-                          className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={ordersSettings[key]}
-                            onChange={(event) =>
-                              setOrdersSettings((prev) => ({
-                                ...prev,
-                                [key]: event.target.checked,
-                              }))
-                            }
-                          />
-                          <span className="text-sm font-medium text-[#0f172a]">{label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
 
                   <div>
                     <p className="mb-2 text-sm font-medium text-[#0f172a]">Cart &amp; order actions</p>
