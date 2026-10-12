@@ -321,55 +321,6 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
         </div>
       ) : null}
 
-      {showPendingCreditsPanel ? (
-        <PortalCard
-          title="Pending Credits"
-          subtitle="Open udhar balances — overdue names highlighted"
-          icon={Wallet}
-        >
-          {creditsLoading ? (
-            <Loading size="sm" />
-          ) : creditRows.length ? (
-            <div className="space-y-2">
-              {creditRows.map((row) => (
-                <div
-                  key={row.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3"
-                >
-                  <div>
-                    <p
-                      className={cn(
-                        "text-sm font-semibold",
-                        row.isOverdue
-                          ? "text-red-600 dark:text-red-400"
-                          : "text-[var(--text-primary)]",
-                      )}
-                    >
-                      {row.name?.trim() || "Unnamed party"}
-                    </p>
-                    <p className="text-xs text-[var(--text-muted)]">
-                      Due {formatDueLabel(row.dueDate)}
-                      {row.phone ? ` · ${row.phone}` : ""}
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-[var(--brand-primary-soft)] px-2.5 py-1 text-xs font-bold text-[var(--brand-secondary)]">
-                    {money(Number(row.outstanding ?? 0))}
-                  </span>
-                </div>
-              ))}
-              <Link
-                href="/dashboard/businessAdmin/retail/credits"
-                className="mt-2 inline-block text-xs font-semibold text-[var(--brand-secondary)] hover:underline"
-              >
-                Open full credit ledger →
-              </Link>
-            </div>
-          ) : (
-            <p className="py-6 text-center text-sm text-[var(--text-muted)]">No pending credit balances</p>
-          )}
-        </PortalCard>
-      ) : null}
-
       {!isPharmacy ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <PortalCard title="Low Stock" subtitle="Items at or below reorder threshold" icon={TriangleAlert}>
@@ -424,6 +375,55 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
             )}
           </PortalCard>
         </div>
+      ) : null}
+
+      {showPendingCreditsPanel ? (
+        <PortalCard
+          title="Pending Credits"
+          subtitle="Open udhar balances — overdue names highlighted"
+          icon={Wallet}
+        >
+          {creditsLoading ? (
+            <Loading size="sm" />
+          ) : creditRows.length ? (
+            <div className="space-y-2">
+              {creditRows.map((row) => (
+                <div
+                  key={row.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3"
+                >
+                  <div>
+                    <p
+                      className={cn(
+                        "text-sm font-semibold",
+                        row.isOverdue
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-[var(--text-primary)]",
+                      )}
+                    >
+                      {row.name?.trim() || "Unnamed party"}
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      Due {formatDueLabel(row.dueDate)}
+                      {row.phone ? ` · ${row.phone}` : ""}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-[var(--brand-primary-soft)] px-2.5 py-1 text-xs font-bold text-[var(--brand-secondary)]">
+                    {money(Number(row.outstanding ?? 0))}
+                  </span>
+                </div>
+              ))}
+              <Link
+                href="/dashboard/businessAdmin/retail/credits"
+                className="mt-2 inline-block text-xs font-semibold text-[var(--brand-secondary)] hover:underline"
+              >
+                Open full credit ledger →
+              </Link>
+            </div>
+          ) : (
+            <p className="py-6 text-center text-sm text-[var(--text-muted)]">No pending credit balances</p>
+          )}
+        </PortalCard>
       ) : null}
 
       <DashboardReportsSection />
