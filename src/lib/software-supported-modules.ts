@@ -71,6 +71,8 @@ export const MOBILE_DASHBOARD_CARDS = new Set<string>([
   "customer-orders",
   "orders-in-progress",
   "takeaway-orders",
+  "pending-credits",
+  "overdue-credit",
 ]);
 
 /** Modules that have a feature panel wired to Flutter moduleSettings. */

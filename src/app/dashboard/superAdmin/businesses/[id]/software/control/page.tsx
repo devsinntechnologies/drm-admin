@@ -77,11 +77,12 @@ export default function SoftwareControlPage() {
         <>
           <SoftwareSyncStatusPanel businessId={businessId} />
           <SoftwareControlContent
-          businessId={businessId}
-          businessName={business.businessName}
-          templateConfig={templateConfig}
-          industryId={industryId}
-          uploadedLogoUrl={business.logo}
+            businessId={businessId}
+            businessName={business.businessName}
+            templateConfig={templateConfig}
+            industryId={industryId}
+            uploadedLogoUrl={business.logo}
+            platformAdmin
           />
         </>
       ) : null}

@@ -112,6 +112,8 @@ type SoftwareControlContentProps = {
   industryId: string;
   /** Details-page / business.logo upload — preferred over template logoUrl. */
   uploadedLogoUrl?: string | null;
+  /** Super Admin software control — show platform hints for session timers. */
+  platformAdmin?: boolean;
 };
 
 export function SoftwareControlContent({
@@ -120,6 +122,7 @@ export function SoftwareControlContent({
   templateConfig,
   industryId,
   uploadedLogoUrl = null,
+  platformAdmin = false,
 }: SoftwareControlContentProps) {
   const dispatch = useDispatch();
   const pathname = usePathname();
@@ -1446,8 +1449,8 @@ export function SoftwareControlContent({
                           },
                           {
                             key: "allowCreditSale" as const,
-                            title: "Put on credit",
-                            body: "Credit checkbox + party dialog on the cart.",
+                            title: "Credit / udhar",
+                            body: "Cart credit checkbox (inside Extra charges) and Credit on Complete-order payment.",
                           },
                           {
                             key: "allowPriceOverride" as const,
@@ -1487,7 +1490,26 @@ export function SoftwareControlContent({
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] p-4">
+                  {platformAdmin ? (
+                    <div className="mb-4 rounded-lg border border-[#bfdbfe] bg-[#eff6ff] p-4 text-sm text-[#1e3a8a]">
+                      <p className="font-semibold">Session timer controls (platform admin)</p>
+                      <p className="mt-1 text-xs text-[#1d4ed8]">
+                        Turn <strong>Edit remaining time</strong> on or off below — it controls the pencil icon on Active
+                        Orders in the desktop app. Save changes and ask staff to refresh the app.
+                      </p>
+                      <a
+                        href="#session-time-controls"
+                        className="mt-2 inline-block text-xs font-semibold underline"
+                      >
+                        Jump to session toggles
+                      </a>
+                    </div>
+                  ) : null}
+
+                  <div
+                    id="session-time-controls"
+                    className="rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] p-4 scroll-mt-24"
+                  >
                     <p className="mb-1 text-sm font-semibold text-[#14532d]">
                       Timed table sessions
                     </p>
