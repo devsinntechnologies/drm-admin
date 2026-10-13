@@ -778,6 +778,18 @@ function InvoicesContent() {
                   orderNumber={selectedInvoice.orderNumber || selectedInvoice.invoiceNumber}
                   businessName={branding.businessName || selectedInvoice.businessName}
                   logoUrl={branding.logoUrl}
+                  customerName={selectedInvoice.tableGuestName}
+                  gameType={selectedInvoice.gameType}
+                  sessionMinutes={selectedInvoice.sessionMinutes ?? null}
+                  orderPlacedAt={selectedInvoice.orderPlacedAt}
+                  sessionBookedEndAt={selectedInvoice.sessionBookedEndAt}
+                  sessionEndedAt={selectedInvoice.sessionEndedAt}
+                  tableLabel={
+                    (selectedInvoice.Items ?? [])
+                      .filter((item) => item.isSessionService)
+                      .map((item) => item.productname)
+                      .join(", ") || undefined
+                  }
                   date={formatInvoiceDateTime(selectedInvoice.createdAt)}
                   status={selectedInvoice.status}
                   items={(selectedInvoice.Items ?? []).map((item, i) => ({
@@ -787,6 +799,7 @@ function InvoicesContent() {
                     price: item.price,
                     total: item.total,
                     variantName: item.variantName,
+                    isSessionService: item.isSessionService,
                   }))}
                   subtotal={selectedAmounts?.subtotal ?? 0}
                   deliveryCharges={selectedAmounts?.delivery ?? 0}

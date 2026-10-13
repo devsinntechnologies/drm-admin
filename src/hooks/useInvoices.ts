@@ -15,6 +15,7 @@ export interface InvoiceItem {
   quantity: number;
   price: string | number;
   total?: number;
+  isSessionService?: boolean;
 }
 
 export interface InvoiceRecord {
@@ -28,6 +29,12 @@ export interface InvoiceRecord {
   businessEmail?: string;
   businessAddress?: string;
   orderId: string;
+  tableGuestName?: string | null;
+  gameType?: string | null;
+  sessionMinutes?: number | null;
+  orderPlacedAt?: string | null;
+  sessionBookedEndAt?: string | null;
+  sessionEndedAt?: string | null;
   totalPrice: string | number;
   subtotal?: number;
   deliveryCharges: string | number | null;

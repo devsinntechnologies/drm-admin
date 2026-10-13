@@ -85,6 +85,9 @@ export interface OrderRecord {
   isPriceOverridden: boolean;
   priceSource: string;
   table: string | null;
+  tableGuestName?: string | null;
+  sessionMinutes?: number | null;
+  gameType?: string | null;
   orderType: string;
   createdBy: string;
   creatorRole: string;

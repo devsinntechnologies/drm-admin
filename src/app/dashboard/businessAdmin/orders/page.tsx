@@ -65,6 +65,7 @@ import { cn, buildOrderPatchItem, buildOrderRemoveItem, isUuid } from "@/lib/uti
 import { SelfOrderRequestsPanel } from "@/components/orders/SelfOrderRequestsPanel";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { parseOrdersSettings, parseSalesSettings } from "@/lib/module-feature-settings";
+import { snookerBookedEndIso } from "@/lib/invoice-datetime";
 
 const CustomTrashIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -603,7 +604,21 @@ function OrdersContent() {
                 orderNumber={orderDetails.orderNumber}
                 businessName={branding.businessName}
                 logoUrl={branding.logoUrl}
-                tableLabel={orderDetails.table || "Take Away"}
+                customerName={orderDetails.tableGuestName}
+                gameType={orderDetails.gameType}
+                sessionMinutes={orderDetails.sessionMinutes ?? null}
+                orderPlacedAt={orderDetails.createdAt}
+                sessionBookedEndAt={snookerBookedEndIso(
+                  orderDetails.createdAt,
+                  orderDetails.sessionMinutes,
+                  orderDetails.updatedAt,
+                )}
+                sessionEndedAt={orderDetails.updatedAt}
+                tableLabel={
+                  orderDetails.Items.map((item) => item.productName).join(", ") ||
+                  orderDetails.table ||
+                  "Take Away"
+                }
                 items={orderDetails.Items.map((item) => ({
                   id: item.id,
                   productName: item.productName,

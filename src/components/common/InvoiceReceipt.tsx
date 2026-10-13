@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, Download, Hash, Printer, Utensils } from "lucide-react";
+import { CalendarDays, Clock3, Download, Hash, Printer, UserRound, Utensils } from "lucide-react";
+import { formatInvoiceDateTime } from "@/lib/invoice-datetime";
 import { cn } from "@/lib/utils";
 
 export type InvoiceLineItem = {
@@ -11,6 +12,7 @@ export type InvoiceLineItem = {
   price: number | string;
   total?: number | string;
   variantName?: string;
+  isSessionService?: boolean;
 };
 
 export type InvoiceReceiptProps = {
@@ -18,6 +20,12 @@ export type InvoiceReceiptProps = {
   businessName?: string;
   logoUrl?: string | null;
   tableLabel?: string | null;
+  customerName?: string | null;
+  gameType?: string | null;
+  sessionMinutes?: number | null;
+  orderPlacedAt?: string | null;
+  sessionBookedEndAt?: string | null;
+  sessionEndedAt?: string | null;
   date?: string;
   items: InvoiceLineItem[];
   subtotal: number;
@@ -95,6 +103,12 @@ export default function InvoiceReceipt({
   businessName = "DigiNizam Business",
   logoUrl,
   tableLabel,
+  customerName,
+  gameType,
+  sessionMinutes,
+  orderPlacedAt,
+  sessionBookedEndAt,
+  sessionEndedAt,
   date,
   items,
   subtotal,
@@ -129,6 +143,15 @@ export default function InvoiceReceipt({
 
   const netAmount = Number.isFinite(Number(total)) ? Number(total) : 0;
   const hasContact = Boolean(contactPhone || contactPhoneAlt || contactEmail || address);
+  const guest = customerName?.trim() ?? "";
+  const hasGuest = guest.length > 0;
+  const hasSession =
+    Boolean(gameType?.trim()) && sessionMinutes != null && sessionMinutes !== undefined;
+  const sessionLines = items.filter((i) => i.isSessionService);
+  const addonLines = items.filter((i) => !i.isSessionService);
+  const orderedItems =
+    sessionLines.length > 0 ? [...sessionLines, ...addonLines] : items;
+  const showAddonsHeader = sessionLines.length > 0 && addonLines.length > 0;
 
   return (
     <article
@@ -175,7 +198,44 @@ export default function InvoiceReceipt({
           </div>
         </div>
 
-        {tableLabel ? (
+        {hasGuest ? (
+          <div className="rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#166534]">Customer</p>
+            <p className="mt-1 flex items-center gap-2 text-xl font-bold text-[#14532d]">
+              <UserRound className="h-5 w-5 shrink-0" />
+              {guest}
+            </p>
+          </div>
+        ) : null}
+
+        {hasSession ? (
+          <div className="rounded-xl border border-[#dbe4ef] bg-[#f8fbff] px-4 py-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748b]">Table session</p>
+            <p className="mt-1 text-sm font-bold text-[#001840]">
+              {gameType}
+              {sessionMinutes != null && sessionMinutes > 0 ? ` · ${sessionMinutes}m booked` : " · open-ended"}
+            </p>
+            {tableLabel ? (
+              <p className="mt-1 text-xs font-semibold text-[#64748b]">{tableLabel}</p>
+            ) : null}
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <div className="rounded-lg border border-[#e2e8f0] bg-white px-3 py-2">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-[#94a3b8]">Game start</p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-sm font-bold text-[#0f172a]">
+                  <Clock3 className="h-3.5 w-3.5 text-[#0050F8]" />
+                  {formatInvoiceDateTime(orderPlacedAt)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-[#e2e8f0] bg-white px-3 py-2">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-[#94a3b8]">Game end</p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-sm font-bold text-[#0f172a]">
+                  <Clock3 className="h-3.5 w-3.5 text-[#0050F8]" />
+                  {formatInvoiceDateTime(sessionEndedAt ?? date)}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : tableLabel ? (
           <div className="flex items-center gap-3 rounded-xl border border-[#dbe4ef] bg-[#eef3ff] px-4 py-3">
             <Utensils className="h-5 w-5 shrink-0 text-[#0050F8]" />
             <div>
@@ -192,8 +252,26 @@ export default function InvoiceReceipt({
             <span className="text-right">Total</span>
           </div>
           <div className="divide-y divide-[#f1f5f9]">
-            {items.map((item, index) => (
-              <div key={item.id ?? `${item.productName}-${index}`} className="grid grid-cols-[1fr_64px_96px] gap-3 py-3">
+            {orderedItems.map((item, index) => {
+              const showSessionHeader =
+                showAddonsHeader && index === 0 && item.isSessionService;
+              const showAddonsLabel =
+                showAddonsHeader &&
+                !item.isSessionService &&
+                (index === 0 || orderedItems[index - 1]?.isSessionService);
+              return (
+              <div key={item.id ?? `${item.productName}-${index}`}>
+                {showSessionHeader ? (
+                  <p className="pb-2 pt-1 text-[10px] font-bold uppercase tracking-wider text-[#94a3b8]">
+                    Table session
+                  </p>
+                ) : null}
+                {showAddonsLabel ? (
+                  <p className="pb-2 pt-3 text-[10px] font-bold uppercase tracking-wider text-[#94a3b8]">
+                    Add-ons
+                  </p>
+                ) : null}
+              <div className="grid grid-cols-[1fr_64px_96px] gap-3 py-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-[#0f172a]">{item.productName}</p>
                   {item.variantName ? (
@@ -205,7 +283,9 @@ export default function InvoiceReceipt({
                 <p className="text-center text-sm font-bold text-[#334155]">{item.quantity}</p>
                 <p className="text-right text-sm font-bold text-[#001840]">{formatMoney(lineTotal(item))}</p>
               </div>
-            ))}
+              </div>
+            );
+            })}
           </div>
         </div>
 
