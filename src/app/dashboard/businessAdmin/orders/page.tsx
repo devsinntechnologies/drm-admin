@@ -108,6 +108,11 @@ interface OrderDetailsState {
   deliveryCharges: string;
   packagingPrice: string;
   Items: OrderRecord["Items"];
+  tableGuestName?: string | null;
+  gameType?: string | null;
+  sessionMinutes?: number | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 function productImageUrl(imagePath?: string | null) {
@@ -806,6 +811,11 @@ function OrdersContent() {
         deliveryCharges: order.deliveryCharges,
         packagingPrice: order.packagingPrice,
         Items: order.Items,
+        tableGuestName: order.tableGuestName,
+        gameType: order.gameType,
+        sessionMinutes: order.sessionMinutes,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
       });
       toast.dismiss(toastId);
     } catch (err) {
@@ -866,6 +876,11 @@ function OrdersContent() {
         deliveryCharges: completedOrder.deliveryCharges,
         packagingPrice: completedOrder.packagingPrice,
         Items: completedOrder.Items,
+        tableGuestName: completedOrder.tableGuestName,
+        gameType: completedOrder.gameType,
+        sessionMinutes: completedOrder.sessionMinutes,
+        createdAt: completedOrder.createdAt,
+        updatedAt: completedOrder.updatedAt,
       });
       setShowOrderDetailsDialog(true);
       collapseOrderEditor();

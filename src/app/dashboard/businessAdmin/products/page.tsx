@@ -662,7 +662,9 @@ function MenuItemsContent() {
           ? createVariants.reduce((sum, variant) => sum + Number(variant.inStock || 0), 0)
           : createForm.inStock,
         isKitchen: createForm.isSessionService || isPharmacy || isRetail ? false : createForm.isKitchen,
-        isStockEnabled: createForm.isSessionService ? false : true,
+        isStockEnabled: createForm.isSessionService
+          ? false
+          : createForm.isStockEnabled,
         isSessionService: createForm.isSessionService,
         costPrice: requiresCostAndStock
           ? (createVariants.length > 0 ? createVariants[0].costPrice : createForm.costPrice)
@@ -778,7 +780,9 @@ function MenuItemsContent() {
         inStock: editVariants.length > 0
           ? editVariants.reduce((sum, variant) => sum + Number(variant.inStock || 0), 0)
           : editForm.inStock,
-        isStockEnabled: editForm.isSessionService ? false : true,
+        isStockEnabled: editForm.isSessionService
+          ? false
+          : editForm.isStockEnabled,
         isSessionService: editForm.isSessionService,
         costPrice: requiresCostAndStock
           ? (editVariants.length > 0 ? editVariants[0].costPrice : editForm.costPrice)

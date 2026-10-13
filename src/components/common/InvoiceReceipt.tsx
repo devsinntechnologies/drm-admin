@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { CalendarDays, Clock3, Download, Hash, Printer, UserRound, Utensils } from "lucide-react";
 import { formatInvoiceDateTime } from "@/lib/invoice-datetime";
+import {
+  addonLineItems,
+  billableLineItems,
+  sessionLineItems,
+} from "@/lib/invoice-line-items";
 import { cn } from "@/lib/utils";
 
 export type InvoiceLineItem = {
@@ -147,10 +152,9 @@ export default function InvoiceReceipt({
   const hasGuest = guest.length > 0;
   const hasSession =
     Boolean(gameType?.trim()) && sessionMinutes != null && sessionMinutes !== undefined;
-  const sessionLines = items.filter((i) => i.isSessionService);
-  const addonLines = items.filter((i) => !i.isSessionService);
-  const orderedItems =
-    sessionLines.length > 0 ? [...sessionLines, ...addonLines] : items;
+  const sessionLines = sessionLineItems(items, hasSession);
+  const addonLines = addonLineItems(items, hasSession);
+  const orderedItems = billableLineItems(items, hasSession);
   const showAddonsHeader = sessionLines.length > 0 && addonLines.length > 0;
 
   return (
@@ -253,12 +257,9 @@ export default function InvoiceReceipt({
           </div>
           <div className="divide-y divide-[#f1f5f9]">
             {orderedItems.map((item, index) => {
-              const showSessionHeader =
-                showAddonsHeader && index === 0 && item.isSessionService;
+              const showSessionHeader = showAddonsHeader && index === 0;
               const showAddonsLabel =
-                showAddonsHeader &&
-                !item.isSessionService &&
-                (index === 0 || orderedItems[index - 1]?.isSessionService);
+                showAddonsHeader && index === sessionLines.length;
               return (
               <div key={item.id ?? `${item.productName}-${index}`}>
                 {showSessionHeader ? (
