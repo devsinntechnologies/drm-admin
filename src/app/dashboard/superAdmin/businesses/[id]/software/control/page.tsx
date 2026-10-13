@@ -12,12 +12,36 @@ import { FbrActivityPanel } from "@/components/business/FbrActivityPanel";
 import { CrmSchemaPanel } from "@/components/crm/CrmSchemaPanel";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
 import { getBusinessProfile } from "@/lib/business-profile";
+import { normalizeErrorMessage } from "@/lib/utils";
 import { getIndustryById } from "@/templates/industries";
+import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
+
+function describeBusinessLoadError(error: unknown): string {
+  if (error && typeof error === "object" && "status" in error) {
+    const fetchError = error as FetchBaseQueryError;
+    if (fetchError.status === "FETCH_ERROR") {
+      return "Cannot reach the API. Confirm Nest is running on port 6000 and drm-admin .env.local proxies /backend to it.";
+    }
+    if (fetchError.status === 401) {
+      return "Session expired or invalid. Sign in again as super admin.";
+    }
+    if (fetchError.status === 403) {
+      return "Your account cannot access this business.";
+    }
+    if (fetchError.status === 404) {
+      return "Business not found (wrong ID or deleted).";
+    }
+    if (typeof fetchError.status === "number") {
+      return normalizeErrorMessage(fetchError.data, `Request failed (HTTP ${fetchError.status}).`);
+    }
+  }
+  return normalizeErrorMessage(error, "Could not load this business.");
+}
 
 export default function SoftwareControlPage() {
   const params = useParams();
   const businessId = typeof params.id === "string" ? params.id : "";
-  const { data: business, isLoading, isError } = useGetBusinessByIdQuery(businessId, {
+  const { data: business, isLoading, isError, error } = useGetBusinessByIdQuery(businessId, {
     skip: !businessId,
   });
 
@@ -32,8 +56,14 @@ export default function SoftwareControlPage() {
   if (isError || !business) {
     return (
       <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] p-6 text-sm text-[#dc2626]">
-        Could not load this business.
-        <Link href="/dashboard/superAdmin/businesses" className="ml-2 font-semibold underline">
+        <p className="font-semibold">Could not load this business.</p>
+        <p className="mt-2 text-[#991b1b]">{describeBusinessLoadError(error)}</p>
+        {businessId ? (
+          <p className="mt-2 text-xs text-[#7f1d1d]">
+            Business ID: <code className="rounded bg-white/80 px-1">{businessId}</code>
+          </p>
+        ) : null}
+        <Link href="/dashboard/superAdmin/businesses" className="mt-3 inline-block font-semibold underline">
           Back to businesses
         </Link>
       </div>

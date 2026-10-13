@@ -59,6 +59,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
+import {
+  parseCategoriesSettings,
+  parseProductsSettings,
+} from "@/lib/module-feature-settings";
 import { useDashboardRefresh } from "@/contexts/DashboardRefreshContext";
 import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { apiClient } from "@/lib/api-client";
@@ -379,6 +383,14 @@ function MenuItemsContent() {
   const router = useRouter();
   const { token, role } = useAuth();
   const { templateConfig } = useBusinessTemplate();
+  const productsSettings = useMemo(
+    () => parseProductsSettings(templateConfig?.moduleSettings),
+    [templateConfig?.moduleSettings],
+  );
+  const categoriesSettings = useMemo(
+    () => parseCategoriesSettings(templateConfig?.moduleSettings),
+    [templateConfig?.moduleSettings],
+  );
   const { bumpDashboardRefresh } = useDashboardRefresh();
   const { market, currency } = usePharmacyMarket();
   const isPharmacy = templateConfig?.industryId === "pharmacy";
@@ -834,17 +846,21 @@ function MenuItemsContent() {
     >
       <PortalPage>
         <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
-          <button type="button" onClick={() => setCreateOpen(true)} className="dn-btn dn-btn-primary">
-            <Plus className="h-5 w-5" /> {isPharmacy ? "Add medicine" : "Add Product"}
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push(`/dashboard/businessAdmin/categories${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
-            className="dn-btn dn-btn-outline"
-          >
-            <Shapes className="h-5 w-5" /> Categories
-          </button>
-          {isPharmacy ? null : (
+          {productsSettings.allowCreate ? (
+            <button type="button" onClick={() => setCreateOpen(true)} className="dn-btn dn-btn-primary">
+              <Plus className="h-5 w-5" /> {isPharmacy ? "Add medicine" : "Add Product"}
+            </button>
+          ) : null}
+          {categoriesSettings.allowManage ? (
+            <button
+              type="button"
+              onClick={() => router.push(`/dashboard/businessAdmin/categories${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}
+              className="dn-btn dn-btn-outline"
+            >
+              <Shapes className="h-5 w-5" /> Categories
+            </button>
+          ) : null}
+          {isPharmacy || !productsSettings.allowManageIngredients ? null : (
             <button
               type="button"
               onClick={() => router.push(`/dashboard/businessAdmin/ingredients${impersonatedBusinessId ? `?businessId=${impersonatedBusinessId}` : ""}`)}

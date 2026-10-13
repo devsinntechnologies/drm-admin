@@ -1065,6 +1065,54 @@ export function SoftwareControlContent({
                 <Package className="h-4 w-4 text-[var(--brand-secondary)]" />
                 Products / Menu
               </button>
+
+              <div className="space-y-3 border-t border-[#e2e8f0] px-4 py-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                  Products screen header buttons
+                </p>
+                <p className="text-xs text-[#64748b]">
+                  Top-right actions on the Products page in the web portal and the mobile app (+ Add,
+                  Categories, Ingredients).
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
+                    <input
+                      type="checkbox"
+                      checked={productsSettings.allowCreate}
+                      onChange={(e) =>
+                        setProductsSettings((p) => ({ ...p, allowCreate: e.target.checked }))
+                      }
+                    />
+                    <span className="text-sm font-medium text-[#0f172a]">
+                      + Add product / menu item
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
+                    <input
+                      type="checkbox"
+                      checked={categoriesSettings.allowManage}
+                      onChange={(e) =>
+                        setCategoriesSettings((p) => ({ ...p, allowManage: e.target.checked }))
+                      }
+                    />
+                    <span className="text-sm font-medium text-[#0f172a]">Categories button</span>
+                  </label>
+                  <label className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
+                    <input
+                      type="checkbox"
+                      checked={productsSettings.allowManageIngredients}
+                      onChange={(e) =>
+                        setProductsSettings((p) => ({
+                          ...p,
+                          allowManageIngredients: e.target.checked,
+                        }))
+                      }
+                    />
+                    <span className="text-sm font-medium text-[#0f172a]">Ingredients button</span>
+                  </label>
+                </div>
+              </div>
+
               {expandedModule === "products" ? (
                 <div className="space-y-3 border-t border-[#e2e8f0] p-4">
                   <label className="flex items-center justify-between rounded-lg border border-[#e2e8f0] px-3 py-2 text-sm">
@@ -1249,22 +1297,21 @@ export function SoftwareControlContent({
 
               <div className="space-y-3 border-t border-[#e2e8f0] px-4 py-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                  Active order buttons
+                  Active order section
                 </p>
                 <p className="text-xs text-[#64748b]">
-                  Controls which actions appear on Active Orders in the Flutter app and the business
-                  portal (Complete, Edit, Print, etc.). Applies to all roles unless a module tab is
-                  turned off in section 6.
+                  Buttons on the <strong>Active orders</strong> queue only — Flutter live list and the
+                  business portal Orders screen (view, refresh, edit, complete, print, trash, self-order
+                  approve/reject). Table session controls (+5, pause, pencil) are in the next block.
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {(
                     [
                       ["allowViewDetails", "View details"],
                       ["allowRefresh", "Refresh queue"],
-                      ["allowCreate", "Create order"],
                       ["allowEdit", "Edit items and prices"],
                       ["allowChangeTable", "Change table"],
-                      ["allowRemove", "Remove order"],
+                      ["allowRemove", "Remove / cancel order (trash icon)"],
                       ["allowComplete", "Complete order"],
                       ["allowPrint", "Print order"],
                       ["allowDownloadPdf", "Download order PDF"],
@@ -1292,11 +1339,230 @@ export function SoftwareControlContent({
                 </div>
               </div>
 
+              <div className="space-y-3 border-t border-[#e2e8f0] px-4 py-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                  Order section — New order / POS (Admin)
+                </p>
+                <p className="text-xs text-[#64748b]">
+                  Controls for the <strong>New order</strong> screen: cart, place order, barcode scan, and
+                  pricing extras. Separate from Active order section above — toggling here does not hide
+                  Complete/Edit on the live queue.
+                </p>
+                <label className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
+                  <input
+                    type="checkbox"
+                    checked={ordersSettings.allowCreate}
+                    onChange={(event) =>
+                      setOrdersSettings((prev) => ({
+                        ...prev,
+                        allowCreate: event.target.checked,
+                      }))
+                    }
+                  />
+                  <span className="text-sm font-medium text-[#0f172a]">
+                    Create / place order (cart checkout &amp; FAB on Active screen)
+                  </span>
+                </label>
+                <label className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4"
+                    checked={ordersSettings.allowBarcodeScanner}
+                    onChange={(event) =>
+                      setOrdersSettings((prev) => ({
+                        ...prev,
+                        allowBarcodeScanner: event.target.checked,
+                      }))
+                    }
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-[#0f172a]">
+                      Barcode scanner on New order
+                    </span>
+                    <span className="block text-xs text-[#64748b]">
+                      USB/Bluetooth gun and camera add products to the cart.
+                    </span>
+                  </span>
+                </label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {(
+                    [
+                      {
+                        key: "allowExtraCharges" as const,
+                        title: "Extra charges section",
+                        body: "Master: show Extra Charges accordion on the cart.",
+                      },
+                      {
+                        key: "allowDeliveryCharge" as const,
+                        title: "Delivery charge",
+                        body: "Delivery Charge field inside Extra Charges.",
+                      },
+                      {
+                        key: "allowPackingCharge" as const,
+                        title: "Packing charge",
+                        body: "Packing Charge field inside Extra Charges.",
+                      },
+                      {
+                        key: "allowCreditSale" as const,
+                        title: "Credit / udhar",
+                        body: "Credit on Complete-order payment (and cart when enabled).",
+                      },
+                      {
+                        key: "allowPriceOverride" as const,
+                        title: "Price override",
+                        body: "Manual line price on cart items.",
+                      },
+                      {
+                        key: "allowLineDiscount" as const,
+                        title: "Line discount",
+                        body: "Per-item discount field on the cart.",
+                      },
+                    ] as const
+                  ).map((feature) => (
+                    <label
+                      key={feature.key}
+                      className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3"
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4"
+                        checked={ordersSettings[feature.key]}
+                        onChange={(event) =>
+                          setOrdersSettings((prev) => ({
+                            ...prev,
+                            [feature.key]: event.target.checked,
+                          }))
+                        }
+                      />
+                      <span>
+                        <span className="block text-sm font-medium text-[#0f172a]">
+                          {feature.title}
+                        </span>
+                        <span className="block text-xs text-[#64748b]">{feature.body}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div
+                id="session-time-controls"
+                className="space-y-3 border-t border-[#e2e8f0] px-4 py-4 scroll-mt-24"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                  Active order section — table session buttons
+                </p>
+                <div className="rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] p-4">
+                  <p className="mb-1 text-sm font-semibold text-[#14532d]">
+                    Timed table sessions
+                  </p>
+                  <p className="mb-3 text-xs text-[#166534]">
+                    Controls the timer card on Active Orders: <strong>+5</strong>,{" "}
+                    <strong>Pause</strong>, and the <strong>pencil</strong> to edit remaining time.
+                    Requires the master switch below. Restaurant &amp; cafe: usually off; snooker / pool:
+                    turn on and tune child toggles.
+                  </p>
+                  <label className="mb-3 flex items-start gap-3 rounded-lg border border-[#86efac] bg-white p-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4"
+                      checked={ordersSettings.enableTableSession}
+                      onChange={(event) =>
+                        setOrdersSettings((prev) => ({
+                          ...prev,
+                          enableTableSession: event.target.checked,
+                        }))
+                      }
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-[#0f172a]">
+                        Enable timed table sessions
+                      </span>
+                      <span className="block text-xs text-[#64748b]">
+                        Master on/off for table session block, timers, and booking status.
+                      </span>
+                    </span>
+                  </label>
+                  {ordersSettings.enableTableSession ? (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(
+                        [
+                          {
+                            key: "allowSessionDuration" as const,
+                            title: "Duration picker",
+                            body: "15 / 30 / 60 min dropdown when placing an order.",
+                          },
+                          {
+                            key: "allowOpenEndedSession" as const,
+                            title: "Open-ended (∞)",
+                            body: "Include ∞ open-ended in the duration list.",
+                          },
+                          {
+                            key: "allowSessionGameType" as const,
+                            title: "Game type picker",
+                            body: "Single / Double (and pricing) dropdown.",
+                          },
+                          {
+                            key: "allowSessionEditTime" as const,
+                            title: "Edit remaining time (pencil icon)",
+                            body: "Pencil on Active Orders to set remaining minutes.",
+                          },
+                          {
+                            key: "allowSessionAddTime" as const,
+                            title: "+5 minutes button",
+                            body: "Quick-extend on the session card.",
+                          },
+                          {
+                            key: "allowSessionPause" as const,
+                            title: "Pause / resume button",
+                            body: "Pause control on Active Orders cards.",
+                          },
+                          {
+                            key: "allowSessionTimeUpAlert" as const,
+                            title: "Time Up alert",
+                            body: "Global popup + beep when time expires.",
+                          },
+                          {
+                            key: "showTableBookingStatus" as const,
+                            title: "Booked / overtime cards",
+                            body: "BOOKED ribbon + live timer on product cards.",
+                          },
+                        ] as const
+                      ).map((feature) => (
+                        <label
+                          key={feature.key}
+                          className="flex items-start gap-3 rounded-lg border border-[#86efac] bg-white p-3"
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-1 h-4 w-4"
+                            checked={ordersSettings[feature.key]}
+                            onChange={(event) =>
+                              setOrdersSettings((prev) => ({
+                                ...prev,
+                                [feature.key]: event.target.checked,
+                              }))
+                            }
+                          />
+                          <span>
+                            <span className="block text-sm font-medium text-[#0f172a]">
+                              {feature.title}
+                            </span>
+                            <span className="block text-xs text-[#64748b]">{feature.body}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
               {expandedModule === "orders" ? (
                 <div className="space-y-5 border-t border-[#e2e8f0] p-4">
                   <p className="text-xs text-[#64748b]">
-                    Layout, cart extras, and timed table sessions (expand/collapse with the Orders
-                    header above).
+                    Layout and lifecycle defaults (expand/collapse with the Orders header). Per-button
+                    toggles for Active vs New order screens stay visible above — no need to expand for
+                    Complete, cart credit, or session +5 / pause / pencil.
                   </p>
                   <div>
                     <p className="mb-2 text-sm font-medium">Orders layout</p>
@@ -1402,217 +1668,6 @@ export function SoftwareControlContent({
                       ))}
                     </div>
                   </div>
-                  <label className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4"
-                      checked={ordersSettings.allowBarcodeScanner}
-                      onChange={(event) =>
-                        setOrdersSettings((prev) => ({
-                          ...prev,
-                          allowBarcodeScanner: event.target.checked,
-                        }))
-                      }
-                    />
-                    <span>
-                      <span className="block text-sm font-medium text-[#0f172a]">
-                        Allow barcode scanner on Orders
-                      </span>
-                      <span className="block text-xs text-[#64748b]">
-                        USB/Bluetooth gun and camera add products to the cart. Hidden in the app when off.
-                      </span>
-                    </span>
-                  </label>
-
-                  <div>
-                    <p className="mb-2 text-sm font-medium text-[#0f172a]">Cart &amp; order actions</p>
-                    <p className="mb-3 text-xs text-[#64748b]">
-                      Turn individual Counter / POS cart features on or off for this business.
-                    </p>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {(
-                        [
-                          {
-                            key: "allowExtraCharges" as const,
-                            title: "Extra charges section",
-                            body: "Master: show Extra Charges accordion on the cart.",
-                          },
-                          {
-                            key: "allowDeliveryCharge" as const,
-                            title: "Delivery charge",
-                            body: "Delivery Charge field inside Extra Charges.",
-                          },
-                          {
-                            key: "allowPackingCharge" as const,
-                            title: "Packing charge",
-                            body: "Packing Charge field inside Extra Charges.",
-                          },
-                          {
-                            key: "allowCreditSale" as const,
-                            title: "Credit / udhar",
-                            body: "Cart credit checkbox (inside Extra charges) and Credit on Complete-order payment.",
-                          },
-                          {
-                            key: "allowPriceOverride" as const,
-                            title: "Price override",
-                            body: "Manual line price on cart items.",
-                          },
-                          {
-                            key: "allowLineDiscount" as const,
-                            title: "Line discount",
-                            body: "Per-item discount field on the cart.",
-                          },
-                        ] as const
-                      ).map((feature) => (
-                        <label
-                          key={feature.key}
-                          className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3"
-                        >
-                          <input
-                            type="checkbox"
-                            className="mt-1 h-4 w-4"
-                            checked={ordersSettings[feature.key]}
-                            onChange={(event) =>
-                              setOrdersSettings((prev) => ({
-                                ...prev,
-                                [feature.key]: event.target.checked,
-                              }))
-                            }
-                          />
-                          <span>
-                            <span className="block text-sm font-medium text-[#0f172a]">
-                              {feature.title}
-                            </span>
-                            <span className="block text-xs text-[#64748b]">{feature.body}</span>
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {platformAdmin ? (
-                    <div className="mb-4 rounded-lg border border-[#bfdbfe] bg-[#eff6ff] p-4 text-sm text-[#1e3a8a]">
-                      <p className="font-semibold">Session timer controls (platform admin)</p>
-                      <p className="mt-1 text-xs text-[#1d4ed8]">
-                        Turn <strong>Edit remaining time</strong> on or off below — it controls the pencil icon on Active
-                        Orders in the desktop app. Save changes and ask staff to refresh the app.
-                      </p>
-                      <a
-                        href="#session-time-controls"
-                        className="mt-2 inline-block text-xs font-semibold underline"
-                      >
-                        Jump to session toggles
-                      </a>
-                    </div>
-                  ) : null}
-
-                  <div
-                    id="session-time-controls"
-                    className="rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] p-4 scroll-mt-24"
-                  >
-                    <p className="mb-1 text-sm font-semibold text-[#14532d]">
-                      Timed table sessions
-                    </p>
-                    <p className="mb-3 text-xs text-[#166534]">
-                      Optional add-on on the shared Orders API (same products / orders / database).
-                      <strong> Restaurant &amp; cafe: off by default</strong> — dining tables, kitchen
-                      flow, and invoices stay unchanged. Turn the master switch on only for pool /
-                      snooker-style timed billing; child toggles then control Duration, Game type,
-                      pause, +5, Time Up, and booked cards.
-                    </p>
-                    <label className="mb-3 flex items-start gap-3 rounded-lg border border-[#86efac] bg-white p-3">
-                      <input
-                        type="checkbox"
-                        className="mt-1 h-4 w-4"
-                        checked={ordersSettings.enableTableSession}
-                        onChange={(event) =>
-                          setOrdersSettings((prev) => ({
-                            ...prev,
-                            enableTableSession: event.target.checked,
-                          }))
-                        }
-                      />
-                      <span>
-                        <span className="block text-sm font-medium text-[#0f172a]">
-                          Enable timed table sessions
-                        </span>
-                        <span className="block text-xs text-[#64748b]">
-                          Master on/off for table session block, timers, and booking status.
-                        </span>
-                      </span>
-                    </label>
-                    {ordersSettings.enableTableSession ? (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {(
-                          [
-                            {
-                              key: "allowSessionDuration" as const,
-                              title: "Duration picker",
-                              body: "15 / 30 / 60 min dropdown when placing an order.",
-                            },
-                            {
-                              key: "allowOpenEndedSession" as const,
-                              title: "Open-ended (∞)",
-                              body: "Include ∞ open-ended in the duration list.",
-                            },
-                            {
-                              key: "allowSessionGameType" as const,
-                              title: "Game type picker",
-                              body: "Single / Double (and pricing) dropdown.",
-                            },
-                            {
-                              key: "allowSessionEditTime" as const,
-                              title: "Edit remaining time",
-                              body: "Set remaining minutes on Active Orders.",
-                            },
-                            {
-                              key: "allowSessionAddTime" as const,
-                              title: "+5 minutes",
-                              body: "Quick-extend on the session card.",
-                            },
-                            {
-                              key: "allowSessionPause" as const,
-                              title: "Pause / resume",
-                              body: "Pause button on Active Orders cards.",
-                            },
-                            {
-                              key: "allowSessionTimeUpAlert" as const,
-                              title: "Time Up alert",
-                              body: "Global popup + beep when time expires.",
-                            },
-                            {
-                              key: "showTableBookingStatus" as const,
-                              title: "Booked / overtime cards",
-                              body: "BOOKED ribbon + live timer on product cards.",
-                            },
-                          ] as const
-                        ).map((feature) => (
-                          <label
-                            key={feature.key}
-                            className="flex items-start gap-3 rounded-lg border border-[#86efac] bg-white p-3"
-                          >
-                            <input
-                              type="checkbox"
-                              className="mt-1 h-4 w-4"
-                              checked={ordersSettings[feature.key]}
-                              onChange={(event) =>
-                                setOrdersSettings((prev) => ({
-                                  ...prev,
-                                  [feature.key]: event.target.checked,
-                                }))
-                              }
-                            />
-                            <span>
-                              <span className="block text-sm font-medium text-[#0f172a]">
-                                {feature.title}
-                              </span>
-                              <span className="block text-xs text-[#64748b]">{feature.body}</span>
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
                 </div>
               ) : null}
             </div>
@@ -1655,8 +1710,8 @@ export function SoftwareControlContent({
                         Allow adding / editing categories
                       </span>
                       <span className="block text-xs text-[#64748b]">
-                        When on, staff with Categories access can create, edit, and delete categories
-                        inside Products / Orders on mobile. When off, they can only view / filter.
+                        When on, the Categories button appears on Products (web + mobile) and staff can
+                        manage categories. When off, they can only view / filter.
                       </span>
                     </span>
                   </label>
