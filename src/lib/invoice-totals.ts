@@ -18,21 +18,33 @@ export type InvoiceTotalsInput = {
 };
 
 export function resolveInvoiceTotals(invoice: InvoiceTotalsInput) {
-  const itemsSubtotal = (invoice.Items ?? []).reduce((sum, item) => {
+  let itemsSubtotal = (invoice.Items ?? []).reduce((sum, item) => {
     const explicit = Number(item.total);
     if (Number.isFinite(explicit) && explicit > 0) return sum + explicit;
     return sum + parseInvoicePrice(item.price) * Number(item.quantity || 0);
   }, 0);
+  const apiSubtotal =
+    typeof invoice.subtotal === "number" && invoice.subtotal > 0
+      ? invoice.subtotal
+      : 0;
+  if (itemsSubtotal <= 0.009 && apiSubtotal > 0) {
+    itemsSubtotal = apiSubtotal;
+  }
   const delivery = parseInvoicePrice(invoice.deliveryCharges);
   const packaging = parseInvoicePrice(invoice.packagingPrice);
   const stored = parseInvoicePrice(invoice.totalPrice);
   const computed = itemsSubtotal + delivery + packaging;
-  const total = itemsSubtotal > 0.009 ? computed : stored > 0 ? stored : computed;
+  const total =
+    itemsSubtotal > 0.009
+      ? Math.max(computed, stored)
+      : stored > 0
+        ? stored
+        : computed;
   const subtotal =
-    typeof invoice.subtotal === "number" && invoice.subtotal > 0
-      ? invoice.subtotal
-      : itemsSubtotal > 0
-        ? itemsSubtotal
+    itemsSubtotal > 0
+      ? itemsSubtotal
+      : apiSubtotal > 0
+        ? apiSubtotal
         : Math.max(0, total - delivery - packaging);
   return { subtotal, delivery, packaging, total };
 }

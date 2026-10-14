@@ -7,7 +7,11 @@ import type { OrderRecord } from "@/hooks/useOrders";
 import { ProductMediaImage } from "@/components/common/ProductMediaImage";
 import { resolveOrderItemImage } from "@/lib/product-image";
 import { OrderSessionPanel } from "@/components/orders/OrderSessionPanel";
-import { hasTimedTableSession, resolveTimedOrderTotal } from "@/lib/session-billing.util";
+import {
+  hasTimedTableSession,
+  orderItemDisplayTotal,
+  resolveTimedOrderTotal,
+} from "@/lib/session-billing.util";
 
 type OrdersSettings = {
   allowRemove?: boolean;
@@ -168,7 +172,10 @@ export function ActiveOrderCard({
               </div>
               <span className="font-black text-[#0f172a]">{item.productName}</span>
               <span className="font-bold text-[#059669]">x{item.quantity}</span>
-              <span className="font-black text-[#059669]">Rs {item.total ?? item.price}</span>
+              <span className="font-black text-[#059669]">
+                Rs{" "}
+                {Math.round(orderItemDisplayTotal(order, item)).toLocaleString()}
+              </span>
             </div>
           ))}
         </div>

@@ -151,6 +151,30 @@ export type OrderItemLike = {
   product?: { isSessionService?: boolean | null; name?: string | null } | null;
 };
 
+export function isSessionTableLineItem(item: OrderItemLike): boolean {
+  if (item.product?.isSessionService) return true;
+  const name = String(item.productName ?? item.product?.name ?? "").toUpperCase();
+  return name.includes("TABLE");
+}
+
+/** Live amount shown on active-order chips (table line uses session charge, not SKU price). */
+export function orderItemDisplayTotal(
+  order: TimedSessionOrder & {
+    Items?: OrderItemLike[] | null;
+    items?: OrderItemLike[] | null;
+  },
+  item: OrderItemLike & { price?: number | string | null },
+  now?: Date,
+): number {
+  if (hasTimedTableSession(order) && isSessionTableLineItem(item)) {
+    return liveSessionCharge(order, now);
+  }
+  const lineTotal = Number(item.total ?? 0);
+  if (lineTotal > 0) return lineTotal;
+  const qty = Math.max(1, Number(item.quantity ?? 1));
+  return Number(item.price ?? 0) * qty;
+}
+
 export function resolveTimedOrderTotal(args: {
   order: TimedSessionOrder & {
     deliveryCharges?: number | string | null;
@@ -163,11 +187,7 @@ export function resolveTimedOrderTotal(args: {
 }): number {
   const { order, now } = args;
   const items = order.Items ?? order.items ?? [];
-  const isTableLine = (item: OrderItemLike) => {
-    if (item.product?.isSessionService) return true;
-    const name = String(item.productName ?? item.product?.name ?? "").toUpperCase();
-    return name.includes("TABLE");
-  };
+  const isTableLine = isSessionTableLineItem;
 
   const retailSubtotal = items
     .filter((item) => !isTableLine(item))

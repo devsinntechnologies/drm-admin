@@ -29,28 +29,17 @@ import {
   invoiceRecordToPrintPayload,
 } from "@/lib/print-jobs";
 import { toast } from "sonner";
+import { resolveInvoiceTotals } from "@/lib/invoice-totals";
 
 type RangeFilter = "day" | "week" | "month";
 
-function parsePrice(value?: string | number | null) {
-  const amount = Number(value ?? 0);
-  return Number.isFinite(amount) ? amount : 0;
-}
-
 function invoiceAmounts(invoice: InvoiceRecord) {
-  const items = invoice.Items ?? invoice.items ?? [];
-  const itemsSubtotal = items.reduce((sum, item) => {
-    const explicit = Number(item.total);
-    if (Number.isFinite(explicit) && explicit > 0) return sum + explicit;
-    return sum + parsePrice(item.price) * Number(item.quantity || 0);
-  }, 0);
-  const stored = parsePrice(invoice.totalPrice);
-  const total = stored > 0 ? stored : itemsSubtotal;
-  const subtotal =
-    typeof invoice.subtotal === "number" && invoice.subtotal > 0
-      ? invoice.subtotal
-      : itemsSubtotal;
-  return { subtotal, total, items };
+  const totals = resolveInvoiceTotals(invoice);
+  return {
+    subtotal: totals.subtotal,
+    total: totals.total,
+    items: invoice.Items ?? invoice.items ?? [],
+  };
 }
 
 function formatDate(value: string) {

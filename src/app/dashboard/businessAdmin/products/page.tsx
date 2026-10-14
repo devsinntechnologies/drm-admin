@@ -499,6 +499,19 @@ function MenuItemsContent() {
     page: 1,
     limit: 100,
   });
+  const timedCategoryIds = useMemo(
+    () =>
+      new Set(
+        categories.filter((c) => c.posMode === "timed_session").map((c) => c.id),
+      ),
+    [categories],
+  );
+  const createIsTableProduct =
+    !isPharmacy &&
+    (createForm.isSessionService || timedCategoryIds.has(createForm.categoryId));
+  const editIsTableProduct =
+    !isPharmacy &&
+    (editForm.isSessionService || timedCategoryIds.has(editForm.categoryId));
   const { schema: productCrmSchema } = useCrmSchema("products");
 
   useEffect(() => {
@@ -667,7 +680,7 @@ function MenuItemsContent() {
       if (!createMedicine.genericName.trim()) return toast.error("Generic name is required");
       if (!createMedicine.saltName.trim()) return toast.error("Salt / composition is required");
     }
-    if (showProductCost && !createForm.isSessionService) {
+    if (showProductCost && !createIsTableProduct) {
       if (createVariants.length > 0) {
         if (costPriceRequired && createVariants.some((v) => v.costPrice == null || Number(v.costPrice) < 0)) {
           return toast.error("Cost price is required for each variant");
@@ -688,19 +701,27 @@ function MenuItemsContent() {
     try {
       await createProduct({
         ...createForm,
-        price: createVariants.length > 0 ? createVariants[0].price : createForm.price,
-        inStock: createVariants.length > 0
-          ? createVariants.reduce((sum, variant) => sum + Number(variant.inStock || 0), 0)
-          : createForm.inStock,
-        isKitchen: createForm.isSessionService || isPharmacy || isRetail ? false : createForm.isKitchen,
-        isStockEnabled: createForm.isSessionService
-          ? false
-          : createForm.isStockEnabled,
-        isSessionService: createForm.isSessionService,
-        costPrice: showProductCost
-          ? (createVariants.length > 0 ? createVariants[0].costPrice : createForm.costPrice)
-          : undefined,
-        variants: createVariants,
+        price: createIsTableProduct
+          ? 0
+          : createVariants.length > 0
+            ? createVariants[0].price
+            : createForm.price,
+        inStock: createIsTableProduct
+          ? 0
+          : createVariants.length > 0
+            ? createVariants.reduce((sum, variant) => sum + Number(variant.inStock || 0), 0)
+            : createForm.inStock,
+        isKitchen:
+          createIsTableProduct || isPharmacy || isRetail ? false : createForm.isKitchen,
+        isStockEnabled: createIsTableProduct ? false : createForm.isStockEnabled,
+        isSessionService: createIsTableProduct,
+        costPrice:
+          createIsTableProduct || !showProductCost
+            ? undefined
+            : createVariants.length > 0
+              ? createVariants[0].costPrice
+              : createForm.costPrice,
+        variants: createIsTableProduct ? [] : createVariants,
         customFields: serializeCustomFields(productCrmSchema?.fields ?? [], createCustomFields),
       });
       if (isPharmacy) {
@@ -793,7 +814,7 @@ function MenuItemsContent() {
       if (!editMedicine.genericName.trim()) return toast.error("Generic name is required");
       if (!editMedicine.saltName.trim()) return toast.error("Salt / composition is required");
     }
-    if (showProductCost && !editForm.isSessionService) {
+    if (showProductCost && !editIsTableProduct) {
       if (editVariants.length > 0) {
         if (costPriceRequired && editVariants.some((v) => v.costPrice == null || Number(v.costPrice) < 0)) {
           return toast.error("Cost price is required for each variant");
@@ -814,18 +835,27 @@ function MenuItemsContent() {
     try {
       await updateProduct(editId, {
         ...editForm,
-        price: editVariants.length > 0 ? editVariants[0].price : editForm.price,
-        inStock: editVariants.length > 0
-          ? editVariants.reduce((sum, variant) => sum + Number(variant.inStock || 0), 0)
-          : editForm.inStock,
-        isStockEnabled: editForm.isSessionService
-          ? false
-          : editForm.isStockEnabled,
-        isSessionService: editForm.isSessionService,
-        costPrice: showProductCost
-          ? (editVariants.length > 0 ? editVariants[0].costPrice : editForm.costPrice)
-          : undefined,
-        variants: [
+        price: editIsTableProduct
+          ? 0
+          : editVariants.length > 0
+            ? editVariants[0].price
+            : editForm.price,
+        inStock: editIsTableProduct
+          ? 0
+          : editVariants.length > 0
+            ? editVariants.reduce((sum, variant) => sum + Number(variant.inStock || 0), 0)
+            : editForm.inStock,
+        isStockEnabled: editIsTableProduct ? false : editForm.isStockEnabled,
+        isSessionService: editIsTableProduct,
+        costPrice:
+          editIsTableProduct || !showProductCost
+            ? undefined
+            : editVariants.length > 0
+              ? editVariants[0].costPrice
+              : editForm.costPrice,
+        variants: editIsTableProduct
+          ? [...deletedVariantIds.map((id) => ({ id, action: "delete" as const }))]
+          : [
           ...editVariants.map((v) =>
             v.id
               ? {
@@ -1002,7 +1032,24 @@ function MenuItemsContent() {
                     </div>
                     <select
                       value={createForm.categoryId}
-                      onChange={(e) => setCreateForm(p => ({ ...p, categoryId: e.target.value }))}
+                      onChange={(e) => {
+                        const categoryId = e.target.value;
+                        const timed = timedCategoryIds.has(categoryId);
+                        setCreateForm((p) => ({
+                          ...p,
+                          categoryId,
+                          ...(timed
+                            ? {
+                                isSessionService: true,
+                                isStockEnabled: false,
+                                inStock: 0,
+                                price: 0,
+                                costPrice: 0,
+                              }
+                            : {}),
+                        }));
+                        if (timed) setCreateVariants([]);
+                      }}
                       className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
                       required
                     >
@@ -1025,19 +1072,31 @@ function MenuItemsContent() {
                     <input
                       value={createForm.name}
                       onChange={(e) => setCreateForm(p => ({ ...p, name: e.target.value }))}
-                      placeholder={isPharmacy ? "Medicine name" : "Product Name"}
+                      placeholder={
+                        createIsTableProduct
+                          ? "e.g. Table 1, Table 2"
+                          : isPharmacy
+                            ? "Medicine name"
+                            : "Product Name"
+                      }
                       className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
                       required
                     />
                   </div>
-                  {createVariants.length > 0 ? (
+                  {createIsTableProduct ? (
+                    <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                      Timed session category — add each physical table by name only. Session pricing is set when
+                      starting a game on Orders (not on the product).
+                    </p>
+                  ) : null}
+                  {createVariants.length > 0 && !createIsTableProduct ? (
                     <p className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
                       {createForm.isStockEnabled
                         ? "Price, cost price, and stock are managed per variant below — parent fields are locked."
                         : "Price and cost are managed per variant below — parent fields are locked."}
                     </p>
                   ) : null}
-                  {isSnooker ? (
+                  {isSnooker && !timedCategoryIds.has(createForm.categoryId) ? (
                     <label className="flex items-center gap-2 rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm font-semibold">
                       <input
                         type="checkbox"
@@ -1048,13 +1107,14 @@ function MenuItemsContent() {
                             isSessionService: e.target.checked,
                             isStockEnabled: e.target.checked ? false : p.isStockEnabled,
                             isKitchen: e.target.checked ? false : p.isKitchen,
+                            price: e.target.checked ? 0 : p.price,
                           }))
                         }
                       />
                       Table session. Add each physical table once. Stock is not deducted.
                     </label>
                   ) : null}
-                  {requiresCostAndStock && !createForm.isSessionService ? (
+                  {requiresCostAndStock && !createIsTableProduct ? (
                     <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
                       <input
                         type="checkbox"
@@ -1073,73 +1133,77 @@ function MenuItemsContent() {
                       </FieldLabel>
                     </label>
                   ) : null}
-                  <div
-                    className={`space-y-4 ${createVariants.length > 0 ? "pointer-events-none opacity-55" : ""}`}
-                    aria-disabled={createVariants.length > 0}
-                  >
-                    <div
-                      className={cn(
-                        "grid grid-cols-1 gap-4",
-                        showProductCost && createForm.isStockEnabled && !createForm.isSessionService
-                          ? "sm:grid-cols-3"
-                          : showProductCost || (createForm.isStockEnabled && !createForm.isSessionService)
-                            ? "sm:grid-cols-2"
-                            : "sm:grid-cols-1",
-                      )}
-                    >
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-bold">
-                          <FieldLabel tip={PRODUCT_TIPS.price} required>Price ({currency})</FieldLabel>
-                        </label>
-                        <NumberInput
-                          value={createForm.price}
-                          onChange={(price) => setCreateForm((p) => ({ ...p, price }))}
-                          className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                          required={createVariants.length === 0}
-                          min={0}
-                          disabled={createVariants.length > 0}
-                        />
+                  {!createIsTableProduct ? (
+                    <>
+                      <div
+                        className={`space-y-4 ${createVariants.length > 0 ? "pointer-events-none opacity-55" : ""}`}
+                        aria-disabled={createVariants.length > 0}
+                      >
+                        <div
+                          className={cn(
+                            "grid grid-cols-1 gap-4",
+                            showProductCost && createForm.isStockEnabled
+                              ? "sm:grid-cols-3"
+                              : showProductCost || createForm.isStockEnabled
+                                ? "sm:grid-cols-2"
+                                : "sm:grid-cols-1",
+                          )}
+                        >
+                          <div className="space-y-1.5">
+                            <label className="text-sm font-bold">
+                              <FieldLabel tip={PRODUCT_TIPS.price} required>Price ({currency})</FieldLabel>
+                            </label>
+                            <NumberInput
+                              value={createForm.price}
+                              onChange={(price) => setCreateForm((p) => ({ ...p, price }))}
+                              className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                              required={createVariants.length === 0}
+                              min={0}
+                              disabled={createVariants.length > 0}
+                            />
+                          </div>
+                          {showProductCost ? (
+                            <div className="space-y-1.5">
+                              <label className="text-sm font-bold">
+                                <FieldLabel tip={PRODUCT_TIPS.cost} required={costPriceRequired}>
+                                  Cost price ({currency})
+                                </FieldLabel>
+                              </label>
+                              <NumberInput
+                                value={createForm.costPrice}
+                                onChange={(costPrice) => setCreateForm((p) => ({ ...p, costPrice }))}
+                                className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                                required={costPriceRequired && createVariants.length === 0}
+                                min={0}
+                                disabled={createVariants.length > 0}
+                              />
+                            </div>
+                          ) : null}
+                          {createForm.isStockEnabled ? (
+                            <div className="space-y-1.5">
+                              <label className="text-sm font-bold">
+                                <FieldLabel tip={PRODUCT_TIPS.stock}>Stock</FieldLabel>
+                              </label>
+                              <NumberInput
+                                value={createForm.inStock}
+                                onChange={(inStock) => setCreateForm((p) => ({ ...p, inStock }))}
+                                className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                                min={0}
+                                disabled={createVariants.length > 0}
+                              />
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
-                      {showProductCost ? (
-                        <div className="space-y-1.5">
-                          <label className="text-sm font-bold">
-                            <FieldLabel tip={PRODUCT_TIPS.cost} required={costPriceRequired}>
-                              Cost price ({currency})
-                            </FieldLabel>
-                          </label>
-                          <NumberInput
-                            value={createForm.costPrice}
-                            onChange={(costPrice) => setCreateForm((p) => ({ ...p, costPrice }))}
-                            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                            required={costPriceRequired && createVariants.length === 0}
-                            min={0}
-                            disabled={createVariants.length > 0}
-                          />
-                        </div>
-                      ) : null}
-                      {createForm.isStockEnabled && !createForm.isSessionService ? (
-                        <div className="space-y-1.5">
-                          <label className="text-sm font-bold">
-                            <FieldLabel tip={PRODUCT_TIPS.stock}>Stock</FieldLabel>
-                          </label>
-                          <NumberInput
-                            value={createForm.inStock}
-                            onChange={(inStock) => setCreateForm((p) => ({ ...p, inStock }))}
-                            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                            min={0}
-                            disabled={createVariants.length > 0}
-                          />
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                  <VariantsEditor
-                    variants={createVariants}
-                    setVariants={setCreateVariants}
-                    showCostPrice={showProductCost}
-                    costPriceRequired={costPriceRequired}
-                    showStock={createForm.isStockEnabled && !createForm.isSessionService}
-                  />
+                      <VariantsEditor
+                        variants={createVariants}
+                        setVariants={setCreateVariants}
+                        showCostPrice={showProductCost}
+                        costPriceRequired={costPriceRequired}
+                        showStock={createForm.isStockEnabled}
+                      />
+                    </>
+                  ) : null}
                   {isPharmacy ? <MedicineProfileFields value={createMedicine} onChange={setCreateMedicine} /> : null}
                   <CrmRecordFields
                     schema={productCrmSchema}
@@ -1304,7 +1368,23 @@ function MenuItemsContent() {
                     </div>
                     <select
                       value={editForm.categoryId}
-                      onChange={(e) => setEditForm(p => ({ ...p, categoryId: e.target.value }))}
+                      onChange={(e) => {
+                        const categoryId = e.target.value;
+                        const timed = timedCategoryIds.has(categoryId);
+                        setEditForm((p) => ({
+                          ...p,
+                          categoryId,
+                          ...(timed
+                            ? {
+                                isSessionService: true,
+                                isStockEnabled: false,
+                                inStock: 0,
+                                price: 0,
+                                costPrice: 0,
+                              }
+                            : {}),
+                        }));
+                      }}
                       className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
                       required
                     >
@@ -1324,18 +1404,24 @@ function MenuItemsContent() {
                     <input
                       value={editForm.name}
                       onChange={(e) => setEditForm(p => ({ ...p, name: e.target.value }))}
+                      placeholder={editIsTableProduct ? "e.g. Table 1, Table 2" : undefined}
                       className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
                       required
                     />
                   </div>
-                  {editVariants.length > 0 ? (
+                  {editIsTableProduct ? (
+                    <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                      Timed session category — table name only. Pricing is set on Orders when the session starts.
+                    </p>
+                  ) : null}
+                  {editVariants.length > 0 && !editIsTableProduct ? (
                     <p className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
                       {editForm.isStockEnabled
                         ? "Price, cost price, and stock are managed per variant below — parent fields are locked."
                         : "Price and cost are managed per variant below — parent fields are locked."}
                     </p>
                   ) : null}
-                  {requiresCostAndStock && !editForm.isSessionService ? (
+                  {requiresCostAndStock && !editIsTableProduct ? (
                     <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
                       <input
                         type="checkbox"
@@ -1354,80 +1440,84 @@ function MenuItemsContent() {
                       </FieldLabel>
                     </label>
                   ) : null}
-                  <div
-                    className={`space-y-4 ${editVariants.length > 0 ? "pointer-events-none opacity-55" : ""}`}
-                    aria-disabled={editVariants.length > 0}
-                  >
-                    <div
-                      className={cn(
-                        "grid grid-cols-1 gap-4",
-                        showProductCost && editForm.isStockEnabled && !editForm.isSessionService
-                          ? "sm:grid-cols-3"
-                          : showProductCost || (editForm.isStockEnabled && !editForm.isSessionService)
-                            ? "sm:grid-cols-2"
-                            : "sm:grid-cols-1",
-                      )}
-                    >
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-bold">
-                          <FieldLabel tip={PRODUCT_TIPS.price} required>Price ({currency})</FieldLabel>
-                        </label>
-                        <NumberInput
-                          value={editForm.price}
-                          onChange={(price) => setEditForm((p) => ({ ...p, price }))}
-                          className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                          required={editVariants.length === 0}
-                          min={0}
-                          disabled={editVariants.length > 0}
-                        />
+                  {!editIsTableProduct ? (
+                    <>
+                      <div
+                        className={`space-y-4 ${editVariants.length > 0 ? "pointer-events-none opacity-55" : ""}`}
+                        aria-disabled={editVariants.length > 0}
+                      >
+                        <div
+                          className={cn(
+                            "grid grid-cols-1 gap-4",
+                            showProductCost && editForm.isStockEnabled
+                              ? "sm:grid-cols-3"
+                              : showProductCost || editForm.isStockEnabled
+                                ? "sm:grid-cols-2"
+                                : "sm:grid-cols-1",
+                          )}
+                        >
+                          <div className="space-y-1.5">
+                            <label className="text-sm font-bold">
+                              <FieldLabel tip={PRODUCT_TIPS.price} required>Price ({currency})</FieldLabel>
+                            </label>
+                            <NumberInput
+                              value={editForm.price}
+                              onChange={(price) => setEditForm((p) => ({ ...p, price }))}
+                              className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                              required={editVariants.length === 0}
+                              min={0}
+                              disabled={editVariants.length > 0}
+                            />
+                          </div>
+                          {showProductCost ? (
+                            <div className="space-y-1.5">
+                              <label className="text-sm font-bold">
+                                <FieldLabel tip={PRODUCT_TIPS.cost} required={costPriceRequired}>
+                                  Cost price ({currency})
+                                </FieldLabel>
+                              </label>
+                              <NumberInput
+                                value={editForm.costPrice}
+                                onChange={(costPrice) => setEditForm((p) => ({ ...p, costPrice }))}
+                                className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                                required={costPriceRequired && editVariants.length === 0}
+                                min={0}
+                                disabled={editVariants.length > 0}
+                              />
+                            </div>
+                          ) : null}
+                          {editForm.isStockEnabled ? (
+                            <div className="space-y-1.5">
+                              <label className="text-sm font-bold">
+                                <FieldLabel tip={PRODUCT_TIPS.stock}>Stock</FieldLabel>
+                              </label>
+                              <NumberInput
+                                value={editForm.inStock}
+                                onChange={(inStock) => setEditForm((p) => ({ ...p, inStock }))}
+                                className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                                min={0}
+                                disabled={editVariants.length > 0}
+                              />
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
-                      {showProductCost ? (
-                        <div className="space-y-1.5">
-                          <label className="text-sm font-bold">
-                            <FieldLabel tip={PRODUCT_TIPS.cost} required={costPriceRequired}>
-                              Cost price ({currency})
-                            </FieldLabel>
-                          </label>
-                          <NumberInput
-                            value={editForm.costPrice}
-                            onChange={(costPrice) => setEditForm((p) => ({ ...p, costPrice }))}
-                            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                            required={costPriceRequired && editVariants.length === 0}
-                            min={0}
-                            disabled={editVariants.length > 0}
-                          />
-                        </div>
-                      ) : null}
-                      {editForm.isStockEnabled && !editForm.isSessionService ? (
-                        <div className="space-y-1.5">
-                          <label className="text-sm font-bold">
-                            <FieldLabel tip={PRODUCT_TIPS.stock}>Stock</FieldLabel>
-                          </label>
-                          <NumberInput
-                            value={editForm.inStock}
-                            onChange={(inStock) => setEditForm((p) => ({ ...p, inStock }))}
-                            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                            min={0}
-                            disabled={editVariants.length > 0}
-                          />
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                  <VariantsEditor
-                    variants={editVariants}
-                    setVariants={setEditVariants}
-                    showCostPrice={showProductCost}
-                    costPriceRequired={costPriceRequired}
-                    showStock={editForm.isStockEnabled && !editForm.isSessionService}
-                    onRemoveVariant={(variant) => {
-                      if (variant.id) {
-                        setDeletedVariantIds((prev) =>
-                          prev.includes(variant.id!) ? prev : [...prev, variant.id!],
-                        );
-                      }
-                    }}
-                  />
+                      <VariantsEditor
+                        variants={editVariants}
+                        setVariants={setEditVariants}
+                        showCostPrice={showProductCost}
+                        costPriceRequired={costPriceRequired}
+                        showStock={editForm.isStockEnabled}
+                        onRemoveVariant={(variant) => {
+                          if (variant.id) {
+                            setDeletedVariantIds((prev) =>
+                              prev.includes(variant.id!) ? prev : [...prev, variant.id!],
+                            );
+                          }
+                        }}
+                      />
+                    </>
+                  ) : null}
                   {isPharmacy ? <MedicineProfileFields value={editMedicine} onChange={setEditMedicine} /> : null}
                   <CrmRecordFields
                     schema={productCrmSchema}

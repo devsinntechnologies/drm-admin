@@ -27,6 +27,7 @@ import {
   isOpenEndedSession,
   liveSessionCharge,
   packageOvertimeMinutes,
+  orderItemDisplayTotal,
   resolveTimedOrderTotal,
   snookerOptionFor,
 } from "@/lib/session-billing.util";
@@ -251,7 +252,7 @@ export function CompleteOrderDialog({
                     <p className="text-sm font-bold text-slate-500">Qty {item.quantity}</p>
                   </div>
                   <p className="text-lg font-black text-[#059669]">
-                    Rs {Number(item.total ?? item.price * item.quantity).toLocaleString()}
+                    Rs {Math.round(orderItemDisplayTotal(order, item)).toLocaleString()}
                   </p>
                 </div>
               ))}
