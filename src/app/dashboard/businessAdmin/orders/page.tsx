@@ -65,10 +65,10 @@ import { SelfOrderRequestsPanel } from "@/components/orders/SelfOrderRequestsPan
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { parseOrdersSettings, parseSalesSettings } from "@/lib/module-feature-settings";
 import { snookerBookedEndIso } from "@/lib/invoice-datetime";
-import { resolveCategoryImageUrl } from "@/lib/product-image";
+import { resolveCategoryImageUrl, resolveOrderItemImage as resolveOrderItemImageUrl } from "@/lib/product-image";
 import { ProductMediaImage } from "@/components/common/ProductMediaImage";
 import { SnookerTableBookingDialog } from "@/components/orders/SnookerTableBookingDialog";
-import { OrderSessionPanel } from "@/components/orders/OrderSessionPanel";
+import { ActiveOrderCard } from "@/components/orders/ActiveOrderCard";
 import { CompleteOrderDialog } from "@/components/orders/CompleteOrderDialog";
 import type { SnookerBookingDetails } from "@/lib/snooker-session-options";
 import type { OrderCreditDetails } from "@/lib/credit-types";
@@ -589,11 +589,8 @@ function OrdersContent() {
   };
 
   const resolveOrderItemImage = (productId: string, image?: string | null) => {
-    if (image && !image.includes("/business/pic1")) {
-      return image;
-    }
     const product = activeProducts.find((p) => p.id === productId);
-    return product?.image ?? image ?? null;
+    return resolveOrderItemImageUrl(productId, image, product?.image ?? null);
   };
 
   const handleRemoveOrder = async (orderId: string) => {
@@ -648,9 +645,11 @@ function OrdersContent() {
         packagingPrice: numericPackaging,
         ...(session
           ? {
-              tableGuestName: session.tableGuestName,
               gameType: session.gameType,
               sessionMinutes: session.sessionMinutes,
+              ...(session.tableGuestName?.trim()
+                ? { tableGuestName: session.tableGuestName.trim() }
+                : {}),
             }
           : {}),
       };
@@ -1726,149 +1725,55 @@ function OrdersContent() {
         ) : (
           <div className="space-y-8 pb-20  mx-20">
             {displayedOrders.map((order) => {
-              const isTakeAway = String(order.table || "").toLowerCase().includes("take");
-              const cardBg = isTakeAway ? "bg-[#f8f2e8]" : "bg-[#EEF3FF]";
-              const cardBorder = isTakeAway ? "border-[#ffb347]" : "border-[#c7d7f5]";
-              const priceChipText = "text-[#001840]";
-              const tableProduct =
-                order.Items.find((i) => /table/i.test(i.productName))?.productName ??
-                order.table ??
-                "Counter";
-              const headline =
-                order.tableGuestName?.trim() ||
-                tableProduct;
+              const hasSession =
+                Boolean(
+                  ordersSettings.enableTableSession &&
+                    order.gameType?.trim() &&
+                    order.sessionMinutes != null,
+                );
 
               return (
-                <div key={order.id} className="relative rounded-[20px]  transition-all duration-500">
-                  <div className={cn("absolute left-0 top-0 bottom-0 w-3 rounded-l-[60px]", isTakeAway ? "bg-[#ff9900]" : "bg-[#16a34a]")} />
+                <div key={order.id} className="space-y-3 transition-all duration-500">
+                  <ActiveOrderCard
+                    order={order}
+                    settings={ordersSettings}
+                    actionLoading={actionLoading}
+                    formatElapsed={formatElapsed}
+                    onRemove={(id) => void handleRemoveOrder(id)}
+                    onComplete={setCompleteTarget}
+                    onViewDetails={
+                      ordersSettings.allowViewDetails
+                        ? (id) => void openOrderDetails(id)
+                        : undefined
+                    }
+                    onSessionPatch={async (orderId, payload) => {
+                      try {
+                        await updateSessionTimer(orderId, payload);
+                        toast.success("Session updated");
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : "Failed to update session");
+                      }
+                    }}
+                  />
 
-                  <div className={cn("p-5 sm:p-6 rounded-[12px] border-2 shadow-md", cardBg, cardBorder)}>
-                    <div className="flex items-start justify-between gap-4 mb-4 sm:mb-6">
-                      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                        <h2 className="text-[#001840] font-black text-lg sm:text-2xl tracking-tight">{order.orderNumber}</h2>
-                        <span className={cn("px-3 py-1 rounded-xl text-lg font-black bg-white border shadow-sm", priceChipText, "border-[#c7d7f5]")}>Rs. {Number(order.totalPrice)}</span>
-                        <h3 className="text-[#0050F8] font-black text-2xl sm:text-3xl tracking-tight">{headline}</h3>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {ordersSettings.allowRemove ? (
-                          <button
-                            type="button"
-                            onClick={() => void handleRemoveOrder(order.id)}
-                            disabled={actionLoading}
-                            className="rounded-xl bg-[#fef2f2] p-2.5 text-[#dc2626] shadow-sm transition hover:bg-[#fee2e2] disabled:opacity-50"
-                            aria-label="Remove order"
-                          >
-                            <Trash2 className="h-6 w-6" />
-                          </button>
-                        ) : null}
-                        {ordersSettings.allowViewDetails ? (
-                          <button
-                            type="button"
-                            onClick={() => void openOrderDetails(order.id)}
-                            className="rounded-xl bg-[#EEF3FF] p-2.5 text-[#0050F8] shadow-sm transition hover:bg-[#e8effe]"
-                            aria-label="Open order invoice"
-                          >
-                            <Eye className="h-6 w-6" />
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="mb-4 flex flex-wrap items-center gap-4 text-sm font-bold text-gray-600">
-                      <span className="flex items-center gap-2">
-                        <Store className="h-4 w-4 text-gray-400" /> {tableProduct}
-                      </span>
-                      <span className="flex items-center gap-2 text-[#9e9e9e]">
-                        <Clock3 className="h-4 w-4 text-gray-400" /> {formatElapsed(order.createdAt)}
-                      </span>
-                    </div>
-
-                    {ordersSettings.enableTableSession &&
-                    order.sessionMinutes &&
-                    order.sessionMinutes > 0 ? (
-                      <OrderSessionPanel
-                        order={order}
-                        allowPause={ordersSettings.allowSessionPause}
-                        allowAddTime={ordersSettings.allowSessionAddTime}
-                        allowEditTime={ordersSettings.allowSessionEditTime}
-                        busy={actionLoading}
-                        onPatch={async (payload) => {
-                          try {
-                            await updateSessionTimer(order.id, payload);
-                            toast.success("Session updated");
-                          } catch (err) {
-                            toast.error(
-                              err instanceof Error ? err.message : "Failed to update session",
-                            );
+                  {!hasSession && ordersSettings.allowEdit ? (
+                    <div className="flex justify-end px-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (expandedOrderId === order.id) {
+                            collapseOrderEditor();
+                            return;
                           }
+                          void openEditOrder(order.id);
                         }}
-                      />
-                    ) : null}
-
-                    {!expandedOrderId && (
-                      <div className="flex flex-wrap gap-4 mb-5 sm:mb-6">
-                        {order.Items.slice(0, 3).map((item) => (
-                          <div key={item.id} className="bg-white rounded-2xl border-2 border-[#c7d7f5] p-3.5 flex items-center gap-4 pr-6 relative shadow-sm transition hover:scale-[1.02] min-w-[270px]">
-                            <div className="relative h-18 w-18 rounded-[18px] overflow-hidden shadow-md border-2 border-white shrink-0">
-                              <ProductMediaImage
-                                src={resolveOrderItemImage(item.productId, item.image)}
-                                alt={item.productName}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                            <div className="min-w-0">
-                              <h4 className="font-black text-base text-[#111827] truncate">{item.productName}</h4>
-                              <p className="text-[#001840] font-black text-base mt-2">Rs. {item.total}</p>
-                            </div>
-                            <span className="absolute top-3 right-3 bg-[#eef3ff] text-[#0050F8] px-3 py-1 rounded-full text-xs font-black shadow-sm">x{item.quantity}</span>
-                          </div>
-                        ))}
-                        {order.Items.length > 3 && (
-                          <div className="bg-white/55 backdrop-blur rounded-full px-6 py-3 flex items-center text-sm font-black text-gray-600 border border-white/70">+{order.Items.length - 3} more</div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex items-end justify-between gap-4 border-t border-white/40 pt-5 sm:pt-6">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600 mb-1">Total Amount</p>
-                        <p className="text-3xl sm:text-4xl font-black text-[#001840]">Rs {order.totalPrice}</p>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        {ordersSettings.allowEdit ? <button
-                          onClick={() => {
-                            if (expandedOrderId === order.id) {
-                              collapseOrderEditor();
-                              return;
-                            }
-                            void openEditOrder(order.id);
-                          }}
-                          className="flex items-center gap-2 text-[#0050F8] font-semibold text-xl px-4 py-2 transition hover:bg-white/35 rounded-2xl"
-                        >
-                          {expandedOrderId === order.id ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                          {expandedOrderId === order.id ? "Order Details" : "Edit Order"}
-                        </button> : null}
-                        {ordersSettings.allowComplete ? (
-                          <button
-                            type="button"
-                            onClick={() => setCompleteTarget(order)}
-                            className="inline-flex items-center gap-2 rounded-full bg-[#16a34a] px-8 py-4 text-lg font-black text-white shadow-lg transition hover:bg-[#15803d]"
-                          >
-                            <CheckCircle2 className="h-6 w-6" /> Complete
-                          </button>
-                        ) : null}
-                        {/* {!expandedOrderId && (
-                          <button
-                            onClick={() => updateOrderStatus(order.id, "COMPLETED")}
-                            className="bg-[#0a9954] text-[#ffffff] px-8 py-4 rounded-full font-black text-lg flex items-center gap-3 shadow-lg hover:bg-[#0a874a] transition"
-                          >
-                            <CheckCircle2 className="h-6 w-6" /> Complete
-                          </button>
-                        )} */}
-                      </div>
+                        className="flex items-center gap-2 rounded-2xl px-4 py-2 text-lg font-semibold text-[#0050F8] transition hover:bg-white/60"
+                      >
+                        {expandedOrderId === order.id ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                        {expandedOrderId === order.id ? "Order Details" : "Edit Order"}
+                      </button>
                     </div>
+                  ) : null}
 
                     {expandedOrderId === order.id && editingOrderId === order.id && editingOrder && (
                       <div className="mt-10 pt-8 border-t border-white/40 animate-in slide-in-from-top-4 duration-500">
@@ -2031,7 +1936,6 @@ function OrdersContent() {
                         </div>
                       </div>
                     )}
-                  </div>
                 </div>
               );
             })}
@@ -2068,13 +1972,13 @@ function OrdersContent() {
         businessId={activeBusinessId}
         busy={actionLoading}
         onClose={() => setCompleteTarget(null)}
-        onConfirm={async ({ paymentMethod, credit }) => {
+        onConfirm={async ({ paymentMethod, credit, totalPrice }) => {
           if (!completeTarget) return;
           const ok = await runCompleteOrder(
             completeTarget.id,
             paymentMethod,
             credit,
-            Number(completeTarget.totalPrice),
+            totalPrice,
           );
           if (ok && allowPrinter && typeof window !== "undefined") {
             await openOrderDetails(completeTarget.id);

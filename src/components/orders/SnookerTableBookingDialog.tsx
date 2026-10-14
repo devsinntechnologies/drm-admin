@@ -6,8 +6,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   SNOOKER_GAME_TYPE_OPTIONS,
   SNOOKER_MINUTE_PRESETS,
+  defaultSessionMinutesForGame,
   type SnookerBookingDetails,
 } from "@/lib/snooker-session-options";
+import { snookerOptionFor } from "@/lib/session-billing.util";
 
 type Props = {
   open: boolean;
@@ -30,16 +32,22 @@ export function SnookerTableBookingDialog({
     if (!open) return;
     setGuest("");
     setGameType(SNOOKER_GAME_TYPE_OPTIONS[0].name);
-    setMinutes(SNOOKER_MINUTE_PRESETS[0]);
+    setMinutes(defaultSessionMinutesForGame(SNOOKER_GAME_TYPE_OPTIONS[0].name));
   }, [open]);
+
+  const onGameTypeChange = (name: string) => {
+    setGameType(name);
+    setMinutes(defaultSessionMinutesForGame(name));
+  };
+
+  const perMinute = snookerOptionFor(gameType)?.isPerMinute ?? false;
 
   const submit = () => {
     const name = guest.trim();
-    if (!name) return;
     onConfirm({
-      tableGuestName: name,
+      ...(name ? { tableGuestName: name } : {}),
       gameType,
-      sessionMinutes: minutes,
+      sessionMinutes: perMinute ? 0 : minutes,
     });
   };
 
@@ -66,7 +74,8 @@ export function SnookerTableBookingDialog({
         <div className="space-y-4 p-5">
           <label className="block space-y-1.5">
             <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#64748b]">
-              <UserRound className="h-3.5 w-3.5" /> Customer name
+              <UserRound className="h-3.5 w-3.5" /> Customer name{" "}
+              <span className="font-semibold normal-case text-[#94a3b8]">(optional)</span>
             </span>
             <input
               className="w-full rounded-xl border border-[#dbe4ef] px-4 py-3 text-sm font-semibold outline-none focus:border-[#0050F8]"
@@ -82,7 +91,7 @@ export function SnookerTableBookingDialog({
                 <button
                   key={opt.name}
                   type="button"
-                  onClick={() => setGameType(opt.name)}
+                  onClick={() => onGameTypeChange(opt.name)}
                   className={`rounded-full px-4 py-2 text-sm font-bold ${
                     gameType === opt.name
                       ? "bg-[#0050F8] text-white"
@@ -94,30 +103,35 @@ export function SnookerTableBookingDialog({
               ))}
             </div>
           </div>
-          <div>
-            <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#64748b]">
-              <Clock3 className="h-3.5 w-3.5" /> Duration (minutes)
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {SNOOKER_MINUTE_PRESETS.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMinutes(m)}
-                  className={`rounded-full px-3 py-1.5 text-sm font-bold ${
-                    minutes === m ? "bg-[#16a34a] text-white" : "bg-[#f1f5f9] text-[#334155]"
-                  }`}
-                >
-                  {m}m
-                </button>
-              ))}
+          {!perMinute ? (
+            <div>
+              <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#64748b]">
+                <Clock3 className="h-3.5 w-3.5" /> Duration (minutes)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {SNOOKER_MINUTE_PRESETS.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMinutes(m)}
+                    className={`rounded-full px-3 py-1.5 text-sm font-bold ${
+                      minutes === m ? "bg-[#16a34a] text-white" : "bg-[#f1f5f9] text-[#334155]"
+                    }`}
+                  >
+                    {m}m
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <p className="rounded-xl bg-[#f1f5f9] px-4 py-3 text-sm font-semibold text-[#475569]">
+              Open-ended session — billed per minute while playing (same as the app).
+            </p>
+          )}
           <button
             type="button"
-            disabled={!guest.trim()}
             onClick={submit}
-            className="w-full rounded-xl bg-[#001840] py-3.5 text-sm font-bold text-white disabled:opacity-50"
+            className="w-full rounded-xl bg-[#001840] py-3.5 text-sm font-bold text-white"
           >
             Start session & place order
           </button>

@@ -21,7 +21,8 @@ type NotificationPayload = {
 
 function namespaceForRole(role: string | null) {
   const normalized = (role ?? "").toLowerCase();
-  if (!normalized || normalized === "super_admin") return null;
+  if (!normalized) return null;
+  if (normalized === "super_admin") return "/business_admin";
   if (normalized === "waiter") return "/waiter";
   if (normalized === "kitchen" || normalized === "kitchen_staff") return "/kitchen";
   return "/business_admin";
@@ -97,6 +98,10 @@ export default function StaffRealtimeProvider({
       redirectToLogin();
     };
 
+    const onOrderRealtime = (payload: unknown) => {
+      emitStaffRealtime(STAFF_REALTIME_EVENTS.ORDERS_PATCH, payload);
+    };
+
     socket.on("self_order:requested", onRequested);
     socket.on("self_order:approved", onApproved);
     socket.on("self_order:rejected", onRejected);
@@ -108,6 +113,11 @@ export default function StaffRealtimeProvider({
     socket.on("print_jobs:updated", onPrintJobsUpdated);
     socket.on("business:deactivated", onBusinessDeactivated);
     socket.on("business:product_disabled", onBusinessDeactivated);
+    socket.on("order:updated", onOrderRealtime);
+    socket.on("order_updated", onOrderRealtime);
+    socket.on("order:completed", onOrderRealtime);
+    socket.on("order_completed", onOrderRealtime);
+    socket.on("new_order", onOrderRealtime);
 
     return () => {
       socket.off("self_order:requested", onRequested);
@@ -121,6 +131,11 @@ export default function StaffRealtimeProvider({
       socket.off("print_jobs:updated", onPrintJobsUpdated);
       socket.off("business:deactivated", onBusinessDeactivated);
       socket.off("business:product_disabled", onBusinessDeactivated);
+      socket.off("order:updated", onOrderRealtime);
+      socket.off("order_updated", onOrderRealtime);
+      socket.off("order:completed", onOrderRealtime);
+      socket.off("order_completed", onOrderRealtime);
+      socket.off("new_order", onOrderRealtime);
       socket.disconnect();
     };
   }, [dispatch, role, token]);

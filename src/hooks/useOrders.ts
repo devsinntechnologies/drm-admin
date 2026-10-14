@@ -6,9 +6,62 @@ import { BASE_URL } from "@/lib/constant";
 import { STAFF_REALTIME_EVENTS } from "@/lib/staff-realtime";
 import { parseApiErrorText } from "@/lib/format-api-error";
 import type { OrderCreditDetails } from "@/lib/credit-types";
+import {
+  isTerminalOrderStatus,
+  mergeOrderSessionFields,
+} from "@/lib/merge-order-session";
 
 function parseApiError(text: string, fallback: string) {
   return parseApiErrorText(text, fallback);
+}
+
+function mergeOrderLists(previous: OrderRecord[], incoming: OrderRecord[]): OrderRecord[] {
+  const byId = new Map(previous.map((o) => [o.id, o]));
+  const next: OrderRecord[] = [];
+  for (const row of incoming) {
+    const existing = byId.get(row.id);
+    if (existing) {
+      next.push(mergeOrderSessionFields(existing, row));
+      byId.delete(row.id);
+    } else {
+      next.push(row);
+    }
+  }
+  return next;
+}
+
+function orderFromSocketPayload(raw: unknown): OrderRecord | null {
+  if (!raw || typeof raw !== "object") return null;
+  const data = raw as Record<string, unknown>;
+  const id = String(data.id ?? data.orderId ?? "").trim();
+  if (!id) return null;
+  const itemsRaw = (data.Items ?? data.items) as OrderRecord["Items"] | undefined;
+  return {
+    id,
+    orderNumber: String(data.orderNumber ?? ""),
+    Items: Array.isArray(itemsRaw) ? itemsRaw : [],
+    totalPrice: String(data.totalPrice ?? "0"),
+    deliveryCharges: String(data.deliveryCharges ?? "0"),
+    packagingPrice: String(data.packagingPrice ?? "0"),
+    status: String(data.status ?? "pending"),
+    isPriceOverridden: Boolean(data.isPriceOverridden),
+    priceSource: String(data.priceSource ?? ""),
+    table: data.table != null ? String(data.table) : null,
+    tableGuestName: (data.tableGuestName as string | null) ?? null,
+    sessionMinutes:
+      data.sessionMinutes == null || data.sessionMinutes === ""
+        ? null
+        : Math.round(Number(data.sessionMinutes)),
+    sessionPausedAt: (data.sessionPausedAt as string | null) ?? null,
+    sessionPausedMs: (data.sessionPausedMs as number | null) ?? null,
+    gameType: (data.gameType as string | null) ?? null,
+    orderType: String(data.orderType ?? ""),
+    createdBy: String(data.createdBy ?? ""),
+    creatorRole: String(data.creatorRole ?? ""),
+    businessId: data.businessId != null ? String(data.businessId) : null,
+    createdAt: String(data.createdAt ?? new Date().toISOString()),
+    updatedAt: String(data.updatedAt ?? new Date().toISOString()),
+  };
 }
 
 export type CompleteOrderOptions = {
@@ -167,7 +220,8 @@ export function useOrders(options: UseOrdersOptions = {}) {
         }
 
         const data: OrdersResponse = await response.json();
-        setOrders(data.data ?? []);
+        const rows = data.data ?? [];
+        setOrders((prev) => (prev.length ? mergeOrderLists(prev, rows) : rows));
         setPagination({
           total: data.pagination?.total ?? 0,
           page: data.pagination?.page ?? pageNum,
@@ -194,6 +248,35 @@ export function useOrders(options: UseOrdersOptions = {}) {
     window.addEventListener(STAFF_REALTIME_EVENTS.ORDERS_CHANGED, refresh);
     return () => window.removeEventListener(STAFF_REALTIME_EVENTS.ORDERS_CHANGED, refresh);
   }, [fetchOrders, range]);
+
+  useEffect(() => {
+    const onPatch = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      const patch = orderFromSocketPayload(detail);
+      if (!patch) return;
+
+      setOrders((prev) => {
+        if (isTerminalOrderStatus(patch.status)) {
+          return prev.filter((o) => o.id !== patch.id);
+        }
+        const idx = prev.findIndex((o) => o.id === patch.id);
+        if (idx === -1) {
+          return patch.Items.length > 0 ? [patch, ...prev] : prev;
+        }
+        const merged = mergeOrderSessionFields(prev[idx], patch);
+        return prev.map((o, i) =>
+          i === idx
+            ? {
+                ...merged,
+                Items: patch.Items.length ? patch.Items : o.Items,
+              }
+            : o,
+        );
+      });
+    };
+    window.addEventListener(STAFF_REALTIME_EVENTS.ORDERS_PATCH, onPatch);
+    return () => window.removeEventListener(STAFF_REALTIME_EVENTS.ORDERS_PATCH, onPatch);
+  }, []);
 
   const createOrder = useCallback(
     async (payload: CreateOrderPayload) => {
@@ -426,6 +509,32 @@ export function useOrders(options: UseOrdersOptions = {}) {
       }
 
       setActionLoading(true);
+
+      const applyOptimistic = (patch: { paused?: boolean; sessionMinutes?: number }) => {
+        setOrders((prev) =>
+          prev.map((o) => {
+            if (o.id !== orderId) return o;
+            const nowIso = new Date().toISOString();
+            if (patch.paused === true && !o.sessionPausedAt) {
+              return { ...o, sessionPausedAt: nowIso, updatedAt: nowIso };
+            }
+            if (patch.paused === false && o.sessionPausedAt) {
+              return {
+                ...o,
+                sessionPausedAt: null,
+                updatedAt: nowIso,
+              };
+            }
+            if (patch.sessionMinutes != null) {
+              return { ...o, sessionMinutes: patch.sessionMinutes, updatedAt: nowIso };
+            }
+            return o;
+          }),
+        );
+      };
+
+      applyOptimistic(payload);
+
       try {
         const url = new URL(`${BASE_URL}/orders/${orderId}/session-timer`);
         if (activeBusinessId) {
@@ -444,11 +553,28 @@ export function useOrders(options: UseOrdersOptions = {}) {
 
         if (!response.ok) {
           const text = await response.text();
+          void fetchOrders(1, range);
           throw new Error(parseApiError(text, "Failed to update session timer"));
         }
 
-        await fetchOrders(1, range);
-        return (await response.json()) as OrderRecord;
+        const raw = (await response.json()) as OrderRecord | { data?: OrderRecord };
+        const updated =
+          raw && typeof raw === "object" && "data" in raw && raw.data
+            ? raw.data
+            : (raw as OrderRecord);
+
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId
+              ? mergeOrderSessionFields(o, {
+                  ...updated,
+                  Items: updated.Items?.length ? updated.Items : o.Items,
+                })
+              : o,
+          ),
+        );
+
+        return updated;
       } finally {
         setActionLoading(false);
       }
@@ -483,7 +609,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
           throw new Error(parseApiError(text, "Failed to remove order"));
         }
 
-        await fetchOrders(1, range);
+        setOrders((prev) => prev.filter((o) => o.id !== orderId));
         return true;
       } finally {
         setActionLoading(false);

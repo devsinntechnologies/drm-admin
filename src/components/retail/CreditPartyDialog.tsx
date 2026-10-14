@@ -1,9 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import {
+  Calendar,
+  CheckCircle2,
+  Loader2,
+  Mail,
+  Phone,
+  User,
+  Wallet,
+  X,
+} from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { FormField, portalInputClass } from "@/components/admin/PortalPage";
 import { apiClient } from "@/lib/api-client";
 import {
   creditPartyLabel,
@@ -27,9 +35,18 @@ function defaultDueDate() {
   return date.toISOString().slice(0, 10);
 }
 
+function formatDueDisplay(iso: string) {
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
 function money(value: number) {
   return `Rs ${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
+
+const fieldClass =
+  "w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-3.5 text-[15px] font-bold text-[#0f172a] outline-none focus:border-[#059669] focus:ring-2 focus:ring-[#059669]/20";
 
 export default function CreditPartyDialog({
   open,
@@ -60,20 +77,38 @@ export default function CreditPartyDialog({
 
   const loadSuggestions = useCallback(
     async (query: string) => {
-      if (!token || !businessId) return;
+      if (!token) {
+        setSuggestions([]);
+        setError("Sign in again to load credit customers.");
+        return;
+      }
+      if (!businessId) {
+        setSuggestions([]);
+        setError("Select a business workspace to load existing credit.");
+        return;
+      }
       setSearching(true);
       try {
         const suffix = query.trim() ? `?search=${encodeURIComponent(query.trim())}` : "";
         const result = await apiClient.get<CreditParty[]>(`/credits/parties${suffix}`, token, businessId);
-        setSuggestions(Array.isArray(result) ? result : []);
-      } catch {
+        const list = Array.isArray(result) ? result : [];
+        list.sort((a, b) => Number(b.outstanding ?? 0) - Number(a.outstanding ?? 0));
+        setSuggestions(list);
+        setError(null);
+      } catch (err) {
         setSuggestions([]);
+        setError(err instanceof Error ? err.message : "Could not load existing credit customers.");
       } finally {
         setSearching(false);
       }
     },
     [token, businessId],
   );
+
+  useEffect(() => {
+    if (!open) return;
+    void loadSuggestions("");
+  }, [open, loadSuggestions]);
 
   useEffect(() => {
     if (!open) return;
@@ -110,108 +145,157 @@ export default function CreditPartyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogTitle>Put on credit</DialogTitle>
-        <p className="text-sm text-[var(--text-muted)]">
-          Who should this sale be billed to? Search existing credit customers or add a new person.
-        </p>
-
-        <div className="mt-4 space-y-3">
-          <FormField label="Name">
-            <input
-              className={portalInputClass}
-              value={name}
-              onChange={(e) => {
-                setPartyId(undefined);
-                setName(e.target.value);
-              }}
-              placeholder="Customer name"
-            />
-          </FormField>
-          <FormField label="Phone">
-            <input
-              className={portalInputClass}
-              value={phone}
-              onChange={(e) => {
-                setPartyId(undefined);
-                setPhone(e.target.value);
-              }}
-              placeholder="03xx xxxxxxx"
-            />
-          </FormField>
-          <FormField label="Email">
-            <input
-              className={portalInputClass}
-              value={email}
-              onChange={(e) => {
-                setPartyId(undefined);
-                setEmail(e.target.value);
-              }}
-              placeholder="Optional"
-            />
-          </FormField>
-          <FormField label="Return / pay by">
-            <input
-              type="date"
-              className={portalInputClass}
-              value={dueDate}
-              min={new Date().toISOString().slice(0, 10)}
-              onChange={(e) => setDueDate(e.target.value)}
-            />
-          </FormField>
+      <DialogContent className="max-h-[90vh] max-w-[460px] gap-0 overflow-hidden rounded-[18px] p-0">
+        <DialogTitle className="sr-only">Put on credit</DialogTitle>
+        <div className="bg-gradient-to-br from-[#0a9954] via-[#16a34a] to-[#22c55e] px-4 py-4 text-white">
+          <div className="flex items-start gap-3">
+            <div className="flex h-[42px] w-[42px] items-center justify-center rounded-xl bg-white/20">
+              <Wallet className="h-[22px] w-[22px]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xl font-black leading-tight">Put on credit</p>
+              <p className="text-[13px] font-semibold text-white/80">Bill this sale to a credit customer</p>
+            </div>
+            <button type="button" onClick={() => onOpenChange(false)} className="rounded-full p-1 hover:bg-white/15">
+              <X className="h-6 w-6" />
+            </button>
+          </div>
         </div>
 
-        {searching ? (
-          <div className="mt-3 flex items-center gap-2 text-xs text-[var(--text-muted)]">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Searching credit customers...
-          </div>
-        ) : null}
+        <div className="max-h-[calc(90vh-88px)] overflow-y-auto px-[18px] py-4">
+          <p className="text-sm font-semibold leading-relaxed text-slate-600">
+            Who should this sale be billed to? Pick someone from <strong>Existing credit</strong>, or enter details for a
+            new person. Use a <strong>phone number</strong> when two customers share the same name — we never merge
+            credit by name alone.
+          </p>
 
-        {suggestions.length > 0 ? (
-          <div className="mt-3 max-h-40 overflow-y-auto rounded-xl border border-[var(--border-subtle)]">
-            <p className="border-b border-[var(--border-subtle)] px-3 py-2 text-xs font-semibold uppercase text-[var(--text-muted)]">
-              Existing credit
+          <div className="mt-3.5 space-y-3">
+            <label className="block">
+              <span className="mb-1.5 flex items-center gap-2 text-sm font-bold text-slate-600">
+                <User className="h-4 w-4 text-[#059669]" /> Name
+              </span>
+              <input
+                className={fieldClass}
+                value={name}
+                onChange={(e) => {
+                  setPartyId(undefined);
+                  setName(e.target.value);
+                }}
+                placeholder="Customer name"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 flex items-center gap-2 text-sm font-bold text-slate-600">
+                <Phone className="h-4 w-4 text-[#059669]" /> Phone
+              </span>
+              <input
+                className={fieldClass}
+                value={phone}
+                onChange={(e) => {
+                  setPartyId(undefined);
+                  setPhone(e.target.value);
+                }}
+                placeholder="03xx xxxxxxx"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 flex items-center gap-2 text-sm font-bold text-slate-600">
+                <Mail className="h-4 w-4 text-[#059669]" /> Email
+              </span>
+              <input
+                className={fieldClass}
+                value={email}
+                onChange={(e) => {
+                  setPartyId(undefined);
+                  setEmail(e.target.value);
+                }}
+                placeholder="Optional"
+              />
+            </label>
+          </div>
+
+          {searching ? (
+            <div className="mt-3 h-1 overflow-hidden rounded-full bg-[#dcfce7]">
+              <div className="h-full w-1/2 animate-pulse rounded-full bg-[#059669]" />
+            </div>
+          ) : null}
+
+          {!searching && businessId && suggestions.length === 0 && !error ? (
+            <p className="mt-3 text-sm font-semibold text-slate-500">
+              No saved credit customers yet — enter details below to create one.
             </p>
-            {suggestions.map((party) => {
-              const selected = party.id === partyId;
-              return (
-                <button
-                  key={party.id}
-                  type="button"
-                  onClick={() => applyParty(party)}
-                  className={`flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left text-sm transition hover:bg-[var(--surface-muted)] ${
-                    selected ? "bg-[var(--surface-muted)]" : ""
-                  }`}
-                >
-                  <span>
-                    <span className="font-semibold text-[var(--text-primary)]">{creditPartyLabel(party)}</span>
-                    <span className="mt-0.5 block text-xs text-[var(--text-muted)]">
-                      Outstanding {money(Number(party.outstanding ?? 0))}
-                    </span>
-                  </span>
-                  {selected ? (
-                    <span className="text-xs font-semibold text-[var(--brand-secondary)]">Selected</span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
+          ) : null}
 
-        {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+          {suggestions.length > 0 ? (
+            <div className="mt-3.5">
+              <p className="text-sm font-black text-[#0f172a]">Existing credit</p>
+              <ul className="mt-2 max-h-[170px] space-y-1.5 overflow-y-auto">
+                {suggestions.map((party) => {
+                  const selected = party.id === partyId;
+                  return (
+                    <li key={party.id}>
+                      <button
+                        type="button"
+                        onClick={() => applyParty(party)}
+                        className={`flex w-full items-start gap-2 rounded-xl border px-3 py-2.5 text-left transition ${
+                          selected
+                            ? "border-[#059669] bg-[#ecfdf5]"
+                            : "border-[#e2e8f0] bg-[#f8fafc] hover:border-[#cbd5e1]"
+                        }`}
+                      >
+                        {selected ? (
+                          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#059669]" />
+                        ) : (
+                          <User className="mt-0.5 h-5 w-5 shrink-0 text-slate-400" />
+                        )}
+                        <span className="min-w-0">
+                          <span className="block text-sm font-bold text-[#0f172a]">{creditPartyLabel(party)}</span>
+                          <span className="mt-0.5 block text-xs font-semibold text-slate-500">
+                            Outstanding {money(Number(party.outstanding ?? 0))}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : !searching && token && businessId ? (
+            <p className="mt-3 text-xs font-semibold text-slate-500">No saved credit customers yet — enter details above.</p>
+          ) : !businessId ? (
+            <p className="mt-3 text-xs font-semibold text-amber-700">Open this business from the portal to load credit customers.</p>
+          ) : null}
 
-        <div className="mt-5 flex justify-end gap-2">
+          <label className="mt-4 block">
+            <span className="mb-1.5 flex items-center gap-2 text-sm font-bold text-[#059669]">
+              <Calendar className="h-4 w-4" /> Return / pay by
+            </span>
+            <div className="flex items-center gap-2 rounded-xl border border-[#059669]/40 bg-[#ecfdf5] px-3 py-3">
+              <input
+                type="date"
+                className="min-w-0 flex-1 bg-transparent text-[15px] font-black text-[#0f172a] outline-none"
+                value={dueDate}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+              <span className="text-xs font-bold text-[#059669]">{formatDueDisplay(dueDate)}</span>
+            </div>
+          </label>
+
+          {error ? <p className="mt-3 text-sm font-semibold text-red-600">{error}</p> : null}
+        </div>
+
+        <div className="flex gap-2 border-t border-[#e2e8f0] px-4 py-4">
           <button
             type="button"
-            className="rounded-xl border px-4 py-2 text-sm font-semibold"
+            className="h-12 flex-1 rounded-xl border border-[#cbd5e1] text-sm font-extrabold text-[#475569]"
             onClick={() => onOpenChange(false)}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-sm font-semibold text-white"
+            className="h-12 flex-[1.4] rounded-xl bg-[#16a34a] text-sm font-extrabold text-white"
             onClick={handleSave}
           >
             Save credit
