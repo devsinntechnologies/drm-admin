@@ -54,6 +54,7 @@ import InvoiceReceipt, { InvoiceDownloadButton, InvoicePrintButton } from "@/com
 import { PrinterAccessAlert } from "@/components/common/PrinterAccessAlert";
 import { useInvoiceBranding } from "@/hooks/useInvoiceBranding";
 import { downloadInvoicePdf } from "@/lib/invoice-pdf";
+import { resolveInvoiceTotals } from "@/lib/invoice-totals";
 import { useAuth } from "@/hooks/useAuth";
 import { useCategories, type CategoryRecord } from "@/hooks/useCategories";
 import { useOrders, type OrderRecord } from "@/hooks/useOrders";
@@ -672,14 +673,22 @@ function OrdersContent() {
 
   const refetch = () => fetchOrders(1);
 
-  const invoiceSubTotal = useMemo(
-    () => orderDetails?.Items.reduce((acc, item) => acc + Number(item.total || item.price || 0), 0) || 0,
-    [orderDetails],
-  );
+  const invoiceTotals = useMemo(() => {
+    if (!orderDetails) {
+      return { subtotal: 0, delivery: 0, packaging: 0, total: 0 };
+    }
+    return resolveInvoiceTotals({
+      Items: orderDetails.Items,
+      deliveryCharges: orderDetails.deliveryCharges,
+      packagingPrice: orderDetails.packagingPrice,
+      totalPrice: orderDetails.totalPrice,
+    });
+  }, [orderDetails]);
 
-  const invoiceDelivery = Number(orderDetails?.deliveryCharges || 0);
-  const invoicePackaging = Number(orderDetails?.packagingPrice || 0);
-  const invoiceNetAmount = Number(orderDetails?.totalPrice || 0);
+  const invoiceSubTotal = invoiceTotals.subtotal;
+  const invoiceDelivery = invoiceTotals.delivery;
+  const invoicePackaging = invoiceTotals.packaging;
+  const invoiceNetAmount = invoiceTotals.total;
 
   const runCompleteOrder = async (
     orderId: string,
@@ -744,11 +753,11 @@ function OrdersContent() {
         }
       }}
     >
-      <DialogContent className="max-w-2xl gap-0 overflow-hidden rounded-2xl border border-[#dbe4ef] bg-[#f8fbff] p-0 shadow-[0_24px_56px_rgba(15,23,42,0.18)] print:shadow-none">
+      <DialogContent className="flex max-h-[min(92vh,920px)] max-w-2xl flex-col gap-0 overflow-hidden rounded-2xl border border-[#dbe4ef] bg-[#f8fbff] p-0 shadow-[0_24px_56px_rgba(15,23,42,0.18)] print:max-h-none print:shadow-none">
         <DialogTitle className="sr-only">Order Invoice</DialogTitle>
         {orderDetails ? (
-          <div>
-            <div className="border-b border-[#dbe4ef] bg-white px-6 py-4 print:hidden">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="shrink-0 border-b border-[#dbe4ef] bg-white px-6 py-4 print:hidden">
               <button
                 type="button"
                 onClick={() => void handleCompleteAndPrint()}
@@ -765,7 +774,7 @@ function OrdersContent() {
               </button>
             </div>
 
-            <div className="p-6" id="order-invoice-print-area">
+            <div className="min-h-0 flex-1 overflow-y-auto p-6 print:overflow-visible" id="order-invoice-print-area">
               <InvoiceReceipt
                 orderNumber={orderDetails.orderNumber}
                 businessName={branding.businessName}
@@ -796,7 +805,7 @@ function OrdersContent() {
                 subtotal={invoiceSubTotal}
                 deliveryCharges={invoiceDelivery}
                 packagingPrice={invoicePackaging}
-                total={invoiceNetAmount > 0 ? invoiceNetAmount : invoiceSubTotal + invoiceDelivery + invoicePackaging}
+                total={invoiceNetAmount}
                 status={orderDetails.status}
                 contactPhone={branding.contactPhone}
                 contactEmail={branding.contactEmail}
@@ -805,7 +814,7 @@ function OrdersContent() {
               />
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-[#dbe4ef] bg-white px-6 py-4 print:hidden">
+            <div className="flex shrink-0 justify-end gap-3 border-t border-[#dbe4ef] bg-white px-6 py-4 print:hidden">
               <button
                 type="button"
                 onClick={() => setShowOrderDetailsDialog(false)}
@@ -830,7 +839,7 @@ function OrdersContent() {
                     subtotal: invoiceSubTotal,
                     deliveryCharges: invoiceDelivery,
                     packagingPrice: invoicePackaging,
-                    total: invoiceNetAmount > 0 ? invoiceNetAmount : invoiceSubTotal + invoiceDelivery + invoicePackaging,
+                    total: invoiceNetAmount,
                     contactPhone: branding.contactPhone,
                     contactEmail: branding.contactEmail,
                     address: branding.address,

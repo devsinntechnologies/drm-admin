@@ -84,11 +84,15 @@ function VariantsEditor({
   setVariants,
   onRemoveVariant,
   showCostPrice = false,
+  costPriceRequired = false,
+  showStock = true,
 }: {
   variants: VariantFormItem[];
   setVariants: React.Dispatch<React.SetStateAction<VariantFormItem[]>>;
   onRemoveVariant?: (variant: VariantFormItem) => void;
   showCostPrice?: boolean;
+  costPriceRequired?: boolean;
+  showStock?: boolean;
 }) {
   const { currency } = usePharmacyMarket();
   const [vForm, setVForm] = useState<VariantFormItem>({ name: "", price: 0, inStock: 0, costPrice: 0 });
@@ -99,8 +103,12 @@ function VariantsEditor({
       toast.error("Variant name is required");
       return;
     }
-    if (showCostPrice && !vForm.costPrice) {
+    if (showCostPrice && costPriceRequired && (vForm.costPrice == null || Number(vForm.costPrice) < 0)) {
       toast.error("Variant cost price is required");
+      return;
+    }
+    if (showCostPrice && !costPriceRequired && vForm.costPrice != null && Number(vForm.costPrice) < 0) {
+      toast.error("Variant cost price cannot be negative");
       return;
     }
     if (editingIndex != null) {
@@ -141,7 +149,8 @@ function VariantsEditor({
               <div>
                 <p className="text-sm font-bold text-[var(--text-primary)]">{v.name}</p>
                 <p className="text-xs text-[var(--text-muted)]">
-                  {currency} {v.price} • {v.inStock} in stock
+                  {currency} {v.price}
+                  {showStock ? ` • ${v.inStock} in stock` : ""}
                   {showCostPrice && v.costPrice != null && v.costPrice > 0 ? ` • cost ${currency} ${v.costPrice}` : ""}
                   {v.id ? " • saved" : " • new"}
                 </p>
@@ -183,7 +192,16 @@ function VariantsEditor({
             className={portalInputClass}
           />
         </label>
-        <div className={cn("grid gap-3", showCostPrice ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-2")}>
+        <div
+          className={cn(
+            "grid gap-3 grid-cols-1",
+            showCostPrice && showStock
+              ? "sm:grid-cols-3"
+              : showCostPrice || showStock
+                ? "sm:grid-cols-2"
+                : "sm:grid-cols-1",
+          )}
+        >
           <label className="block space-y-1.5">
             <span className="block text-xs font-semibold text-[var(--text-muted)]">
               <FieldLabel tip={PRODUCT_TIPS.variantPrice}>Price</FieldLabel>
@@ -198,7 +216,9 @@ function VariantsEditor({
           {showCostPrice ? (
             <label className="block space-y-1.5">
               <span className="block text-xs font-semibold text-[var(--text-muted)]">
-                <FieldLabel tip={PRODUCT_TIPS.variantCost} required>Cost price</FieldLabel>
+                <FieldLabel tip={PRODUCT_TIPS.variantCost} required={costPriceRequired}>
+                  Cost price
+                </FieldLabel>
               </span>
               <NumberInput
                 value={vForm.costPrice ?? 0}
@@ -208,17 +228,19 @@ function VariantsEditor({
               />
             </label>
           ) : null}
-          <label className="block space-y-1.5">
-            <span className="block text-xs font-semibold text-[var(--text-muted)]">
-              <FieldLabel tip={PRODUCT_TIPS.variantStock}>Stock</FieldLabel>
-            </span>
-            <NumberInput
-              value={vForm.inStock}
-              onChange={(inStock) => setVForm((p) => ({ ...p, inStock }))}
-              placeholder="0"
-              className={portalInputClass}
-            />
-          </label>
+          {showStock ? (
+            <label className="block space-y-1.5">
+              <span className="block text-xs font-semibold text-[var(--text-muted)]">
+                <FieldLabel tip={PRODUCT_TIPS.variantStock}>Stock</FieldLabel>
+              </span>
+              <NumberInput
+                value={vForm.inStock}
+                onChange={(inStock) => setVForm((p) => ({ ...p, inStock }))}
+                placeholder="0"
+                className={portalInputClass}
+              />
+            </label>
+          ) : null}
         </div>
         <div className="flex gap-2">
           <button
@@ -397,6 +419,8 @@ function MenuItemsContent() {
   const isRetail = templateConfig?.industryId === "retail-store";
   const isSnooker = templateConfig?.industryId === "snooker-pos";
   const requiresCostAndStock = !isPharmacy;
+  const showProductCost = !isPharmacy;
+  const costPriceRequired = requiresCostAndStock && !isSnooker;
   const productLabel = isPharmacy ? "Medicine" : isRetail ? "Product" : "Menu Item";
   const [createMedicine, setCreateMedicine] = useState<MedicineProfileForm>(EMPTY_MEDICINE_PROFILE);
   const [editMedicine, setEditMedicine] = useState<MedicineProfileForm>(EMPTY_MEDICINE_PROFILE);
@@ -604,7 +628,7 @@ function MenuItemsContent() {
       status: "ACTIVE",
       categoryId: "",
       isKitchen: true,
-      isStockEnabled: true,
+      isStockEnabled: !isSnooker,
       isSessionService: false,
       costPrice: 0,
       image: null,
@@ -643,13 +667,20 @@ function MenuItemsContent() {
       if (!createMedicine.genericName.trim()) return toast.error("Generic name is required");
       if (!createMedicine.saltName.trim()) return toast.error("Salt / composition is required");
     }
-    if (requiresCostAndStock && !createForm.isSessionService) {
+    if (showProductCost && !createForm.isSessionService) {
       if (createVariants.length > 0) {
-        if (createVariants.some((v) => v.costPrice == null || Number(v.costPrice) < 0)) {
+        if (costPriceRequired && createVariants.some((v) => v.costPrice == null || Number(v.costPrice) < 0)) {
           return toast.error("Cost price is required for each variant");
         }
-      } else if (createForm.costPrice == null || Number.isNaN(Number(createForm.costPrice)) || Number(createForm.costPrice) < 0) {
-        return toast.error("Cost price is required");
+        if (!costPriceRequired && createVariants.some((v) => v.costPrice != null && Number(v.costPrice) < 0)) {
+          return toast.error("Variant cost price cannot be negative");
+        }
+      } else if (costPriceRequired) {
+        if (createForm.costPrice == null || Number.isNaN(Number(createForm.costPrice)) || Number(createForm.costPrice) < 0) {
+          return toast.error("Cost price is required");
+        }
+      } else if (createForm.costPrice != null && Number(createForm.costPrice) < 0) {
+        return toast.error("Cost price cannot be negative");
       }
     }
 
@@ -666,7 +697,7 @@ function MenuItemsContent() {
           ? false
           : createForm.isStockEnabled,
         isSessionService: createForm.isSessionService,
-        costPrice: requiresCostAndStock
+        costPrice: showProductCost
           ? (createVariants.length > 0 ? createVariants[0].costPrice : createForm.costPrice)
           : undefined,
         variants: createVariants,
@@ -762,13 +793,20 @@ function MenuItemsContent() {
       if (!editMedicine.genericName.trim()) return toast.error("Generic name is required");
       if (!editMedicine.saltName.trim()) return toast.error("Salt / composition is required");
     }
-    if (requiresCostAndStock) {
+    if (showProductCost && !editForm.isSessionService) {
       if (editVariants.length > 0) {
-        if (editVariants.some((v) => v.costPrice == null || Number(v.costPrice) < 0)) {
+        if (costPriceRequired && editVariants.some((v) => v.costPrice == null || Number(v.costPrice) < 0)) {
           return toast.error("Cost price is required for each variant");
         }
-      } else if (editForm.costPrice == null || Number.isNaN(Number(editForm.costPrice)) || Number(editForm.costPrice) < 0) {
-        return toast.error("Cost price is required");
+        if (!costPriceRequired && editVariants.some((v) => v.costPrice != null && Number(v.costPrice) < 0)) {
+          return toast.error("Variant cost price cannot be negative");
+        }
+      } else if (costPriceRequired) {
+        if (editForm.costPrice == null || Number.isNaN(Number(editForm.costPrice)) || Number(editForm.costPrice) < 0) {
+          return toast.error("Cost price is required");
+        }
+      } else if (editForm.costPrice != null && Number(editForm.costPrice) < 0) {
+        return toast.error("Cost price cannot be negative");
       }
     }
 
@@ -784,7 +822,7 @@ function MenuItemsContent() {
           ? false
           : editForm.isStockEnabled,
         isSessionService: editForm.isSessionService,
-        costPrice: requiresCostAndStock
+        costPrice: showProductCost
           ? (editVariants.length > 0 ? editVariants[0].costPrice : editForm.costPrice)
           : undefined,
         variants: [
@@ -795,13 +833,13 @@ function MenuItemsContent() {
                   name: v.name,
                   price: v.price,
                   inStock: v.inStock,
-                  ...(requiresCostAndStock ? { costPrice: v.costPrice } : {}),
+                  ...(showProductCost ? { costPrice: v.costPrice } : {}),
                 }
               : {
                   name: v.name,
                   price: v.price,
                   inStock: v.inStock,
-                  ...(requiresCostAndStock ? { costPrice: v.costPrice } : {}),
+                  ...(showProductCost ? { costPrice: v.costPrice } : {}),
                 },
           ),
           ...deletedVariantIds.map((id) => ({ id, action: "delete" as const })),
@@ -851,7 +889,14 @@ function MenuItemsContent() {
       <PortalPage>
         <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
           {productsSettings.allowCreate ? (
-            <button type="button" onClick={() => setCreateOpen(true)} className="dn-btn dn-btn-primary">
+            <button
+              type="button"
+              onClick={() => {
+                resetCreateForm();
+                setCreateOpen(true);
+              }}
+              className="dn-btn dn-btn-primary"
+            >
               <Plus className="h-5 w-5" /> {isPharmacy ? "Add medicine" : "Add Product"}
             </button>
           ) : null}
@@ -987,56 +1032,11 @@ function MenuItemsContent() {
                   </div>
                   {createVariants.length > 0 ? (
                     <p className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
-                      Price, cost price, and stock are managed per variant below — parent fields are locked.
+                      {createForm.isStockEnabled
+                        ? "Price, cost price, and stock are managed per variant below — parent fields are locked."
+                        : "Price and cost are managed per variant below — parent fields are locked."}
                     </p>
                   ) : null}
-                  <div
-                    className={`space-y-4 ${createVariants.length > 0 ? "pointer-events-none opacity-55" : ""}`}
-                    aria-disabled={createVariants.length > 0}
-                  >
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-bold">
-                          <FieldLabel tip={PRODUCT_TIPS.price} required>Price ({currency})</FieldLabel>
-                        </label>
-                        <NumberInput
-                          value={createForm.price}
-                          onChange={(price) => setCreateForm((p) => ({ ...p, price }))}
-                          className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                          required={createVariants.length === 0}
-                          min={0}
-                          disabled={createVariants.length > 0}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-bold">
-                          <FieldLabel tip={PRODUCT_TIPS.stock}>Stock</FieldLabel>
-                        </label>
-                        <NumberInput
-                          value={createForm.inStock}
-                          onChange={(inStock) => setCreateForm((p) => ({ ...p, inStock }))}
-                          className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                          min={0}
-                          disabled={createVariants.length > 0}
-                        />
-                      </div>
-                    </div>
-                    {requiresCostAndStock ? (
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-bold">
-                          <FieldLabel tip={PRODUCT_TIPS.cost} required>Cost price ({currency})</FieldLabel>
-                        </label>
-                        <NumberInput
-                          value={createForm.costPrice}
-                          onChange={(costPrice) => setCreateForm((p) => ({ ...p, costPrice }))}
-                          className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                          required={createVariants.length === 0}
-                          min={0}
-                          disabled={createVariants.length > 0}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
                   {isSnooker ? (
                     <label className="flex items-center gap-2 rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm font-semibold">
                       <input
@@ -1055,14 +1055,91 @@ function MenuItemsContent() {
                     </label>
                   ) : null}
                   {requiresCostAndStock && !createForm.isSessionService ? (
-                    <label className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
-                      <input type="checkbox" checked readOnly disabled className="accent-emerald-600" />
-                      <FieldLabel tip={PRODUCT_TIPS.trackStock} required>
-                        Track inventory on sales (always on)
+                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
+                      <input
+                        type="checkbox"
+                        className="accent-emerald-600"
+                        checked={createForm.isStockEnabled}
+                        onChange={(e) =>
+                          setCreateForm((p) => ({
+                            ...p,
+                            isStockEnabled: e.target.checked,
+                            inStock: e.target.checked ? p.inStock : 0,
+                          }))
+                        }
+                      />
+                      <FieldLabel tip={PRODUCT_TIPS.trackStock}>
+                        Track inventory on sales
                       </FieldLabel>
                     </label>
                   ) : null}
-                  <VariantsEditor variants={createVariants} setVariants={setCreateVariants} showCostPrice={requiresCostAndStock} />
+                  <div
+                    className={`space-y-4 ${createVariants.length > 0 ? "pointer-events-none opacity-55" : ""}`}
+                    aria-disabled={createVariants.length > 0}
+                  >
+                    <div
+                      className={cn(
+                        "grid grid-cols-1 gap-4",
+                        showProductCost && createForm.isStockEnabled && !createForm.isSessionService
+                          ? "sm:grid-cols-3"
+                          : showProductCost || (createForm.isStockEnabled && !createForm.isSessionService)
+                            ? "sm:grid-cols-2"
+                            : "sm:grid-cols-1",
+                      )}
+                    >
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-bold">
+                          <FieldLabel tip={PRODUCT_TIPS.price} required>Price ({currency})</FieldLabel>
+                        </label>
+                        <NumberInput
+                          value={createForm.price}
+                          onChange={(price) => setCreateForm((p) => ({ ...p, price }))}
+                          className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                          required={createVariants.length === 0}
+                          min={0}
+                          disabled={createVariants.length > 0}
+                        />
+                      </div>
+                      {showProductCost ? (
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-bold">
+                            <FieldLabel tip={PRODUCT_TIPS.cost} required={costPriceRequired}>
+                              Cost price ({currency})
+                            </FieldLabel>
+                          </label>
+                          <NumberInput
+                            value={createForm.costPrice}
+                            onChange={(costPrice) => setCreateForm((p) => ({ ...p, costPrice }))}
+                            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                            required={costPriceRequired && createVariants.length === 0}
+                            min={0}
+                            disabled={createVariants.length > 0}
+                          />
+                        </div>
+                      ) : null}
+                      {createForm.isStockEnabled && !createForm.isSessionService ? (
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-bold">
+                            <FieldLabel tip={PRODUCT_TIPS.stock}>Stock</FieldLabel>
+                          </label>
+                          <NumberInput
+                            value={createForm.inStock}
+                            onChange={(inStock) => setCreateForm((p) => ({ ...p, inStock }))}
+                            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                            min={0}
+                            disabled={createVariants.length > 0}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <VariantsEditor
+                    variants={createVariants}
+                    setVariants={setCreateVariants}
+                    showCostPrice={showProductCost}
+                    costPriceRequired={costPriceRequired}
+                    showStock={createForm.isStockEnabled && !createForm.isSessionService}
+                  />
                   {isPharmacy ? <MedicineProfileFields value={createMedicine} onChange={setCreateMedicine} /> : null}
                   <CrmRecordFields
                     schema={productCrmSchema}
@@ -1253,14 +1330,44 @@ function MenuItemsContent() {
                   </div>
                   {editVariants.length > 0 ? (
                     <p className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
-                      Price, cost price, and stock are managed per variant below — parent fields are locked.
+                      {editForm.isStockEnabled
+                        ? "Price, cost price, and stock are managed per variant below — parent fields are locked."
+                        : "Price and cost are managed per variant below — parent fields are locked."}
                     </p>
+                  ) : null}
+                  {requiresCostAndStock && !editForm.isSessionService ? (
+                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
+                      <input
+                        type="checkbox"
+                        className="accent-emerald-600"
+                        checked={editForm.isStockEnabled}
+                        onChange={(e) =>
+                          setEditForm((p) => ({
+                            ...p,
+                            isStockEnabled: e.target.checked,
+                            inStock: e.target.checked ? p.inStock : 0,
+                          }))
+                        }
+                      />
+                      <FieldLabel tip={PRODUCT_TIPS.trackStock}>
+                        Track inventory on sales
+                      </FieldLabel>
+                    </label>
                   ) : null}
                   <div
                     className={`space-y-4 ${editVariants.length > 0 ? "pointer-events-none opacity-55" : ""}`}
                     aria-disabled={editVariants.length > 0}
                   >
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div
+                      className={cn(
+                        "grid grid-cols-1 gap-4",
+                        showProductCost && editForm.isStockEnabled && !editForm.isSessionService
+                          ? "sm:grid-cols-3"
+                          : showProductCost || (editForm.isStockEnabled && !editForm.isSessionService)
+                            ? "sm:grid-cols-2"
+                            : "sm:grid-cols-1",
+                      )}
+                    >
                       <div className="space-y-1.5">
                         <label className="text-sm font-bold">
                           <FieldLabel tip={PRODUCT_TIPS.price} required>Price ({currency})</FieldLabel>
@@ -1274,47 +1381,45 @@ function MenuItemsContent() {
                           disabled={editVariants.length > 0}
                         />
                       </div>
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-bold">
-                          <FieldLabel tip={PRODUCT_TIPS.stock}>Stock</FieldLabel>
-                        </label>
-                        <NumberInput
-                          value={editForm.inStock}
-                          onChange={(inStock) => setEditForm((p) => ({ ...p, inStock }))}
-                          className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                          min={0}
-                          disabled={editVariants.length > 0}
-                        />
-                      </div>
+                      {showProductCost ? (
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-bold">
+                            <FieldLabel tip={PRODUCT_TIPS.cost} required={costPriceRequired}>
+                              Cost price ({currency})
+                            </FieldLabel>
+                          </label>
+                          <NumberInput
+                            value={editForm.costPrice}
+                            onChange={(costPrice) => setEditForm((p) => ({ ...p, costPrice }))}
+                            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                            required={costPriceRequired && editVariants.length === 0}
+                            min={0}
+                            disabled={editVariants.length > 0}
+                          />
+                        </div>
+                      ) : null}
+                      {editForm.isStockEnabled && !editForm.isSessionService ? (
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-bold">
+                            <FieldLabel tip={PRODUCT_TIPS.stock}>Stock</FieldLabel>
+                          </label>
+                          <NumberInput
+                            value={editForm.inStock}
+                            onChange={(inStock) => setEditForm((p) => ({ ...p, inStock }))}
+                            className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
+                            min={0}
+                            disabled={editVariants.length > 0}
+                          />
+                        </div>
+                      ) : null}
                     </div>
-                    {requiresCostAndStock ? (
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-bold">
-                          <FieldLabel tip={PRODUCT_TIPS.cost} required>Cost price ({currency})</FieldLabel>
-                        </label>
-                        <NumberInput
-                          value={editForm.costPrice}
-                          onChange={(costPrice) => setEditForm((p) => ({ ...p, costPrice }))}
-                          className="w-full rounded-xl bg-[#f3f4f6] px-4 py-3 text-sm outline-none"
-                          required={editVariants.length === 0}
-                          min={0}
-                          disabled={editVariants.length > 0}
-                        />
-                      </div>
-                    ) : null}
                   </div>
-                  {requiresCostAndStock && !editForm.isSessionService ? (
-                    <label className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
-                      <input type="checkbox" checked readOnly disabled className="accent-emerald-600" />
-                      <FieldLabel tip={PRODUCT_TIPS.trackStock} required>
-                        Track inventory on sales (always on)
-                      </FieldLabel>
-                    </label>
-                  ) : null}
                   <VariantsEditor
                     variants={editVariants}
                     setVariants={setEditVariants}
-                    showCostPrice={requiresCostAndStock}
+                    showCostPrice={showProductCost}
+                    costPriceRequired={costPriceRequired}
+                    showStock={editForm.isStockEnabled && !editForm.isSessionService}
                     onRemoveVariant={(variant) => {
                       if (variant.id) {
                         setDeletedVariantIds((prev) =>

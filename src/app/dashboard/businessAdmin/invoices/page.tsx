@@ -33,6 +33,7 @@ import {
   createPrintJob,
   invoiceRecordToPrintPayload,
 } from "@/lib/print-jobs";
+import { resolveInvoiceTotals } from "@/lib/invoice-totals";
 
 type RangeFilter = "day" | "week" | "month";
 
@@ -60,28 +61,8 @@ function formatCurrency(value: number, currency = "PKR") {
   }
 }
 
-function parsePrice(value?: string | number | null) {
-  const amount = Number(value ?? 0);
-  return Number.isFinite(amount) ? amount : 0;
-}
-
 function invoiceAmounts(invoice: InvoiceRecord) {
-  const itemsSubtotal = (invoice.Items ?? []).reduce((sum, item) => {
-    const explicit = Number(item.total);
-    if (Number.isFinite(explicit) && explicit > 0) return sum + explicit;
-    return sum + parsePrice(item.price) * Number(item.quantity || 0);
-  }, 0);
-  const delivery = parsePrice(invoice.deliveryCharges);
-  const packaging = parsePrice(invoice.packagingPrice);
-  const stored = parsePrice(invoice.totalPrice);
-  const total = stored > 0 ? stored : itemsSubtotal + delivery + packaging;
-  const subtotal =
-    typeof invoice.subtotal === "number" && invoice.subtotal > 0
-      ? invoice.subtotal
-      : itemsSubtotal > 0
-        ? itemsSubtotal
-        : Math.max(0, total - delivery - packaging);
-  return { subtotal, delivery, packaging, total };
+  return resolveInvoiceTotals(invoice);
 }
 
 function displayInvoiceId(raw?: string | null) {
@@ -224,7 +205,7 @@ function InvoicesContent() {
       orderNumber: invoice.orderNumber,
       businessName: invoice.businessName,
       date: formatInvoiceDateTime(invoice.createdAt),
-      amount: parsePrice(invoice.totalPrice),
+      amount: invoiceAmounts(invoice).total,
       status: toStatus(invoice.status),
       itemCount: invoice.Items?.length ?? 0,
     }));
@@ -758,11 +739,11 @@ function InvoicesContent() {
       </PortalPage>
 
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="max-w-2xl gap-0 overflow-hidden rounded-2xl border-none p-0 shadow-2xl print:shadow-none">
+        <DialogContent className="flex max-h-[min(92vh,920px)] max-w-2xl flex-col gap-0 overflow-hidden rounded-2xl border-none p-0 shadow-2xl print:max-h-none print:shadow-none">
           <DialogTitle className="sr-only">Invoice Details</DialogTitle>
           {selectedInvoice ? (
-            <div className="print:p-0">
-              <div className="flex items-center justify-between border-b border-[#edf2f7] bg-[#f8fbff] px-6 py-4 print:hidden">
+            <div className="flex min-h-0 flex-1 flex-col print:block">
+              <div className="flex shrink-0 items-center justify-between border-b border-[#edf2f7] bg-[#f8fbff] px-6 py-4 print:hidden">
                 <h3 className="text-lg font-bold text-[#0f172a]">Invoice Preview</h3>
                 <button
                   type="button"
@@ -773,7 +754,7 @@ function InvoicesContent() {
                 </button>
               </div>
 
-              <div className="p-6" id="invoice-print-area">
+              <div className="min-h-0 flex-1 overflow-y-auto p-6 print:overflow-visible" id="invoice-print-area">
                 <InvoiceReceipt
                   orderNumber={selectedInvoice.orderNumber || selectedInvoice.invoiceNumber}
                   businessName={branding.businessName || selectedInvoice.businessName}
@@ -812,7 +793,7 @@ function InvoicesContent() {
                 />
               </div>
 
-              <div className="flex justify-end gap-3 border-t border-[#edf2f7] bg-[#f8fbff] px-6 py-4 print:hidden">
+              <div className="flex shrink-0 justify-end gap-3 border-t border-[#edf2f7] bg-[#f8fbff] px-6 py-4 print:hidden">
                 <button type="button" onClick={() => setIsDetailsOpen(false)} className="dn-btn dn-btn-outline">
                   Close
                 </button>

@@ -146,7 +146,13 @@ export default function InvoiceReceipt({
         ? "bg-[#fff7ed] text-[#ea580c] border-[#fed7aa]"
         : "bg-[#eef3ff] text-[#0050f8] border-[#c7d7f5]";
 
-  const netAmount = Number.isFinite(Number(total)) ? Number(total) : 0;
+  const computedNet = subtotal + deliveryCharges + packagingPrice;
+  const netAmount =
+    subtotal > 0.009
+      ? computedNet
+      : Number.isFinite(Number(total)) && Number(total) > 0
+        ? Number(total)
+        : computedNet;
   const hasContact = Boolean(contactPhone || contactPhoneAlt || contactEmail || address);
   const guest = customerName?.trim() ?? "";
   const hasGuest = guest.length > 0;
