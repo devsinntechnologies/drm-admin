@@ -19,8 +19,18 @@ function resolveAuthToken(state: RootState): string | null {
   return state.auth?.token || getStoredAuthToken();
 }
 
+const API_FETCH_TIMEOUT_MS = 20_000;
+
 export const authenticatedBaseQuery = fetchBaseQuery({
   baseUrl: BASE_URL,
+  fetchFn: async (input, init) => {
+    const signal =
+      init?.signal ??
+      (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+        ? AbortSignal.timeout(API_FETCH_TIMEOUT_MS)
+        : undefined);
+    return fetch(input, { ...init, signal });
+  },
   prepareHeaders: (headers, { getState }) => {
     const token = resolveAuthToken(getState() as RootState);
     if (token) {

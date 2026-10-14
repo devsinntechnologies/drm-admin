@@ -4,24 +4,19 @@ import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { useDashboardRefresh } from "@/contexts/DashboardRefreshContext";
 import { BASE_URL } from "@/lib/constant";
 import { STAFF_REALTIME_EVENTS } from "@/lib/staff-realtime";
+import { parseApiErrorText } from "@/lib/format-api-error";
+import type { OrderCreditDetails } from "@/lib/credit-types";
 
 function parseApiError(text: string, fallback: string) {
-  try {
-    const parsed = JSON.parse(text);
-    let detail: unknown = parsed.message ?? parsed.error ?? text;
-    if (detail && typeof detail === "object" && "message" in (detail as object)) {
-      detail = (detail as { message?: unknown }).message ?? detail;
-    }
-    if (typeof detail === "object" && detail !== null && "message" in detail) {
-      detail = (detail as { message?: unknown }).message;
-    }
-    if (Array.isArray(detail)) return detail.join(", ");
-    if (typeof detail === "string" && detail.trim()) return detail;
-    return fallback;
-  } catch {
-    return text || fallback;
-  }
+  return parseApiErrorText(text, fallback);
 }
+
+export type CompleteOrderOptions = {
+  status: string;
+  paymentMethod?: string;
+  credit?: OrderCreditDetails | null;
+  totalPrice?: number;
+};
 function getAuthToken(reduxToken: string | null) {
   if (reduxToken) {
     return reduxToken.trim();
@@ -48,6 +43,9 @@ export interface CreateOrderPayload {
   totalPrice: number;
   deliveryCharges: number;
   packagingPrice: number;
+  tableGuestName?: string;
+  gameType?: string;
+  sessionMinutes?: number;
 }
 
 export interface UpdateOrderPayload {
@@ -87,6 +85,8 @@ export interface OrderRecord {
   table: string | null;
   tableGuestName?: string | null;
   sessionMinutes?: number | null;
+  sessionPausedAt?: string | null;
+  sessionPausedMs?: number | null;
   gameType?: string | null;
   orderType: string;
   createdBy: string;
@@ -244,11 +244,38 @@ export function useOrders(options: UseOrdersOptions = {}) {
   );
 
   const updateOrderStatus = useCallback(
-    async (orderId: string, status: string) => {
+    async (orderId: string, statusOrOptions: string | CompleteOrderOptions) => {
       const authToken = getAuthToken(token);
       if (!authToken) {
         throw new Error("No authentication token available");
       }
+
+      const body =
+        typeof statusOrOptions === "string"
+          ? { status: statusOrOptions }
+          : {
+              status: statusOrOptions.status,
+              ...(statusOrOptions.paymentMethod
+                ? { paymentMethod: statusOrOptions.paymentMethod }
+                : {}),
+              ...(statusOrOptions.credit
+                ? {
+                    credit: {
+                      name: statusOrOptions.credit.name,
+                      phone: statusOrOptions.credit.phone,
+                      email: statusOrOptions.credit.email,
+                      dueDate: statusOrOptions.credit.dueDate,
+                      partyId: statusOrOptions.credit.partyId,
+                      clientCreditId: statusOrOptions.credit.clientCreditId,
+                    },
+                  }
+                : {}),
+              ...(statusOrOptions.totalPrice != null &&
+              Number.isFinite(statusOrOptions.totalPrice)
+                ? { totalPrice: statusOrOptions.totalPrice }
+                : {}),
+            };
+      const status = body.status;
 
       setActionLoading(true);
       try {
@@ -264,21 +291,12 @@ export function useOrders(options: UseOrdersOptions = {}) {
             Authorization: `Bearer ${authToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ status }),
+          body: JSON.stringify(body),
         });
 
         if (!response.ok) {
           const text = await response.text();
-          let detail: any = text;
-          try {
-            const parsed = JSON.parse(text);
-            detail = parsed.message || parsed.error || text;
-            if (typeof detail === 'object' && detail.message) {
-              detail = detail.message;
-            }
-            if (Array.isArray(detail)) detail = detail.join(", ");
-          } catch (e) { /* not json */ }
-          throw new Error(detail);
+          throw new Error(parseApiError(text, `Failed to update order: ${response.statusText}`));
         }
 
         // If the order was marked as served or completed, attempt to create an invoice.
@@ -397,6 +415,83 @@ export function useOrders(options: UseOrdersOptions = {}) {
     }
   }, [activeBusinessId, fetchOrders, range, token]);
 
+  const updateSessionTimer = useCallback(
+    async (
+      orderId: string,
+      payload: { paused?: boolean; sessionMinutes?: number },
+    ) => {
+      const authToken = getAuthToken(token);
+      if (!authToken) {
+        throw new Error("No authentication token available");
+      }
+
+      setActionLoading(true);
+      try {
+        const url = new URL(`${BASE_URL}/orders/${orderId}/session-timer`);
+        if (activeBusinessId) {
+          url.searchParams.append("businessId", activeBusinessId);
+        }
+
+        const response = await fetch(url.toString(), {
+          method: "PATCH",
+          headers: {
+            accept: "application/json",
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(parseApiError(text, "Failed to update session timer"));
+        }
+
+        await fetchOrders(1, range);
+        return (await response.json()) as OrderRecord;
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [activeBusinessId, fetchOrders, range, token],
+  );
+
+  const deleteOrder = useCallback(
+    async (orderId: string) => {
+      const authToken = getAuthToken(token);
+      if (!authToken) {
+        throw new Error("No authentication token available");
+      }
+
+      setActionLoading(true);
+      try {
+        const url = new URL(`${BASE_URL}/orders/${orderId}`);
+        if (activeBusinessId) {
+          url.searchParams.append("businessId", activeBusinessId);
+        }
+
+        const response = await fetch(url.toString(), {
+          method: "DELETE",
+          headers: {
+            accept: "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(parseApiError(text, "Failed to remove order"));
+        }
+
+        await fetchOrders(1, range);
+        return true;
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [activeBusinessId, fetchOrders, range, token],
+  );
+
   return {
     orders,
     loading,
@@ -408,6 +503,8 @@ export function useOrders(options: UseOrdersOptions = {}) {
     updateOrderStatus,
     updateOrderById,
     getOrderById,
+    updateSessionTimer,
+    deleteOrder,
     actionLoading,
   };
 }

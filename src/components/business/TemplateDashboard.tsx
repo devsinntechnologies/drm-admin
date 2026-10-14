@@ -328,7 +328,12 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
               <Loading size="sm" />
             ) : lowStockItems.length ? (
               <div className="space-y-2">
-                {lowStockItems.map((item) => (
+                {lowStockItems.map((item) => {
+                  const isOut =
+                    "status" in item && item.status === "out"
+                      ? true
+                      : Number(item.currentStock ?? item.inStock ?? 0) <= 0;
+                  return (
                   <div
                     key={item.id ?? `${item.productId}-${item.productName ?? "item"}`}
                     className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3"
@@ -336,11 +341,17 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
                     <p className="text-sm font-semibold text-[var(--text-primary)]">
                       {item.productName || "Stock alert"}
                     </p>
-                    <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-600 dark:text-amber-300">
-                      {item.currentStock ?? item.inStock ?? 0} left
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                        isOut
+                          ? "bg-red-500/15 text-red-600 dark:text-red-300"
+                          : "bg-amber-500/15 text-amber-600 dark:text-amber-300"
+                      }`}
+                    >
+                      {isOut ? "Out of stock" : "Low"} · {item.currentStock ?? item.inStock ?? 0} left
                     </span>
                   </div>
-                ))}
+                );})}
               </div>
             ) : (
               <p className="py-6 text-center text-sm text-[var(--text-muted)]">All stocked items are above threshold</p>

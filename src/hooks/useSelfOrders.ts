@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { BASE_URL } from "@/lib/constant";
 import { STAFF_REALTIME_EVENTS } from "@/lib/staff-realtime";
+import { parseApiErrorText } from "@/lib/format-api-error";
 
 function getAuthToken(reduxToken: string | null) {
   if (reduxToken) return reduxToken;
@@ -13,18 +14,7 @@ function getAuthToken(reduxToken: string | null) {
 }
 
 function parseApiError(text: string, fallback: string) {
-  try {
-    const parsed = JSON.parse(text);
-    let detail: unknown = parsed.message ?? parsed.error ?? text;
-    if (detail && typeof detail === "object" && "message" in (detail as object)) {
-      detail = (detail as { message?: unknown }).message ?? detail;
-    }
-    if (Array.isArray(detail)) return detail.join(", ");
-    if (typeof detail === "string" && detail.trim()) return detail;
-    return fallback;
-  } catch {
-    return text || fallback;
-  }
+  return parseApiErrorText(text, fallback);
 }
 
 export type SelfOrderStatus = "pending" | "approved" | "rejected";
@@ -59,10 +49,12 @@ export interface SelfOrderRequest {
 interface UseSelfOrdersOptions {
   status?: SelfOrderStatus;
   pollMs?: number;
+  /** When false, no network calls (e.g. snooker POS without QR table orders). */
+  enabled?: boolean;
 }
 
 export function useSelfOrders(options: UseSelfOrdersOptions = {}) {
-  const { status = "pending", pollMs = 0 } = options;
+  const { status = "pending", pollMs = 0, enabled = true } = options;
   const { token } = useAuth();
   const activeBusinessId = useActiveBusinessId();
   const [requests, setRequests] = useState<SelfOrderRequest[]>([]);
@@ -72,7 +64,10 @@ export function useSelfOrders(options: UseSelfOrdersOptions = {}) {
 
   const fetchRequests = useCallback(async () => {
     const authToken = getAuthToken(token);
-    if (!authToken || !activeBusinessId) return;
+    if (!enabled || !authToken || !activeBusinessId) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -82,11 +77,16 @@ export function useSelfOrders(options: UseSelfOrdersOptions = {}) {
       url.searchParams.set("businessId", activeBusinessId);
       const response = await fetch(url.toString(), {
         method: "GET",
+        signal: AbortSignal.timeout(12_000),
         headers: {
           accept: "application/json",
           Authorization: `Bearer ${authToken}`,
         },
       });
+      if (response.status === 404) {
+        setRequests([]);
+        return;
+      }
       if (!response.ok) {
         throw new Error(parseApiError(await response.text(), "Failed to load self-orders"));
       }
@@ -98,7 +98,7 @@ export function useSelfOrders(options: UseSelfOrdersOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [activeBusinessId, status, token]);
+  }, [activeBusinessId, enabled, status, token]);
 
   useEffect(() => {
     fetchRequests();

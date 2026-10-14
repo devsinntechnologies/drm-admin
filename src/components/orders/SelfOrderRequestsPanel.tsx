@@ -81,12 +81,15 @@ function RequestCard({
 
 export function SelfOrderRequestsPanel({
   onApproved,
+  enabled = true,
 }: {
   onApproved?: () => void;
+  enabled?: boolean;
 }) {
-  const { requests, loading, actionLoading, approve, reject } = useSelfOrders({
+  const { requests, loading, actionLoading, error, approve, reject } = useSelfOrders({
     status: "pending",
-    pollMs: 8000,
+    pollMs: enabled ? 30_000 : 0,
+    enabled,
   });
   const knownIds = useRef<Set<string>>(new Set());
   const primed = useRef(false);
@@ -108,7 +111,8 @@ export function SelfOrderRequestsPanel({
     knownIds.current = new Set(requests.map((request) => request.id));
   }, [requests]);
 
-  if (!loading && requests.length === 0) return null;
+  if (!enabled) return null;
+  if (!loading && requests.length === 0 && !error) return null;
 
   return (
     <section className="space-y-4">
@@ -121,7 +125,11 @@ export function SelfOrderRequestsPanel({
           </span>
         ) : null}
       </div>
-      {loading && requests.length === 0 ? (
+      {error ? (
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600">
+          QR table orders unavailable ({error})
+        </div>
+      ) : loading && requests.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50 px-4 py-6 text-sm font-semibold text-amber-800">
           Checking for table order requests…
         </div>

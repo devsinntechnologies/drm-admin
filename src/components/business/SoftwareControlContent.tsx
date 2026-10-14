@@ -1300,9 +1300,9 @@ export function SoftwareControlContent({
                   Active order section
                 </p>
                 <p className="text-xs text-[#64748b]">
-                  Buttons on the <strong>Active orders</strong> queue only — Flutter live list and the
-                  business portal Orders screen (view, refresh, edit, complete, print, trash, self-order
-                  approve/reject). Table session controls (+5, pause, pencil) are in the next block.
+                  Applies to <strong>Flutter Active Orders</strong> and the <strong>business portal Orders</strong>{" "}
+                  screen (same module settings). Queue actions, QR self-order approve/reject, and timed table
+                  session controls (+5, pause, pencil) are all configured here.
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {(
@@ -1336,6 +1336,105 @@ export function SoftwareControlContent({
                       <span className="text-sm font-medium text-[#0f172a]">{label}</span>
                     </label>
                   ))}
+                </div>
+                <div className="rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] p-4">
+                  <p className="mb-1 text-sm font-semibold text-[#14532d]">Timed table sessions</p>
+                  <p className="mb-3 text-xs text-[#166534]">
+                    Timer card on Active Orders (+5, Pause, edit time). Snooker / pool: turn on; restaurant:
+                    usually off.
+                  </p>
+                  <label className="mb-3 flex items-start gap-3 rounded-lg border border-[#86efac] bg-white p-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4"
+                      checked={ordersSettings.enableTableSession}
+                      onChange={(event) =>
+                        setOrdersSettings((prev) => ({
+                          ...prev,
+                          enableTableSession: event.target.checked,
+                        }))
+                      }
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-[#0f172a]">
+                        Enable timed table sessions
+                      </span>
+                      <span className="block text-xs text-[#64748b]">
+                        Master switch for session block, timers, and booking status.
+                      </span>
+                    </span>
+                  </label>
+                  {ordersSettings.enableTableSession ? (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(
+                        [
+                          {
+                            key: "allowSessionDuration" as const,
+                            title: "Duration picker",
+                            body: "15 / 30 / 60 min when placing an order.",
+                          },
+                          {
+                            key: "allowOpenEndedSession" as const,
+                            title: "Open-ended (∞)",
+                            body: "∞ option in the duration list.",
+                          },
+                          {
+                            key: "allowSessionGameType" as const,
+                            title: "Game type picker",
+                            body: "Single / Double dropdown.",
+                          },
+                          {
+                            key: "allowSessionEditTime" as const,
+                            title: "Edit remaining time",
+                            body: "Pencil on Active Orders.",
+                          },
+                          {
+                            key: "allowSessionAddTime" as const,
+                            title: "+5 / +15 minutes",
+                            body: "Quick-extend on session card.",
+                          },
+                          {
+                            key: "allowSessionPause" as const,
+                            title: "Pause / resume",
+                            body: "Pause control on session card.",
+                          },
+                          {
+                            key: "allowSessionTimeUpAlert" as const,
+                            title: "Time Up alert",
+                            body: "Popup + beep when time expires.",
+                          },
+                          {
+                            key: "showTableBookingStatus" as const,
+                            title: "Booked / overtime ribbons",
+                            body: "BOOKED ribbon on product cards.",
+                          },
+                        ] as const
+                      ).map((feature) => (
+                        <label
+                          key={feature.key}
+                          className="flex items-start gap-3 rounded-lg border border-[#86efac] bg-white p-3"
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-1 h-4 w-4"
+                            checked={ordersSettings[feature.key]}
+                            onChange={(event) =>
+                              setOrdersSettings((prev) => ({
+                                ...prev,
+                                [feature.key]: event.target.checked,
+                              }))
+                            }
+                          />
+                          <span>
+                            <span className="block text-sm font-medium text-[#0f172a]">
+                              {feature.title}
+                            </span>
+                            <span className="block text-xs text-[#64748b]">{feature.body}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -1442,118 +1541,6 @@ export function SoftwareControlContent({
                       </span>
                     </label>
                   ))}
-                </div>
-              </div>
-
-              <div
-                id="session-time-controls"
-                className="space-y-3 border-t border-[#e2e8f0] px-4 py-4 scroll-mt-24"
-              >
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                  Active order section — table session buttons
-                </p>
-                <div className="rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] p-4">
-                  <p className="mb-1 text-sm font-semibold text-[#14532d]">
-                    Timed table sessions
-                  </p>
-                  <p className="mb-3 text-xs text-[#166534]">
-                    Controls the timer card on Active Orders: <strong>+5</strong>,{" "}
-                    <strong>Pause</strong>, and the <strong>pencil</strong> to edit remaining time.
-                    Requires the master switch below. Restaurant &amp; cafe: usually off; snooker / pool:
-                    turn on and tune child toggles.
-                  </p>
-                  <label className="mb-3 flex items-start gap-3 rounded-lg border border-[#86efac] bg-white p-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4"
-                      checked={ordersSettings.enableTableSession}
-                      onChange={(event) =>
-                        setOrdersSettings((prev) => ({
-                          ...prev,
-                          enableTableSession: event.target.checked,
-                        }))
-                      }
-                    />
-                    <span>
-                      <span className="block text-sm font-medium text-[#0f172a]">
-                        Enable timed table sessions
-                      </span>
-                      <span className="block text-xs text-[#64748b]">
-                        Master on/off for table session block, timers, and booking status.
-                      </span>
-                    </span>
-                  </label>
-                  {ordersSettings.enableTableSession ? (
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {(
-                        [
-                          {
-                            key: "allowSessionDuration" as const,
-                            title: "Duration picker",
-                            body: "15 / 30 / 60 min dropdown when placing an order.",
-                          },
-                          {
-                            key: "allowOpenEndedSession" as const,
-                            title: "Open-ended (∞)",
-                            body: "Include ∞ open-ended in the duration list.",
-                          },
-                          {
-                            key: "allowSessionGameType" as const,
-                            title: "Game type picker",
-                            body: "Single / Double (and pricing) dropdown.",
-                          },
-                          {
-                            key: "allowSessionEditTime" as const,
-                            title: "Edit remaining time (pencil icon)",
-                            body: "Pencil on Active Orders to set remaining minutes.",
-                          },
-                          {
-                            key: "allowSessionAddTime" as const,
-                            title: "+5 minutes button",
-                            body: "Quick-extend on the session card.",
-                          },
-                          {
-                            key: "allowSessionPause" as const,
-                            title: "Pause / resume button",
-                            body: "Pause control on Active Orders cards.",
-                          },
-                          {
-                            key: "allowSessionTimeUpAlert" as const,
-                            title: "Time Up alert",
-                            body: "Global popup + beep when time expires.",
-                          },
-                          {
-                            key: "showTableBookingStatus" as const,
-                            title: "Booked / overtime cards",
-                            body: "BOOKED ribbon + live timer on product cards.",
-                          },
-                        ] as const
-                      ).map((feature) => (
-                        <label
-                          key={feature.key}
-                          className="flex items-start gap-3 rounded-lg border border-[#86efac] bg-white p-3"
-                        >
-                          <input
-                            type="checkbox"
-                            className="mt-1 h-4 w-4"
-                            checked={ordersSettings[feature.key]}
-                            onChange={(event) =>
-                              setOrdersSettings((prev) => ({
-                                ...prev,
-                                [feature.key]: event.target.checked,
-                              }))
-                            }
-                          />
-                          <span>
-                            <span className="block text-sm font-medium text-[#0f172a]">
-                              {feature.title}
-                            </span>
-                            <span className="block text-xs text-[#64748b]">{feature.body}</span>
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
               </div>
 

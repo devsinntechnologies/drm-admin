@@ -31,6 +31,7 @@ import {
 } from "@/lib/retail-stock";
 import CreditPartyDialog from "@/components/retail/CreditPartyDialog";
 import { hasCreditIdentifier, type OrderCreditDetails } from "@/lib/credit-types";
+import { ProductMediaImage } from "@/components/common/ProductMediaImage";
 
 type CartLine = {
   lineKey: string;
@@ -355,12 +356,21 @@ function PosContent() {
                     type="button"
                     disabled={!sellable}
                     onClick={() => sellable && addToCart(product)}
-                    className={`flex flex-col items-start rounded-2xl border p-4 text-left transition ${
+                    className={`flex flex-col items-start rounded-2xl border p-3 text-left transition ${
                       sellable
                         ? "border-[var(--border-subtle)] hover:border-[var(--brand-secondary)] hover:shadow-sm cursor-pointer"
                         : "cursor-not-allowed border-[var(--border-subtle)] bg-[var(--surface-muted)] opacity-55"
                     }`}
                   >
+                    <div className="relative mb-2 h-20 w-full overflow-hidden rounded-xl bg-[var(--surface-muted)]">
+                      <ProductMediaImage
+                        src={product.image}
+                        alt={product.name}
+                        fill
+                        sizes="(max-width: 640px) 50vw, 200px"
+                        className="object-cover"
+                      />
+                    </div>
                     <span className="text-sm font-bold text-[var(--text-primary)]">{product.name}</span>
                     <span className="mt-1 text-xs text-[var(--text-muted)]">{productPriceLabel(product)}</span>
                     <span
