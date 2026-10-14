@@ -44,6 +44,7 @@ type Props = {
     paymentMethod: OrderPaymentMethodId;
     credit?: OrderCreditDetails | null;
     totalPrice: number;
+    sessionTableCharge?: number;
   }) => Promise<void>;
 };
 
@@ -170,6 +171,10 @@ export function CompleteOrderDialog({
       paymentMethod: method,
       credit: method === "credit" ? credit : null,
       totalPrice: resolvedTotal,
+      sessionTableCharge:
+        order && hasTimedTableSession(order)
+          ? liveSessionCharge(order)
+          : undefined,
     });
   };
 

@@ -695,6 +695,7 @@ function OrdersContent() {
     paymentMethod: OrderPaymentMethodId,
     credit?: OrderCreditDetails | null,
     totalPrice?: number,
+    sessionTableCharge?: number,
   ) => {
     const toastId = toast.loading("Completing order...");
     try {
@@ -704,6 +705,10 @@ function OrdersContent() {
         totalPrice:
           totalPrice != null && Number.isFinite(totalPrice)
             ? totalPrice
+            : undefined,
+        sessionTableCharge:
+          sessionTableCharge != null && Number.isFinite(sessionTableCharge)
+            ? sessionTableCharge
             : undefined,
         ...(paymentMethod === "credit" && credit ? { credit } : {}),
       });
@@ -1981,13 +1986,14 @@ function OrdersContent() {
         businessId={activeBusinessId}
         busy={actionLoading}
         onClose={() => setCompleteTarget(null)}
-        onConfirm={async ({ paymentMethod, credit, totalPrice }) => {
+        onConfirm={async ({ paymentMethod, credit, totalPrice, sessionTableCharge }) => {
           if (!completeTarget) return;
           const ok = await runCompleteOrder(
             completeTarget.id,
             paymentMethod,
             credit,
             totalPrice,
+            sessionTableCharge,
           );
           if (ok && allowPrinter && typeof window !== "undefined") {
             await openOrderDetails(completeTarget.id);

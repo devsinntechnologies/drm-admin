@@ -69,6 +69,7 @@ export type CompleteOrderOptions = {
   paymentMethod?: string;
   credit?: OrderCreditDetails | null;
   totalPrice?: number;
+  sessionTableCharge?: number;
 };
 function getAuthToken(reduxToken: string | null) {
   if (reduxToken) {
@@ -356,6 +357,10 @@ export function useOrders(options: UseOrdersOptions = {}) {
               ...(statusOrOptions.totalPrice != null &&
               Number.isFinite(statusOrOptions.totalPrice)
                 ? { totalPrice: statusOrOptions.totalPrice }
+                : {}),
+              ...(statusOrOptions.sessionTableCharge != null &&
+              Number.isFinite(statusOrOptions.sessionTableCharge)
+                ? { sessionTableCharge: statusOrOptions.sessionTableCharge }
                 : {}),
             };
       const status = body.status;
