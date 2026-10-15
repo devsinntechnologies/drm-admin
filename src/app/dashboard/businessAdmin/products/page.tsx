@@ -487,7 +487,7 @@ function MenuItemsContent() {
     deleteProduct,
     reorderProducts,
     refetch,
-  } = useProducts({ page: currentPage, limit: isRetail ? 100 : undefined });
+  } = useProducts({ limit: 100, loadAll: true });
 
   const {
     categories,
@@ -610,6 +610,16 @@ function MenuItemsContent() {
     });
   }, [products, search]);
 
+  const pageSize = 20;
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
+  const visiblePage = Math.min(currentPage, totalPages);
+  const pageProducts = useMemo(
+    () => filteredProducts.slice((visiblePage - 1) * pageSize, visiblePage * pageSize),
+    [filteredProducts, visiblePage],
+  );
+  useEffect(() => { setCurrentPage(1); }, [search, impersonatedBusinessId]);
+  useEffect(() => { setCurrentPage((value) => Math.min(value, totalPages)); }, [totalPages]);
+
   const onReorder = useCallback(
     async (ids: string[]) => {
       try {
@@ -630,7 +640,7 @@ function MenuItemsContent() {
     onDragOver,
     onDrop,
     onDragEnd,
-  } = useHtml5Reorder(filteredProducts, onReorder, !actionLoading);
+  } = useHtml5Reorder(pageProducts, onReorder, !actionLoading);
 
   const resetCreateForm = () => {
     setCreateForm({
@@ -988,6 +998,18 @@ function MenuItemsContent() {
           </div>
         )}
 
+        {!loading && filteredProducts.length > 0 ? (
+          <nav aria-label="Product pagination" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4">
+            <p className="text-sm text-slate-600" aria-live="polite">
+              Showing {(visiblePage - 1) * pageSize + 1}–{Math.min(visiblePage * pageSize, filteredProducts.length)} of {filteredProducts.length} products{search.trim() ? ` (${products.length} total)` : ""}
+            </p>
+            <div className="flex items-center gap-3">
+              <button type="button" className="dn-btn dn-btn-soft disabled:opacity-40" disabled={visiblePage <= 1} onClick={() => setCurrentPage(visiblePage - 1)}>Previous</button>
+              <span className="text-sm text-slate-600">Page {visiblePage} of {totalPages}</span>
+              <button type="button" className="dn-btn dn-btn-soft disabled:opacity-40" disabled={visiblePage >= totalPages} onClick={() => setCurrentPage(visiblePage + 1)}>Next</button>
+            </div>
+          </nav>
+        ) : null}
         <PortalRefreshFab onClick={() => refetch()} loading={loading} />
 
         {/* Dialogs */}

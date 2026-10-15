@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { useDashboardRefresh } from "@/contexts/DashboardRefreshContext";
@@ -124,6 +124,10 @@ export interface OrderItem {
   variant: OrderVariant;
   image?: string;
   quantity: number;
+  discount?: number | string;
+  isSessionService?: boolean;
+  unitPriceSnapshot?: number | string | null;
+  totalPriceSnapshot?: number | string | null;
 }
 
 export interface OrderRecord {
@@ -169,6 +173,8 @@ export function useOrders(options: UseOrdersOptions = {}) {
   const { token } = useAuth();
   const activeBusinessId = useActiveBusinessId();
   const { bumpDashboardRefresh } = useDashboardRefresh();
+  const requestVersion = useRef(0);
+  const currentPage = useRef(1);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -180,20 +186,22 @@ export function useOrders(options: UseOrdersOptions = {}) {
   });
 
   const fetchOrders = useCallback(
-    async (pageNum: number = 1, nextRange: string = range) => {
+    async (pageNum: number = 1, nextRange: string = range, background = false) => {
+      const request = ++requestVersion.current;
       const authToken = getAuthToken(token);
       if (!authToken) {
         setError("No authentication token available");
         return;
       }
 
-      setLoading(true);
+      if (!background) setLoading(true);
       setError(null);
 
       try {
         const url = new URL(`${BASE_URL}/orders`);
         url.searchParams.append("page", String(pageNum));
-        url.searchParams.append("limit", "20");
+        url.searchParams.append("limit", "100");
+        url.searchParams.append("includeActive", "true");
         if (nextRange) {
           url.searchParams.append("range", nextRange);
         }
@@ -210,7 +218,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
         });
 
         if (!response.ok) {
-          if (response.status === 404) {
+          if (response.status === 404 && request === requestVersion.current) {
             setOrders([]);
             setPagination({ total: 0, page: 1, last_page: 1 });
             setLoading(false);
@@ -221,8 +229,24 @@ export function useOrders(options: UseOrdersOptions = {}) {
         }
 
         const data: OrdersResponse = await response.json();
+        if (request !== requestVersion.current) return;
         const rows = data.data ?? [];
-        setOrders((prev) => (prev.length ? mergeOrderLists(prev, rows) : rows));
+        // Active queues have no page controls: load every API page before
+        // filtering tabs so older active orders cannot be hidden by history.
+        for (let nextPage = pageNum + 1; nextPage <= (data.pagination?.totalPages ?? 1); nextPage++) {
+          if (request !== requestVersion.current) return;
+          url.searchParams.set("page", String(nextPage));
+          const nextResponse = await fetch(url.toString(), {
+            headers: { accept: "application/json", Authorization: `Bearer ${authToken}` },
+          });
+          if (!nextResponse.ok) throw new Error(`Failed to refresh order page ${nextPage}`);
+          const nextData: OrdersResponse = await nextResponse.json();
+          rows.push(...(nextData.data ?? []));
+        }
+        if (request !== requestVersion.current) return;
+        const uniqueRows = [...new Map(rows.map((row) => [row.id, row])).values()];
+        currentPage.current = data.pagination?.page ?? pageNum;
+        setOrders((prev) => (prev.length ? mergeOrderLists(prev, uniqueRows) : uniqueRows));
         setPagination({
           total: data.pagination?.total ?? 0,
           page: data.pagination?.page ?? pageNum,
@@ -230,24 +254,35 @@ export function useOrders(options: UseOrdersOptions = {}) {
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to fetch orders";
-        setError(message);
+        if (request === requestVersion.current) setError(message);
       } finally {
-        setLoading(false);
+        if (request === requestVersion.current) setLoading(false);
       }
     },
     [range, token, activeBusinessId],
   );
 
   useEffect(() => {
+    setOrders([]);
     fetchOrders(1, range);
+    return () => { ++requestVersion.current; };
   }, [fetchOrders, range]);
 
   useEffect(() => {
     const refresh = () => {
-      void fetchOrders(1, range);
+      if (document.visibilityState === "hidden") return;
+      void fetchOrders(currentPage.current, range, true);
     };
     window.addEventListener(STAFF_REALTIME_EVENTS.ORDERS_CHANGED, refresh);
-    return () => window.removeEventListener(STAFF_REALTIME_EVENTS.ORDERS_CHANGED, refresh);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    const interval = window.setInterval(refresh, 15000);
+    return () => {
+      window.removeEventListener(STAFF_REALTIME_EVENTS.ORDERS_CHANGED, refresh);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      window.clearInterval(interval);
+    };
   }, [fetchOrders, range]);
 
   useEffect(() => {
@@ -255,6 +290,14 @@ export function useOrders(options: UseOrdersOptions = {}) {
       const detail = (event as CustomEvent).detail;
       const patch = orderFromSocketPayload(detail);
       if (!patch) return;
+      // Timer/status events can omit prices and items. Reload the authoritative
+      // order instead of replacing its amount with the parser's zero defaults.
+      const payload = detail as Record<string, unknown>;
+      if (!isTerminalOrderStatus(patch.status) &&
+          (payload.totalPrice == null || !Array.isArray(payload.Items ?? payload.items))) {
+        void fetchOrders(currentPage.current, range, true);
+        return;
+      }
 
       setOrders((prev) => {
         if (isTerminalOrderStatus(patch.status)) {
@@ -265,19 +308,12 @@ export function useOrders(options: UseOrdersOptions = {}) {
           return patch.Items.length > 0 ? [patch, ...prev] : prev;
         }
         const merged = mergeOrderSessionFields(prev[idx], patch);
-        return prev.map((o, i) =>
-          i === idx
-            ? {
-                ...merged,
-                Items: patch.Items.length ? patch.Items : o.Items,
-              }
-            : o,
-        );
+        return prev.map((o, i) => i === idx ? merged : o);
       });
     };
     window.addEventListener(STAFF_REALTIME_EVENTS.ORDERS_PATCH, onPatch);
     return () => window.removeEventListener(STAFF_REALTIME_EVENTS.ORDERS_PATCH, onPatch);
-  }, []);
+  }, [fetchOrders, range]);
 
   const createOrder = useCallback(
     async (payload: CreateOrderPayload) => {

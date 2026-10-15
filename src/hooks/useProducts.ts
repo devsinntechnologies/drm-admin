@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { buildApiUrl } from "@/lib/api";
@@ -98,6 +98,7 @@ function normalizeProduct(raw: Product): Product {
 interface UseProductsOptions {
   page?: number;
   limit?: number;
+  loadAll?: boolean;
 }
 
 function getAuthToken(reduxToken: string | null) {
@@ -143,7 +144,8 @@ export interface UpdateProductPayload extends Omit<CreateProductPayload, "varian
 }
 
 export function useProducts(options: UseProductsOptions = {}) {
-  const { page = 1, limit = 30 } = options;
+  const { page = 1, limit = 30, loadAll = false } = options;
+  const requestVersion = useRef(0);
   const { token } = useAuth();
   const activeBusinessId = useActiveBusinessId();
 
@@ -158,6 +160,7 @@ export function useProducts(options: UseProductsOptions = {}) {
   });
 
   const fetchProducts = useCallback(async (pageNum: number = 1) => {
+    const request = ++requestVersion.current;
     const authToken = getAuthToken(token);
 
     if (!authToken) {
@@ -170,7 +173,7 @@ export function useProducts(options: UseProductsOptions = {}) {
 
     try {
       const url = new URL(buildApiUrl("/products"));
-      url.searchParams.append("page", pageNum.toString());
+      url.searchParams.append("page", (loadAll ? 1 : pageNum).toString());
       if (activeBusinessId) {
         url.searchParams.append("businessId", activeBusinessId);
       }
@@ -189,7 +192,7 @@ export function useProducts(options: UseProductsOptions = {}) {
 
       if (!response.ok) {
         // Special case: Backend returns 404 if no products exist for a business
-        if (response.status === 404) {
+        if (response.status === 404 && request === requestVersion.current) {
           setProducts([]);
           setPagination({ total: 0, page: 1, last_page: 1 });
           setLoading(false);
@@ -209,20 +212,39 @@ export function useProducts(options: UseProductsOptions = {}) {
 
       const payload = await response.json();
       const rows = unwrapProductList(payload).map(normalizeProduct);
+      const getPagination = (value: any) => value?.pagination ?? value?.data?.pagination;
+      const firstPagination = getPagination(payload);
+      if (loadAll && firstPagination) {
+        const totalPages = Number(firstPagination.totalPages ?? Math.ceil(firstPagination.total / firstPagination.limit));
+        for (let next = 2; next <= totalPages; next++) {
+          if (request !== requestVersion.current) return;
+          url.searchParams.set("page", String(next));
+          const nextResponse = await fetch(url.toString(), {
+            headers: { accept: "application/json", Authorization: `Bearer ${authToken}` },
+          });
+          if (!nextResponse.ok) throw new Error(`Failed to load product page ${next}`);
+          rows.push(...unwrapProductList(await nextResponse.json()).map(normalizeProduct));
+        }
+      }
+      if (request !== requestVersion.current) return;
+      const uniqueRows = [...new Map(rows.map((row) => [row.id, row])).values()];
+      if (loadAll && firstPagination?.total != null && uniqueRows.length !== Number(firstPagination.total)) {
+        throw new Error("The product catalog changed while loading. Refresh to load the complete list.");
+      }
 
-      setProducts(rows);
+      setProducts(uniqueRows);
       const pagination =
         payload && typeof payload === "object"
-          ? (payload as ProductsResponse).pagination
+          ? getPagination(payload)
           : undefined;
       setPagination({
-        total: pagination?.total ?? rows.length,
+        total: pagination?.total ?? uniqueRows.length,
         page: pagination?.page ?? 1,
         last_page: pagination?.totalPages ?? 1,
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred while fetching products";
-      setError(errorMessage);
+      if (request === requestVersion.current) setError(errorMessage);
       console.error("[useProducts] Fetch error:", {
         message: errorMessage,
         error: err,
@@ -230,12 +252,13 @@ export function useProducts(options: UseProductsOptions = {}) {
         activeBusinessId
       });
     } finally {
-      setLoading(false);
+      if (request === requestVersion.current) setLoading(false);
     }
-  }, [token, limit, activeBusinessId]);
+  }, [token, limit, activeBusinessId, loadAll]);
 
   useEffect(() => {
     fetchProducts(page);
+    return () => { ++requestVersion.current; };
   }, [page, fetchProducts]);
 
   const goToPage = useCallback((pageNum: number) => {

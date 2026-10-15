@@ -145,16 +145,31 @@ export function liveSessionCharge(order: TimedSessionOrder, now: Date | string =
 }
 
 export type OrderItemLike = {
+  price?: number | string | null;
+  unitPriceSnapshot?: number | string | null;
+  discount?: number | string | null;
   total?: number | string | null;
   quantity?: number | null;
   productName?: string | null;
+  isSessionService?: boolean | null;
   product?: { isSessionService?: boolean | null; name?: string | null } | null;
 };
 
 export function isSessionTableLineItem(item: OrderItemLike): boolean {
-  if (item.product?.isSessionService) return true;
+  if (item.isSessionService || item.product?.isSessionService) return true;
   const name = String(item.productName ?? item.product?.name ?? "").toUpperCase();
-  return name.includes("TABLE");
+  return /\bTABLE\b/.test(name);
+}
+
+/** Match the app and backend: a line discount applies once to price × quantity. */
+function storedItemTotal(item: OrderItemLike): number {
+  const unitPrice = item.price ?? item.unitPriceSnapshot;
+  if (unitPrice != null && item.quantity != null &&
+      Number.isFinite(Number(unitPrice)) && Number.isFinite(Number(item.quantity))) {
+    return Math.max(0,
+      Number(unitPrice) * Number(item.quantity) - Number(item.discount ?? 0));
+  }
+  return Math.max(0, Number(item.total ?? 0));
 }
 
 /** Live amount shown on active-order chips (table line uses session charge, not SKU price). */
@@ -166,13 +181,10 @@ export function orderItemDisplayTotal(
   item: OrderItemLike & { price?: number | string | null },
   now?: Date,
 ): number {
-  if (hasTimedTableSession(order) && isSessionTableLineItem(item)) {
+  if (hasTimedTableSession(order) && snookerOptionFor(order.gameType) && isSessionTableLineItem(item)) {
     return liveSessionCharge(order, now);
   }
-  const lineTotal = Number(item.total ?? 0);
-  if (lineTotal > 0) return lineTotal;
-  const qty = Math.max(1, Number(item.quantity ?? 1));
-  return Number(item.price ?? 0) * qty;
+  return storedItemTotal(item);
 }
 
 export function resolveTimedOrderTotal(args: {
@@ -187,19 +199,25 @@ export function resolveTimedOrderTotal(args: {
 }): number {
   const { order, now } = args;
   const items = order.Items ?? order.items ?? [];
+  // Legacy orders can retain timer fields after their item records are gone.
+  // Keep their recorded amount until a complete pricing snapshot is available.
+  if (!items.length) {
+    const persisted = Number(order.totalPrice ?? 0);
+    return Number.isFinite(persisted) ? persisted : 0;
+  }
   const isTableLine = isSessionTableLineItem;
 
   const retailSubtotal = items
     .filter((item) => !isTableLine(item))
-    .reduce((sum, item) => sum + Number(item.total ?? 0), 0);
+    .reduce((sum, item) => sum + orderItemDisplayTotal(order, item, now), 0);
 
   const hasSession = hasTimedTableSession(order);
 
-  const sessionSubtotal = hasSession
+  const sessionSubtotal = hasSession && snookerOptionFor(order.gameType)
     ? liveSessionCharge(order, now)
-    : items.filter((item) => isTableLine(item)).reduce((sum, item) => sum + Number(item.total ?? 0), 0);
+    : items.filter((item) => isTableLine(item)).reduce((sum, item) => sum + storedItemTotal(item), 0);
 
   const delivery = Number(order.deliveryCharges ?? 0);
   const packaging = Number(order.packagingPrice ?? 0);
-  return retailSubtotal + sessionSubtotal + delivery + packaging;
+  return Math.round((retailSubtotal + sessionSubtotal + delivery + packaging) * 100) / 100;
 }

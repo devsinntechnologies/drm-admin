@@ -1,4 +1,5 @@
 export const STAFF_REALTIME_EVENTS = {
+  CREDITS_CHANGED: "drm:credits-changed",
   SELF_ORDERS_CHANGED: "drm:self-orders-changed",
   /** Full refetch (fallback). */
   ORDERS_CHANGED: "drm:orders-changed",

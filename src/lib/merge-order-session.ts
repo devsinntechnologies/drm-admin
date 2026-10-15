@@ -34,6 +34,9 @@ export function mergeOrderSessionFields<T extends OrderSessionFields>(
   existing: T,
   incoming: T,
 ): T {
+  if (updatedAtMs(existing.updatedAt) > updatedAtMs(incoming.updatedAt) && incoming.updatedAt) {
+    return existing;
+  }
   const timer = pickNewerSessionTimerSource(existing, incoming);
   return {
     ...existing,

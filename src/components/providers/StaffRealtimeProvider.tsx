@@ -4,7 +4,8 @@ import { useEffect, type ReactNode } from "react";
 import { io, type Socket } from "socket.io-client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { SOCKET_URL } from "@/lib/constant";
+import { BASE_URL, SOCKET_URL } from "@/lib/constant";
+import { resolveStaffSocketTarget } from "@/lib/staff-socket-target";
 import { BUSINESS_INACTIVE_MESSAGE } from "@/lib/business-session";
 import { logout } from "@/lib/features/auth/authSlice";
 import { useAppDispatch } from "@/lib/hooks";
@@ -54,9 +55,10 @@ export default function StaffRealtimeProvider({
         : null);
     if (!namespace || !authToken) return;
 
-    const socket: Socket = io(`${SOCKET_URL}${namespace}`, {
+    const target = resolveStaffSocketTarget(BASE_URL, SOCKET_URL, window.location.origin, namespace);
+    const socket: Socket = io(target.url, {
+      ...target.options,
       auth: { token: authToken },
-      transports: ["websocket", "polling"],
       reconnection: true,
     });
 
@@ -102,6 +104,16 @@ export default function StaffRealtimeProvider({
       emitStaffRealtime(STAFF_REALTIME_EVENTS.ORDERS_PATCH, payload);
     };
 
+    const onCreditsChanged = (payload?: unknown) => {
+      emitStaffRealtime(STAFF_REALTIME_EVENTS.CREDITS_CHANGED, payload);
+    };
+    const onConnected = () => {
+      onCreditsChanged();
+      emitStaffRealtime(STAFF_REALTIME_EVENTS.ORDERS_CHANGED);
+      emitStaffRealtime(STAFF_REALTIME_EVENTS.INVOICES_CHANGED);
+    };
+    socket.on("credits:updated", onCreditsChanged);
+    socket.on("connect", onConnected);
     socket.on("self_order:requested", onRequested);
     socket.on("self_order:approved", onApproved);
     socket.on("self_order:rejected", onRejected);
@@ -120,6 +132,8 @@ export default function StaffRealtimeProvider({
     socket.on("new_order", onOrderRealtime);
 
     return () => {
+      socket.off("credits:updated", onCreditsChanged);
+      socket.off("connect", onConnected);
       socket.off("self_order:requested", onRequested);
       socket.off("self_order:approved", onApproved);
       socket.off("self_order:rejected", onRejected);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Activity, Flame, TriangleAlert, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -17,6 +18,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { getDashboardGridClassName, resolveDashboardCards } from "@/lib/resolve-dashboard-cards";
 import { summarizeCatalogStock } from "@/lib/retail-stock";
 import { cn } from "@/lib/utils";
+import { STAFF_REALTIME_EVENTS } from "@/lib/staff-realtime";
 
 type TemplateDashboardProps = {
   cards: DashboardCardId[];
@@ -100,7 +102,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
   const industryId = templateConfig?.industryId;
   const isPharmacy = industryId === "pharmacy";
   const expensesEnabled = (templateConfig?.enabledModules ?? []).includes("expenses");
-  const creditsEnabled = (templateConfig?.enabledModules ?? []).includes("credits");
+  const creditsEnabled = (templateConfig?.enabledModules ?? []).some((id) => id === "credits" || id === "credit-udhar");
   const queryRefreshKey = `${refreshKey}:${pathname}`;
 
   const { data: pharmacyLive, loading: pharmacyLoading } = usePharmacyQuery<Record<string, number>>(
@@ -131,9 +133,24 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
     creditsEnabled &&
     displayCards.some((id) => id === "pending-credits" || id === "overdue-credit");
 
-  const { data: outstandingCredits, loading: creditsLoading } = usePharmacyQuery<
+  const { data: outstandingCredits, loading: creditsLoading, reload: reloadOutstandingCredits } = usePharmacyQuery<
     OutstandingCreditParty[]
   >(showPendingCreditsPanel ? "/credits/outstanding" : null, queryRefreshKey);
+
+  useEffect(() => {
+    if (!showPendingCreditsPanel) return;
+    const refreshCredits = () => {
+      if (document.visibilityState !== "hidden") void reloadOutstandingCredits();
+    };
+    window.addEventListener(STAFF_REALTIME_EVENTS.CREDITS_CHANGED, refreshCredits);
+    window.addEventListener("focus", refreshCredits);
+    const interval = window.setInterval(refreshCredits, 30000);
+    return () => {
+      window.removeEventListener(STAFF_REALTIME_EVENTS.CREDITS_CHANGED, refreshCredits);
+      window.removeEventListener("focus", refreshCredits);
+      window.clearInterval(interval);
+    };
+  }, [showPendingCreditsPanel, reloadOutstandingCredits]);
 
   const liveLoading = isPharmacy ? pharmacyLoading : invoiceLoading || stockLoading || productsLoading;
 

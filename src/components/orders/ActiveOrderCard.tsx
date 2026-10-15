@@ -56,7 +56,7 @@ export function ActiveOrderCard({
   onSessionPatch,
 }: Props) {
   const isTakeAway = String(order.table || "").toLowerCase().includes("take");
-  const hasSession = Boolean(settings.enableTableSession && hasTimedTableSession(order));
+  const hasSession = hasTimedTableSession(order);
   const [, tick] = useState(0);
   useEffect(() => {
     if (!hasSession) return;
@@ -98,7 +98,7 @@ export function ActiveOrderCard({
               {headline}
             </h3>
             <span className="rounded-lg border border-[#059669]/25 bg-[#059669]/10 px-2.5 py-1 text-lg font-black text-[#059669] sm:text-xl">
-              Rs. {Number.isFinite(total) ? total.toLocaleString() : order.totalPrice}
+              Rs. {Number.isFinite(total) ? total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : order.totalPrice}
             </span>
             {hasSession ? (
               <span className="text-base font-extrabold text-slate-600">{formatElapsed(order.createdAt)}</span>
@@ -174,7 +174,10 @@ export function ActiveOrderCard({
               <span className="font-bold text-[#059669]">x{item.quantity}</span>
               <span className="font-black text-[#059669]">
                 Rs{" "}
-                {Math.round(orderItemDisplayTotal(order, item)).toLocaleString()}
+                {orderItemDisplayTotal(order, item).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
               </span>
             </div>
           ))}

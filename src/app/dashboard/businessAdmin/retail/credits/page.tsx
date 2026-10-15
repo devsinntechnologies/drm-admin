@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, ChevronUp, Loader2, Search, Wallet } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, Clock3, Loader2, RefreshCw, Search, Users, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
@@ -12,15 +12,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { apiClient } from "@/lib/api-client";
+import { creditAccountSummary, normalizeCreditParties } from "@/lib/credit-data";
+import type { CreditParty } from "@/lib/credit-types";
 import { getStoredAuthToken } from "@/lib/utils";
-
-interface CreditParty {
-  id: string;
-  name: string;
-  phone?: string | null;
-  email?: string | null;
-  outstanding: number;
-}
+import { STAFF_REALTIME_EVENTS } from "@/lib/staff-realtime";
 
 interface CreditLedgerEntry {
   id: string;
@@ -31,13 +26,19 @@ interface CreditLedgerEntry {
   notes?: string | null;
   createdAt?: string | null;
 }
-
-interface CreditPartyDetail extends CreditParty {
-  ledger: CreditLedgerEntry[];
-}
+interface CreditPartyDetail extends CreditParty { ledger: CreditLedgerEntry[] }
+type AccountFilter = "all" | "outstanding" | "settled";
+const ACCOUNTS_PER_PAGE = 8;
+const panelClass = "overflow-hidden rounded-2xl border border-[var(--border-subtle,#e2e8f0)] bg-[var(--surface,#fff)]";
+const mutedClass = "text-[var(--text-muted)]";
+const textClass = "text-[var(--text-primary)]";
 
 function money(value: number) {
-  return `Rs ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `Rs ${value.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function invalidateRequest(request: { current: number }) {
+  request.current += 1;
 }
 
 function CreditsContent() {
@@ -47,27 +48,36 @@ function CreditsContent() {
   const token = reduxToken || getStoredAuthToken();
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
-
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [parties, setParties] = useState<CreditParty[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [search, setSearch] = useState("");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<AccountFilter>("all");
+  const [page, setPage] = useState(1);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<CreditPartyDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [repayAmount, setRepayAmount] = useState(0);
   const [repayNotes, setRepayNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const listRequest = useRef(0);
+  const detailRequest = useRef(0);
+  const repaymentInFlight = useRef(false);
+  const repaymentAttempt = useRef<{ key: string; id: string } | null>(null);
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
 
   useEffect(() => {
-    const storedRole = typeof window !== "undefined" ? localStorage.getItem("roleName") : null;
-    const currentRole = role ?? storedRole;
+    const currentRole = role ?? localStorage.getItem("roleName");
     if (!currentRole) {
       router.replace("/login?role=business_admin&title=Business%20Admin&subtitle=Admin");
       return;
     }
-    const isSuperAdminImpersonating = currentRole === "super_admin" && !!impersonatedBusinessId;
-    if (!canAccessWorkspacePage(currentRole, "credits") && !isSuperAdminImpersonating) {
+    const impersonating = currentRole === "super_admin" && !!impersonatedBusinessId;
+    if (!canAccessWorkspacePage(currentRole, "credits") && !impersonating) {
       router.replace("/dashboard");
       return;
     }
@@ -76,84 +86,129 @@ function CreditsContent() {
 
   const loadParties = useCallback(async () => {
     if (!businessId || !token) return;
+    const request = ++listRequest.current;
     setLoading(true);
     try {
-      const query = search.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
-      const result = await apiClient.get<CreditParty[]>(`/credits/parties${query}`, token, businessId);
-      setParties(Array.isArray(result) ? result : []);
+      const response = await apiClient.get<unknown>("/credits/parties", token, businessId);
+      const result = normalizeCreditParties(response);
+      if (request !== listRequest.current) return;
+      setParties(result);
+      setLoadError(null);
+      setLastUpdated(new Date());
+      setSelectedId((current) => result.some((party) => party.id === current)
+        ? current : [...result].sort((a, b) => b.outstanding - a.outstanding)[0]?.id ?? null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load credit parties");
+      if (request === listRequest.current) setLoadError(err instanceof Error ? err.message : "Failed to load credit accounts");
     } finally {
-      setLoading(false);
+      if (request === listRequest.current) setLoading(false);
     }
-  }, [businessId, token, search]);
+  }, [businessId, token]);
+
+  const loadDetail = useCallback(async (partyId: string, silent = false) => {
+    if (!businessId || !token || selectedIdRef.current !== partyId) return;
+    const request = ++detailRequest.current;
+    setDetailLoading(true);
+    try {
+      const result = await apiClient.get<CreditPartyDetail>(`/credits/parties/${partyId}`, token, businessId);
+      if (request !== detailRequest.current || selectedIdRef.current !== partyId) return;
+      setDetail(result);
+      setDetailError(null);
+      setParties((current) => current.map((party) => party.id === partyId ? { ...party, outstanding: Number(result.outstanding) } : party));
+      if (!silent) setRepayAmount(Number(result.outstanding ?? 0));
+    } catch (err) {
+      if (request === detailRequest.current) setDetailError(err instanceof Error ? err.message : "Failed to load transaction history");
+    } finally {
+      if (request === detailRequest.current) setDetailLoading(false);
+    }
+  }, [businessId, token]);
 
   useEffect(() => {
+    setParties([]);
+    setSelectedId(null);
+    setDetail(null);
+    setLastUpdated(null);
+    setLoadError(null);
     if (isAuthorized) void loadParties();
+    return () => { invalidateRequest(listRequest); invalidateRequest(detailRequest); };
   }, [isAuthorized, loadParties]);
 
-  const loadDetail = useCallback(
-    async (partyId: string) => {
-      if (!businessId || !token) return;
-      setDetailLoading(true);
-      try {
-        const result = await apiClient.get<CreditPartyDetail>(`/credits/parties/${partyId}`, token, businessId);
-        setDetail(result);
-        setRepayAmount(Number(result.outstanding ?? 0));
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to load party ledger");
-      } finally {
-        setDetailLoading(false);
-      }
-    },
-    [businessId, token],
-  );
-
-  const toggleParty = async (party: CreditParty) => {
-    if (expandedId === party.id) {
-      setExpandedId(null);
-      setDetail(null);
-      setRepayAmount(0);
-      setRepayNotes("");
-      return;
-    }
-    setExpandedId(party.id);
+  useEffect(() => {
+    ++detailRequest.current;
+    setDetail(null);
+    setDetailError(null);
+    setRepayAmount(0);
     setRepayNotes("");
-    await loadDetail(party.id);
-  };
+    if (selectedId) void loadDetail(selectedId);
+    return () => { invalidateRequest(detailRequest); };
+  }, [selectedId, loadDetail]);
 
-  const outstandingTotal = useMemo(
-    () => parties.reduce((sum, row) => sum + Number(row.outstanding ?? 0), 0),
-    [parties],
-  );
+  const refresh = useCallback(() => {
+    void loadParties();
+    if (selectedId) void loadDetail(selectedId, true);
+  }, [loadParties, loadDetail, selectedId]);
 
-  const onRepay = async (partyId: string) => {
-    if (!businessId || !token) return;
-    if (repayAmount <= 0) {
-      toast.error("Enter a valid repayment amount");
+  useEffect(() => {
+    if (!isAuthorized) return;
+    const refreshVisible = () => { if (document.visibilityState !== "hidden") refresh(); };
+    window.addEventListener(STAFF_REALTIME_EVENTS.CREDITS_CHANGED, refreshVisible);
+    window.addEventListener("focus", refreshVisible);
+    document.addEventListener("visibilitychange", refreshVisible);
+    const interval = window.setInterval(refreshVisible, 30000);
+    return () => {
+      window.removeEventListener(STAFF_REALTIME_EVENTS.CREDITS_CHANGED, refreshVisible);
+      window.removeEventListener("focus", refreshVisible);
+      document.removeEventListener("visibilitychange", refreshVisible);
+      window.clearInterval(interval);
+    };
+  }, [isAuthorized, refresh]);
+
+  const summary = useMemo(() => creditAccountSummary(parties), [parties]);
+  const visibleParties = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return parties.filter((party) => {
+      const matchesSearch = !query || [party.name, party.phone, party.email].some((value) => value?.toLowerCase().includes(query));
+      const outstanding = party.outstanding > 0.009;
+      return matchesSearch && (filter === "all" || (filter === "outstanding" ? outstanding : !outstanding));
+    }).sort((a, b) => b.outstanding - a.outstanding || (a.name || "").localeCompare(b.name || ""));
+  }, [parties, search, filter]);
+  const totalPages = Math.max(1, Math.ceil(visibleParties.length / ACCOUNTS_PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * ACCOUNTS_PER_PAGE;
+  const pageParties = visibleParties.slice(start, start + ACCOUNTS_PER_PAGE);
+  const selectedParty = parties.find((party) => party.id === selectedId);
+  const activeDetail = detail?.id === selectedId ? detail : null;
+  const outstanding = Number(activeDetail?.outstanding ?? selectedParty?.outstanding ?? 0);
+  const settled = outstanding <= 0.009;
+
+  const onRepay = async () => {
+    if (!businessId || !token || !selectedId || !activeDetail || repaymentInFlight.current || detailLoading || detailError || loadError) return;
+    if (!Number.isFinite(outstanding) || !Number.isFinite(repayAmount) || repayAmount < 0.01 || repayAmount > outstanding + 0.000001) {
+      toast.error("Enter an amount between Rs 0.01 and the outstanding balance");
       return;
     }
+    const attemptKey = JSON.stringify([businessId, selectedId, repayAmount, repayNotes.trim()]);
+    if (repaymentAttempt.current?.key !== attemptKey) {
+      repaymentAttempt.current = { key: attemptKey, id: crypto.randomUUID() };
+    }
+    repaymentInFlight.current = true;
     setSaving(true);
-    const toastId = toast.loading("Recording repayment...");
+    const toastId = toast.loading("Recording payment...");
     try {
-      const party = parties.find((row) => row.id === partyId);
-      await apiClient.post(
-        "/credits/repayments",
-        {
-          partyId,
-          phone: party?.phone?.trim() || undefined,
-          amount: repayAmount,
-          notes: repayNotes.trim() || undefined,
-        },
-        token,
-        businessId,
-      );
-      toast.success("Repayment recorded", { id: toastId });
-      await loadParties();
-      await loadDetail(partyId);
+      await apiClient.post("/credits/repayments", {
+        partyId: selectedId,
+        phone: selectedParty?.phone?.trim() || undefined,
+        amount: repayAmount,
+        notes: repayNotes.trim() || undefined,
+        clientTxnId: repaymentAttempt.current.id,
+      }, token, businessId);
+      toast.success("Payment received and balance updated", { id: toastId });
+      repaymentAttempt.current = null;
+      if (selectedIdRef.current === selectedId) setRepayNotes("");
+      await Promise.all([loadParties(), loadDetail(selectedId)]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to record repayment", { id: toastId });
+      toast.error(err instanceof Error ? err.message : "Failed to record payment", { id: toastId });
     } finally {
+      repaymentInFlight.current = false;
       setSaving(false);
     }
   };
@@ -161,185 +216,75 @@ function CreditsContent() {
   if (!isAuthorized) return null;
 
   return (
-    <AdminShell activeTab="credits" pageTitle="Credit" pageSubtitle="Customer udhar balances and repayments">
+    <AdminShell activeTab="credits" pageTitle="Credit / Udhar" pageSubtitle="Customer balances and payment history">
       <PortalPage>
-        <PortalPageHeader
-          icon={Wallet}
-          title="Credit / Udhar"
-          subtitle="Track outstanding customer credit and mark payments received"
-        />
+        <PortalPageHeader icon={Wallet} title="Credit / Udhar" subtitle="A clear view of customer balances, credit sales, and payments."
+          actions={<button type="button" onClick={refresh} disabled={loading} className={`${panelClass} inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold ${textClass} transition hover:bg-[var(--surface-muted,#f8fafc)] disabled:opacity-60`}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />{loading ? "Updating" : "Refresh balances"}</button>} />
 
-        <div className="mb-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Parties</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-900">{parties.length}</p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className={`${panelClass} p-5`}>
+            <div className="flex items-center justify-between"><p className={`text-sm ${mutedClass}`}>Total outstanding</p><Wallet className="h-5 w-5 text-[var(--brand-primary,#001840)]" /></div>
+            <p className={`mt-3 text-2xl font-bold tracking-tight tabular-nums ${textClass}`}>{lastUpdated ? money(summary.balance) : "—"}</p>
+            <p className={`mt-1 text-xs ${mutedClass}`}>Amount to collect across all accounts</p>
           </div>
-          <div className="rounded-xl border bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Total outstanding</p>
-            <p className="mt-1 text-2xl font-semibold text-orange-700">{money(outstandingTotal)}</p>
+          <div className={`${panelClass} p-5`}>
+            <div className="flex items-center justify-between"><p className={`text-sm ${mutedClass}`}>Outstanding accounts</p><Users className="h-5 w-5 text-amber-600" /></div>
+            <p className={`mt-3 text-2xl font-bold ${textClass}`}>{lastUpdated ? summary.outstanding : "—"}<span className={`ml-2 text-sm font-normal ${mutedClass}`}>of {summary.total} customers</span></p>
+            <p className={`mt-1 text-xs ${mutedClass}`}>Customers with an unpaid balance</p>
           </div>
-          <div className="rounded-xl border bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">With balance</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-900">
-              {parties.filter((p) => Number(p.outstanding) > 0.009).length}
-            </p>
+          <div className={`${panelClass} p-5`}>
+            <div className="flex items-center justify-between"><p className={`text-sm ${mutedClass}`}>Settled accounts</p><CheckCircle2 className="h-5 w-5 text-emerald-600" /></div>
+            <p className={`mt-3 text-2xl font-bold ${textClass}`}>{lastUpdated ? summary.settled : "—"}</p>
+            <p className={`mt-1 text-xs ${mutedClass}`}>Customers with no balance to collect</p>
           </div>
         </div>
 
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              className={`${portalInputClass} pl-9`}
-              placeholder="Search by name, phone, or email"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void loadParties();
-              }}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => void loadParties()}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-          >
-            Search
-          </button>
+        {loadError && <div role="alert" className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="font-semibold">Balances could not be updated</p><p className="mt-1">{loadError}{lastUpdated ? " The last loaded balances are shown below." : ""}</p></div></div>}
+
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+          <section aria-label="Customer credit accounts" className={panelClass}>
+            <div className="space-y-4 border-b border-[var(--border-subtle,#e2e8f0)] p-5">
+              <div className="flex items-center justify-between gap-3"><h2 className={`text-base font-semibold ${textClass}`}>Customer accounts</h2><span className={`rounded-full bg-[var(--surface-muted,#f1f5f9)] px-2.5 py-1 text-xs ${mutedClass}`}>{parties.length} total</span></div>
+              <div className="relative"><Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${mutedClass}`} /><input className={`${portalInputClass} pl-9`} placeholder="Search name, phone, or email" aria-label="Search credit accounts" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} /></div>
+              <div className="flex flex-wrap gap-1 rounded-xl bg-[var(--surface-muted,#f1f5f9)] p-1" aria-label="Account status filter">
+                {([ ["all", "All", summary.total], ["outstanding", "Outstanding", summary.outstanding], ["settled", "Settled", summary.settled] ] as const).map(([value, label, count]) => <button key={value} type="button" aria-pressed={filter === value} onClick={() => { setFilter(value); setPage(1); }} className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition ${filter === value ? `bg-[var(--surface,#fff)] shadow-sm ${textClass}` : mutedClass}`}>{label} <span className="ml-1 opacity-70">{count}</span></button>)}
+              </div>
+            </div>
+            {loading && !lastUpdated ? <div className={`flex items-center justify-center gap-2 px-5 py-20 text-sm ${mutedClass}`}><Loader2 className="h-5 w-5 animate-spin" />Loading customer accounts...</div> : pageParties.length === 0 ? <div className="px-6 py-16 text-center"><Wallet className={`mx-auto mb-3 h-8 w-8 ${mutedClass}`} /><p className={`text-sm font-medium ${textClass}`}>{loadError && !lastUpdated ? "Accounts are unavailable" : search || filter !== "all" ? "No matching accounts" : "No credit accounts yet"}</p><p className={`mt-2 text-xs ${mutedClass}`}>{search || filter !== "all" ? "Try another search or account filter." : "Customer credit sales will appear here."}</p></div> : <div className="overflow-x-auto">
+              <table className="w-full text-sm"><thead className={`bg-[var(--surface-muted,#f8fafc)] text-xs ${mutedClass}`}><tr><th className="px-5 py-3 text-left font-medium">Customer</th><th className="px-5 py-3 text-right font-medium">Balance</th><th className="w-8"><span className="sr-only">View account</span></th></tr></thead>
+                <tbody className="divide-y divide-[var(--border-subtle,#e2e8f0)]">{pageParties.map((party) => <tr key={party.id} className={selectedId === party.id ? "bg-[var(--surface-muted,#f1f5f9)]" : "hover:bg-[var(--surface-muted,#f8fafc)]"}>
+                  <td className="pl-5"><button type="button" aria-pressed={selectedId === party.id} onClick={() => setSelectedId(party.id)} className="w-full py-4 text-left focus-visible:outline-2 focus-visible:outline-[var(--brand-primary)]"><span className={`block font-semibold ${textClass}`}>{party.name || "Credit customer"}</span><span className={`mt-1 block text-xs ${mutedClass}`}>{party.phone || party.email || "No contact on file"}</span></button></td>
+                  <td className="px-5 py-4 text-right"><p className={`font-semibold tabular-nums ${textClass}`}>{money(party.outstanding)}</p><span className={`mt-1 inline-block text-xs ${party.outstanding > 0.009 ? "text-amber-700" : "text-emerald-700"}`}>{party.outstanding > 0.009 ? "Outstanding" : "Settled"}</span></td>
+                  <td className="pr-3"><button type="button" onClick={() => setSelectedId(party.id)} aria-label={`View ${party.name || "customer"} account`} className={`rounded-lg p-1 ${mutedClass} hover:bg-[var(--surface-muted,#e2e8f0)]`}><ChevronRight className="h-4 w-4" /></button></td>
+                </tr>)}</tbody>
+              </table>
+            </div>}
+            <div className="flex items-center justify-between gap-3 border-t border-[var(--border-subtle,#e2e8f0)] px-5 py-4"><p className={`text-xs ${mutedClass}`}>{visibleParties.length ? `${start + 1}–${Math.min(start + ACCOUNTS_PER_PAGE, visibleParties.length)} of ${visibleParties.length}` : "0 accounts"}</p><div className="flex items-center gap-2"><button type="button" aria-label="Previous account page" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className={`rounded-lg border border-[var(--border-subtle,#e2e8f0)] p-1.5 ${textClass} disabled:opacity-30`}><ChevronLeft className="h-4 w-4" /></button><span className={`text-xs ${mutedClass}`}>{currentPage} / {totalPages}</span><button type="button" aria-label="Next account page" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)} className={`rounded-lg border border-[var(--border-subtle,#e2e8f0)] p-1.5 ${textClass} disabled:opacity-30`}><ChevronRight className="h-4 w-4" /></button></div></div>
+          </section>
+
+          <section aria-label="Selected customer ledger" className={panelClass}>
+            {!selectedParty ? <div className="px-6 py-24 text-center"><Users className={`mx-auto mb-3 h-9 w-9 ${mutedClass}`} /><h2 className={`text-base font-semibold ${textClass}`}>Customer ledger</h2><p className={`mt-2 text-sm ${mutedClass}`}>Select a customer to view credit sales and payments.</p></div> : <>
+              <div className="border-b border-[var(--border-subtle,#e2e8f0)] p-5"><p className={`text-xs font-medium uppercase tracking-wide ${mutedClass}`}>Customer ledger</p><div className="mt-3 flex flex-wrap items-start justify-between gap-4"><div><h2 className={`text-xl font-semibold ${textClass}`}>{selectedParty.name || "Credit customer"}</h2><p className={`mt-1 text-sm ${mutedClass}`}>{[selectedParty.phone, selectedParty.email].filter(Boolean).join(" · ") || "No contact on file"}</p></div><div className="text-right"><p className={`text-xs ${mutedClass}`}>Outstanding balance</p><p className={`mt-1 text-2xl font-bold tabular-nums ${settled ? "text-emerald-700" : textClass}`}>{money(outstanding)}</p></div></div></div>
+              {detailError && <div role="alert" className="m-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{detailError}<button type="button" onClick={() => void loadDetail(selectedParty.id)} className="ml-2 font-semibold underline">Retry</button></div>}
+              {detailLoading && !activeDetail ? <div className={`flex items-center justify-center gap-2 py-16 text-sm ${mutedClass}`}><Loader2 className="h-5 w-5 animate-spin" />Loading transactions...</div> : activeDetail ? <>
+                {!settled ? <div className="m-5 rounded-xl border border-[var(--border-subtle,#e2e8f0)] bg-[var(--surface-muted,#f8fafc)] p-4"><div className={`mb-4 flex items-center gap-2 text-sm font-semibold ${textClass}`}><ArrowDownLeft className="h-4 w-4 text-emerald-600" />Receive payment</div>
+                  <form onSubmit={(event) => { event.preventDefault(); void onRepay(); }} className="space-y-3"><div className="grid gap-3 sm:grid-cols-2"><FormField label="Amount received (Rs)"><NumberInput value={repayAmount} onChange={setRepayAmount} min={0} max={outstanding} step={0.01} className={portalInputClass} /></FormField><FormField label="Note (optional)"><input className={portalInputClass} value={repayNotes} onChange={(event) => setRepayNotes(event.target.value)} placeholder="Payment reference or method" /></FormField></div><div className="flex flex-wrap items-center justify-between gap-3"><button type="button" onClick={() => setRepayAmount(outstanding)} className={`text-xs font-medium ${mutedClass} underline underline-offset-2`}>Use full balance: {money(outstanding)}</button><button type="submit" disabled={saving || detailLoading || !!detailError || !!loadError || repayAmount <= 0} className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--brand-primary,#001840)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}{saving ? "Recording..." : "Record payment"}</button></div></form>
+                </div> : <div className="m-5 flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800"><CheckCircle2 className="h-4 w-4" />This account is settled. No payment is due.</div>}
+                <div className="flex items-center justify-between px-5 pb-3 pt-1"><h3 className={`text-sm font-semibold ${textClass}`}>Transaction history</h3><span className={`text-xs ${mutedClass}`}>{activeDetail.ledger.length} entries</span></div>
+                {activeDetail.ledger.length === 0 ? <p className={`px-5 pb-8 pt-3 text-sm ${mutedClass}`}>No transactions recorded yet.</p> : <div className="max-h-[520px] overflow-auto"><table className="w-full text-sm"><thead className={`sticky top-0 bg-[var(--surface-muted,#f8fafc)] text-xs ${mutedClass}`}><tr><th className="px-5 py-3 text-left font-medium">Transaction</th><th className="px-3 py-3 text-left font-medium">Date</th><th className="px-5 py-3 text-right font-medium">Amount</th></tr></thead><tbody className="divide-y divide-[var(--border-subtle,#e2e8f0)]">{activeDetail.ledger.map((row) => {
+                  const sale = row.type === "sale";
+                  return <tr key={row.id}><td className="px-5 py-4"><div className="flex items-center gap-2"><span className={`rounded-lg p-1.5 ${sale ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>{sale ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownLeft className="h-3.5 w-3.5" />}</span><span className={`font-medium ${textClass}`}>{sale ? "Credit sale" : row.type === "return" ? "Sale returned" : "Payment received"}</span></div><p className={`mt-1.5 max-w-[220px] break-words text-xs ${mutedClass}`}>{row.notes || (row.orderId ? `Order ${row.orderId.slice(0, 8)}` : "—")}</p>{row.dueDate && <p className={`mt-1 text-xs ${mutedClass}`}>Due {new Date(`${row.dueDate.slice(0, 10)}T00:00:00`).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" })}</p>}</td><td className={`whitespace-nowrap px-3 py-4 text-xs ${mutedClass}`}>{row.createdAt ? new Date(row.createdAt).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }) : "—"}</td><td className={`whitespace-nowrap px-5 py-4 text-right font-semibold tabular-nums ${sale ? textClass : "text-emerald-700"}`}>{sale ? "+" : "−"}{money(Number(row.amount))}</td></tr>;
+                })}</tbody></table></div>}
+              </> : null}
+            </>}
+          </section>
         </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-16 text-slate-500">
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Loading credit parties...
-          </div>
-        ) : parties.length === 0 ? (
-          <div className="rounded-xl border bg-white p-10 text-center text-slate-500">
-            No credit parties yet. Credit sales from POS will appear here.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {parties.map((party) => {
-              const expanded = expandedId === party.id;
-              const activeDetail = expanded && detail?.id === party.id ? detail : null;
-              const outstanding = Number(activeDetail?.outstanding ?? party.outstanding ?? 0);
-              const settled = outstanding <= 0.009;
-
-              return (
-                <div key={party.id} className="overflow-hidden rounded-xl border bg-white shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => void toggleParty(party)}
-                    className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left hover:bg-slate-50"
-                  >
-                    <div>
-                      <p className="font-semibold text-slate-900">{party.name || "Credit party"}</p>
-                      <p className="text-sm text-slate-500">
-                        {[party.phone, party.email].filter(Boolean).join(" · ") || "No contact on file"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className={`text-sm font-semibold ${settled ? "text-emerald-700" : "text-orange-700"}`}>
-                          {money(outstanding)}
-                        </p>
-                        <p className="text-xs text-slate-500">{settled ? "Settled" : "Outstanding"}</p>
-                      </div>
-                      {expanded ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
-                    </div>
-                  </button>
-
-                  {expanded && (
-                    <div className="border-t px-4 py-4">
-                      {detailLoading && !activeDetail ? (
-                        <div className="flex items-center py-6 text-slate-500">
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Loading ledger...
-                        </div>
-                      ) : (
-                        <>
-                          <div className="mb-4 overflow-x-auto">
-                            <table className="min-w-full text-sm">
-                              <thead>
-                                <tr className="border-b text-left text-slate-500">
-                                  <th className="py-2 pr-4">Date</th>
-                                  <th className="py-2 pr-4">Type</th>
-                                  <th className="py-2 pr-4">Amount</th>
-                                  <th className="py-2">Notes</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {(activeDetail?.ledger ?? []).length === 0 ? (
-                                  <tr>
-                                    <td colSpan={4} className="py-4 text-slate-500">
-                                      No ledger entries yet.
-                                    </td>
-                                  </tr>
-                                ) : (
-                                  (activeDetail?.ledger ?? []).map((row) => (
-                                    <tr key={row.id} className="border-b last:border-0">
-                                      <td className="py-2 pr-4">
-                                        {row.createdAt ? new Date(row.createdAt).toLocaleDateString() : "—"}
-                                      </td>
-                                      <td className="py-2 pr-4 capitalize">{row.type}</td>
-                                      <td className="py-2 pr-4">{money(Number(row.amount ?? 0))}</td>
-                                      <td className="py-2">{row.notes || row.orderId || "—"}</td>
-                                    </tr>
-                                  ))
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-
-                          {!settled && (
-                            <div className="grid gap-3 rounded-lg border bg-slate-50 p-4 md:grid-cols-[1fr_1fr_auto]">
-                              <FormField label="Repayment amount">
-                                <NumberInput
-                                  value={repayAmount}
-                                  onChange={setRepayAmount}
-                                  min={0}
-                                  step={0.01}
-                                  className={portalInputClass}
-                                />
-                              </FormField>
-                              <FormField label="Notes (optional)">
-                                <input
-                                  className={portalInputClass}
-                                  value={repayNotes}
-                                  onChange={(e) => setRepayNotes(e.target.value)}
-                                  placeholder="Cash received, bank transfer, etc."
-                                />
-                              </FormField>
-                              <div className="flex items-end">
-                                <button
-                                  type="button"
-                                  disabled={saving}
-                                  onClick={() => void onRepay(party.id)}
-                                  className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
-                                >
-                                  {saving ? "Saving..." : "Mark received"}
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <p aria-live="polite" className={`flex items-center gap-2 text-xs ${mutedClass}`}><Clock3 className="h-3.5 w-3.5" />{loading ? "Updating balances..." : loadError ? "Refresh needed to verify the latest balances" : lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })} · Balances refresh automatically` : "Waiting for credit accounts"}</p>
       </PortalPage>
     </AdminShell>
   );
 }
 
 export default function CreditsPage() {
-  return (
-    <Suspense fallback={<Loading />}>
-      <CreditsContent />
-    </Suspense>
-  );
+  return <Suspense fallback={<Loading />}><CreditsContent /></Suspense>;
 }
