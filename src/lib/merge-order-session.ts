@@ -54,6 +54,17 @@ export function mergeOrderSessionFields<T extends OrderSessionFields>(
 }
 
 export function isTerminalOrderStatus(status?: string | null): boolean {
-  const s = String(status ?? "").toLowerCase();
-  return s === "completed" || s === "complete" || s === "deleted" || s === "cancelled";
+  const s = String(status ?? "").trim().toLowerCase();
+  return [
+    "completed",
+    "complete",
+    "delivered",
+    "cancelled",
+    "canceled",
+    "voided",
+    "deleted",
+    "rejected",
+    "returned",
+    "closed",
+  ].includes(s);
 }

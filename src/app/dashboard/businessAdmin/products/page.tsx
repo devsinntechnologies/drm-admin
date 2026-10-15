@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Edit,
   Layers,
-  Loader2,
   Plus,
   Search,
   Store,
@@ -428,7 +427,8 @@ function MenuItemsContent() {
   const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [visibleProductCount, setVisibleProductCount] = useState(20);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -610,15 +610,31 @@ function MenuItemsContent() {
     });
   }, [products, search]);
 
-  const pageSize = 20;
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
-  const visiblePage = Math.min(currentPage, totalPages);
-  const pageProducts = useMemo(
-    () => filteredProducts.slice((visiblePage - 1) * pageSize, visiblePage * pageSize),
-    [filteredProducts, visiblePage],
+  const visibleProducts = useMemo(
+    () => filteredProducts.slice(0, visibleProductCount),
+    [filteredProducts, visibleProductCount],
   );
-  useEffect(() => { setCurrentPage(1); }, [search, impersonatedBusinessId]);
-  useEffect(() => { setCurrentPage((value) => Math.min(value, totalPages)); }, [totalPages]);
+  const hasMoreProducts = visibleProducts.length < filteredProducts.length;
+  useEffect(() => {
+    setVisibleProductCount(20);
+  }, [search, impersonatedBusinessId]);
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || !hasMoreProducts) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisibleProductCount((count) =>
+            Math.min(count + 20, filteredProducts.length),
+          );
+        }
+      },
+      { rootMargin: "320px 0px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filteredProducts.length, hasMoreProducts]);
 
   const onReorder = useCallback(
     async (ids: string[]) => {
@@ -640,7 +656,7 @@ function MenuItemsContent() {
     onDragOver,
     onDrop,
     onDragEnd,
-  } = useHtml5Reorder(pageProducts, onReorder, !actionLoading);
+  } = useHtml5Reorder(visibleProducts, onReorder, !actionLoading);
 
   const resetCreateForm = () => {
     setCreateForm({
@@ -999,16 +1015,25 @@ function MenuItemsContent() {
         )}
 
         {!loading && filteredProducts.length > 0 ? (
-          <nav aria-label="Product pagination" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4">
-            <p className="text-sm text-slate-600" aria-live="polite">
-              Showing {(visiblePage - 1) * pageSize + 1}–{Math.min(visiblePage * pageSize, filteredProducts.length)} of {filteredProducts.length} products{search.trim() ? ` (${products.length} total)` : ""}
+          <div className="mt-6 text-center" aria-live="polite">
+            <p className="text-sm text-slate-600">
+              Showing {visibleProducts.length} of {filteredProducts.length} products
+              {search.trim() ? ` (${products.length} total)` : ""}
             </p>
-            <div className="flex items-center gap-3">
-              <button type="button" className="dn-btn dn-btn-soft disabled:opacity-40" disabled={visiblePage <= 1} onClick={() => setCurrentPage(visiblePage - 1)}>Previous</button>
-              <span className="text-sm text-slate-600">Page {visiblePage} of {totalPages}</span>
-              <button type="button" className="dn-btn dn-btn-soft disabled:opacity-40" disabled={visiblePage >= totalPages} onClick={() => setCurrentPage(visiblePage + 1)}>Next</button>
+            <div
+              ref={loadMoreRef}
+              className="min-h-12 pt-3 text-sm text-slate-500"
+              aria-label={
+                hasMoreProducts
+                  ? "Scroll to load more products"
+                  : "All products loaded"
+              }
+            >
+              {hasMoreProducts
+                ? "Scroll to load more products"
+                : "All products loaded"}
             </div>
-          </nav>
+          </div>
         ) : null}
         <PortalRefreshFab onClick={() => refetch()} loading={loading} />
 

@@ -15,6 +15,8 @@ import type { DashboardCardId } from "@/templates/types";
 import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { usePharmacyQuery } from "@/hooks/usePharmacyQuery";
 import { useProducts } from "@/hooks/useProducts";
+import { useOrders } from "@/hooks/useOrders";
+import { isTerminalOrderStatus } from "@/lib/merge-order-session";
 import { getDashboardGridClassName, resolveDashboardCards } from "@/lib/resolve-dashboard-cards";
 import { summarizeCatalogStock } from "@/lib/retail-stock";
 import { cn } from "@/lib/utils";
@@ -121,6 +123,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
     isPharmacy ? null : "/retail/reports/dashboard",
     queryRefreshKey,
   );
+  const { orders, loading: ordersLoading, error: ordersError } = useOrders({ range: "day" });
   const { products, loading: productsLoading, error: productsError } = useProducts({ limit: 500 });
   const catalogStock = summarizeCatalogStock(products);
 
@@ -155,6 +158,12 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
   const liveLoading = isPharmacy ? pharmacyLoading : invoiceLoading || stockLoading || productsLoading;
 
   const formatValue = (id: DashboardCardId) => {
+    if (id === "active-orders" || id === "orders-in-progress" || id === "customer-orders") {
+      if (ordersLoading) return "…";
+      if (ordersError) return "Unavailable";
+      return String(orders.filter((order) => !isTerminalOrderStatus(order.status)).length);
+    }
+
     if (liveLoading) {
       return "…";
     }
@@ -206,10 +215,6 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
         );
       case "pending-purchases":
         return String(pendingPurchases);
-      case "active-orders":
-      case "orders-in-progress":
-      case "customer-orders":
-        return String(invoiceLive?.orders?.activeOrders ?? 0);
       case "top-products":
       case "fast-moving-parts":
       case "best-selling-item":

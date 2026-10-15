@@ -61,6 +61,7 @@ import { useOrders, type OrderRecord } from "@/hooks/useOrders";
 import { useProducts, type Product, type ProductVariant } from "@/hooks/useProducts";
 import { useTables } from "@/hooks/useTables";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+import { isTerminalOrderStatus } from "@/lib/merge-order-session";
 import { cn, buildOrderPatchItem, buildOrderRemoveItem, isUuid } from "@/lib/utils";
 import { SelfOrderRequestsPanel } from "@/components/orders/SelfOrderRequestsPanel";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
@@ -282,7 +283,7 @@ function OrdersContent() {
   );
   const editingGrandTotal = editingSubtotal + editingDeliveryCharges + editingPackagingCharges + editingOverridePrice;
   const visibleOrders = useMemo(
-    () => orders.filter((order) => String(order.status).toUpperCase() !== "COMPLETED"),
+    () => orders.filter((order) => !isTerminalOrderStatus(order.status)),
     [orders],
   );
 
