@@ -682,6 +682,8 @@ function OrdersContent() {
       deliveryCharges: orderDetails.deliveryCharges,
       packagingPrice: orderDetails.packagingPrice,
       totalPrice: orderDetails.totalPrice,
+      gameType: orderDetails.gameType,
+      sessionMinutes: orderDetails.sessionMinutes,
     });
   }, [orderDetails]);
 

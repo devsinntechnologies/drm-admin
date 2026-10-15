@@ -17,6 +17,20 @@ describe("resolveInvoiceTotals", () => {
     expect(totals.total).toBe(858);
   });
 
+  it("trusts checkout total when table line is inflated vs header", () => {
+    const totals = resolveInvoiceTotals({
+      totalPrice: 1700,
+      gameType: "Single",
+      sessionMinutes: 15,
+      Items: [
+        { productname: "TABLE NO 6", quantity: 1, price: 15000, total: 15000, isSessionService: true },
+        { productname: "velo", quantity: 1, price: 250, total: 250 },
+        { productname: "sooper", quantity: 1, price: 80, total: 80 },
+      ],
+    });
+    expect(totals.total).toBe(1700);
+  });
+
   it("falls back to API subtotal when items are missing", () => {
     const totals = resolveInvoiceTotals({
       totalPrice: 523,
