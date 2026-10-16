@@ -54,17 +54,27 @@ import InvoiceReceipt, { InvoiceDownloadButton, InvoicePrintButton } from "@/com
 import { PrinterAccessAlert } from "@/components/common/PrinterAccessAlert";
 import { useInvoiceBranding } from "@/hooks/useInvoiceBranding";
 import { downloadInvoicePdf } from "@/lib/invoice-pdf";
+import { resolveInvoiceTotals } from "@/lib/invoice-totals";
 import { useAuth } from "@/hooks/useAuth";
 import { useCategories, type CategoryRecord } from "@/hooks/useCategories";
 import { useOrders, type OrderRecord } from "@/hooks/useOrders";
 import { useProducts, type Product, type ProductVariant } from "@/hooks/useProducts";
 import { useTables } from "@/hooks/useTables";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
-import { BASE_URL } from "@/lib/constant";
+import { isTerminalOrderStatus } from "@/lib/merge-order-session";
 import { cn, buildOrderPatchItem, buildOrderRemoveItem, isUuid } from "@/lib/utils";
 import { SelfOrderRequestsPanel } from "@/components/orders/SelfOrderRequestsPanel";
 import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
 import { parseOrdersSettings, parseSalesSettings } from "@/lib/module-feature-settings";
+import { snookerBookedEndIso } from "@/lib/invoice-datetime";
+import { resolveCategoryImageUrl, resolveOrderItemImage as resolveOrderItemImageUrl } from "@/lib/product-image";
+import { ProductMediaImage } from "@/components/common/ProductMediaImage";
+import { SnookerTableBookingDialog } from "@/components/orders/SnookerTableBookingDialog";
+import { ActiveOrderCard } from "@/components/orders/ActiveOrderCard";
+import { CompleteOrderDialog } from "@/components/orders/CompleteOrderDialog";
+import type { SnookerBookingDetails } from "@/lib/snooker-session-options";
+import type { OrderCreditDetails } from "@/lib/credit-types";
+import type { OrderPaymentMethodId } from "@/lib/order-payment-methods";
 
 const CustomTrashIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -107,11 +117,11 @@ interface OrderDetailsState {
   deliveryCharges: string;
   packagingPrice: string;
   Items: OrderRecord["Items"];
-}
-
-function productImageUrl(imagePath?: string | null) {
-  if (!imagePath) return "/business/pic1.jpeg";
-  return imagePath.startsWith("http") ? imagePath : `${BASE_URL}/${imagePath}`;
+  tableGuestName?: string | null;
+  gameType?: string | null;
+  sessionMinutes?: number | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 function formatElapsed(isoDate: string) {
@@ -167,10 +177,25 @@ function OrdersContent() {
   const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([]);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [removedOrderIds, setRemovedOrderIds] = useState<Record<string, boolean>>({});
+  const [pendingTableId, setPendingTableId] = useState<string | null>(null);
+  const [pendingTableLabel, setPendingTableLabel] = useState("");
+  const [showSnookerBooking, setShowSnookerBooking] = useState(false);
+  const [completeTarget, setCompleteTarget] = useState<OrderRecord | null>(null);
 
   const { products, loading: productsLoading, refetch: refetchProducts } = useProducts({ page: 1, limit: 100 });
   const { categories: allCategories } = useCategories({ page: 1, limit: 100 });
-  const { orders, loading: ordersLoading, fetchOrders, updateOrderStatus, updateOrderById, createOrder, getOrderById, actionLoading } = useOrders({ range: "day" });
+  const {
+    orders,
+    loading: ordersLoading,
+    fetchOrders,
+    updateOrderStatus,
+    updateOrderById,
+    createOrder,
+    getOrderById,
+    updateSessionTimer,
+    deleteOrder,
+    actionLoading,
+  } = useOrders({ range: "day" });
   const { tables, loading: tablesLoading } = useTables({ page: 1, limit: 100 });
 
   useEffect(() => {
@@ -258,7 +283,7 @@ function OrdersContent() {
   );
   const editingGrandTotal = editingSubtotal + editingDeliveryCharges + editingPackagingCharges + editingOverridePrice;
   const visibleOrders = useMemo(
-    () => orders.filter((order) => String(order.status).toUpperCase() !== "COMPLETED"),
+    () => orders.filter((order) => !isTerminalOrderStatus(order.status)),
     [orders],
   );
 
@@ -275,8 +300,89 @@ function OrdersContent() {
     [tables, takeAwayTable],
   );
 
+  const isSnookerIndustry = templateConfig?.industryId === "snooker-pos";
+
+  const defaultPosTable = useMemo(() => {
+    const counter = tables.find((t) =>
+      String(t.tableNumber ?? "")
+        .trim()
+        .toLowerCase()
+        .includes("counter"),
+    );
+    if (counter) return counter;
+    if (diningTables.length === 1) return diningTables[0];
+    return diningTables[0] ?? tables[0] ?? null;
+  }, [tables, diningTables]);
+
+  /** Snooker / counter POS: skip restaurant “Where to serve?” picker. */
+  const skipRestaurantTablePicker = isSnookerIndustry;
+
+  const showQrSelfOrderPanel =
+    !isSnookerIndustry &&
+    (ordersSettings.allowSelfOrderApprove || ordersSettings.allowSelfOrderReject);
+
+  const cartNeedsSnookerSession = useMemo(() => {
+    if (!isSnookerIndustry) return false;
+    return cartItems.some((item) => {
+      const product = activeProducts.find((p) => p.id === item.productId);
+      if (!product) return false;
+      const cat = allCategories.find((c) => c.id === product.categoryId);
+      if (cat?.posMode === "timed_session") return true;
+      if (product.name.toUpperCase().includes("TABLE")) return true;
+      return Boolean((product as Product & { isSessionService?: boolean }).isSessionService);
+    });
+  }, [cartItems, activeProducts, allCategories, isSnookerIndustry]);
+
+  const pickTableForOrder = (tableId: string, label: string) => {
+    if (cartNeedsSnookerSession) {
+      setPendingTableId(tableId);
+      setPendingTableLabel(label);
+      setShowConfirmDialog(false);
+      setShowSnookerBooking(true);
+      return;
+    }
+    void finalizeCreateOrder(tableId);
+    setShowConfirmDialog(false);
+  };
+
+  const handlePlaceOrderNow = () => {
+    if (cartItems.length === 0) {
+      toast.error("Add items first");
+      return;
+    }
+    if (skipRestaurantTablePicker) {
+      if (!defaultPosTable?.id) {
+        toast.error('Add a table named "Counter" in Tables (or any table) for POS orders.');
+        return;
+      }
+      if (cartNeedsSnookerSession && ordersSettings.enableTableSession) {
+        setPendingTableId(defaultPosTable.id);
+        setPendingTableLabel(
+          defaultPosTable.tableNumber?.toLowerCase().includes("counter")
+            ? "Counter"
+            : `Table ${defaultPosTable.tableNumber}`,
+        );
+        setShowSnookerBooking(true);
+        return;
+      }
+      void finalizeCreateOrder(defaultPosTable.id);
+      return;
+    }
+    setShowConfirmDialog(true);
+  };
+
+  const handleSnookerBookingConfirm = (details: SnookerBookingDetails) => {
+    if (!pendingTableId) return;
+    const tableId = pendingTableId;
+    setShowSnookerBooking(false);
+    setPendingTableId(null);
+    setPendingTableLabel("");
+    void finalizeCreateOrder(tableId, details);
+  };
+
   const getProductDefaultVariant = (product: Product) =>
-    product.variants?.find((variant) => isUuid(variant.id)) ?? null;
+    product.variants?.find((variant) => isUuid(variant.id) &&
+      (!product.isStockEnabled || Number(variant.inStock ?? 0) > 0)) ?? null;
 
   const getProductVariantsForUi = (product: Product): ProductVariant[] => {
     const realVariants = (product.variants ?? []).filter((variant) => isUuid(variant.id));
@@ -325,6 +431,10 @@ function OrdersContent() {
     }
 
     const lineVariantId = isUuid(selectedVariant.id) ? selectedVariant.id : "";
+    if (product.isStockEnabled && Number(lineVariantId ? selectedVariant.inStock ?? 0 : product.inStock ?? 0) <= 0) {
+      toast.error(`${selectedVariant.name} is out of stock`);
+      return;
+    }
 
     setEditingItems((prev) => {
       const existing = prev.find(
@@ -469,6 +579,8 @@ function OrdersContent() {
   const handleAddToCart = (product: Product, variant: ProductVariant) => {
     setCartItems(prev => {
       const existing = prev.find(item => item.productId === product.id && item.variantId === variant.id);
+      const available = Number(variant.id ? variant.inStock ?? 0 : product.inStock ?? 0);
+      if (product.isStockEnabled && (existing?.quantity ?? 0) >= available) return prev;
       if (existing) {
         return prev.map(item => item.productId === product.id && item.variantId === variant.id
           ? { ...item, quantity: item.quantity + 1 } : item);
@@ -480,12 +592,32 @@ function OrdersContent() {
         variantName: variant.name,
         price: variant.price,
         quantity: 1,
-        image: productImageUrl(product.image)
+        image: product.image ?? null,
       }];
     });
   };
 
-  const finalizeCreateOrder = async (tableId?: string) => {
+  const resolveOrderItemImage = (productId: string, image?: string | null) => {
+    const product = activeProducts.find((p) => p.id === productId);
+    return resolveOrderItemImageUrl(productId, image, product?.image ?? null);
+  };
+
+  const handleRemoveOrder = async (orderId: string) => {
+    if (!window.confirm("Remove this active order?")) return;
+    const toastId = toast.loading("Removing order...");
+    try {
+      await deleteOrder(orderId);
+      toast.success("Order removed", { id: toastId });
+      setRemovedOrderIds((prev) => ({ ...prev, [orderId]: true }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to remove order", { id: toastId });
+    }
+  };
+
+  const finalizeCreateOrder = async (
+    tableId?: string,
+    session?: SnookerBookingDetails,
+  ) => {
     if (cartItems.length === 0) return toast.error("Add items first");
     if (!tableId) return toast.error("Select a table first");
 
@@ -520,10 +652,22 @@ function OrdersContent() {
         totalPrice: grandTotal,
         deliveryCharges: numericDelivery,
         packagingPrice: numericPackaging,
+        ...(session
+          ? {
+              gameType: session.gameType,
+              sessionMinutes: session.sessionMinutes,
+              ...(session.tableGuestName?.trim()
+                ? { tableGuestName: session.tableGuestName.trim() }
+                : {}),
+            }
+          : {}),
       };
       await createOrder(payload);
       toast.success("Order placed successfully", { id: toastId });
       setCartItems([]);
+      setPendingTableId(null);
+      setPendingTableLabel("");
+      setShowSnookerBooking(false);
       setView("list");
       refetch();
     } catch (err) {
@@ -537,21 +681,68 @@ function OrdersContent() {
 
   const refetch = () => fetchOrders(1);
 
-  const invoiceSubTotal = useMemo(
-    () => orderDetails?.Items.reduce((acc, item) => acc + Number(item.total || item.price || 0), 0) || 0,
-    [orderDetails],
-  );
+  const invoiceTotals = useMemo(() => {
+    if (!orderDetails) {
+      return { subtotal: 0, delivery: 0, packaging: 0, total: 0 };
+    }
+    return resolveInvoiceTotals({
+      Items: orderDetails.Items,
+      deliveryCharges: orderDetails.deliveryCharges,
+      packagingPrice: orderDetails.packagingPrice,
+      totalPrice: orderDetails.totalPrice,
+      gameType: orderDetails.gameType,
+      sessionMinutes: orderDetails.sessionMinutes,
+    });
+  }, [orderDetails]);
 
-  const invoiceDelivery = Number(orderDetails?.deliveryCharges || 0);
-  const invoicePackaging = Number(orderDetails?.packagingPrice || 0);
-  const invoiceNetAmount = Number(orderDetails?.totalPrice || 0);
+  const invoiceSubTotal = invoiceTotals.subtotal;
+  const invoiceDelivery = invoiceTotals.delivery;
+  const invoicePackaging = invoiceTotals.packaging;
+  const invoiceNetAmount = invoiceTotals.total;
+
+  const runCompleteOrder = async (
+    orderId: string,
+    paymentMethod: OrderPaymentMethodId,
+    credit?: OrderCreditDetails | null,
+    totalPrice?: number,
+    sessionTableCharge?: number,
+  ) => {
+    const toastId = toast.loading("Completing order...");
+    try {
+      await updateOrderStatus(orderId, {
+        status: "COMPLETED",
+        paymentMethod,
+        totalPrice:
+          totalPrice != null && Number.isFinite(totalPrice)
+            ? totalPrice
+            : undefined,
+        sessionTableCharge:
+          sessionTableCharge != null && Number.isFinite(sessionTableCharge)
+            ? sessionTableCharge
+            : undefined,
+        ...(paymentMethod === "credit" && credit ? { credit } : {}),
+      });
+      toast.success("Order completed", { id: toastId });
+      setCompleteTarget(null);
+      setShowOrderDetailsDialog(false);
+      setOrderDetails(null);
+      refetch();
+      return true;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to complete order", { id: toastId });
+      return false;
+    }
+  };
 
   const handleCompleteAndPrint = async () => {
     if (!orderDetails?.orderId) return;
 
     const toastId = toast.loading("Completing order...");
     try {
-      await updateOrderStatus(orderDetails.orderId, "COMPLETED");
+      await updateOrderStatus(orderDetails.orderId, {
+        status: "COMPLETED",
+        paymentMethod: "cash",
+      });
       toast.success(allowPrinter ? "Order completed" : "Order completed. Printing is not enabled for this business.", {
         id: toastId,
       });
@@ -577,11 +768,11 @@ function OrdersContent() {
         }
       }}
     >
-      <DialogContent className="max-w-2xl gap-0 overflow-hidden rounded-2xl border border-[#dbe4ef] bg-[#f8fbff] p-0 shadow-[0_24px_56px_rgba(15,23,42,0.18)] print:shadow-none">
+      <DialogContent className="flex max-h-[min(92vh,920px)] max-w-2xl flex-col gap-0 overflow-hidden rounded-2xl border border-[#dbe4ef] bg-[#f8fbff] p-0 shadow-[0_24px_56px_rgba(15,23,42,0.18)] print:max-h-none print:shadow-none">
         <DialogTitle className="sr-only">Order Invoice</DialogTitle>
         {orderDetails ? (
-          <div>
-            <div className="border-b border-[#dbe4ef] bg-white px-6 py-4 print:hidden">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="shrink-0 border-b border-[#dbe4ef] bg-white px-6 py-4 print:hidden">
               <button
                 type="button"
                 onClick={() => void handleCompleteAndPrint()}
@@ -598,12 +789,26 @@ function OrdersContent() {
               </button>
             </div>
 
-            <div className="p-6" id="order-invoice-print-area">
+            <div className="min-h-0 flex-1 overflow-y-auto p-6 print:overflow-visible" id="order-invoice-print-area">
               <InvoiceReceipt
                 orderNumber={orderDetails.orderNumber}
                 businessName={branding.businessName}
                 logoUrl={branding.logoUrl}
-                tableLabel={orderDetails.table || "Take Away"}
+                customerName={orderDetails.tableGuestName}
+                gameType={orderDetails.gameType}
+                sessionMinutes={orderDetails.sessionMinutes ?? null}
+                orderPlacedAt={orderDetails.createdAt}
+                sessionBookedEndAt={snookerBookedEndIso(
+                  orderDetails.createdAt,
+                  orderDetails.sessionMinutes,
+                  orderDetails.updatedAt,
+                )}
+                sessionEndedAt={orderDetails.updatedAt}
+                tableLabel={
+                  orderDetails.Items.map((item) => item.productName).join(", ") ||
+                  orderDetails.table ||
+                  "Take Away"
+                }
                 items={orderDetails.Items.map((item) => ({
                   id: item.id,
                   productName: item.productName,
@@ -615,7 +820,7 @@ function OrdersContent() {
                 subtotal={invoiceSubTotal}
                 deliveryCharges={invoiceDelivery}
                 packagingPrice={invoicePackaging}
-                total={invoiceNetAmount > 0 ? invoiceNetAmount : invoiceSubTotal + invoiceDelivery + invoicePackaging}
+                total={invoiceNetAmount}
                 status={orderDetails.status}
                 contactPhone={branding.contactPhone}
                 contactEmail={branding.contactEmail}
@@ -624,7 +829,7 @@ function OrdersContent() {
               />
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-[#dbe4ef] bg-white px-6 py-4 print:hidden">
+            <div className="flex shrink-0 justify-end gap-3 border-t border-[#dbe4ef] bg-white px-6 py-4 print:hidden">
               <button
                 type="button"
                 onClick={() => setShowOrderDetailsDialog(false)}
@@ -649,7 +854,7 @@ function OrdersContent() {
                     subtotal: invoiceSubTotal,
                     deliveryCharges: invoiceDelivery,
                     packagingPrice: invoicePackaging,
-                    total: invoiceNetAmount > 0 ? invoiceNetAmount : invoiceSubTotal + invoiceDelivery + invoicePackaging,
+                    total: invoiceNetAmount,
                     contactPhone: branding.contactPhone,
                     contactEmail: branding.contactEmail,
                     address: branding.address,
@@ -695,13 +900,12 @@ function OrdersContent() {
             <div className="relative bg-[#001840] px-6 pb-16 pt-6">
 
 
-              <div className="mx-auto h-24 w-24 overflow-hidden rounded-full border-4 border-white shadow-lg">
-                <Image
-                  src={productImageUrl(selectedEditingProduct.image)}
+              <div className="relative mx-auto h-24 w-24 overflow-hidden rounded-full border-4 border-white shadow-lg">
+                <ProductMediaImage
+                  src={selectedEditingProduct.image}
                   alt={selectedEditingProduct.name}
-                  width={96}
-                  height={96}
-                  className="h-full w-full object-cover"
+                  fill
+                  className="object-cover"
                 />
               </div>
             </div>
@@ -719,6 +923,7 @@ function OrdersContent() {
                   <button
                     key={variant.id}
                     type="button"
+                    disabled={selectedEditingProduct.isStockEnabled && Number(variant.inStock ?? 0) <= 0}
                     onClick={() => {
                       addProductToEditingOrder(selectedEditingProduct, variant);
                       closeVariantDialog();
@@ -729,7 +934,9 @@ function OrdersContent() {
                       <span className="grid h-11 w-11 place-items-center rounded-full bg-[#fff1f0] text-[#ef4444]">
                         <CheckCircle2 className="h-5 w-5" />
                       </span>
-                      <span className="text-lg font-black uppercase text-[#2b2b2b]">{variant.name}</span>
+                      <span className="text-lg font-black uppercase text-[#2b2b2b]">{variant.name}
+                        {selectedEditingProduct.isStockEnabled && <span className="block text-xs font-medium normal-case text-slate-500">{Number(variant.inStock ?? 0) > 0 ? `${variant.inStock} available` : "Out of stock"}</span>}
+                      </span>
                     </div>
                     <span className="text-lg font-black text-[#001840]">Rs {variant.price}</span>
                   </button>
@@ -791,6 +998,11 @@ function OrdersContent() {
         deliveryCharges: order.deliveryCharges,
         packagingPrice: order.packagingPrice,
         Items: order.Items,
+        tableGuestName: order.tableGuestName,
+        gameType: order.gameType,
+        sessionMinutes: order.sessionMinutes,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
       });
       toast.dismiss(toastId);
     } catch (err) {
@@ -851,6 +1063,11 @@ function OrdersContent() {
         deliveryCharges: completedOrder.deliveryCharges,
         packagingPrice: completedOrder.packagingPrice,
         Items: completedOrder.Items,
+        tableGuestName: completedOrder.tableGuestName,
+        gameType: completedOrder.gameType,
+        sessionMinutes: completedOrder.sessionMinutes,
+        createdAt: completedOrder.createdAt,
+        updatedAt: completedOrder.updatedAt,
       });
       setShowOrderDetailsDialog(true);
       collapseOrderEditor();
@@ -913,7 +1130,7 @@ function OrdersContent() {
                     >
                       <span className="relative h-6 w-6 shrink-0 overflow-hidden rounded-md bg-[#f8fafc]">
                         {category.image ? (
-                          <Image src={productImageUrl(category.image)} alt={category.CategoryName} fill className="object-cover" />
+                          <Image src={resolveCategoryImageUrl(category.image)} alt={category.CategoryName} fill unoptimized className="object-cover" />
                         ) : (
                           <span className="grid h-full w-full place-items-center text-[10px] font-bold text-[#001840]">
                             {category.CategoryName.slice(0, 1)}
@@ -961,7 +1178,7 @@ function OrdersContent() {
                           )}
                         >
                           <div className="relative h-36 w-full shrink-0 bg-[#f1f5f9]">
-                            <Image src={productImageUrl(product.image)} alt={product.name} fill className="object-cover" />
+                            <ProductMediaImage src={product.image} alt={product.name} fill className="object-cover" />
                             {productQty > 0 && (
                               <span className="absolute right-3 top-3 inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-[#001840] px-2 text-sm font-bold text-white shadow-md">
                                 {productQty}
@@ -983,6 +1200,7 @@ function OrdersContent() {
                                   cartItems.find(
                                     (i) => i.productId === product.id && i.variantId === v.id,
                                   )?.quantity || 0;
+                                const unavailable = product.isStockEnabled === true && qty >= Number(v.id ? v.inStock ?? 0 : product.inStock ?? 0);
 
                                 return (
                                   <div
@@ -997,11 +1215,13 @@ function OrdersContent() {
                                     <button
                                       type="button"
                                       onClick={() => handleAddToCart(product, v as ProductVariant)}
+                                      disabled={unavailable}
                                       className="min-w-0 flex-1 text-left"
                                     >
                                       <div className="flex items-center justify-between gap-2">
                                         <span className="truncate text-sm font-semibold uppercase tracking-wide text-[#0f172a]">
                                           {v.name}
+                                          {product.isStockEnabled && <span className="block text-[10px] font-medium normal-case text-slate-500">{unavailable ? "Out of stock" : `${Math.max(0, Number(v.id ? v.inStock ?? 0 : product.inStock ?? 0) - qty)} available`}</span>}
                                         </span>
                                         <span className="shrink-0 rounded-lg bg-white px-2 py-1 text-xs font-bold text-[#0050F8] shadow-sm">
                                           Rs {v.price}
@@ -1023,6 +1243,7 @@ function OrdersContent() {
                                         <button
                                           type="button"
                                           onClick={() => handleAddToCart(product, v as ProductVariant)}
+                                          disabled={unavailable}
                                           className="grid h-8 w-8 place-items-center rounded-lg bg-[#001840] text-white"
                                           aria-label={`Increase ${v.name}`}
                                         >
@@ -1033,6 +1254,7 @@ function OrdersContent() {
                                       <button
                                         type="button"
                                         onClick={() => handleAddToCart(product, v as ProductVariant)}
+                                        disabled={unavailable}
                                         className="grid h-8 w-8 place-items-center rounded-lg bg-[#001840] text-white"
                                         aria-label={`Add ${v.name}`}
                                       >
@@ -1132,8 +1354,8 @@ function OrdersContent() {
                         >
                           <div className="mb-3 flex items-start gap-3">
                             <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-[#e2e8f0] bg-[#f8fafc]">
-                              <Image
-                                src={productImageUrl(product.image)}
+                              <ProductMediaImage
+                                src={product.image}
                                 alt={product.name}
                                 fill
                                 className="object-cover"
@@ -1319,7 +1541,7 @@ function OrdersContent() {
 
                     <button
                       type="button"
-                      onClick={() => setShowConfirmDialog(true)}
+                      onClick={handlePlaceOrderNow}
                       disabled={actionLoading}
                       className="dn-btn dn-btn-primary w-full !h-14 !rounded-2xl !text-lg"
                     >
@@ -1420,10 +1642,7 @@ function OrdersContent() {
                   {takeAwayTable ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        void finalizeCreateOrder(takeAwayTable.id);
-                        setShowConfirmDialog(false);
-                      }}
+                      onClick={() => pickTableForOrder(takeAwayTable.id, "Take Away")}
                       className="w-full rounded-[16px] bg-[#fd6000] px-4 py-5 md:px-6 md:py-6 text-left text-[#ffffff] transition hover:-translate-y-0.5"
                     >
                       <div className="flex items-center justify-between gap-4">
@@ -1459,10 +1678,9 @@ function OrdersContent() {
                     {diningTables.map((table) => (
                       <button
                         key={table.id}
-                        onClick={() => {
-                          void finalizeCreateOrder(table.id);
-                          setShowConfirmDialog(false);
-                        }}
+                        onClick={() =>
+                          pickTableForOrder(table.id, `Table ${table.tableNumber}`)
+                        }
                         className="group rounded-[18px] border-2 border-[#c7d7f5] bg-[#EEF3FF] p-3 text-left transition hover:-translate-y-0.5 hover:border-[#0050F8]"
                       >
                         <div className="flex min-h-[210px] flex-col items-center justify-between rounded-[14px]   px-3 py-4">
@@ -1479,6 +1697,17 @@ function OrdersContent() {
               </div>
             </DialogContent>
           </Dialog>
+
+          <SnookerTableBookingDialog
+            open={showSnookerBooking}
+            tableLabel={pendingTableLabel}
+            onClose={() => {
+              setShowSnookerBooking(false);
+              setPendingTableId(null);
+              setPendingTableLabel("");
+            }}
+            onConfirm={handleSnookerBookingConfirm}
+          />
 
           {orderDetailsDialog}
 
@@ -1497,7 +1726,7 @@ function OrdersContent() {
   return (
     <AdminShell activeTab="orders">
       <main className="w-full space-y-8 bg-[#f8fafc] min-h-[calc(100vh-80px)]">
-        <SelfOrderRequestsPanel onApproved={refetch} />
+        <SelfOrderRequestsPanel enabled={showQrSelfOrderPanel} onApproved={refetch} />
 
         {displayedOrders.length > 0 && (
           <button
@@ -1528,87 +1757,55 @@ function OrdersContent() {
         ) : (
           <div className="space-y-8 pb-20  mx-20">
             {displayedOrders.map((order) => {
-              const isTakeAway = String(order.table || "").toLowerCase().includes("take");
-              const cardBg = isTakeAway ? "bg-[#f8f2e8]" : "bg-[#EEF3FF]";
-              const cardBorder = isTakeAway ? "border-[#ffb347]" : "border-[#c7d7f5]";
-              const priceChipBg = "bg-[#EEF3FF]";
-              const priceChipText = "text-[#001840]";
+              const hasSession =
+                Boolean(
+                  ordersSettings.enableTableSession &&
+                    order.gameType?.trim() &&
+                    order.sessionMinutes != null,
+                );
 
               return (
-                <div key={order.id} className="relative rounded-[20px]  transition-all duration-500">
-                  <div className={cn("absolute left-0 top-0 bottom-0 w-3 rounded-l-[60px]", isTakeAway ? "bg-[#ff9900]" : "bg-[#9e9e9e]")} />
+                <div key={order.id} className="space-y-3 transition-all duration-500">
+                  <ActiveOrderCard
+                    order={order}
+                    settings={ordersSettings}
+                    actionLoading={actionLoading}
+                    formatElapsed={formatElapsed}
+                    onRemove={(id) => void handleRemoveOrder(id)}
+                    onComplete={setCompleteTarget}
+                    onViewDetails={
+                      ordersSettings.allowViewDetails
+                        ? (id) => void openOrderDetails(id)
+                        : undefined
+                    }
+                    onSessionPatch={async (orderId, payload) => {
+                      try {
+                        await updateSessionTimer(orderId, payload);
+                        toast.success("Session updated");
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : "Failed to update session");
+                      }
+                    }}
+                  />
 
-                  <div className={cn("p-5 sm:p-6 rounded-[12px] border-2 shadow-md", cardBg, cardBorder)}>
-                    <div className="flex items-start justify-between gap-4 mb-4 sm:mb-6">
-                      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                        <h2 className="text-[#001840] font-black text-lg sm:text-2xl tracking-tight">{order.orderNumber}</h2>
-                        <span className={cn("px-3 py-1 rounded-xl text-2xl font-black bg-[#EEF3FF] border shadow-lg", priceChipText, "border-[#c7d7f5]")}>Rs. {Number(order.totalPrice)}</span>
-                        <h3 className="text-[#0050F8] font-black text-5xl sm:text-4xl tracking-tight">{order.table || "Take Away"}</h3>
-                      </div>
-                      {ordersSettings.allowViewDetails ? <button type="button" onClick={() => void openOrderDetails(order.id)} className="bg-[#EEF3FF] p-2.5 rounded-xl text-[#0050F8] shadow-sm hover:bg-[#e8effe] transition" aria-label="Open order details"><Eye className="h-6 w-6" /></button> : null}
+                  {!hasSession && ordersSettings.allowEdit ? (
+                    <div className="flex justify-end px-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (expandedOrderId === order.id) {
+                            collapseOrderEditor();
+                            return;
+                          }
+                          void openEditOrder(order.id);
+                        }}
+                        className="flex items-center gap-2 rounded-2xl px-4 py-2 text-lg font-semibold text-[#0050F8] transition hover:bg-white/60"
+                      >
+                        {expandedOrderId === order.id ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                        {expandedOrderId === order.id ? "Order Details" : "Edit Order"}
+                      </button>
                     </div>
-
-                    <div className="flex items-center gap-6 text-gray-600 text-lg font-bold mb-5 sm:mb-6">
-                      <span className="flex items-center gap-2"><Store className="h-5 w-5 text-gray-400" /> {order.table || "test"}</span>
-                      <span className="flex text-[#9e9e9e] items-center gap-2"><Clock3 className="h-5 w-5 text-gray-400" /> {formatElapsed(order.createdAt)}</span>
-                    </div>
-
-                    {!expandedOrderId && (
-                      <div className="flex flex-wrap gap-4 mb-5 sm:mb-6">
-                        {order.Items.slice(0, 3).map((item) => (
-                          <div key={item.id} className="bg-white rounded-2xl border-2 border-[#c7d7f5] p-3.5 flex items-center gap-4 pr-6 relative shadow-sm transition hover:scale-[1.02] min-w-[270px]">
-                            <div className="relative h-18 w-18 rounded-[18px] overflow-hidden shadow-md border-2 border-white shrink-0">
-                              <Image src={productImageUrl(item.image)} alt={item.productName} fill className="object-cover" />
-                            </div>
-                            <div className="min-w-0">
-                              <h4 className="font-black text-base text-[#111827] truncate">{item.productName}</h4>
-                              <p className="text-[#001840] font-black text-base mt-2">Rs. {item.total}</p>
-                            </div>
-                            <span className="absolute top-3 right-3 bg-[#eef3ff] text-[#0050F8] px-3 py-1 rounded-full text-xs font-black shadow-sm">x{item.quantity}</span>
-                          </div>
-                        ))}
-                        {order.Items.length > 3 && (
-                          <div className="bg-white/55 backdrop-blur rounded-full px-6 py-3 flex items-center text-sm font-black text-gray-600 border border-white/70">+{order.Items.length - 3} more</div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex items-end justify-between gap-4 border-t border-white/40 pt-5 sm:pt-6">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600 mb-1">Total Amount</p>
-                        <p className="text-3xl sm:text-4xl font-black text-[#001840]">Rs {order.totalPrice}</p>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        {ordersSettings.allowEdit ? <button
-                          onClick={() => {
-                            if (expandedOrderId === order.id) {
-                              collapseOrderEditor();
-                              return;
-                            }
-                            void openEditOrder(order.id);
-                          }}
-                          className="flex items-center gap-2 text-[#0050F8] font-semibold text-xl px-4 py-2 transition hover:bg-white/35 rounded-2xl"
-                        >
-                          {expandedOrderId === order.id ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                          {expandedOrderId === order.id ? "Order Details" : "Edit Order"}
-                        </button> : null}
-                        {ordersSettings.allowComplete ? <button
-                          onClick={() => updateOrderStatus(order.id, "COMPLETED")}
-                          className="dn-btn dn-btn-secondary !rounded-full !px-8 !py-4 !text-lg"
-                        >
-                          <CheckCircle2 className="h-6 w-6" /> Complete
-                        </button> : null}
-                        {/* {!expandedOrderId && (
-                          <button
-                            onClick={() => updateOrderStatus(order.id, "COMPLETED")}
-                            className="bg-[#0a9954] text-[#ffffff] px-8 py-4 rounded-full font-black text-lg flex items-center gap-3 shadow-lg hover:bg-[#0a874a] transition"
-                          >
-                            <CheckCircle2 className="h-6 w-6" /> Complete
-                          </button>
-                        )} */}
-                      </div>
-                    </div>
+                  ) : null}
 
                     {expandedOrderId === order.id && editingOrderId === order.id && editingOrder && (
                       <div className="mt-10 pt-8 border-t border-white/40 animate-in slide-in-from-top-4 duration-500">
@@ -1643,7 +1840,12 @@ function OrdersContent() {
                                 editingItems.map((item) => (
                                   <div key={`${item.productId}-${item.variantId}`} className="bg-white rounded-[16px] p-3.5 flex items-center gap-4 border border-[#f0f0f0] shadow-none">
                                     <div className="relative h-20 w-20 rounded-[12px] overflow-hidden border border-[#f0f0f0] bg-[#f3f3f3] shrink-0">
-                                      <Image src={productImageUrl(item.image)} alt={item.productName} fill className="object-cover" />
+                                      <ProductMediaImage
+                                src={resolveOrderItemImage(item.productId, item.image)}
+                                alt={item.productName}
+                                fill
+                                className="object-cover"
+                              />
                                       <span className="absolute top-1 right-1 bg-[#001840] text-[#ffffff] text-xs font-black w-6 h-6 flex items-center justify-center rounded-full">{item.quantity}</span>
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -1690,7 +1892,7 @@ function OrdersContent() {
                                       <div className="flex items-center gap-2">
                                         <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-[#f8fafc] border border-[#eef2f7]">
                                           {category.image ? (
-                                            <Image src={productImageUrl(category.image)} alt={category.CategoryName} fill className="object-cover" />
+                                            <Image src={resolveCategoryImageUrl(category.image)} alt={category.CategoryName} fill unoptimized className="object-cover" />
                                           ) : (
                                             <div className="flex h-full w-full items-center justify-center bg-[#fde68a] text-[#92400e] text-sm font-black">
                                               {category.CategoryName.slice(0, 1).toUpperCase()}
@@ -1739,7 +1941,7 @@ function OrdersContent() {
                                         )}
                                       >
                                         <div className="relative aspect-[4/3] w-full overflow-hidden">
-                                          <Image src={productImageUrl(product.image)} alt={product.name} fill className="object-cover transition duration-700 group-hover:scale-110" />
+                                          <ProductMediaImage src={product.image} alt={product.name} fill className="object-cover transition duration-700 group-hover:scale-110" />
                                         </div>
                                         <div className="p-6">
                                           <div className="flex items-start justify-between gap-2 mb-4">
@@ -1766,7 +1968,6 @@ function OrdersContent() {
                         </div>
                       </div>
                     )}
-                  </div>
                 </div>
               );
             })}
@@ -1783,6 +1984,41 @@ function OrdersContent() {
       {orderDetailsDialog}
 
       {variantPickerDialog}
+
+      <SnookerTableBookingDialog
+        open={showSnookerBooking}
+        tableLabel={pendingTableLabel}
+        onClose={() => {
+          setShowSnookerBooking(false);
+          setPendingTableId(null);
+          setPendingTableLabel("");
+        }}
+        onConfirm={handleSnookerBookingConfirm}
+      />
+
+      <CompleteOrderDialog
+        open={Boolean(completeTarget)}
+        order={completeTarget}
+        allowCredit={ordersSettings.allowCreditSale}
+        token={token}
+        businessId={activeBusinessId}
+        busy={actionLoading}
+        onClose={() => setCompleteTarget(null)}
+        onConfirm={async ({ paymentMethod, credit, totalPrice, sessionTableCharge }) => {
+          if (!completeTarget) return;
+          const ok = await runCompleteOrder(
+            completeTarget.id,
+            paymentMethod,
+            credit,
+            totalPrice,
+            sessionTableCharge,
+          );
+          if (ok && allowPrinter && typeof window !== "undefined") {
+            await openOrderDetails(completeTarget.id);
+            window.print();
+          }
+        }}
+      />
     </AdminShell>
   );
 }

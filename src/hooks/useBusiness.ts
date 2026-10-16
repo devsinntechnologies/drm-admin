@@ -183,11 +183,22 @@ function normalizeBusinessRecord(response: unknown): BusinessRecord {
   }
 
   const root = response as Record<string, unknown>;
-  if (root.data && typeof root.data === "object") {
-    return root.data as BusinessRecord;
+  const nested = root.data;
+  if (nested && typeof nested === "object") {
+    const record = nested as Record<string, unknown>;
+    if (typeof record.id === "string") {
+      return record as BusinessRecord;
+    }
+    if (record.data && typeof record.data === "object") {
+      return record.data as BusinessRecord;
+    }
   }
 
-  return response as BusinessRecord;
+  if (typeof root.id === "string") {
+    return root as BusinessRecord;
+  }
+
+  throw new Error("Invalid business response");
 }
 
 export const businessApi = createApi({

@@ -26,6 +26,28 @@ function ThemedWorkspace({ children }: { children: React.ReactNode }) {
     return <Loading fullScreen label={`Loading ${businessName} workspace…`} />;
   }
 
+  if (businessId && isLoading && timedOut) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f8fafc] px-4">
+        <div className="max-w-md rounded-2xl border border-[#fde68a] bg-white p-8 text-center shadow-sm">
+          <p className="text-lg font-semibold text-[#0f172a]">API not responding</p>
+          <p className="mt-2 text-sm text-[#64748b]">
+            Start the Nest backend on port <strong>6000</strong> (<code className="text-xs">npm run start:dev</code> in{" "}
+            <code className="text-xs">vendor_backend</code>), then refresh. The web portal proxies API calls via{" "}
+            <code className="text-xs">/backend</code>.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="dn-btn dn-btn-primary mt-5 rounded-xl px-4 py-2.5 text-sm"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (businessId && isError) {
     const loginHref = `/login?returnTo=${encodeURIComponent(`/dashboard/businessAdmin?businessId=${businessId}`)}`;
     return (

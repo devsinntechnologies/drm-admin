@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Activity, Flame, TriangleAlert, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -15,9 +16,12 @@ import type { DashboardCardId } from "@/templates/types";
 import { usePharmacyMarket } from "@/hooks/usePharmacyMarket";
 import { usePharmacyQuery } from "@/hooks/usePharmacyQuery";
 import { useProducts } from "@/hooks/useProducts";
+import { useOrders } from "@/hooks/useOrders";
+import { isTerminalOrderStatus } from "@/lib/merge-order-session";
 import { getDashboardGridClassName, resolveDashboardCards } from "@/lib/resolve-dashboard-cards";
 import { summarizeCatalogStock } from "@/lib/retail-stock";
 import { cn } from "@/lib/utils";
+import { STAFF_REALTIME_EVENTS } from "@/lib/staff-realtime";
 
 type TemplateDashboardProps = {
   cards: DashboardCardId[];
@@ -111,7 +115,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
   const isPharmacy = industryId === "pharmacy";
   const isRetail = industryId === "retail-store";
   const expensesEnabled = (templateConfig?.enabledModules ?? []).includes("expenses");
-  const creditsEnabled = (templateConfig?.enabledModules ?? []).includes("credits");
+  const creditsEnabled = (templateConfig?.enabledModules ?? []).some((id) => id === "credits" || id === "credit-udhar");
   const queryRefreshKey = `${refreshKey}:${pathname}`;
   const { products, loading: productsLoading, error: productsError } = useProducts({
     limit: 500,
@@ -156,6 +160,7 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
       .reduce((sum, row) => sum + (Number(row.totalAmount) || 0), 0);
     return { pending, receivedToday };
   }, [retailPurchases]);
+  const { orders, loading: ordersLoading, error: ordersError } = useOrders({ range: "day" });
 
   const displayCards = resolveDashboardCards({
     configuredCards: cards,
@@ -166,9 +171,24 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
     creditsEnabled &&
     displayCards.some((id) => id === "pending-credits" || id === "overdue-credit");
 
-  const { data: outstandingCredits, loading: creditsLoading } = usePharmacyQuery<
+  const { data: outstandingCredits, loading: creditsLoading, reload: reloadOutstandingCredits } = usePharmacyQuery<
     OutstandingCreditParty[]
   >(showPendingCreditsPanel ? "/credits/outstanding" : null, queryRefreshKey);
+
+  useEffect(() => {
+    if (!showPendingCreditsPanel) return;
+    const refreshCredits = () => {
+      if (document.visibilityState !== "hidden") void reloadOutstandingCredits();
+    };
+    window.addEventListener(STAFF_REALTIME_EVENTS.CREDITS_CHANGED, refreshCredits);
+    window.addEventListener("focus", refreshCredits);
+    const interval = window.setInterval(refreshCredits, 30000);
+    return () => {
+      window.removeEventListener(STAFF_REALTIME_EVENTS.CREDITS_CHANGED, refreshCredits);
+      window.removeEventListener("focus", refreshCredits);
+      window.clearInterval(interval);
+    };
+  }, [showPendingCreditsPanel, reloadOutstandingCredits]);
 
   const liveLoading = isPharmacy
     ? pharmacyLoading
@@ -180,6 +200,12 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
       (showPendingCreditsPanel && creditsLoading);
 
   const formatValue = (id: DashboardCardId) => {
+    if (id === "active-orders" || id === "orders-in-progress" || id === "customer-orders") {
+      if (ordersLoading) return "…";
+      if (ordersError) return "Unavailable";
+      return String(orders.filter((order) => !isTerminalOrderStatus(order.status)).length);
+    }
+
     if (liveLoading) {
       return "…";
     }
@@ -233,10 +259,6 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
         return String(pendingPurchases);
       case "purchase-value":
         return money(isRetail ? purchaseSummary.receivedToday : 0);
-      case "active-orders":
-      case "orders-in-progress":
-      case "customer-orders":
-        return String(invoiceLive?.orders?.activeOrders ?? 0);
       case "top-products":
       case "fast-moving-parts":
       case "best-selling-item":
@@ -372,7 +394,12 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
               <Loading size="sm" />
             ) : lowStockItems.length ? (
               <div className="space-y-2">
-                {lowStockItems.map((item) => (
+                {lowStockItems.map((item) => {
+                  const isOut =
+                    "status" in item && item.status === "out"
+                      ? true
+                      : Number(item.currentStock ?? item.inStock ?? 0) <= 0;
+                  return (
                   <div
                     key={item.id ?? `${item.productId}-${item.productName ?? "item"}`}
                     className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3"
@@ -380,11 +407,17 @@ export function TemplateDashboard({ cards, className }: TemplateDashboardProps) 
                     <p className="text-sm font-semibold text-[var(--text-primary)]">
                       {item.productName || "Stock alert"}
                     </p>
-                    <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-600 dark:text-amber-300">
-                      {item.currentStock ?? ("inStock" in item ? item.inStock : 0) ?? 0} left
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                        isOut
+                          ? "bg-red-500/15 text-red-600 dark:text-red-300"
+                          : "bg-amber-500/15 text-amber-600 dark:text-amber-300"
+                      }`}
+                    >
+                      {isOut ? "Out of stock" : "Low"} · {item.currentStock ?? item.inStock ?? 0} left
                     </span>
                   </div>
-                ))}
+                );})}
               </div>
             ) : (
               <p className="py-6 text-center text-sm text-[var(--text-muted)]">All stocked items are above threshold</p>

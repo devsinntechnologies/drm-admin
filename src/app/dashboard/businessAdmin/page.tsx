@@ -29,6 +29,7 @@ import { useOrders } from "@/hooks/useOrders";
 import { useProducts } from "@/hooks/useProducts";
 import { useInvoices } from "@/hooks/useInvoices";
 import { BASE_URL } from "@/lib/constant";
+import { isTerminalOrderStatus } from "@/lib/merge-order-session";
 
 function formatElapsed(isoDate: string) {
   const createdAt = new Date(isoDate).getTime();
@@ -102,11 +103,9 @@ function DashboardLegacy() {
   const { invoices } = useInvoices({ page: 1, limit: 100 });
 
   const dashboardMetrics = useMemo(() => {
-    const activeOrders = orders.filter(
-      (o) => !["completed", "delivered"].includes(o.status?.toLowerCase() || ""),
-    );
+    const activeOrders = orders.filter((o) => !isTerminalOrderStatus(o.status));
     const completedOrders = orders.filter(
-      (o) => o.status?.toLowerCase() === "completed" || o.status?.toLowerCase() === "delivered",
+      (o) => ["completed", "complete", "delivered"].includes(o.status?.toLowerCase() || ""),
     );
     const totalOrdersCount = orders.length;
     const completionRate = totalOrdersCount > 0 ? Math.round((completedOrders.length / totalOrdersCount) * 100) : 0;

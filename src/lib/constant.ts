@@ -18,7 +18,7 @@ export const BASE_URL = (() => {
   return `http://127.0.0.1:3000${path}`;
 })();
 
-/** Socket.IO needs a direct Nest URL (Next rewrites don't proxy WS well). */
+/** Direct socket target for remote APIs; local traffic uses the portal proxy. */
 export const SOCKET_URL = (
   process.env.NEXT_PUBLIC_SOCKET_URL ||
   (BASE_URL.includes("/backend") ? "http://127.0.0.1:6000" : BASE_URL)

@@ -41,6 +41,12 @@ const nextConfig: NextConfig = {
     // Browser calls /backend/* on the admin origin; Next proxies to Nest.
     return [
       {
+        // Preserve Engine.IO's required trailing slash upstream. The browser
+        // uses this same-origin route instead of the blocked local port 6000.
+        source: "/backend/socket.io",
+        destination: `${upstreamApiUrl}/socket.io/`,
+      },
+      {
         source: "/backend/:path*",
         destination: `${upstreamApiUrl}/:path*`,
       },

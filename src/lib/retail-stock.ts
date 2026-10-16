@@ -126,6 +126,7 @@ export type CatalogAttentionItem = {
   productName: string;
   currentStock: number;
   inStock: number;
+  status: "low" | "out";
 };
 
 export type CatalogStockSummary = {
@@ -197,6 +198,7 @@ export function summarizeCatalogStock(products: Product[]): CatalogStockSummary 
       productName: row.productName,
       currentStock: row.onHand,
       inStock: row.onHand,
+      status: row.status === "out" ? ("out" as const) : ("low" as const),
     }));
 
   return {

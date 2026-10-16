@@ -1,0 +1,42 @@
+import { describe, expect, it } from "vitest";
+import { resolveInvoiceTotals } from "./invoice-totals";
+
+describe("resolveInvoiceTotals", () => {
+  it("uses line items when stored total is session-only", () => {
+    const totals = resolveInvoiceTotals({
+      totalPrice: 523,
+      subtotal: 858,
+      Items: [
+        { productname: "TABLE NO 2", quantity: 1, price: 523, total: 523 },
+        { productname: "velo", quantity: 1, price: 280, total: 280 },
+        { productname: "bubbles", quantity: 1, price: 5, total: 5 },
+        { productname: "sooper", quantity: 1, price: 50, total: 50 },
+      ],
+    });
+    expect(totals.subtotal).toBe(858);
+    expect(totals.total).toBe(858);
+  });
+
+  it("trusts checkout total when table line is inflated vs header", () => {
+    const totals = resolveInvoiceTotals({
+      totalPrice: 1700,
+      gameType: "Single",
+      sessionMinutes: 15,
+      Items: [
+        { productname: "TABLE NO 6", quantity: 1, price: 15000, total: 15000, isSessionService: true },
+        { productname: "velo", quantity: 1, price: 250, total: 250 },
+        { productname: "sooper", quantity: 1, price: 80, total: 80 },
+      ],
+    });
+    expect(totals.total).toBe(1700);
+  });
+
+  it("falls back to API subtotal when items are missing", () => {
+    const totals = resolveInvoiceTotals({
+      totalPrice: 523,
+      subtotal: 858,
+      Items: [],
+    });
+    expect(totals.total).toBe(858);
+  });
+});

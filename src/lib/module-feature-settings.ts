@@ -2,6 +2,8 @@ export type ProductsModuleSettings = {
   allowCreate: boolean;
   allowEdit: boolean;
   allowBarcodeOnCreate: boolean;
+  /** Ingredients screen shortcut on Products header (web + mobile) */
+  allowManageIngredients: boolean;
   viewMode: "grid" | "list";
 };
 
@@ -75,6 +77,7 @@ export const DEFAULT_PRODUCTS_SETTINGS: ProductsModuleSettings = {
   allowCreate: true,
   allowEdit: true,
   allowBarcodeOnCreate: false,
+  allowManageIngredients: true,
   viewMode: "grid",
 };
 
@@ -178,6 +181,7 @@ export function parseProductsSettings(
     allowCreate: raw.allowCreate !== false,
     allowEdit: raw.allowEdit !== false,
     allowBarcodeOnCreate: raw.allowBarcodeOnCreate === true,
+    allowManageIngredients: raw.allowManageIngredients !== false,
     viewMode: raw.viewMode === "list" ? "list" : "grid",
   };
 }
@@ -287,6 +291,7 @@ export function serializeProductsSettings(settings: ProductsModuleSettings): Rec
     allowCreate: settings.allowCreate,
     allowEdit: settings.allowEdit,
     allowBarcodeOnCreate: settings.allowBarcodeOnCreate,
+    allowManageIngredients: settings.allowManageIngredients,
     viewMode: settings.viewMode,
   };
 }

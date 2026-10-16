@@ -4,7 +4,8 @@ import { useEffect, type ReactNode } from "react";
 import { io, type Socket } from "socket.io-client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { SOCKET_URL } from "@/lib/constant";
+import { BASE_URL, SOCKET_URL } from "@/lib/constant";
+import { resolveStaffSocketTarget } from "@/lib/staff-socket-target";
 import { BUSINESS_INACTIVE_MESSAGE } from "@/lib/business-session";
 import { logout } from "@/lib/features/auth/authSlice";
 import { useAppDispatch } from "@/lib/hooks";
@@ -21,7 +22,8 @@ type NotificationPayload = {
 
 function namespaceForRole(role: string | null) {
   const normalized = (role ?? "").toLowerCase();
-  if (!normalized || normalized === "super_admin") return null;
+  if (!normalized) return null;
+  if (normalized === "super_admin") return "/business_admin";
   if (normalized === "waiter") return "/waiter";
   if (normalized === "kitchen" || normalized === "kitchen_staff") return "/kitchen";
   return "/business_admin";
@@ -53,9 +55,10 @@ export default function StaffRealtimeProvider({
         : null);
     if (!namespace || !authToken) return;
 
-    const socket: Socket = io(`${SOCKET_URL}${namespace}`, {
+    const target = resolveStaffSocketTarget(BASE_URL, SOCKET_URL, window.location.origin, namespace);
+    const socket: Socket = io(target.url, {
+      ...target.options,
       auth: { token: authToken },
-      transports: ["websocket", "polling"],
       reconnection: true,
     });
 
@@ -78,6 +81,7 @@ export default function StaffRealtimeProvider({
         window.dispatchEvent(new CustomEvent("invoices:refetch", { detail: payload }));
       }
     };
+    const onProductsChanged = () => window.dispatchEvent(new CustomEvent('products:refetch'));
     const onPrintersUpdated = (payload?: unknown) => {
       emitStaffRealtime(STAFF_REALTIME_EVENTS.PRINTERS_CHANGED, payload);
       if (typeof window !== "undefined") {
@@ -97,6 +101,23 @@ export default function StaffRealtimeProvider({
       redirectToLogin();
     };
 
+    const onOrderRealtime = (payload: unknown) => {
+      emitStaffRealtime(STAFF_REALTIME_EVENTS.ORDERS_PATCH, payload);
+    };
+
+    const onCreditsChanged = (payload?: unknown) => {
+      emitStaffRealtime(STAFF_REALTIME_EVENTS.CREDITS_CHANGED, payload);
+    };
+    const onConnected = () => {
+      onCreditsChanged();
+      onProductsChanged();
+      emitStaffRealtime(STAFF_REALTIME_EVENTS.ORDERS_CHANGED);
+      emitStaffRealtime(STAFF_REALTIME_EVENTS.INVOICES_CHANGED);
+    };
+    socket.on("credits:updated", onCreditsChanged);
+    socket.on("connect", onConnected);
+    socket.on("products:updated", onProductsChanged);
+    window.addEventListener("online", onConnected);
     socket.on("self_order:requested", onRequested);
     socket.on("self_order:approved", onApproved);
     socket.on("self_order:rejected", onRejected);
@@ -108,8 +129,17 @@ export default function StaffRealtimeProvider({
     socket.on("print_jobs:updated", onPrintJobsUpdated);
     socket.on("business:deactivated", onBusinessDeactivated);
     socket.on("business:product_disabled", onBusinessDeactivated);
+    socket.on("order:updated", onOrderRealtime);
+    socket.on("order_updated", onOrderRealtime);
+    socket.on("order:completed", onOrderRealtime);
+    socket.on("order_completed", onOrderRealtime);
+    socket.on("new_order", onOrderRealtime);
 
     return () => {
+      socket.off("credits:updated", onCreditsChanged);
+      socket.off("connect", onConnected);
+      socket.off("products:updated", onProductsChanged);
+      window.removeEventListener("online", onConnected);
       socket.off("self_order:requested", onRequested);
       socket.off("self_order:approved", onApproved);
       socket.off("self_order:rejected", onRejected);
@@ -121,6 +151,11 @@ export default function StaffRealtimeProvider({
       socket.off("print_jobs:updated", onPrintJobsUpdated);
       socket.off("business:deactivated", onBusinessDeactivated);
       socket.off("business:product_disabled", onBusinessDeactivated);
+      socket.off("order:updated", onOrderRealtime);
+      socket.off("order_updated", onOrderRealtime);
+      socket.off("order:completed", onOrderRealtime);
+      socket.off("order_completed", onOrderRealtime);
+      socket.off("new_order", onOrderRealtime);
       socket.disconnect();
     };
   }, [dispatch, role, token]);
