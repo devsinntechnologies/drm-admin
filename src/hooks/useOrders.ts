@@ -55,6 +55,7 @@ function orderFromSocketPayload(raw: unknown): OrderRecord | null {
     sessionPausedAt: (data.sessionPausedAt as string | null) ?? null,
     sessionPausedMs: (data.sessionPausedMs as number | null) ?? null,
     gameType: (data.gameType as string | null) ?? null,
+    sessionPricing: data.sessionPricing as import("@/lib/session-billing.util").SnookerGameTypeOption | null,
     orderType: String(data.orderType ?? ""),
     createdBy: String(data.createdBy ?? ""),
     creatorRole: String(data.creatorRole ?? ""),
@@ -146,6 +147,7 @@ export interface OrderRecord {
   sessionPausedAt?: string | null;
   sessionPausedMs?: number | null;
   gameType?: string | null;
+  sessionPricing?: import("@/lib/session-billing.util").SnookerGameTypeOption | null;
   orderType: string;
   createdBy: string;
   creatorRole: string;

@@ -27,6 +27,7 @@ type Props = {
     id: string;
     tableGuestName?: string | null;
     gameType?: string | null;
+    sessionPricing?: import("@/lib/session-billing.util").SnookerGameTypeOption | null;
     totalPrice?: string | number;
     createdAt: string;
   };
@@ -114,7 +115,7 @@ export function OrderSessionPanel({
   const playedSec = sessionPlayedSeconds(order);
   const booked = sessionBookedMinutes(order);
   const game = (order.gameType ?? "").trim();
-  const opt = snookerOptionFor(game);
+  const opt = order.sessionPricing ?? snookerOptionFor(game);
   const otBillMins = packageOvertimeMinutes(order);
   const progress = openEnded ? 1 : sessionProgress(order, Math.max(0, remainingSec));
 

@@ -6,6 +6,7 @@ export type OrderSessionFields = {
   sessionPausedAt?: string | null;
   sessionPausedMs?: number | null;
   gameType?: string | null;
+  sessionPricing?: import("./session-billing.util").SnookerGameTypeOption | null;
 };
 
 function updatedAtMs(value?: string | null): number {
@@ -46,6 +47,7 @@ export function mergeOrderSessionFields<T extends OrderSessionFields>(
     sessionPausedAt: timer.sessionPausedAt ?? null,
     sessionPausedMs: timer.sessionPausedMs ?? existing.sessionPausedMs ?? 0,
     gameType: timer.gameType ?? existing.gameType ?? incoming.gameType,
+    sessionPricing: timer.sessionPricing ?? existing.sessionPricing ?? incoming.sessionPricing,
     updatedAt:
       updatedAtMs(incoming.updatedAt) >= updatedAtMs(existing.updatedAt)
         ? incoming.updatedAt ?? existing.updatedAt

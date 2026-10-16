@@ -149,7 +149,7 @@ export function CompleteOrderDialog({
     const overtime = !openEnded && remaining < 0;
     const tableCharge = liveSessionCharge(order);
     const otMins = packageOvertimeMinutes(order);
-    const opt = snookerOptionFor(game);
+    const opt = order.sessionPricing ?? snookerOptionFor(game);
     return {
       playedLabel: formatSessionClock(played),
       overtimeMin: overtime ? Math.ceil(Math.abs(remaining) / 60) : 0,

@@ -6,6 +6,7 @@ export type SnookerGameTypeOption = {
   includedMinutes: number;
   perMinuteRate: number;
   isPerMinute: boolean;
+  maxDurationMinutes?: number | null;
 };
 
 export const SNOOKER_GAME_TYPE_OPTIONS: SnookerGameTypeOption[] = [
@@ -100,8 +101,7 @@ export function billablePlayedMinutes(order: SessionClockOrder, now: Date | stri
 
 export function estimatePackageCharge(opt: SnookerGameTypeOption, minutes: number): number {
   if (opt.isPerMinute) {
-    const m = minutes < 1 ? 1 : minutes;
-    return m * opt.perMinuteRate;
+    return Math.max(0, minutes) * opt.perMinuteRate;
   }
   const m = minutes < 1 ? 1 : minutes;
   if (m <= opt.includedMinutes) {
@@ -112,6 +112,7 @@ export function estimatePackageCharge(opt: SnookerGameTypeOption, minutes: numbe
 }
 
 export type TimedSessionOrder = SessionClockOrder & {
+  sessionPricing?: SnookerGameTypeOption | null;
   gameType?: string | null;
   sessionMinutes?: number | null;
 };
@@ -121,27 +122,26 @@ export function packageOvertimeMinutes(
   order: TimedSessionOrder,
   now: Date | string = new Date(),
 ): number {
-  const opt = snookerOptionFor(order.gameType);
+  const opt = order.sessionPricing ?? snookerOptionFor(order.gameType);
   if (!opt || opt.isPerMinute || isOpenEndedSession(order)) return 0;
-  const playedFloor = Math.floor(playedDurationMs(order, now) / 60000);
-  return Math.max(0, playedFloor - opt.includedMinutes);
+  return Math.max(0, Math.ceil((playedDurationMs(order, now) - Number(order.sessionMinutes ?? 0) * 60000) / 60000));
 }
 
 export function liveSessionCharge(order: TimedSessionOrder, now: Date | string = new Date()): number {
-  const opt = snookerOptionFor(order.gameType);
+  const opt = order.sessionPricing ?? snookerOptionFor(order.gameType);
   if (!opt) return 0;
 
-  if (isOpenEndedSession(order) || opt.isPerMinute) {
-    const played = billablePlayedMinutes(order, now);
-    return estimatePackageCharge(opt, played <= 0 ? 0 : played);
+  if (isOpenEndedSession(order)) {
+    return estimatePackageCharge(opt, billablePlayedMinutes(order, now));
   }
 
-  const playedFloor = Math.floor(playedDurationMs(order, now) / 60000);
-  if (playedFloor <= opt.includedMinutes) {
-    return opt.basePrice;
-  }
-  const extra = playedFloor - opt.includedMinutes;
-  return opt.basePrice + extra * opt.perMinuteRate;
+  // Reserve the selected duration immediately. Derive overtime from the
+  // paused session clock, never from a previously accumulated total.
+  const booked = Math.max(0, Number(order.sessionMinutes ?? 0));
+  const overtime = Math.max(0, Math.ceil(
+    (playedDurationMs(order, now) - booked * 60_000) / 60_000,
+  ));
+  return estimatePackageCharge(opt, booked) + overtime * opt.perMinuteRate;
 }
 
 export type OrderItemLike = {
@@ -181,7 +181,7 @@ export function orderItemDisplayTotal(
   item: OrderItemLike & { price?: number | string | null },
   now?: Date,
 ): number {
-  if (hasTimedTableSession(order) && snookerOptionFor(order.gameType) && isSessionTableLineItem(item)) {
+  if (hasTimedTableSession(order) && (order.sessionPricing || snookerOptionFor(order.gameType)) && isSessionTableLineItem(item)) {
     return liveSessionCharge(order, now);
   }
   return storedItemTotal(item);
@@ -213,7 +213,7 @@ export function resolveTimedOrderTotal(args: {
 
   const hasSession = hasTimedTableSession(order);
 
-  const sessionSubtotal = hasSession && snookerOptionFor(order.gameType)
+  const sessionSubtotal = hasSession && (order.sessionPricing || snookerOptionFor(order.gameType))
     ? liveSessionCharge(order, now)
     : items.filter((item) => isTableLine(item)).reduce((sum, item) => sum + storedItemTotal(item), 0);
 
