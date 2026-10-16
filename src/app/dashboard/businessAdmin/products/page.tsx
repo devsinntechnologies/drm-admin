@@ -431,6 +431,7 @@ function MenuItemsContent() {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const editStockSnapshot = useRef<{inStock: number; tracking: boolean; variants: Map<string, number>} | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -508,10 +509,10 @@ function MenuItemsContent() {
   );
   const createIsTableProduct =
     !isPharmacy &&
-    (createForm.isSessionService || timedCategoryIds.has(createForm.categoryId));
+    (categories.some(c => c.id === createForm.categoryId) ? timedCategoryIds.has(createForm.categoryId) : createForm.isSessionService);
   const editIsTableProduct =
     !isPharmacy &&
-    (editForm.isSessionService || timedCategoryIds.has(editForm.categoryId));
+    (categories.some(c => c.id === editForm.categoryId) ? timedCategoryIds.has(editForm.categoryId) : editForm.isSessionService);
   const { schema: productCrmSchema } = useCrmSchema("products");
 
   useEffect(() => {
@@ -772,6 +773,7 @@ function MenuItemsContent() {
     const toastId = toast.loading("Loading product details...");
     try {
       const product = await getProductById(id);
+      editStockSnapshot.current = { inStock: Number(product.inStock ?? 0), tracking: product.isStockEnabled ?? true, variants: new Map((product.variants ?? []).map(v => [v.id, Number(v.inStock ?? 0)])) };
       setEditId(id);
       setDeletedVariantIds([]);
       setEditForm({
@@ -866,12 +868,8 @@ function MenuItemsContent() {
           : editVariants.length > 0
             ? editVariants[0].price
             : editForm.price,
-        inStock: editIsTableProduct
-          ? 0
-          : editVariants.length > 0
-            ? editVariants.reduce((sum, variant) => sum + Number(variant.inStock || 0), 0)
-            : editForm.inStock,
-        isStockEnabled: editIsTableProduct ? false : editForm.isStockEnabled,
+        inStock: !editIsTableProduct && editVariants.length === 0 && Number(editForm.inStock) !== editStockSnapshot.current?.inStock ? editForm.inStock : undefined,
+        isStockEnabled: editIsTableProduct ? false : editForm.isStockEnabled !== editStockSnapshot.current?.tracking ? editForm.isStockEnabled : undefined,
         isSessionService: editIsTableProduct,
         costPrice:
           editIsTableProduct || !showProductCost
@@ -888,7 +886,7 @@ function MenuItemsContent() {
                   id: v.id,
                   name: v.name,
                   price: v.price,
-                  inStock: v.inStock,
+                  inStock: Number(v.inStock) !== editStockSnapshot.current?.variants.get(v.id) ? v.inStock : undefined,
                   ...(showProductCost ? { costPrice: v.costPrice } : {}),
                 }
               : {
@@ -1478,7 +1476,6 @@ function MenuItemsContent() {
                           setEditForm((p) => ({
                             ...p,
                             isStockEnabled: e.target.checked,
-                            inStock: e.target.checked ? p.inStock : 0,
                           }))
                         }
                       />

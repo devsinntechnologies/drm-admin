@@ -81,6 +81,7 @@ export default function StaffRealtimeProvider({
         window.dispatchEvent(new CustomEvent("invoices:refetch", { detail: payload }));
       }
     };
+    const onProductsChanged = () => window.dispatchEvent(new CustomEvent('products:refetch'));
     const onPrintersUpdated = (payload?: unknown) => {
       emitStaffRealtime(STAFF_REALTIME_EVENTS.PRINTERS_CHANGED, payload);
       if (typeof window !== "undefined") {
@@ -109,11 +110,14 @@ export default function StaffRealtimeProvider({
     };
     const onConnected = () => {
       onCreditsChanged();
+      onProductsChanged();
       emitStaffRealtime(STAFF_REALTIME_EVENTS.ORDERS_CHANGED);
       emitStaffRealtime(STAFF_REALTIME_EVENTS.INVOICES_CHANGED);
     };
     socket.on("credits:updated", onCreditsChanged);
     socket.on("connect", onConnected);
+    socket.on("products:updated", onProductsChanged);
+    window.addEventListener("online", onConnected);
     socket.on("self_order:requested", onRequested);
     socket.on("self_order:approved", onApproved);
     socket.on("self_order:rejected", onRejected);
@@ -134,6 +138,8 @@ export default function StaffRealtimeProvider({
     return () => {
       socket.off("credits:updated", onCreditsChanged);
       socket.off("connect", onConnected);
+      socket.off("products:updated", onProductsChanged);
+      window.removeEventListener("online", onConnected);
       socket.off("self_order:requested", onRequested);
       socket.off("self_order:approved", onApproved);
       socket.off("self_order:rejected", onRejected);

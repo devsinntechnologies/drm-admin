@@ -140,7 +140,8 @@ export interface CreateProductPayload {
   customFields?: Record<string, unknown>;
 }
 
-export interface UpdateProductPayload extends Omit<CreateProductPayload, "variants"> {
+export interface UpdateProductPayload extends Omit<CreateProductPayload, "variants" | "inStock"> {
+  inStock?: number;
   variants?: CreateProductVariantPayload[];
 }
 
@@ -414,7 +415,7 @@ export function useProducts(options: UseProductsOptions = {}) {
       formData.append("name", payload.name);
       formData.append("variants", JSON.stringify(payload.variants));
       formData.append("sortOrder", String(payload.sortOrder));
-      formData.append("inStock", String(payload.inStock));
+      if (payload.inStock !== undefined) formData.append("inStock", String(payload.inStock));
       formData.append("status", payload.status);
       formData.append("categoryId", payload.categoryId);
       formData.append("isKitchen", String(payload.isKitchen));

@@ -65,6 +65,7 @@ async function main() {
   const requestedPages = [];
   let failPage = 0;
   let omitLastProduct = false;
+  let lastProductPatch;
   const catalog = Array.from({ length: 52 }, (_, index) => ({
     id: String(index + 1), name: `Product ${index + 1}`, status: 'active', variants: [],
   }));
@@ -86,7 +87,9 @@ async function main() {
     '@/lib/api-client': { apiClient: {} },
     '@/lib/reorder': {},
   }, {
-    fetch: async (url) => {
+    FormData,
+    fetch: async (url, init) => {
+      if (init?.method === "PATCH") { lastProductPatch = init.body; return { ok: true, json: async () => ({}) }; }
       const page = Number(new URL(url).searchParams.get('page'));
       requestedPages.push(page);
       if (page === failPage) return { ok: false, status: 500 };
@@ -115,6 +118,18 @@ async function main() {
   await hook.refetch();
   assert.equal(state[0].length, 52);
   assert.match(state[3], /catalog changed/);
+
+  omitLastProduct = false;
+  const patchFields = { name: 'Biscuit', price: 100, sortOrder: 1, status: 'ACTIVE', categoryId: 'c1', isKitchen: false, variants: [] };
+  await hook.updateProduct('p1', patchFields);
+  assert.equal(lastProductPatch.has('inStock'), false, 'name-only saves must not overwrite a sale balance');
+  assert.equal(lastProductPatch.has('isStockEnabled'), false, 'omitted tracking must stay omitted');
+  await hook.updateProduct('p1', { ...patchFields, isStockEnabled: true, inStock: 5 });
+  assert.equal(lastProductPatch.get('inStock'), '5');
+  assert.equal(lastProductPatch.get('isStockEnabled'), 'true');
+  await hook.updateProduct('p1', { ...patchFields, isStockEnabled: false, inStock: 0 });
+  assert.equal(lastProductPatch.get('inStock'), '0');
+  assert.equal(lastProductPatch.get('isStockEnabled'), 'false');
 
   const decorator = () => () => {};
   const { CreditsService } = load('../vendor_backend/src/credits/credits.service.ts', {
