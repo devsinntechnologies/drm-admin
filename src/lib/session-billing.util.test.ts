@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { orderItemDisplayTotal, resolveTimedOrderTotal } from "./session-billing.util";
 
 describe("timed session billing", () => {
@@ -19,12 +20,12 @@ describe("timed session billing", () => {
 
   it("sums session charge + retail for order total (not table SKU total)", () => {
     const total = resolveTimedOrderTotal({ order: baseOrder });
-    expect(total).toBe(100 + 250 + 80);
+    assert.equal(total, 100 + 250 + 80);
   });
 
   it("shows live session charge on table line, not full order total", () => {
     const table = baseOrder.Items[0];
-    expect(orderItemDisplayTotal(baseOrder, table)).toBe(100);
-    expect(orderItemDisplayTotal(baseOrder, baseOrder.Items[1])).toBe(250);
+    assert.equal(orderItemDisplayTotal(baseOrder, table), 100);
+    assert.equal(orderItemDisplayTotal(baseOrder, baseOrder.Items[1]), 250);
   });
 });

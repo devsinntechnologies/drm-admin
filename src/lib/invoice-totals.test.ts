@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { resolveInvoiceTotals } from "./invoice-totals";
 
 describe("resolveInvoiceTotals", () => {
@@ -13,8 +14,8 @@ describe("resolveInvoiceTotals", () => {
         { productname: "sooper", quantity: 1, price: 50, total: 50 },
       ],
     });
-    expect(totals.subtotal).toBe(858);
-    expect(totals.total).toBe(858);
+    assert.equal(totals.subtotal, 858);
+    assert.equal(totals.total, 858);
   });
 
   it("trusts checkout total when table line is inflated vs header", () => {
@@ -28,7 +29,7 @@ describe("resolveInvoiceTotals", () => {
         { productname: "sooper", quantity: 1, price: 80, total: 80 },
       ],
     });
-    expect(totals.total).toBe(1700);
+    assert.equal(totals.total, 1700);
   });
 
   it("falls back to API subtotal when items are missing", () => {
@@ -37,6 +38,6 @@ describe("resolveInvoiceTotals", () => {
       subtotal: 858,
       Items: [],
     });
-    expect(totals.total).toBe(858);
+    assert.equal(totals.total, 858);
   });
 });

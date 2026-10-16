@@ -7,10 +7,11 @@ const ts = require('typescript');
 function load(relativePath, imports = {}, globals = {}) {
   const filename = path.join(__dirname, '..', relativePath);
   const source = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+    fileName: filename,
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.React },
   }).outputText;
   const exports = {};
-  vm.runInNewContext(source, { exports, require: (name) => {
+  vm.runInNewContext(source, { exports, React: require('react'), require: (name) => {
     if (!(name in imports)) throw new Error(`Unexpected import: ${name}`);
     return imports[name];
   }, ...globals }, { filename });

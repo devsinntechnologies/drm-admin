@@ -29,7 +29,7 @@ import {
   invoiceRecordToPrintPayload,
 } from "@/lib/print-jobs";
 import { toast } from "sonner";
-import { resolveInvoiceTotals } from "@/lib/invoice-totals";
+import { parseInvoicePrice as parsePrice, resolveInvoiceTotals } from "@/lib/invoice-totals";
 
 type RangeFilter = "day" | "week" | "month";
 
