@@ -39,4 +39,17 @@ describe("resolveInvoiceTotals", () => {
     });
     expect(totals.total).toBe(858);
   });
+
+  it("trusts checkout header when retail lines were stamped with session charge", () => {
+    const totals = resolveInvoiceTotals({
+      totalPrice: 1770,
+      Items: [
+        { productname: "cheetos", quantity: 1, price: 1330, total: 1330, isSessionService: true },
+        { productname: "Mirinda", quantity: 1, price: 1330, total: 1330, isSessionService: true },
+        { productname: "velo 5 dot", quantity: 1, price: 150, total: 150 },
+        { productname: "fix", quantity: 1, price: 10, total: 10 },
+      ],
+    });
+    expect(totals.total).toBe(1770);
+  });
 });

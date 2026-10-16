@@ -156,7 +156,7 @@ export type OrderItemLike = {
 };
 
 export function isSessionTableLineItem(item: OrderItemLike): boolean {
-  if (item.isSessionService || item.product?.isSessionService) return true;
+  // Only TABLE-named SKUs. isSessionService alone is unreliable (retail mis-flags).
   const name = String(item.productName ?? item.product?.name ?? "").toUpperCase();
   return /\bTABLE\b/.test(name);
 }

@@ -22,8 +22,8 @@ export type InvoiceTotalsInput = {
 };
 
 function isSessionLine(item: NonNullable<InvoiceTotalsInput["Items"]>[number]) {
-  if (item.isSessionService) return true;
-  return /table/i.test(String(item.productname ?? ""));
+  // Only real TABLE SKUs — do not trust isSessionService alone (retail mis-flags).
+  return /\bTABLE\b/i.test(String(item.productname ?? ""));
 }
 
 function lineAmount(item: NonNullable<InvoiceTotalsInput["Items"]>[number]) {
@@ -48,8 +48,11 @@ function reconcileSessionLines(invoice: InvoiceTotalsInput): InvoiceTotalsInput 
   if (sessionDue < 0) sessionDue = 0;
   sessionDue = Math.round(sessionDue * 100) / 100;
 
+  let primaryApplied = false;
   const Items = items.map((item) => {
     if (!isSessionLine(item)) return item;
+    if (primaryApplied) return item;
+    primaryApplied = true;
     const qty = Math.max(1, Number(item.quantity || 1));
     return {
       ...item,
@@ -100,7 +103,9 @@ export function resolveInvoiceTotals(invoice: InvoiceTotalsInput) {
     if (tableInflated) {
       total = stored;
     } else if (rawSubtotal > stored + 0.02) {
-      total = computed;
+      // With a real TABLE line, header may be session-only → use line sum.
+      // Without TABLE lines, inflated retail stamps → trust checkout header.
+      total = sessionLines.length > 0 ? computed : stored;
     } else {
       total = Math.max(computed, stored);
     }
