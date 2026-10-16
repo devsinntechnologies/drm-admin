@@ -369,7 +369,7 @@ function MenuCard({
             ) : null,
             stock: (
               <p className="text-sm text-[#64748b]">
-                Stock: {item.stockCount ?? item.inStock}
+                Stock: {item.variants?.length ? item.variants.reduce((sum, variant) => sum + Number(variant.inStock ?? 0), 0) : item.inStock}
               </p>
             ),
             barcode: item.barcode ? (

@@ -69,6 +69,7 @@ async function main() {
     id: String(index + 1), name: `Product ${index + 1}`, status: 'active', variants: [],
   }));
   const hooks = load('src/hooks/useProducts.ts', {
+    '@/lib/staff-realtime': { STAFF_REALTIME_EVENTS: { INVOICES_CHANGED: 'staff:invoices-changed' } },
     react: {
       useCallback: (callback) => callback,
       useRef: (value) => ({ current: value }),

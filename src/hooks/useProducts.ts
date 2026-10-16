@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { STAFF_REALTIME_EVENTS } from "@/lib/staff-realtime";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { buildApiUrl } from "@/lib/api";
@@ -266,6 +267,21 @@ export function useProducts(options: UseProductsOptions = {}) {
       fetchProducts(pageNum);
     }
   }, [fetchProducts, pagination.last_page]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refreshStock = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => void fetchProducts(pagination.page ?? page), 150);
+    };
+    window.addEventListener(STAFF_REALTIME_EVENTS.INVOICES_CHANGED, refreshStock);
+    window.addEventListener("products:refetch", refreshStock);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener(STAFF_REALTIME_EVENTS.INVOICES_CHANGED, refreshStock);
+      window.removeEventListener("products:refetch", refreshStock);
+    };
+  }, [fetchProducts, pagination.page, page]);
 
   const nextPage = useCallback(() => {
     if (pagination.page < pagination.last_page) {
