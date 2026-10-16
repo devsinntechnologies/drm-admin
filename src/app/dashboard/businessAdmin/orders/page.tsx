@@ -381,7 +381,8 @@ function OrdersContent() {
   };
 
   const getProductDefaultVariant = (product: Product) =>
-    product.variants?.find((variant) => isUuid(variant.id)) ?? null;
+    product.variants?.find((variant) => isUuid(variant.id) &&
+      (!product.isStockEnabled || Number(variant.inStock ?? 0) > 0)) ?? null;
 
   const getProductVariantsForUi = (product: Product): ProductVariant[] => {
     const realVariants = (product.variants ?? []).filter((variant) => isUuid(variant.id));
@@ -430,6 +431,10 @@ function OrdersContent() {
     }
 
     const lineVariantId = isUuid(selectedVariant.id) ? selectedVariant.id : "";
+    if (product.isStockEnabled && Number(lineVariantId ? selectedVariant.inStock ?? 0 : product.inStock ?? 0) <= 0) {
+      toast.error(`${selectedVariant.name} is out of stock`);
+      return;
+    }
 
     setEditingItems((prev) => {
       const existing = prev.find(
@@ -574,6 +579,8 @@ function OrdersContent() {
   const handleAddToCart = (product: Product, variant: ProductVariant) => {
     setCartItems(prev => {
       const existing = prev.find(item => item.productId === product.id && item.variantId === variant.id);
+      const available = Number(variant.id ? variant.inStock ?? 0 : product.inStock ?? 0);
+      if (product.isStockEnabled && (existing?.quantity ?? 0) >= available) return prev;
       if (existing) {
         return prev.map(item => item.productId === product.id && item.variantId === variant.id
           ? { ...item, quantity: item.quantity + 1 } : item);
@@ -916,6 +923,7 @@ function OrdersContent() {
                   <button
                     key={variant.id}
                     type="button"
+                    disabled={selectedEditingProduct.isStockEnabled && Number(variant.inStock ?? 0) <= 0}
                     onClick={() => {
                       addProductToEditingOrder(selectedEditingProduct, variant);
                       closeVariantDialog();
@@ -926,7 +934,9 @@ function OrdersContent() {
                       <span className="grid h-11 w-11 place-items-center rounded-full bg-[#fff1f0] text-[#ef4444]">
                         <CheckCircle2 className="h-5 w-5" />
                       </span>
-                      <span className="text-lg font-black uppercase text-[#2b2b2b]">{variant.name}</span>
+                      <span className="text-lg font-black uppercase text-[#2b2b2b]">{variant.name}
+                        {selectedEditingProduct.isStockEnabled && <span className="block text-xs font-medium normal-case text-slate-500">{Number(variant.inStock ?? 0) > 0 ? `${variant.inStock} available` : "Out of stock"}</span>}
+                      </span>
                     </div>
                     <span className="text-lg font-black text-[#001840]">Rs {variant.price}</span>
                   </button>
@@ -1190,6 +1200,7 @@ function OrdersContent() {
                                   cartItems.find(
                                     (i) => i.productId === product.id && i.variantId === v.id,
                                   )?.quantity || 0;
+                                const unavailable = product.isStockEnabled === true && qty >= Number(v.id ? v.inStock ?? 0 : product.inStock ?? 0);
 
                                 return (
                                   <div
@@ -1204,11 +1215,13 @@ function OrdersContent() {
                                     <button
                                       type="button"
                                       onClick={() => handleAddToCart(product, v as ProductVariant)}
+                                      disabled={unavailable}
                                       className="min-w-0 flex-1 text-left"
                                     >
                                       <div className="flex items-center justify-between gap-2">
                                         <span className="truncate text-sm font-semibold uppercase tracking-wide text-[#0f172a]">
                                           {v.name}
+                                          {product.isStockEnabled && <span className="block text-[10px] font-medium normal-case text-slate-500">{unavailable ? "Out of stock" : `${Math.max(0, Number(v.id ? v.inStock ?? 0 : product.inStock ?? 0) - qty)} available`}</span>}
                                         </span>
                                         <span className="shrink-0 rounded-lg bg-white px-2 py-1 text-xs font-bold text-[#0050F8] shadow-sm">
                                           Rs {v.price}
@@ -1230,6 +1243,7 @@ function OrdersContent() {
                                         <button
                                           type="button"
                                           onClick={() => handleAddToCart(product, v as ProductVariant)}
+                                          disabled={unavailable}
                                           className="grid h-8 w-8 place-items-center rounded-lg bg-[#001840] text-white"
                                           aria-label={`Increase ${v.name}`}
                                         >
@@ -1240,6 +1254,7 @@ function OrdersContent() {
                                       <button
                                         type="button"
                                         onClick={() => handleAddToCart(product, v as ProductVariant)}
+                                        disabled={unavailable}
                                         className="grid h-8 w-8 place-items-center rounded-lg bg-[#001840] text-white"
                                         aria-label={`Add ${v.name}`}
                                       >
