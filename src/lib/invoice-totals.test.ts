@@ -51,6 +51,6 @@ describe("resolveInvoiceTotals", () => {
         { productname: "fix", quantity: 1, price: 10, total: 10 },
       ],
     });
-    expect(totals.total).toBe(1770);
+    assert.equal(totals.total, 1770);
   });
 });
