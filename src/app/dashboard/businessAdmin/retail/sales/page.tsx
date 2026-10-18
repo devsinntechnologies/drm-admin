@@ -29,7 +29,7 @@ import {
   invoiceRecordToPrintPayload,
 } from "@/lib/print-jobs";
 import { toast } from "sonner";
-import { resolveInvoiceTotals } from "@/lib/invoice-totals";
+import { parseInvoicePrice, resolveInvoiceTotals } from "@/lib/invoice-totals";
 
 type RangeFilter = "day" | "week" | "month";
 
@@ -405,8 +405,8 @@ function SalesContent() {
                   productName: item.productname,
                   variantName: item.variantName,
                   quantity: item.quantity,
-                  price: parsePrice(item.price),
-                  total: Number(item.total) || parsePrice(item.price) * Number(item.quantity || 0),
+                  price: parseInvoicePrice(item.price),
+                  total: Number(item.total) || parseInvoicePrice(item.price) * Number(item.quantity || 0),
                 }))}
                 contactPhone={branding.contactPhone || selectedInvoice.businessPhone}
                 contactEmail={branding.contactEmail || selectedInvoice.businessEmail}
@@ -437,8 +437,8 @@ function SalesContent() {
                         productName: item.productname,
                         variantName: item.variantName,
                         quantity: item.quantity,
-                        price: parsePrice(item.price),
-                        total: Number(item.total) || parsePrice(item.price) * Number(item.quantity || 0),
+                        price: parseInvoicePrice(item.price),
+                        total: Number(item.total) || parseInvoicePrice(item.price) * Number(item.quantity || 0),
                       })),
                       subtotal: selectedAmounts.subtotal,
                       total: selectedAmounts.total,

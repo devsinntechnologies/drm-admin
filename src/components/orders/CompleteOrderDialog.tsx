@@ -163,7 +163,7 @@ export function CompleteOrderDialog({
   const creditBusinessId = businessId ?? order?.businessId ?? null;
 
   const submit = async () => {
-    if (method === "credit" && !hasCreditIdentifier(credit ?? {})) {
+    if (method === "credit" && (!credit || !hasCreditIdentifier(credit))) {
       setCreditOpen(true);
       return;
     }
