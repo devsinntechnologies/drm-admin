@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Cable, Loader2, Plus, Printer, RefreshCw, Trash2, Wifi } from "lucide-react";
+import { Cable, Loader2, Plus, Printer, ReceiptText, RefreshCw, Trash2, Wifi } from "lucide-react";
 import { toast } from "sonner";
 import { ControlSection } from "@/components/business/ControlSection";
 import Loading from "@/components/common/Loading";
@@ -27,6 +27,7 @@ import { cn, normalizeErrorMessage } from "@/lib/utils";
 type SoftwarePrintersPanelProps = {
   businessId: string;
   controlHref: string;
+  invoiceTemplatesHref?: string;
 };
 
 function formatSeenAt(value: string | null): string {
@@ -50,7 +51,11 @@ function statusTone(status: string) {
   }
 }
 
-export function SoftwarePrintersPanel({ businessId, controlHref }: SoftwarePrintersPanelProps) {
+export function SoftwarePrintersPanel({
+  businessId,
+  controlHref,
+  invoiceTemplatesHref,
+}: SoftwarePrintersPanelProps) {
   const { role, token } = useAuth();
   const isSuperAdmin = role === "super_admin";
   const { data, loading, saving, error, save } = usePrinters(businessId);
@@ -146,6 +151,18 @@ export function SoftwarePrintersPanel({ businessId, controlHref }: SoftwarePrint
         description="Configure receipt and kitchen printers for the Windows and mobile app. Status is reported by a POS device on the shop network — this portal cannot reach the printer itself."
         icon={Printer}
       >
+        {invoiceTemplatesHref ? (
+          <Link
+            href={invoiceTemplatesHref}
+            className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-[#c7d2fe] bg-[#eef2ff] px-3 py-2 text-sm text-[#3730a3]"
+          >
+            <span className="inline-flex items-center gap-2 font-medium">
+              <ReceiptText className="h-4 w-4" />
+              Choose which invoice layout the receipt printer uses
+            </span>
+            <span className="font-semibold">Invoice templates →</span>
+          </Link>
+        ) : null}
         <p className="mb-4 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2 text-xs text-[#64748b]">
           Static IP: type the printer address. Assign: the POS scans the LAN, stores the last IP locally, and reports it here.
           Printing works offline as long as the POS and printer are on the same Ethernet or Wi-Fi network.

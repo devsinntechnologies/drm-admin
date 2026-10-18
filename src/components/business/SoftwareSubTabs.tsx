@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Monitor, Printer, ScrollText, SlidersHorizontal } from "lucide-react";
+import { Monitor, Printer, ReceiptText, ScrollText, SlidersHorizontal } from "lucide-react";
 import { appendBusinessId } from "@/lib/module-routes";
 
 type SoftwareSubTabsProps = {
@@ -47,6 +47,14 @@ export function SoftwareSubTabs({ businessId, basePath, appendBusinessQuery }: S
       href: hrefFor("printers"),
       icon: Printer,
       match: () => pathname.includes(`${base}/printers`) || pathname.endsWith("/software/printers"),
+    },
+    {
+      key: "invoice-templates",
+      label: "Invoice templates",
+      href: hrefFor("invoice-templates"),
+      icon: ReceiptText,
+      match: () =>
+        pathname.includes(`${base}/invoice-templates`) || pathname.endsWith("/software/invoice-templates"),
     },
     {
       key: "logs",

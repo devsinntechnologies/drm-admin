@@ -15,6 +15,7 @@ export default function BusinessAdminSoftwarePrintersPage() {
     <SoftwarePrintersPanel
       businessId={businessId}
       controlHref={appendBusinessId("/dashboard/businessAdmin/software/control", businessId)}
+      invoiceTemplatesHref={appendBusinessId("/dashboard/businessAdmin/software/invoice-templates", businessId)}
     />
   );
 }

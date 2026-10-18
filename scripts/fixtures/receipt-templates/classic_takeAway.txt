@@ -1,0 +1,34 @@
+                     [LOGO]
+
+               DigiNizam Kitchen
+  Shop 12, Main Boulevard, Gulberg III, Lahore
+            0300-4153368 (EasyPaisa)
+            0335-4153368 (JazzCash)
+------------------------------------------------
+         T  A  K  E     A  W  A  Y
+
+Invoice #           : INV-1043
+Date                : 18 Oct 2026, 09:10 PM
+Type                : Take Away
+------------------------------------------------
+Item Name                Qty/Wt           Amount
+------------------------------------------------
+Chicken Karahi             x1           Rs. 2400
+Mutton Biryani             x2           Rs. 1200
+  Disc: -Rs 100
+Garlic Naan                x4            Rs. 320
+------------------------------------------------
+Sub-Total                               Rs. 4020
+Discount                               - Rs. 100
+Packaging                                 Rs. 50
+------------------------------------------------
+N E T   A M O U N T             R s .   3 9 7 0
+------------------------------------------------
+          [QR https://diginizam.com/]
+
+
+               DigiNizam Kitchen
+              Powered by DigiNizam
+                 diginizam.com
+
+

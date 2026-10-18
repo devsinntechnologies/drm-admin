@@ -1,0 +1,31 @@
+                     [LOGO]
+      D i g i N i z a m   K i t c h e n
+  Shop 12, Main Boulevard, Gulberg III, Lahore
+               Tel: 042-35761234
+================================================
+                 SALES INVOICE
+================================================
+Invoice No      : INV-1043
+Date            : 18 Oct 2026, 09:10 PM
+Order Type      : Take Away
+Payment         : Card
+------------------------------------------------
+Item                  Qty       Rate      Amount
+------------------------------------------------
+Chicken Karahi         1       2,400       2,400
+  > Full
+Mutton Biryani         2         650       1,300
+  Item discount                             -100
+Garlic Naan            4          80         320
+------------------------------------------------
+Items / Qty                                3 / 7
+Subtotal                               Rs. 4,020
+Discount                                -Rs. 100
+Packaging                                 Rs. 50
+================================================
+G R A N D   T O T A L         R s .   3 , 9 7 0
+================================================
+          [QR https://diginizam.com/]
+      Powered by DigiNizam - diginizam.com
+
+
