@@ -11,6 +11,7 @@ export default function SuperAdminBusinessSoftwarePrintersPage() {
     <SoftwarePrintersPanel
       businessId={businessId}
       controlHref={`/dashboard/superAdmin/businesses/${businessId}/software/control`}
+      invoiceTemplatesHref={`/dashboard/superAdmin/businesses/${businessId}/software/invoice-templates`}
     />
   );
 }

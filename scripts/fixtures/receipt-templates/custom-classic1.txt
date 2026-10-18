@@ -1,0 +1,37 @@
+                     [LOGO]
+
+      D i g i N i z a m   K i t c h e n
+  Shop 12, Main Boulevard, Gulberg III, Lahore
+  ============================================
+        D  I  N  I  N  G     (  5  )
+
+              A h m e d   R a z a
+
+  Invoice #         : INV-1042
+  Date              : 18 Oct 2026, 08:45 PM
+  Type              : DINING (5)
+  ============================================
+  Dish                  Qty/Wt         Amount
+  ============================================
+  Chicken Karahi          x1         Rs. 2400
+  Mutton Biryani          x2         Rs. 1200
+    Disc: -Rs 100
+  Garlic Naan             x4          Rs. 320
+  Mint Raita              x2          Rs. 240
+  Soft Drink              x1          Rs. 280
+  Kheer                   x2          Rs. 500
+  ============================================
+  Sub-Total                           Rs. 5040
+  Discount                           - Rs. 100
+  ============================================
+  T O T A L   D U E           R s .   4 9 4 0
+  ============================================
+
+  Thank you!
+
+               DigiNizam Kitchen
+              Powered by DigiNizam
+                 diginizam.com
+
+
+

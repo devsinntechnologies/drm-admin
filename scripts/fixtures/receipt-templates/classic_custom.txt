@@ -1,0 +1,38 @@
+
+               DigiNizam Kitchen
+             Desi taste since 1998
+  Shop 12, Main Boulevard, Gulberg III, Lahore
+             EasyPaisa 0300-1234567
+             JazzCash 0321-7654321
+------------------------------------------------
+         D  I  N  I  N  G     (  5  )
+
+              A h m e d   R a z a
+
+                Dine Persons: 4
+
+Invoice #           : INV-1042
+Date                : 18 Oct 2026, 08:45 PM
+Type                : DINING (5)
+------------------------------------------------
+Item Name                Qty/Wt           Amount
+------------------------------------------------
+Chicken Karahi             x1           Rs. 2400
+Mutton Biryani             x2           Rs. 1200
+  Disc: -Rs 100
+Garlic Naan                x4            Rs. 320
+Mint Raita                 x2            Rs. 240
+Soft Drink                 x1            Rs. 280
+Kheer                      x2            Rs. 500
+------------------------------------------------
+Sub-Total                               Rs. 5040
+Discount                               - Rs. 100
+------------------------------------------------
+N E T   A M O U N T             R s .   4 9 4 0
+------------------------------------------------
+
+         Thank you! Please visit again
+
+               DigiNizam Kitchen
+
+
