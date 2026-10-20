@@ -302,6 +302,35 @@ function OrdersContent() {
 
   const isSnookerIndustry = templateConfig?.industryId === "snooker-pos";
 
+  const bookedTableProducts = useMemo(() => {
+    const booked = new Set<string>();
+    if (!ordersSettings.enableTableSession || !ordersSettings.showTableBookingStatus) return booked;
+    for (const product of activeProducts) {
+      const category = allCategories.find((c) => c.id === product.categoryId);
+      if (category?.posMode !== "timed_session") continue;
+      const name = product.name.trim().toLowerCase();
+      const occupyingOrder = visibleOrders.find((order) =>
+        order.Items.some((item) =>
+          item.productId?.trim()
+            ? item.productId.trim() === product.id.trim()
+            : Boolean(name && item.productName?.trim().toLowerCase() === name),
+        ) || Boolean(name && order.table?.split(",").some((table) => {
+          const label = table.trim().toLowerCase();
+          return label !== "counter" && label === name;
+        })),
+      );
+      if (occupyingOrder) booked.add(product.id);
+    }
+    return booked;
+  }, [activeProducts, allCategories, visibleOrders, ordersSettings.enableTableSession, ordersSettings.showTableBookingStatus]);
+
+  const rejectBookedCart = () => {
+    const booked = productsInCart.find((product) => bookedTableProducts.has(product.id));
+    if (!booked) return false;
+    toast.error(`${booked.name} is already booked. Choose an available table.`);
+    return true;
+  };
+
   const defaultPosTable = useMemo(() => {
     const counter = tables.find((t) =>
       String(t.tableNumber ?? "")
@@ -346,6 +375,7 @@ function OrdersContent() {
   };
 
   const handlePlaceOrderNow = () => {
+    if (rejectBookedCart()) return;
     if (cartItems.length === 0) {
       toast.error("Add items first");
       return;
@@ -577,6 +607,10 @@ function OrdersContent() {
   };
 
   const handleAddToCart = (product: Product, variant: ProductVariant) => {
+    if (bookedTableProducts.has(product.id)) {
+      toast.error(`${product.name} is already booked. Choose an available table.`);
+      return;
+    }
     setCartItems(prev => {
       const existing = prev.find(item => item.productId === product.id && item.variantId === variant.id);
       const available = Number(variant.id ? variant.inStock ?? 0 : product.inStock ?? 0);
@@ -619,6 +653,7 @@ function OrdersContent() {
     session?: SnookerBookingDetails,
   ) => {
     if (cartItems.length === 0) return toast.error("Add items first");
+    if (rejectBookedCart()) return;
     if (!tableId) return toast.error("Select a table first");
 
     const isUuid = (value: string) =>
@@ -1163,6 +1198,7 @@ function OrdersContent() {
                               updatedAt: new Date().toISOString(),
                             }];
                       const inCart = cartProductIds.includes(product.id);
+                      const booked = bookedTableProducts.has(product.id);
                       const productQty = cartItems
                         .filter((i) => i.productId === product.id)
                         .reduce((sum, i) => sum + i.quantity, 0);
@@ -1172,13 +1208,20 @@ function OrdersContent() {
                           key={product.id}
                           className={cn(
                             "flex h-[360px] flex-col overflow-hidden rounded-2xl border-2 bg-white shadow-sm transition",
-                            inCart
+                            booked
+                              ? "border-slate-400 bg-slate-50"
+                              : inCart
                               ? "border-[#001840] shadow-[0_10px_24px_rgba(0,24,64,0.12)]"
                               : "border-[#e8eef5] hover:border-[#c7d4e6]",
                           )}
                         >
                           <div className="relative h-36 w-full shrink-0 bg-[#f1f5f9]">
                             <ProductMediaImage src={product.image} alt={product.name} fill className="object-cover" />
+                            {booked && (
+                              <span role="status" className="absolute left-3 top-3 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-extrabold tracking-wide text-white shadow-sm">
+                                BOOKED
+                              </span>
+                            )}
                             {productQty > 0 && (
                               <span className="absolute right-3 top-3 inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-[#001840] px-2 text-sm font-bold text-white shadow-md">
                                 {productQty}
@@ -1190,7 +1233,7 @@ function OrdersContent() {
                             <div className="shrink-0">
                               <h3 className="truncate text-base font-bold text-[#0f172a]">{product.name}</h3>
                               <p className="mt-0.5 text-xs font-medium text-[#64748b]">
-                                Tap a size to add
+                                {booked ? "Table currently occupied" : "Tap a size to add"}
                               </p>
                             </div>
 
@@ -1200,7 +1243,7 @@ function OrdersContent() {
                                   cartItems.find(
                                     (i) => i.productId === product.id && i.variantId === v.id,
                                   )?.quantity || 0;
-                                const unavailable = product.isStockEnabled === true && qty >= Number(v.id ? v.inStock ?? 0 : product.inStock ?? 0);
+                                const unavailable = booked || (product.isStockEnabled === true && qty >= Number(v.id ? v.inStock ?? 0 : product.inStock ?? 0));
 
                                 return (
                                   <div
@@ -1221,7 +1264,7 @@ function OrdersContent() {
                                       <div className="flex items-center justify-between gap-2">
                                         <span className="truncate text-sm font-semibold uppercase tracking-wide text-[#0f172a]">
                                           {v.name}
-                                          {product.isStockEnabled && <span className="block text-[10px] font-medium normal-case text-slate-500">{unavailable ? "Out of stock" : `${Math.max(0, Number(v.id ? v.inStock ?? 0 : product.inStock ?? 0) - qty)} available`}</span>}
+                                          {product.isStockEnabled && <span className="block text-[10px] font-medium normal-case text-slate-500">{booked ? "Booked" : unavailable ? "Out of stock" : `${Math.max(0, Number(v.id ? v.inStock ?? 0 : product.inStock ?? 0) - qty)} available`}</span>}
                                         </span>
                                         <span className="shrink-0 rounded-lg bg-white px-2 py-1 text-xs font-bold text-[#0050F8] shadow-sm">
                                           Rs {v.price}
