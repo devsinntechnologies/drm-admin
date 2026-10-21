@@ -103,7 +103,6 @@ function InvoicesContent() {
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const [rangeFilter, setRangeFilter] = useState<RangeFilter>("day");
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRecord | null>(null);
@@ -169,9 +168,8 @@ function InvoicesContent() {
     roleLower === "businessadmin" ||
     roleLower.includes("business");
 
-  const { invoices, loading, actionLoading, error, pagination, refetch, deleteInvoice, returnInvoice, exportExcel } = useInvoices({
-    page: currentPage,
-    limit: 100,
+  const { invoices, loading, actionLoading, error, refetch, deleteInvoice, returnInvoice, exportExcel } = useInvoices({
+    loadAll: true,
     range: rangeFilter,
   });
 
@@ -467,7 +465,6 @@ function InvoicesContent() {
                       className="dn-tab !h-10"
                       onClick={() => {
                         setRangeFilter(tab.key);
-                        setCurrentPage(1);
                       }}
                     >
                       <Clock3 className="h-3.5 w-3.5" />
@@ -728,13 +725,9 @@ function InvoicesContent() {
             </div>
           )}
 
-          {pagination.last_page > 1 ? (
-            <div className="flex items-center justify-between border-t border-[#edf2f7] px-6 py-4 text-sm text-[#64748b]">
-              <span>
-                Page {pagination.page} of {pagination.last_page}
-              </span>
-            </div>
-          ) : null}
+          <div aria-live="polite" className="border-t border-[#edf2f7] px-4 py-4 text-sm text-[#64748b] sm:px-6">
+            {loading ? "Loading invoices..." : `${filteredInvoices.length} of ${invoices.length} invoices`}
+          </div>
         </section>
       </PortalPage>
 

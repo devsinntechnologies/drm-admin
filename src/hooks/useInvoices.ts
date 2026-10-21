@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { BASE_URL } from "@/lib/constant";
@@ -59,6 +59,7 @@ interface UseInvoicesOptions {
   page?: number;
   limit?: number;
   range?: "day" | "week" | "month";
+  loadAll?: boolean;
 }
 
 function normalizeInvoice(raw: unknown): InvoiceRecord | null {
@@ -72,7 +73,7 @@ function normalizeInvoice(raw: unknown): InvoiceRecord | null {
 
 function unwrapInvoiceList(payload: unknown): {
   invoices: InvoiceRecord[];
-  pagination: { total?: number; page?: number; totalPages?: number };
+  pagination: { total?: number; page?: number; totalPages?: number; limit?: number };
 } {
   if (Array.isArray(payload)) {
     return {
@@ -104,14 +105,17 @@ function unwrapInvoiceList(payload: unknown): {
       total: Number(paginationSource?.total) || undefined,
       page: Number(paginationSource?.page) || undefined,
       totalPages: Number(paginationSource?.totalPages ?? paginationSource?.last_page) || undefined,
+      limit: Number(paginationSource?.limit) || undefined,
     },
   };
 }
 
 export function useInvoices(options: UseInvoicesOptions = {}) {
-  const { page = 1, limit = 20, range = "day" } = options;
+  const { page = 1, limit = 20, range = "day", loadAll = false } = options;
   const { token } = useAuth();
   const activeBusinessId = useActiveBusinessId();
+  const requestVersion = useRef(0);
+  const requestedPage = useRef(page);
 
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -124,6 +128,8 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
   });
 
   const fetchInvoices = useCallback(async (pageNum: number = 1) => {
+    const request = ++requestVersion.current;
+    requestedPage.current = loadAll ? 1 : pageNum;
     let authToken = token;
     if (!authToken && typeof window !== "undefined") {
       authToken = localStorage.getItem("auth_token") || localStorage.getItem("token");
@@ -131,6 +137,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
 
     if (!authToken) {
       setError("No authentication token available");
+      setLoading(false);
       return;
     }
 
@@ -139,9 +146,9 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
 
     try {
       const url = new URL(`${BASE_URL}/software/invoices`);
-      url.searchParams.append("page", String(pageNum));
-      if (limit) {
-        url.searchParams.append("limit", String(limit));
+      if (!loadAll) {
+        url.searchParams.append("page", String(pageNum));
+        if (limit) url.searchParams.append("limit", String(limit));
       }
       if (range) {
         url.searchParams.append("range", range);
@@ -160,6 +167,8 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
         },
       });
 
+      if (request !== requestVersion.current) return;
+
       if (!response.ok) {
         if (response.status === 404) {
           setInvoices([]);
@@ -171,23 +180,63 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
       }
 
       const payload = await response.json();
+      if (request !== requestVersion.current) return;
       const unwrapped = unwrapInvoiceList(payload);
-      setInvoices(unwrapped.invoices);
+      let loaded = unwrapped.invoices;
+      if (loadAll) {
+        // This API returns all rows when limit is omitted. Also support servers
+        // that enforce a default page size, without exposing pages in the UI.
+        const batchSize = unwrapped.pagination.limit ?? loaded.length;
+        const pages = unwrapped.pagination.totalPages ??
+          (batchSize > 0 ? Math.ceil((unwrapped.pagination.total ?? loaded.length) / batchSize) : 1);
+        for (let nextPage = 2; nextPage <= pages; nextPage++) {
+          if (request !== requestVersion.current) return;
+          const nextUrl = new URL(url);
+          nextUrl.searchParams.set("page", String(nextPage));
+          if (batchSize > 0) nextUrl.searchParams.set("limit", String(batchSize));
+          const nextResponse = await fetch(nextUrl.toString(), {
+            headers: {
+              accept: "application/json",
+              Authorization: `Bearer ${authToken}`,
+              [DIGINIZAM_CLIENT_HEADER]: DIGINIZAM_CLIENT,
+            },
+          });
+          if (request !== requestVersion.current) return;
+          if (!nextResponse.ok) throw new Error("Could not load all invoices. Please refresh to try again.");
+          const next = unwrapInvoiceList(await nextResponse.json());
+          if (request !== requestVersion.current) return;
+          loaded = [...loaded, ...next.invoices];
+        }
+        const seen = new Set<string>();
+        loaded = loaded.filter((invoice) => {
+          if (!invoice.uuid) return true;
+          if (seen.has(invoice.uuid)) return false;
+          seen.add(invoice.uuid);
+          return true;
+        });
+        if (unwrapped.pagination.total !== undefined && loaded.length < unwrapped.pagination.total) {
+          throw new Error("Some invoices could not be loaded. Please refresh to try again.");
+        }
+      }
+      setInvoices(loaded);
       setPagination({
-        total: unwrapped.pagination.total ?? unwrapped.invoices.length,
-        page: unwrapped.pagination.page ?? pageNum,
-        last_page: unwrapped.pagination.totalPages ?? 1,
+        total: unwrapped.pagination.total ?? loaded.length,
+        page: loadAll ? 1 : unwrapped.pagination.page ?? pageNum,
+        last_page: loadAll ? 1 : unwrapped.pagination.totalPages ?? 1,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "An error occurred while fetching invoices";
-      setError(message);
+      if (request === requestVersion.current) {
+        const message = err instanceof Error ? err.message : "An error occurred while fetching invoices";
+        setError(message);
+      }
     } finally {
-      setLoading(false);
+      if (request === requestVersion.current) setLoading(false);
     }
-  }, [token, limit, range, activeBusinessId]);
+  }, [token, limit, range, activeBusinessId, loadAll]);
 
   useEffect(() => {
     fetchInvoices(page);
+    return () => { requestVersion.current += 1; };
   }, [page, fetchInvoices]);
 
   // Listen for external signals to refetch invoices (e.g. after invoice creation)
@@ -195,7 +244,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     if (typeof window === "undefined") return;
 
     const handler = () => {
-      fetchInvoices(pagination.page ?? page);
+      fetchInvoices(requestedPage.current);
     };
 
     window.addEventListener("invoices:refetch", handler as EventListener);
@@ -204,7 +253,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
       window.removeEventListener("invoices:refetch", handler as EventListener);
       window.removeEventListener(STAFF_REALTIME_EVENTS.INVOICES_CHANGED, handler as EventListener);
     };
-  }, [fetchInvoices, pagination.page, page]);
+  }, [fetchInvoices]);
 
   const nextPage = useCallback(() => {
     if (pagination.page < pagination.last_page) {
