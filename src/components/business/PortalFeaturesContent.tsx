@@ -8,6 +8,7 @@ import {
   Boxes,
   LayoutDashboard,
   Package,
+  ParkingCircle,
   Settings,
   ShoppingCart,
   Users,
@@ -47,6 +48,7 @@ const MODULE_ICONS: Partial<Record<ModuleId, LucideIcon>> = {
   sales: BarChart3,
   staff: Users,
   settings: Settings,
+  parking: ParkingCircle,
 };
 
 const CATEGORY_ORDER = [
@@ -230,6 +232,7 @@ export function PortalFeaturesContent({
     );
 
     const payload = {
+      controlTarget: 'portal' as const,
       businessName: templateConfig.businessName ?? businessName,
       industryId: industry.id,
       primaryColor: templateConfig.primaryColor,

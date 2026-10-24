@@ -1,0 +1,30 @@
+Request timed out after 3000ms
+
+Retrying 1/3...
+Request timed out after 3000ms
+
+Retrying 2/3...
+Request timed out after 3000ms
+
+Retrying 3/3...
+Error: Request timed out after 3000ms
+    at ignore-listed frames
+⨯ Failed to download `Poppins` from Google Fonts. Using fallback font instead.
+
+Failed to fetch `Poppins` from Google Fonts.}
+Failed to proxy http://127.0.0.1:6000/socket.io/?EIO=4&transport=polling&t=6el5t7jz&sid=hBDB4C2l0UhDlRF9AAAR Error: socket hang up
+    at ignore-listed frames {
+  code: 'ECONNRESET'
+}
+Error: socket hang up
+    at ignore-listed frames {
+  code: 'ECONNRESET'
+}
+Failed to proxy http://127.0.0.1:6000/socket.io/?EIO=4&transport=polling&t=6g49zwre&sid=_19ECrr5Rt2LZS8hAAAS Error: socket hang up
+    at ignore-listed frames {
+  code: 'ECONNRESET'
+}
+Error: socket hang up
+    at ignore-listed frames {
+  code: 'ECONNRESET'
+}

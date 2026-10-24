@@ -51,7 +51,6 @@ import {
 import {
   serializeResolvedRoleAccess,
   normalizeRoleAccessForModules,
-  mergeRoleAccessPreservingPortal,
   mobileRoleAccessView,
   resolveRoleEntry,
 } from "@/lib/software-role-defaults";
@@ -85,13 +84,13 @@ import {
   initialMobileEnabled,
   enableMobileModule,
   disableMobileModule,
-  applyMobileModuleToggles,
   isMobileCapabilityModule,
 } from "@/lib/software-supported-modules";
 import { SoftwareModuleIcon } from "@/lib/software-module-icons";
 import { normalizeErrorMessage } from "@/lib/utils";
 import { isEmbeddedLogoData } from "@/lib/logo-upload";
 import { resolveMediaUrl } from "@/lib/media-url";
+import { resolveMobileControlConfig } from "@/lib/mobile-control-config";
 import { appendBusinessId } from "@/lib/module-routes";
 import { syncNavigationToEnabledModules } from "@/template-engine/builder";
 import { getIndustryById } from "@/templates/industries";
@@ -119,11 +118,12 @@ type SoftwareControlContentProps = {
 export function SoftwareControlContent({
   businessId,
   businessName,
-  templateConfig,
+  templateConfig: savedTemplateConfig,
   industryId,
   uploadedLogoUrl = null,
   platformAdmin = false,
 }: SoftwareControlContentProps) {
+  const templateConfig = resolveMobileControlConfig(savedTemplateConfig);
   const dispatch = useDispatch();
   const pathname = usePathname();
   const industry = getIndustryById(industryId);
@@ -199,7 +199,7 @@ export function SoftwareControlContent({
   const [createConfig, { isLoading: savingCreate }] = useCreateTemplateConfigMutation();
   const saving = savingUpdate || savingCreate;
   const skipServerHydrateRef = useRef(false);
-  /** Full template enabled list from server — used to preserve portal-only modules on save. */
+  /** Last saved app modules, retained if a save fails. */
   const serverEnabledRef = useRef<ModuleId[]>(
     (templateConfig?.enabledModules ?? []) as ModuleId[],
   );
@@ -410,21 +410,9 @@ export function SoftwareControlContent({
 
     const nextEnabled = snapshot.enabled;
     const nextRoles = snapshot.roles;
-    const mergedEnabled = applyMobileModuleToggles(
-      serverEnabledRef.current,
-      nextEnabled,
-      mobileCatalog,
-    );
-    const mergedRoleAccess = mergeRoleAccessPreservingPortal(
-      parseRoleAccess(templateConfig?.moduleSettings),
+    const mergedEnabled = nextEnabled.filter((moduleId) => mobileCatalog.includes(moduleId));
+    const mergedRoleAccess = normalizeRoleAccessForModules(
       nextRoles,
-      softwareControlRoleModules(mergedEnabled, {
-        includeCategories:
-          mobileCatalog.includes("categories") &&
-          (mergedEnabled.includes("categories") ||
-            mergedEnabled.includes("menu") ||
-            mergedEnabled.includes("products")),
-      }),
       mergedEnabled,
       industryId,
     );
@@ -478,11 +466,11 @@ export function SoftwareControlContent({
     try {
       skipServerHydrateRef.current = true;
       const saved = templateConfig?.id
-        ? await updateConfig({ id: templateConfig.id, body: payload }).unwrap()
+        ? await updateConfig({ id: templateConfig.id, body: { ...payload, controlTarget: 'mobile' } }).unwrap()
         : await createConfig(payload).unwrap();
-      serverEnabledRef.current = saved.enabledModules as ModuleId[];
+      serverEnabledRef.current = resolveMobileControlConfig(saved)!.enabledModules as ModuleId[];
       dispatch(businessApi.util.invalidateTags([{ type: "Business", id: businessId }]));
-      toast.success("Saved. App hides disabled modules after refresh.", { id: toastId });
+      toast.success("Saved. App updates within one minute or when refreshed.", { id: toastId });
     } catch (error) {
       skipServerHydrateRef.current = false;
       toast.error(normalizeErrorMessage(error, "Could not save software control."), { id: toastId });

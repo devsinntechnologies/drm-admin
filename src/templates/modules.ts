@@ -147,6 +147,12 @@ export const MODULE_CATALOG: Record<
     description: "SaaS packages, trials, invoices, renewals, usage limits, and suspension rules",
     category: "Optional",
   },
+  parking: {
+    id: "parking",
+    label: "Parking",
+    description: "Parking prices, customer details, and vehicle invoices",
+    category: "Operations",
+  },
 };
 
 export const DASHBOARD_CARD_CATALOG: Record<

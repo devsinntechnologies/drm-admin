@@ -35,6 +35,7 @@ export const IMPLEMENTED_MODULES = new Set<ModuleId>([
   "expenses",
   "credits",
   "production-job-work",
+  "parking",
 ]);
 
 /** Shared modules that are live for snooker-pos (Option A). */

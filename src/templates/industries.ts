@@ -293,6 +293,11 @@ export const INDUSTRY_TEMPLATES: IndustryTemplate[] = [
   },
 ];
 
+// Parking is an optional service for every business; never switch it on by default.
+for (const industry of INDUSTRY_TEMPLATES) {
+  industry.optionalModules = Array.from(new Set([...(industry.optionalModules ?? []), 'parking']));
+}
+
 export function getIndustryById(id: string): IndustryTemplate | undefined {
   return INDUSTRY_TEMPLATES.find((t) => t.id === id);
 }

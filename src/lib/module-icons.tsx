@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   LayoutGrid,
   Package,
+  ParkingCircle,
   Percent,
   Pill,
   Receipt,
@@ -77,6 +78,7 @@ export const MODULE_ICONS: Partial<Record<ModuleId | string, LucideIcon>> = {
   loyalty: Tag,
   "table-booking": Calendar,
   subscriptions: CreditCard,
+  parking: ParkingCircle,
   memberships: Users,
 };
 

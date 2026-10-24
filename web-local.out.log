@@ -1,0 +1,16 @@
+
+> drm-admin@0.1.0 dev
+> next dev -p 3000 --webpack --port 3000
+
+▲ Next.js 16.3.3 (webpack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.56.1:3000
+- Environments: .env.local
+✓ Ready in 3.6s
+✓ Running next.config.ts took 545ms
+
+○ Compiling /login ...
+ GET /dashboard/businessAdmin/parking? 200 in 3.0min (next.js: 2.9min, application-code: 2.8s)
+ GET /login 200 in 6.3min (next.js: 6.2min, application-code: 2.8s)
+ GET /dashboard/superAdmin/businesses/777c2887-ad98-40c2-8b98-e90bc36d1a59/software/printers 200 in 6.2min (next.js: 6.1min, application-code: 1843ms)
+ GET /products/pharmacy 404 in 6.2min (next.js: 6.2min, application-code: 585ms)

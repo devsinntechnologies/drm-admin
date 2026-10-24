@@ -101,7 +101,8 @@ export type ModuleId =
   | "tournaments"
   | "loyalty"
   | "table-booking"
-  | "subscriptions";
+  | "subscriptions"
+  | "parking";
 
 export type DashboardCardId =
   | "today-sales"

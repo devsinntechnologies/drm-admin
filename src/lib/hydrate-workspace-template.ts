@@ -1,7 +1,8 @@
 import type { ApiTemplateConfig } from "@/hooks/useIndustryTemplate";
 
 /**
- * Software Control is the source of truth for a saved business.
+ * Saved Portal Features are the source of truth for the web workspace.
+ * Software Control uses the separate mobileAccess settings.
  * Do not overlay industry blueprints here — that reset Super Admin
  * module toggles on every page refresh.
  *

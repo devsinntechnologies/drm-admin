@@ -11,6 +11,7 @@ import {
   Warehouse,
   Wallet,
   Factory,
+  ParkingCircle,
   type LucideIcon,
 } from "lucide-react";
 import type { ModuleId } from "@/templates/types";
@@ -29,6 +30,7 @@ const ICONS: Partial<Record<ModuleId, LucideIcon>> = {
   expenses: Wallet,
   credits: Wallet,
   "production-job-work": Factory,
+  parking: ParkingCircle,
 };
 
 export function SoftwareModuleIcon({

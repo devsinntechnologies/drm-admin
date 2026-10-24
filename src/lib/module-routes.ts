@@ -23,6 +23,7 @@ export const MODULE_HREF: Partial<Record<ModuleId, string>> = {
   reports: `${BUSINESS_ADMIN_BASE}/restaurant/reports`,
   "public-catalog": `${BUSINESS_ADMIN_BASE}/public-data`,
   settings: `${BUSINESS_ADMIN_BASE}/settings`,
+  parking: `${BUSINESS_ADMIN_BASE}/parking`,
 };
 
 const PHARMACY_MODULE_HREF: Partial<Record<ModuleId, string>> = {
@@ -114,6 +115,9 @@ export function pathnameToModuleId(pathname: string): string | null {
 
   if (path === BUSINESS_ADMIN_BASE || path === `${BUSINESS_ADMIN_BASE}/`) {
     return "dashboard";
+  }
+  if (path === `${BUSINESS_ADMIN_BASE}/parking` || path.startsWith(`${BUSINESS_ADMIN_BASE}/parking/`)) {
+    return "parking";
   }
 
   const generated = path.match(/\/businessAdmin\/modules\/([^/]+)/);
