@@ -16,6 +16,7 @@ import {
   Loader2,
   Palette,
   Package,
+  ParkingCircle,
   Shield,
   ShoppingCart,
   Smartphone,
@@ -59,12 +60,16 @@ import {
   parseOrdersSettings,
   parseProductsSettings,
   parseSalesSettings,
+  parseParkingSettings,
+  PARKING_SECTION_OPTIONS,
   serializeCategoriesSettings,
   serializeOrdersSettings,
+  serializeParkingSettings,
   serializeProductsSettings,
   serializeSalesSettings,
   type CategoriesModuleSettings,
   type OrdersModuleSettings,
+  type ParkingModuleSettings,
   type ProductsModuleSettings,
   type SalesModuleSettings,
 } from "@/lib/module-feature-settings";
@@ -192,6 +197,9 @@ export function SoftwareControlContent({
   const [salesSettings, setSalesSettings] = useState<SalesModuleSettings>(() =>
     parseSalesSettings(templateConfig?.moduleSettings),
   );
+  const [parkingSettings, setParkingSettings] = useState<ParkingModuleSettings>(() =>
+    parseParkingSettings(templateConfig?.moduleSettings),
+  );
   const [expandedModule, setExpandedModule] = useState<string | null>("dashboard");
   const [dragModuleId, setDragModuleId] = useState<string | null>(null);
 
@@ -256,6 +264,7 @@ export function SoftwareControlContent({
     setOrdersSettings(parseOrdersSettings(templateConfig?.moduleSettings, industryId));
     setCategoriesSettings(parseCategoriesSettings(templateConfig?.moduleSettings));
     setSalesSettings(parseSalesSettings(templateConfig?.moduleSettings));
+    setParkingSettings(parseParkingSettings(templateConfig?.moduleSettings));
     // Hydrate from the saved template, not on every parent re-render / business refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configSyncKey, mobileCatalog]);
@@ -438,6 +447,7 @@ export function SoftwareControlContent({
       orders: serializeOrdersSettings(ordersSettings),
       categories: serializeCategoriesSettings(categoriesSettings),
       sales: serializeSalesSettings(salesSettings),
+      parking: serializeParkingSettings(parkingSettings),
     };
 
     const usableLogo = [uploadedLogoUrl, logoUrl, templateConfig?.logoUrl].find(
@@ -1035,6 +1045,36 @@ export function SoftwareControlContent({
                     ))}
                   </div>
                 </div>
+            </div>
+          ) : null}
+
+          {/* Shared by app and web, so show it when either has Parking on. */}
+          {enabledModules.includes("parking") || savedTemplateConfig?.enabledModules?.includes("parking") ? (
+            <div className="rounded-lg border border-[#e2e8f0]">
+              <div className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-[#0f172a]">
+                <ParkingCircle className="h-4 w-4 text-[var(--brand-secondary)]" />
+                Parking
+              </div>
+              <div className="space-y-3 border-t border-[#e2e8f0] p-4">
+                <p className="text-xs text-[#64748b]">
+                  Choose which Parking sections staff see in the app and the web portal. Hidden sections keep
+                  their data and can be turned back on at any time.
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {PARKING_SECTION_OPTIONS.map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
+                      <input
+                        type="checkbox"
+                        checked={parkingSettings[key]}
+                        onChange={(event) =>
+                          setParkingSettings((prev) => ({ ...prev, [key]: event.target.checked }))
+                        }
+                      />
+                      <span className="text-sm font-medium text-[#0f172a]">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : null}
 
