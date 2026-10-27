@@ -39,6 +39,7 @@ export type ApiTemplateConfig = {
 };
 
 export type CreateTemplateConfigPayload = {
+  controlTarget?: 'portal' | 'mobile';
   businessName: string;
   industryId: string;
   primaryColor: string;

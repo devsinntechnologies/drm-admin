@@ -84,7 +84,7 @@ export function buildBusinessWorkspaceNav(
   );
   const allowedSet = allowed ? new Set(allowed) : null;
 
-  return config.navigation
+  const configuredTabs = config.navigation
     .filter((item) => {
       const moduleId = item.moduleId as ModuleId;
       if (!item.visible || !enabled.has(moduleId)) return false;
@@ -105,6 +105,8 @@ export function buildBusinessWorkspaceNav(
         description: modulePurpose(moduleId, config.industryId),
       };
     });
+
+  return configuredTabs;
 }
 
 /** True when the logged-in role may open this module (enabled + roleAccess). */

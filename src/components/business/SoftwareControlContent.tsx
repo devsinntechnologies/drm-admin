@@ -16,6 +16,7 @@ import {
   Loader2,
   Palette,
   Package,
+  ParkingCircle,
   Shield,
   ShoppingCart,
   Smartphone,
@@ -51,7 +52,6 @@ import {
 import {
   serializeResolvedRoleAccess,
   normalizeRoleAccessForModules,
-  mergeRoleAccessPreservingPortal,
   mobileRoleAccessView,
   resolveRoleEntry,
 } from "@/lib/software-role-defaults";
@@ -60,12 +60,16 @@ import {
   parseOrdersSettings,
   parseProductsSettings,
   parseSalesSettings,
+  parseParkingSettings,
+  PARKING_SECTION_OPTIONS,
   serializeCategoriesSettings,
   serializeOrdersSettings,
+  serializeParkingSettings,
   serializeProductsSettings,
   serializeSalesSettings,
   type CategoriesModuleSettings,
   type OrdersModuleSettings,
+  type ParkingModuleSettings,
   type ProductsModuleSettings,
   type SalesModuleSettings,
 } from "@/lib/module-feature-settings";
@@ -85,13 +89,13 @@ import {
   initialMobileEnabled,
   enableMobileModule,
   disableMobileModule,
-  applyMobileModuleToggles,
   isMobileCapabilityModule,
 } from "@/lib/software-supported-modules";
 import { SoftwareModuleIcon } from "@/lib/software-module-icons";
 import { normalizeErrorMessage } from "@/lib/utils";
 import { isEmbeddedLogoData } from "@/lib/logo-upload";
 import { resolveMediaUrl } from "@/lib/media-url";
+import { resolveMobileControlConfig } from "@/lib/mobile-control-config";
 import { appendBusinessId } from "@/lib/module-routes";
 import { syncNavigationToEnabledModules } from "@/template-engine/builder";
 import { getIndustryById } from "@/templates/industries";
@@ -119,11 +123,12 @@ type SoftwareControlContentProps = {
 export function SoftwareControlContent({
   businessId,
   businessName,
-  templateConfig,
+  templateConfig: savedTemplateConfig,
   industryId,
   uploadedLogoUrl = null,
   platformAdmin = false,
 }: SoftwareControlContentProps) {
+  const templateConfig = resolveMobileControlConfig(savedTemplateConfig);
   const dispatch = useDispatch();
   const pathname = usePathname();
   const industry = getIndustryById(industryId);
@@ -192,6 +197,9 @@ export function SoftwareControlContent({
   const [salesSettings, setSalesSettings] = useState<SalesModuleSettings>(() =>
     parseSalesSettings(templateConfig?.moduleSettings),
   );
+  const [parkingSettings, setParkingSettings] = useState<ParkingModuleSettings>(() =>
+    parseParkingSettings(templateConfig?.moduleSettings),
+  );
   const [expandedModule, setExpandedModule] = useState<string | null>("dashboard");
   const [dragModuleId, setDragModuleId] = useState<string | null>(null);
 
@@ -199,7 +207,7 @@ export function SoftwareControlContent({
   const [createConfig, { isLoading: savingCreate }] = useCreateTemplateConfigMutation();
   const saving = savingUpdate || savingCreate;
   const skipServerHydrateRef = useRef(false);
-  /** Full template enabled list from server — used to preserve portal-only modules on save. */
+  /** Last saved app modules, retained if a save fails. */
   const serverEnabledRef = useRef<ModuleId[]>(
     (templateConfig?.enabledModules ?? []) as ModuleId[],
   );
@@ -256,6 +264,7 @@ export function SoftwareControlContent({
     setOrdersSettings(parseOrdersSettings(templateConfig?.moduleSettings, industryId));
     setCategoriesSettings(parseCategoriesSettings(templateConfig?.moduleSettings));
     setSalesSettings(parseSalesSettings(templateConfig?.moduleSettings));
+    setParkingSettings(parseParkingSettings(templateConfig?.moduleSettings));
     // Hydrate from the saved template, not on every parent re-render / business refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configSyncKey, mobileCatalog]);
@@ -410,21 +419,9 @@ export function SoftwareControlContent({
 
     const nextEnabled = snapshot.enabled;
     const nextRoles = snapshot.roles;
-    const mergedEnabled = applyMobileModuleToggles(
-      serverEnabledRef.current,
-      nextEnabled,
-      mobileCatalog,
-    );
-    const mergedRoleAccess = mergeRoleAccessPreservingPortal(
-      parseRoleAccess(templateConfig?.moduleSettings),
+    const mergedEnabled = nextEnabled.filter((moduleId) => mobileCatalog.includes(moduleId));
+    const mergedRoleAccess = normalizeRoleAccessForModules(
       nextRoles,
-      softwareControlRoleModules(mergedEnabled, {
-        includeCategories:
-          mobileCatalog.includes("categories") &&
-          (mergedEnabled.includes("categories") ||
-            mergedEnabled.includes("menu") ||
-            mergedEnabled.includes("products")),
-      }),
       mergedEnabled,
       industryId,
     );
@@ -450,6 +447,7 @@ export function SoftwareControlContent({
       orders: serializeOrdersSettings(ordersSettings),
       categories: serializeCategoriesSettings(categoriesSettings),
       sales: serializeSalesSettings(salesSettings),
+      parking: serializeParkingSettings(parkingSettings),
     };
 
     const usableLogo = [uploadedLogoUrl, logoUrl, templateConfig?.logoUrl].find(
@@ -478,11 +476,11 @@ export function SoftwareControlContent({
     try {
       skipServerHydrateRef.current = true;
       const saved = templateConfig?.id
-        ? await updateConfig({ id: templateConfig.id, body: payload }).unwrap()
+        ? await updateConfig({ id: templateConfig.id, body: { ...payload, controlTarget: 'mobile' } }).unwrap()
         : await createConfig(payload).unwrap();
-      serverEnabledRef.current = saved.enabledModules as ModuleId[];
+      serverEnabledRef.current = resolveMobileControlConfig(saved)!.enabledModules as ModuleId[];
       dispatch(businessApi.util.invalidateTags([{ type: "Business", id: businessId }]));
-      toast.success("Saved. App hides disabled modules after refresh.", { id: toastId });
+      toast.success("Saved. App updates within one minute or when refreshed.", { id: toastId });
     } catch (error) {
       skipServerHydrateRef.current = false;
       toast.error(normalizeErrorMessage(error, "Could not save software control."), { id: toastId });
@@ -1047,6 +1045,36 @@ export function SoftwareControlContent({
                     ))}
                   </div>
                 </div>
+            </div>
+          ) : null}
+
+          {/* Shared by app and web, so show it when either has Parking on. */}
+          {enabledModules.includes("parking") || savedTemplateConfig?.enabledModules?.includes("parking") ? (
+            <div className="rounded-lg border border-[#e2e8f0]">
+              <div className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-[#0f172a]">
+                <ParkingCircle className="h-4 w-4 text-[var(--brand-secondary)]" />
+                Parking
+              </div>
+              <div className="space-y-3 border-t border-[#e2e8f0] p-4">
+                <p className="text-xs text-[#64748b]">
+                  Choose which Parking sections staff see in the app and the web portal. Hidden sections keep
+                  their data and can be turned back on at any time.
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {PARKING_SECTION_OPTIONS.map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
+                      <input
+                        type="checkbox"
+                        checked={parkingSettings[key]}
+                        onChange={(event) =>
+                          setParkingSettings((prev) => ({ ...prev, [key]: event.target.checked }))
+                        }
+                      />
+                      <span className="text-sm font-medium text-[#0f172a]">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : null}
 

@@ -394,6 +394,51 @@ export function parseSalesSettings(
   };
 }
 
+/** Which Parking sections staff see on web and app. Only free slips are on by default. */
+export type ParkingModuleSettings = {
+  showFreeSlips: boolean;
+  showSummary: boolean;
+  showPrices: boolean;
+  showNewEntry: boolean;
+  showVehicleList: boolean;
+};
+
+export const DEFAULT_PARKING_SETTINGS: ParkingModuleSettings = {
+  showFreeSlips: true,
+  showSummary: false,
+  showPrices: false,
+  showNewEntry: false,
+  showVehicleList: false,
+};
+
+export const PARKING_SECTION_OPTIONS = [
+  ["showFreeSlips", "Free parking slips"],
+  ["showSummary", "Today's summary cards"],
+  ["showPrices", "Parking prices"],
+  ["showNewEntry", "New vehicle entry & receipt"],
+  ["showVehicleList", "Vehicles & receipts list"],
+] as const satisfies ReadonlyArray<readonly [keyof ParkingModuleSettings, string]>;
+
+export function parseParkingSettings(
+  moduleSettings?: Record<string, Record<string, unknown>> | null,
+): ParkingModuleSettings {
+  const raw = moduleSettings?.parking;
+  if (!raw || typeof raw !== "object") return DEFAULT_PARKING_SETTINGS;
+  const pick = (key: keyof ParkingModuleSettings) =>
+    typeof raw[key] === "boolean" ? (raw[key] as boolean) : DEFAULT_PARKING_SETTINGS[key];
+  return {
+    showFreeSlips: pick("showFreeSlips"),
+    showSummary: pick("showSummary"),
+    showPrices: pick("showPrices"),
+    showNewEntry: pick("showNewEntry"),
+    showVehicleList: pick("showVehicleList"),
+  };
+}
+
+export function serializeParkingSettings(settings: ParkingModuleSettings): Record<string, unknown> {
+  return { ...settings };
+}
+
 export function serializeSalesSettings(settings: SalesModuleSettings): Record<string, unknown> {
   return {
     allowExport: settings.allowExport,

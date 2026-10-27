@@ -30,6 +30,7 @@ const DEFAULT_ROLE_MODULES: Record<string, ModuleId[]> = {
     "products",
     "categories",
     "reports",
+    "parking",
   ],
   store_manager: [
     "dashboard",
@@ -43,8 +44,9 @@ const DEFAULT_ROLE_MODULES: Record<string, ModuleId[]> = {
     "production-job-work",
     "staff",
     "reports",
+    "parking",
   ],
-  cashier: ["orders", "sales", "products", "categories", "reports"],
+  cashier: ["orders", "sales", "products", "categories", "reports", "parking"],
   inventory_clerk: ["products", "categories", "inventory", "staff"],
   pharmacy_manager: [
     "dashboard",

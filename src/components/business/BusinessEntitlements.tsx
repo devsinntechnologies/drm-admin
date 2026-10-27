@@ -21,7 +21,7 @@ type Props = {
 
 /**
  * Super-admin catalog for a business: modules checked + saved here become
- * the only ones available in Portal → Features (and Software Control).
+ * the only ones available in Portal → Features. App controls are independent.
  */
 export function BusinessEntitlements({
   businessId,
@@ -115,8 +115,8 @@ export function BusinessEntitlements({
       </h2>
       <p className="mb-4 text-sm text-[var(--text-muted)]">
         {unrestricted
-          ? "Check the modules this business may use, then Save. After save, only those modules appear below in Portal Features."
-          : "Only the checked modules appear below in Portal Features. Uncheck → Save to remove them from the catalog."}
+          ? "Choose the web portal modules this business may use, then Save. App modules are managed separately under Software & Mobile → Control."
+          : "Only checked modules appear below in Portal Features. App modules stay under Software & Mobile → Control."}
       </p>
       <div className="grid gap-2 md:grid-cols-2">
         {industryModules.map((moduleId) => {
