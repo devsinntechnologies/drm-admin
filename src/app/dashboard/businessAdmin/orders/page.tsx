@@ -72,6 +72,7 @@ import { ProductMediaImage } from "@/components/common/ProductMediaImage";
 import { SnookerTableBookingDialog } from "@/components/orders/SnookerTableBookingDialog";
 import { ActiveOrderCard } from "@/components/orders/ActiveOrderCard";
 import { CompleteOrderDialog } from "@/components/orders/CompleteOrderDialog";
+import { isKitchenFinished, kitchenProgressLabel } from "@/lib/kitchen-status";
 import type { SnookerBookingDetails } from "@/lib/snooker-session-options";
 import type { OrderCreditDetails } from "@/lib/credit-types";
 import type { OrderPaymentMethodId } from "@/lib/order-payment-methods";
@@ -143,6 +144,8 @@ function OrdersContent() {
     templateConfig?.industryId,
   );
   const allowPrinter = salesSettings.allowPrinter && salesSettings.allowPrint && ordersSettings.allowPrint;
+  // With a kitchen, Complete waits until the kitchen marks the order served.
+  const usesKitchen = Boolean(templateConfig?.enabledModules?.includes("kitchen"));
   const activeBusinessId = useActiveBusinessId();
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
@@ -1816,6 +1819,11 @@ function OrdersContent() {
                     formatElapsed={formatElapsed}
                     onRemove={(id) => void handleRemoveOrder(id)}
                     onComplete={setCompleteTarget}
+                    kitchenProgress={
+                      usesKitchen && !hasSession && !isKitchenFinished(order.status)
+                        ? kitchenProgressLabel(order.status)
+                        : null
+                    }
                     onViewDetails={
                       ordersSettings.allowViewDetails
                         ? (id) => void openOrderDetails(id)
