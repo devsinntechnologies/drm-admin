@@ -19,6 +19,7 @@ import {
   type CreditParty,
   type OrderCreditDetails,
 } from "@/lib/credit-types";
+import { normalizeCreditParties } from "@/lib/credit-data";
 
 type CreditPartyDialogProps = {
   open: boolean;
@@ -90,8 +91,10 @@ export default function CreditPartyDialog({
       setSearching(true);
       try {
         const suffix = query.trim() ? `?search=${encodeURIComponent(query.trim())}` : "";
-        const result = await apiClient.get<CreditParty[]>(`/credits/parties${suffix}`, token, businessId);
-        const list = Array.isArray(result) ? result : [];
+        // List responses come wrapped as { data, pagination }; read them the
+        // same way the Credit / Udhar page does instead of expecting an array.
+        const result = await apiClient.get<unknown>(`/credits/parties${suffix}`, token, businessId);
+        const list = normalizeCreditParties(result);
         list.sort((a, b) => Number(b.outstanding ?? 0) - Number(a.outstanding ?? 0));
         setSuggestions(list);
         setError(null);
@@ -220,12 +223,6 @@ export default function CreditPartyDialog({
             </div>
           ) : null}
 
-          {!searching && businessId && suggestions.length === 0 && !error ? (
-            <p className="mt-3 text-sm font-semibold text-slate-500">
-              No saved credit customers yet — enter details below to create one.
-            </p>
-          ) : null}
-
           {suggestions.length > 0 ? (
             <div className="mt-3.5">
               <p className="text-sm font-black text-[#0f172a]">Existing credit</p>
@@ -260,8 +257,12 @@ export default function CreditPartyDialog({
                 })}
               </ul>
             </div>
-          ) : !searching && token && businessId ? (
-            <p className="mt-3 text-xs font-semibold text-slate-500">No saved credit customers yet — enter details above.</p>
+          ) : !searching && token && businessId && !error ? (
+            <p className="mt-3 text-sm font-semibold text-slate-500">
+              {name || phone || email
+                ? "No matching credit customer — this will create a new one."
+                : "No saved credit customers yet — enter details above to create one."}
+            </p>
           ) : !businessId ? (
             <p className="mt-3 text-xs font-semibold text-amber-700">Open this business from the portal to load credit customers.</p>
           ) : null}
