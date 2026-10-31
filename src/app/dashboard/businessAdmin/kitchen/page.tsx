@@ -22,6 +22,7 @@ import { useOrders } from "@/hooks/useOrders";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { BASE_URL } from "@/lib/constant";
 import { cn } from "@/lib/utils";
+import { kitchenActionLabel, kitchenStage, nextKitchenStatus } from "@/lib/kitchen-status";
 
 type KitchenLane = "new" | "cooking" | "ready";
 
@@ -154,16 +155,7 @@ function KitchenPageContent() {
 
   async function moveKitchenOrder(orderId: string, currentStatus: string) {
     setUpdatingOrderId(orderId);
-    let nextStatus = "cooking";
-    const status = currentStatus.toLowerCase();
-
-    if (["pending", "new", "placed"].includes(status)) {
-      nextStatus = "cooking";
-    } else if (["preparing", "cooking", "in_progress", "in-progress"].includes(status)) {
-      nextStatus = "ready";
-    } else if (status === "ready") {
-      nextStatus = "served";
-    }
+    const nextStatus = nextKitchenStatus(currentStatus);
 
     const toastId = toast.loading("Updating order status...");
     try {
@@ -262,11 +254,10 @@ function KitchenPageContent() {
 }
 
 function OrderCard({ order, onMove, updating }: { order: any, onMove: any, updating: boolean }) {
-  const status = order.status.toLowerCase();
-  const isNew = ["pending", "new", "placed"].includes(status);
-  const isCooking = ["preparing", "cooking", "in_progress", "in-progress"].includes(status);
-  const isReady = status === "ready";
-  const isServed = status === "served" || status === "completed" || status === "delivered";
+  const stage = kitchenStage(order.status);
+  const isNew = stage === "new";
+  const isCooking = stage === "received" || stage === "cooking";
+  const isServed = stage === "served";
 
   return (
     <div className="bg-white rounded-[24px] p-5 shadow-sm border border-slate-100 flex flex-col gap-4">
@@ -324,7 +315,7 @@ function OrderCard({ order, onMove, updating }: { order: any, onMove: any, updat
           )}
         >
           {updating && <Loader2 className="h-4 w-4 animate-spin" />}
-          {isNew ? "START COOKING" : isCooking ? "MARK AS READY" : "MARK AS SERVED"}
+          {kitchenActionLabel(order.status)}
         </button>
       )}
     </div>

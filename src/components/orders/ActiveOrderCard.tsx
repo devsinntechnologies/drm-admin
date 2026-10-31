@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Eye, Trash2 } from "lucide-react";
+import { CheckCircle2, ChefHat, Eye, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { OrderRecord } from "@/hooks/useOrders";
 import { ProductMediaImage } from "@/components/common/ProductMediaImage";
@@ -30,6 +30,8 @@ type Props = {
   formatElapsed: (createdAt: string) => string;
   onRemove: (orderId: string) => void;
   onComplete: (order: OrderRecord) => void;
+  /** While the kitchen is still working, shown in place of Complete. */
+  kitchenProgress?: string | null;
   onViewDetails?: (orderId: string) => void;
   onSessionPatch: (
     orderId: string,
@@ -52,6 +54,7 @@ export function ActiveOrderCard({
   formatElapsed,
   onRemove,
   onComplete,
+  kitchenProgress,
   onViewDetails,
   onSessionPatch,
 }: Props) {
@@ -126,7 +129,11 @@ export function ActiveOrderCard({
                 <Trash2 className="h-5 w-5" />
               </button>
             ) : null}
-            {settings.allowComplete ? (
+            {settings.allowComplete && kitchenProgress ? (
+              <span className="inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-black uppercase tracking-wide text-orange-700 sm:px-5 sm:py-3.5 sm:text-base">
+                <ChefHat className="h-5 w-5" /> {kitchenProgress}
+              </span>
+            ) : settings.allowComplete ? (
               <button
                 type="button"
                 onClick={() => onComplete(order)}
