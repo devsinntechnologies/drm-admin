@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useDispatch } from "react-redux";
@@ -109,6 +109,140 @@ import type {
   ThemeMode,
 } from "@/templates/types";
 
+type OrdersBooleanKey = {
+  [K in keyof OrdersModuleSettings]: OrdersModuleSettings[K] extends boolean ? K : never;
+}[keyof OrdersModuleSettings];
+
+type ControlScope = "web-app" | "app";
+
+function ScopeTag({ scope }: { scope: ControlScope }) {
+  return scope === "web-app" ? (
+    <span className="inline-flex shrink-0 items-center rounded-full bg-[#eff6ff] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#1d4ed8]">
+      Web + App
+    </span>
+  ) : (
+    <span className="inline-flex shrink-0 items-center rounded-full bg-[#fff7ed] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#c2410c]">
+      App only
+    </span>
+  );
+}
+
+function FeatureSection({
+  icon,
+  title,
+  scope,
+  badge,
+  open,
+  onToggle,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  scope: ControlScope;
+  badge?: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-[#e2e8f0]">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full flex-wrap items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-[#0f172a]"
+      >
+        {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        {icon}
+        {title}
+        <ScopeTag scope={scope} />
+        {badge ? (
+          <span className="ml-auto text-xs font-normal text-[#64748b]">{badge}</span>
+        ) : null}
+      </button>
+      {open ? <div className="space-y-3 border-t border-[#e2e8f0] p-4">{children}</div> : null}
+    </div>
+  );
+}
+
+function CheckOption({
+  checked,
+  onChange,
+  title,
+  body,
+  scope,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  title: ReactNode;
+  body?: string;
+  /** Only when this option's reach differs from its section. */
+  scope?: ControlScope;
+}) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
+      <input
+        type="checkbox"
+        className="mt-1 h-4 w-4"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      <span>
+        <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-[#0f172a]">
+          {title}
+          {scope ? <ScopeTag scope={scope} /> : null}
+        </span>
+        {body ? <span className="block text-xs text-[#64748b]">{body}</span> : null}
+      </span>
+    </label>
+  );
+}
+
+function ChoiceButtons<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  scope,
+}: {
+  label: string;
+  value: T;
+  options: { id: T; label: string }[];
+  onChange: (id: T) => void;
+  scope?: ControlScope;
+}) {
+  return (
+    <div>
+      <p className="mb-2 flex items-center gap-2 text-sm font-medium">
+        {label}
+        {scope ? <ScopeTag scope={scope} /> : null}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            onClick={() => onChange(option.id)}
+            className={`rounded-lg border px-4 py-2 text-sm font-semibold ${
+              value === option.id
+                ? "border-[var(--brand-secondary)] bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]"
+                : "border-[#e2e8f0] text-[#64748b]"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OptionGroupLabel({ children }: { children: ReactNode }) {
+  return (
+    <p className="pt-1 text-xs font-semibold uppercase tracking-wide text-[#64748b]">{children}</p>
+  );
+}
+
 type SoftwareControlContentProps = {
   businessId: string;
   businessName: string;
@@ -200,7 +334,17 @@ export function SoftwareControlContent({
   const [parkingSettings, setParkingSettings] = useState<ParkingModuleSettings>(() =>
     parseParkingSettings(templateConfig?.moduleSettings),
   );
-  const [expandedModule, setExpandedModule] = useState<string | null>("dashboard");
+  const [openSections, setOpenSections] = useState<ReadonlySet<string>>(() => new Set());
+  const isSectionOpen = (id: string) => openSections.has(id);
+  const toggleSection = (id: string) =>
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const setOrder = (key: OrdersBooleanKey, value: boolean) =>
+    setOrdersSettings((prev) => ({ ...prev, [key]: value }));
   const [dragModuleId, setDragModuleId] = useState<string | null>(null);
 
   const [updateConfig, { isLoading: savingUpdate }] = useUpdateTemplateConfigMutation();
@@ -861,477 +1005,406 @@ export function SoftwareControlContent({
           <FeatureTip text="Fine-tune products, orders, categories, and invoices on the app without turning the whole module off." />
         </h2>
         <p className="mb-4 text-sm text-[#64748b]">
-          Fine-tune dashboard KPI cards, product permissions, orders screens (POS vs active queue),
-          <strong> Active order button permissions</strong>, <strong>invoice button permissions</strong>,
-          Reports date filters, and category filters. Save at the bottom to push changes to Flutter
-          and the business portal.
+          Open a section to change its options. Save at the bottom to push changes to Flutter and the
+          business portal.
         </p>
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2 text-xs text-[#475569]">
+          <span className="inline-flex items-center gap-2">
+            <ScopeTag scope="web-app" /> Applies to the business web portal and the mobile app
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <ScopeTag scope="app" /> Applies to the mobile app only
+          </span>
+          <span>An option tagged differently from its section follows its own tag.</span>
+        </div>
         <div className="space-y-2">
           {enabledModules.includes("dashboard") ? (
-            <div className="rounded-lg border border-[#e2e8f0]">
-              <button
-                type="button"
-                onClick={() =>
-                  setExpandedModule((m) => (m === "dashboard" ? null : "dashboard"))
-                }
-                className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-[#0f172a]"
-              >
-                {expandedModule === "dashboard" ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-                <LayoutDashboard className="h-4 w-4 text-[var(--brand-secondary)]" />
-                Dashboard — KPI stat cards (mobile + portal)
-              </button>
-              {expandedModule === "dashboard" ? (
-                <div className="space-y-3 border-t border-[#e2e8f0] p-4">
-                  <p className="text-sm text-[#64748b]">
-                    Toggle cards on or off and drag to reorder. Expense cards require the{" "}
-                    <strong>Expenses</strong> module and hide automatically when it is off.
-                  </p>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {mergeDashboardCardOrder(dashboardCardOrder).map((cardId) => (
-                      <DashboardCardChip
-                        key={cardId}
-                        id={cardId}
-                        checked={dashboardCards.includes(cardId)}
-                        dragging={dragDashboardCardId === cardId}
-                        onToggle={() => toggleDashboardCard(cardId)}
-                        onDragStart={() => setDragDashboardCardId(cardId)}
-                        onDragEnd={() => setDragDashboardCardId(null)}
-                        onDrop={() => {
-                          if (dragDashboardCardId) {
-                            reorderDashboardCards(dragDashboardCardId, cardId);
-                          }
-                          setDragDashboardCardId(null);
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
+            <FeatureSection
+              icon={<LayoutDashboard className="h-4 w-4 text-[var(--brand-secondary)]" />}
+              title="Dashboard — KPI stat cards (mobile + portal)"
+              scope="web-app"
+              open={isSectionOpen("dashboard")}
+              onToggle={() => toggleSection("dashboard")}
+            >
+              <p className="text-sm text-[#64748b]">
+                Toggle cards on or off and drag to reorder. Expense cards require the{" "}
+                <strong>Expenses</strong> module and hide automatically when it is off.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {mergeDashboardCardOrder(dashboardCardOrder).map((cardId) => (
+                  <DashboardCardChip
+                    key={cardId}
+                    id={cardId}
+                    checked={dashboardCards.includes(cardId)}
+                    dragging={dragDashboardCardId === cardId}
+                    onToggle={() => toggleDashboardCard(cardId)}
+                    onDragStart={() => setDragDashboardCardId(cardId)}
+                    onDragEnd={() => setDragDashboardCardId(null)}
+                    onDrop={() => {
+                      if (dragDashboardCardId) {
+                        reorderDashboardCards(dragDashboardCardId, cardId);
+                      }
+                      setDragDashboardCardId(null);
+                    }}
+                  />
+                ))}
+              </div>
+            </FeatureSection>
           ) : null}
 
           {enabledModules.includes("reports") ? (
-            <div className="rounded-lg border border-[#e2e8f0]">
-              <button
-                type="button"
-                onClick={() =>
-                  setExpandedModule((m) => (m === "reports" ? null : "reports"))
-                }
-                className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-[#0f172a]"
-              >
-                {expandedModule === "reports" ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-                <BarChart3 className="h-4 w-4 text-[var(--brand-secondary)]" />
-                Reports — live filters (mobile + portal)
-              </button>
-              {expandedModule === "reports" ? (
-                <div className="space-y-2 border-t border-[#e2e8f0] p-4 text-sm text-[#475569]">
-                  <p>
-                    The Reports tab uses the same date filters as the business portal. Staff pick
-                    Today, This week, This month, or a custom range, then see sales, top items, and
-                    profit figures for that business.
-                  </p>
-                  <p>
-                    Super Admin and Business Admin both control this from Software Control. Saving
-                    here updates portal navigation and the Flutter app on next login or refresh.
-                  </p>
-                  <p className="text-xs text-[#94a3b8]">
-                    Grant Reports in the role matrix below so cashiers or managers can open it. Owners
-                    see it automatically when the module is on.
-                  </p>
-                </div>
-              ) : null}
-            </div>
+            <FeatureSection
+              icon={<BarChart3 className="h-4 w-4 text-[var(--brand-secondary)]" />}
+              title="Reports — live filters (mobile + portal)"
+              scope="web-app"
+              open={isSectionOpen("reports")}
+              onToggle={() => toggleSection("reports")}
+            >
+              <div className="space-y-2 text-sm text-[#475569]">
+                <p>
+                  The Reports tab uses the same date filters as the business portal. Staff pick Today,
+                  This week, This month, or a custom range, then see sales, top items, and profit
+                  figures for that business.
+                </p>
+                <p className="text-xs text-[#94a3b8]">
+                  Grant Reports in the role matrix above so cashiers or managers can open it. Owners see
+                  it automatically when the module is on.
+                </p>
+              </div>
+            </FeatureSection>
           ) : null}
 
           {enabledModules.includes("sales") ? (
-            <div className="rounded-lg border border-[#e2e8f0]">
-              <div className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-[#0f172a]">
-                <FileSpreadsheet className="h-4 w-4 text-[var(--brand-secondary)]" />
-                Invoices / Sales
-              </div>
-              <div className="space-y-3 border-t border-[#e2e8f0] p-4">
-                  <label className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4"
-                      checked={salesSettings.allowExport}
-                      onChange={(event) =>
-                        setSalesSettings((prev) => ({
-                          ...prev,
-                          allowExport: event.target.checked,
-                        }))
-                      }
-                    />
-                    <span>
-                      <span className="flex items-center gap-1.5 text-sm font-medium text-[#0f172a]">
-                        <Download className="h-3.5 w-3.5" />
-                        Allow Excel export
-                      </span>
-                      <span className="mt-0.5 block text-xs text-[#64748b]">
-                        Staff can download the invoice list as Excel from Invoices. Turn this off to hide the
-                        button on mobile, desktop, and the staff portal.
-                      </span>
+            <FeatureSection
+              icon={<FileSpreadsheet className="h-4 w-4 text-[var(--brand-secondary)]" />}
+              title="Invoices / Sales"
+              scope="web-app"
+              open={isSectionOpen("sales")}
+              onToggle={() => toggleSection("sales")}
+            >
+              <CheckOption
+                checked={salesSettings.allowExport}
+                onChange={(value) => setSalesSettings((prev) => ({ ...prev, allowExport: value }))}
+                title={
+                  <span className="flex items-center gap-1.5">
+                    <Download className="h-3.5 w-3.5" />
+                    Allow Excel export
+                  </span>
+                }
+                body="Download the invoice list as Excel on mobile, desktop, and the staff portal."
+              />
+              <div className="space-y-2">
+                <CheckOption
+                  checked={salesSettings.allowPrinter}
+                  onChange={(value) => setSalesSettings((prev) => ({ ...prev, allowPrinter: value }))}
+                  title={
+                    <span className="flex items-center gap-1.5">
+                      <Printer className="h-3.5 w-3.5" />
+                      Allow printer access
                     </span>
-                  </label>
-                  <div className="rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
-                    <label className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        className="mt-1 h-4 w-4"
-                        checked={salesSettings.allowPrinter}
-                        onChange={(event) =>
-                          setSalesSettings((prev) => ({
-                            ...prev,
-                            allowPrinter: event.target.checked,
-                          }))
-                        }
-                      />
-                      <span>
-                        <span className="flex items-center gap-1.5 text-sm font-medium text-[#0f172a]">
-                          <Printer className="h-3.5 w-3.5" />
-                          Allow printer access
-                        </span>
-                        <span className="mt-0.5 block text-xs text-[#64748b]">
-                          Staff can connect a printer and print invoices from Invoices, Orders, and the mobile
-                          app. Turn this off to disable printing; staff will be asked to contact an
-                          administrator.
-                        </span>
-                      </span>
-                    </label>
-                    {salesSettings.allowPrinter ? (
-                      <Link
-                        href={printersHref}
-                        className="mt-2 ml-7 inline-flex text-xs font-semibold text-[#0050F8] hover:underline"
-                      >
-                        Open printer configuration
-                      </Link>
-                    ) : null}
-                  </div>
-                  <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                    Invoice buttons
-                  </p>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {(
-                      [
-                        ["allowPreview", "Preview invoices"],
-                        ["allowRefresh", "Refresh invoices"],
-                        ["allowFilters", "Date filters"],
-                        ["allowPrinterSetup", "Printer setup and test"],
-                        ["allowPrint", "Print invoices"],
-                        ["allowDownloadPdf", "Download PDF"],
-                        ["allowReturn", "Return invoices"],
-                        ["allowDelete", "Delete invoices"],
-                        ["showRevenue", "Show revenue totals"],
-                      ] as const
-                    ).map(([key, label]) => (
-                      <label key={key} className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
-                        <input
-                          type="checkbox"
-                          checked={salesSettings[key]}
-                          onChange={(event) =>
-                            setSalesSettings((prev) => ({ ...prev, [key]: event.target.checked }))
-                          }
-                        />
-                        <span className="text-sm font-medium text-[#0f172a]">{label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-            </div>
+                  }
+                  body="Connect a printer and print from Invoices, Orders, and the mobile app. When off, staff are asked to contact an administrator."
+                />
+                {salesSettings.allowPrinter ? (
+                  <Link
+                    href={printersHref}
+                    className="ml-7 inline-flex text-xs font-semibold text-[#0050F8] hover:underline"
+                  >
+                    Open printer configuration
+                  </Link>
+                ) : null}
+              </div>
+              <OptionGroupLabel>Invoice buttons</OptionGroupLabel>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(
+                  [
+                    ["allowPreview", "Preview invoices"],
+                    ["allowRefresh", "Refresh invoices"],
+                    ["allowFilters", "Date filters"],
+                    ["allowPrinterSetup", "Printer setup and test"],
+                    ["allowPrint", "Print invoices"],
+                    ["allowDownloadPdf", "Download PDF"],
+                    ["allowReturn", "Return invoices"],
+                    ["allowDelete", "Delete invoices"],
+                    ["showRevenue", "Show revenue totals"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <CheckOption
+                    key={key}
+                    checked={salesSettings[key]}
+                    onChange={(value) => setSalesSettings((prev) => ({ ...prev, [key]: value }))}
+                    title={label}
+                  />
+                ))}
+              </div>
+            </FeatureSection>
           ) : null}
 
           {/* Shared by app and web, so show it when either has Parking on. */}
           {enabledModules.includes("parking") || savedTemplateConfig?.enabledModules?.includes("parking") ? (
-            <div className="rounded-lg border border-[#e2e8f0]">
-              <div className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-[#0f172a]">
-                <ParkingCircle className="h-4 w-4 text-[var(--brand-secondary)]" />
-                Parking
+            <FeatureSection
+              icon={<ParkingCircle className="h-4 w-4 text-[var(--brand-secondary)]" />}
+              title="Parking"
+              scope="web-app"
+              open={isSectionOpen("parking")}
+              onToggle={() => toggleSection("parking")}
+            >
+              <p className="text-xs text-[#64748b]">
+                Choose which Parking sections staff see in the app and the web portal. Hidden sections
+                keep their data and can be turned back on at any time.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {PARKING_SECTION_OPTIONS.map(([key, label]) => (
+                  <CheckOption
+                    key={key}
+                    checked={parkingSettings[key]}
+                    onChange={(value) => setParkingSettings((prev) => ({ ...prev, [key]: value }))}
+                    title={label}
+                  />
+                ))}
               </div>
-              <div className="space-y-3 border-t border-[#e2e8f0] p-4">
-                <p className="text-xs text-[#64748b]">
-                  Choose which Parking sections staff see in the app and the web portal. Hidden sections keep
-                  their data and can be turned back on at any time.
-                </p>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {PARKING_SECTION_OPTIONS.map(([key, label]) => (
-                    <label key={key} className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
-                      <input
-                        type="checkbox"
-                        checked={parkingSettings[key]}
-                        onChange={(event) =>
-                          setParkingSettings((prev) => ({ ...prev, [key]: event.target.checked }))
-                        }
-                      />
-                      <span className="text-sm font-medium text-[#0f172a]">{label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
+            </FeatureSection>
           ) : null}
 
           {hasProducts ? (
-            <div className="rounded-lg border border-[#e2e8f0]">
-              <button
-                type="button"
-                onClick={() => setExpandedModule((m) => (m === "products" ? null : "products"))}
-                className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-[#0f172a]"
-              >
-                {expandedModule === "products" ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-                <Package className="h-4 w-4 text-[var(--brand-secondary)]" />
-                Products / Menu
-              </button>
-
-              <div className="space-y-3 border-t border-[#e2e8f0] px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                  Products screen header buttons
-                </p>
-                <p className="text-xs text-[#64748b]">
-                  Top-right actions on the Products page in the web portal and the mobile app (+ Add,
-                  Categories, Ingredients).
-                </p>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <label className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
-                    <input
-                      type="checkbox"
-                      checked={productsSettings.allowCreate}
-                      onChange={(e) =>
-                        setProductsSettings((p) => ({ ...p, allowCreate: e.target.checked }))
-                      }
-                    />
-                    <span className="text-sm font-medium text-[#0f172a]">
-                      + Add product / menu item
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
-                    <input
-                      type="checkbox"
-                      checked={categoriesSettings.allowManage}
-                      onChange={(e) =>
-                        setCategoriesSettings((p) => ({ ...p, allowManage: e.target.checked }))
-                      }
-                    />
-                    <span className="text-sm font-medium text-[#0f172a]">Categories button</span>
-                  </label>
-                  <label className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
-                    <input
-                      type="checkbox"
-                      checked={productsSettings.allowManageIngredients}
-                      onChange={(e) =>
-                        setProductsSettings((p) => ({
-                          ...p,
-                          allowManageIngredients: e.target.checked,
-                        }))
-                      }
-                    />
-                    <span className="text-sm font-medium text-[#0f172a]">Ingredients button</span>
-                  </label>
-                </div>
+            <FeatureSection
+              icon={<Package className="h-4 w-4 text-[var(--brand-secondary)]" />}
+              title="Products / Menu"
+              scope="web-app"
+              open={isSectionOpen("products")}
+              onToggle={() => toggleSection("products")}
+            >
+              <OptionGroupLabel>Products screen header buttons</OptionGroupLabel>
+              <p className="text-xs text-[#64748b]">
+                Top-right actions on the Products page in the web portal and the mobile app.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <CheckOption
+                  checked={productsSettings.allowCreate}
+                  onChange={(value) => setProductsSettings((p) => ({ ...p, allowCreate: value }))}
+                  title="+ Add product / menu item"
+                />
+                <CheckOption
+                  checked={categoriesSettings.allowManage}
+                  onChange={(value) => setCategoriesSettings((p) => ({ ...p, allowManage: value }))}
+                  title="Categories button"
+                />
+                <CheckOption
+                  checked={productsSettings.allowManageIngredients}
+                  onChange={(value) =>
+                    setProductsSettings((p) => ({ ...p, allowManageIngredients: value }))
+                  }
+                  title="Ingredients button"
+                />
               </div>
-
-              {expandedModule === "products" ? (
-                <div className="space-y-3 border-t border-[#e2e8f0] p-4">
-                  <label className="flex items-center justify-between rounded-lg border border-[#e2e8f0] px-3 py-2 text-sm">
-                    <span>Allow adding products <FeatureTip text={SOFTWARE_TIPS.allowCreateProducts} /></span>
-                    <input
-                      type="checkbox"
-                      checked={productsSettings.allowCreate}
-                      onChange={(e) =>
-                        setProductsSettings((p) => ({ ...p, allowCreate: e.target.checked }))
-                      }
-                    />
-                  </label>
-                  <label className="flex items-center justify-between rounded-lg border border-[#e2e8f0] px-3 py-2 text-sm">
-                    <span>Allow editing products <FeatureTip text={SOFTWARE_TIPS.allowEditProducts} /></span>
-                    <input
-                      type="checkbox"
-                      checked={productsSettings.allowEdit}
-                      onChange={(e) =>
-                        setProductsSettings((p) => ({ ...p, allowEdit: e.target.checked }))
-                      }
-                    />
-                  </label>
-                  <label className="flex items-start justify-between gap-3 rounded-lg border border-[#e2e8f0] px-3 py-2 text-sm">
-                    <span>
-                      <span className="block">Allow barcode on product form</span>
-                      <span className="mt-0.5 block text-xs font-normal text-[#64748b]">
-                        USB gun and camera field when adding or editing products. Off by default.
-                      </span>
-                    </span>
-                    <input
-                      type="checkbox"
-                      className="mt-1"
-                      checked={productsSettings.allowBarcodeOnCreate}
-                      onChange={(e) =>
-                        setProductsSettings((p) => ({
-                          ...p,
-                          allowBarcodeOnCreate: e.target.checked,
-                        }))
-                      }
-                    />
-                  </label>
-                  <div>
-                    <p className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium">
-                      Product layout
-                      <FeatureTip text={SOFTWARE_TIPS.productLayout} />
-                    </p>
-                    <div className="flex gap-2">
-                      {(["grid", "list"] as const).map((mode) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => setProductsSettings((p) => ({ ...p, viewMode: mode }))}
-                          className={`rounded-lg border px-4 py-2 text-sm font-semibold capitalize ${
-                            productsSettings.viewMode === mode
-                              ? "border-[var(--brand-secondary)] bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]"
-                              : "border-[#e2e8f0] text-[#64748b]"
-                          }`}
-                        >
-                          {mode}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-            </div>
+              <OptionGroupLabel>Product form</OptionGroupLabel>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <CheckOption
+                  checked={productsSettings.allowEdit}
+                  onChange={(value) => setProductsSettings((p) => ({ ...p, allowEdit: value }))}
+                  title="Allow editing products"
+                  body="Change name, price, stock, and photo from the app."
+                  scope="app"
+                />
+                <CheckOption
+                  checked={productsSettings.allowBarcodeOnCreate}
+                  onChange={(value) =>
+                    setProductsSettings((p) => ({ ...p, allowBarcodeOnCreate: value }))
+                  }
+                  title="Barcode on product form"
+                  body="USB gun and camera field when adding or editing products."
+                  scope="app"
+                />
+              </div>
+              <ChoiceButtons
+                label="Product layout"
+                scope="app"
+                value={productsSettings.viewMode}
+                options={[
+                  { id: "grid", label: "Grid" },
+                  { id: "list", label: "List" },
+                ]}
+                onChange={(id) => setProductsSettings((p) => ({ ...p, viewMode: id }))}
+              />
+            </FeatureSection>
           ) : null}
 
           {enabledModules.includes("orders") ? (
-            <div className="rounded-lg border border-[#e2e8f0]">
-              <button
-                type="button"
-                onClick={() => setExpandedModule((m) => (m === "orders" ? null : "orders"))}
-                className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-[#0f172a]"
-              >
-                {expandedModule === "orders" ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-                <ShoppingCart className="h-4 w-4 text-[var(--brand-secondary)]" />
-                Orders
-                <span className="ml-auto hidden text-xs font-normal text-[#64748b] sm:inline">
-                  {ordersSettings.showNewOrders && ordersSettings.showActiveOrders
+            <>
+              <FeatureSection
+                icon={<ShoppingCart className="h-4 w-4 text-[var(--brand-secondary)]" />}
+                title="Orders — screens & flow"
+                badge={
+                  ordersSettings.showNewOrders && ordersSettings.showActiveOrders
                     ? "POS + Active queue"
                     : ordersSettings.showNewOrders
                       ? "POS only"
                       : ordersSettings.showActiveOrders
                         ? "Active queue only"
-                        : "No screens"}
-                </span>
-              </button>
-
-              <div className="space-y-3 border-t border-[#e2e8f0] px-4 py-3">
-                <p className="text-sm font-medium text-[#0f172a]">Orders screens on mobile</p>
+                        : "No screens"
+                }
+                scope="app"
+                open={isSectionOpen("orders")}
+                onToggle={() => toggleSection("orders")}
+              >
                 <p className="text-xs text-[#64748b]">
-                  Control what store staff see in the Orders tab. For retail and auto parts, turn off{" "}
+                  Which screens staff see in the Orders tab. For retail and auto parts, turn off{" "}
                   <strong>Active orders queue</strong> and keep <strong>New order / POS</strong> on.
                 </p>
-                <label className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4"
-                    checked={ordersSettings.showNewOrders}
-                    onChange={(event) =>
-                      setOrdersSettings((prev) => ({
-                        ...prev,
-                        showNewOrders: event.target.checked,
-                        defaultSection:
-                          !event.target.checked && prev.defaultSection === "new"
-                            ? "active"
-                            : prev.defaultSection,
-                      }))
-                    }
-                  />
-                  <span>
-                    <span className="block text-sm font-medium text-[#0f172a]">
-                      New order / POS screen
-                    </span>
-                    <span className="block text-xs text-[#64748b]">
-                      Product picker and cart for taking a sale.
-                    </span>
-                  </span>
-                </label>
-                <label className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4"
-                    checked={ordersSettings.showActiveOrders}
-                    onChange={(event) =>
-                      setOrdersSettings((prev) => ({
-                        ...prev,
-                        showActiveOrders: event.target.checked,
-                        defaultSection:
-                          !event.target.checked && prev.defaultSection === "active"
-                            ? "new"
-                            : prev.defaultSection,
-                      }))
-                    }
-                  />
-                  <span>
-                    <span className="block text-sm font-medium text-[#0f172a]">
-                      Active orders queue
-                    </span>
-                    <span className="block text-xs text-[#64748b]">
-                      Live order list with status updates (restaurant). Off for sell-and-done retail.
-                    </span>
-                  </span>
-                </label>
+                <CheckOption
+                  checked={ordersSettings.showNewOrders}
+                  onChange={(value) =>
+                    setOrdersSettings((prev) => ({
+                      ...prev,
+                      showNewOrders: value,
+                      defaultSection:
+                        !value && prev.defaultSection === "new" ? "active" : prev.defaultSection,
+                    }))
+                  }
+                  title="New order / POS screen"
+                  body="Product picker and cart for taking a sale."
+                />
+                <CheckOption
+                  checked={ordersSettings.showActiveOrders}
+                  onChange={(value) =>
+                    setOrdersSettings((prev) => ({
+                      ...prev,
+                      showActiveOrders: value,
+                      defaultSection:
+                        !value && prev.defaultSection === "active" ? "new" : prev.defaultSection,
+                    }))
+                  }
+                  title="Active orders queue"
+                  body="Live order list with status updates (restaurant). Off for sell-and-done retail."
+                />
                 {ordersSettings.showActiveOrders && ordersSettings.showNewOrders ? (
-                  <div>
-                    <p className="mb-2 text-xs font-medium text-[#64748b]">Default screen</p>
-                    <div className="flex gap-2">
-                      {(
-                        [
-                          { id: "active" as const, label: "Active orders" },
-                          { id: "new" as const, label: "New order (POS)" },
-                        ] as const
-                      ).map((option) => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() =>
-                            setOrdersSettings((prev) => ({
-                              ...prev,
-                              defaultSection: option.id,
-                            }))
-                          }
-                          className={`rounded-lg border px-4 py-2 text-sm font-semibold ${
-                            ordersSettings.defaultSection === option.id
-                              ? "border-[var(--brand-secondary)] bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]"
-                              : "border-[#e2e8f0] text-[#64748b]"
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <ChoiceButtons
+                    label="Default screen"
+                    value={ordersSettings.defaultSection}
+                    options={[
+                      { id: "active", label: "Active orders" },
+                      { id: "new", label: "New order (POS)" },
+                    ]}
+                    onChange={(id) => setOrdersSettings((prev) => ({ ...prev, defaultSection: id }))}
+                  />
                 ) : null}
-              </div>
+                <div>
+                  <p className="mb-2 text-sm font-medium">Order completion</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {(
+                      [
+                        {
+                          id: "restaurantLifecycle" as const,
+                          title: "Full order lifecycle",
+                          body: "Place order → active / kitchen → complete (restaurant).",
+                        },
+                        {
+                          id: "orderOnly" as const,
+                          title: "Order only",
+                          body: "Select products → cart → complete immediately (retail-style).",
+                        },
+                      ] as const
+                    ).map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() =>
+                          setOrdersSettings((prev) => ({ ...prev, completionMode: option.id }))
+                        }
+                        className={`rounded-lg border p-3 text-left ${
+                          ordersSettings.completionMode === option.id
+                            ? "border-[var(--brand-secondary)] bg-[var(--brand-primary-soft)]"
+                            : "border-[#e2e8f0] bg-white"
+                        }`}
+                      >
+                        <span className="block text-sm font-semibold text-[#0f172a]">{option.title}</span>
+                        <span className="mt-1 block text-xs text-[#64748b]">{option.body}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </FeatureSection>
 
-              <div className="space-y-3 border-t border-[#e2e8f0] px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                  Active order section
-                </p>
+              <FeatureSection
+                icon={<ShoppingCart className="h-4 w-4 text-[var(--brand-secondary)]" />}
+                title="New order / POS"
+                badge={ordersSettings.showNewOrders ? undefined : "Screen off"}
+                scope="app"
+                open={isSectionOpen("orders-new")}
+                onToggle={() => toggleSection("orders-new")}
+              >
                 <p className="text-xs text-[#64748b]">
-                  Applies to <strong>Flutter Active Orders</strong> and the <strong>business portal Orders</strong>{" "}
-                  screen (same module settings). Queue actions, QR self-order approve/reject, and timed table
-                  session controls (+5, pause, pencil) are all configured here.
+                  Cart, place order, barcode scan, and pricing extras on the <strong>New order</strong>{" "}
+                  screen.
                 </p>
+                <CheckOption
+                  checked={ordersSettings.allowCreate}
+                  onChange={(value) => setOrder("allowCreate", value)}
+                  title="Create / place order"
+                  body="Cart checkout, plus the + button on Active orders."
+                />
+                <CheckOption
+                  checked={ordersSettings.allowBarcodeScanner}
+                  onChange={(value) => setOrder("allowBarcodeScanner", value)}
+                  title="Barcode scanner"
+                  body="USB/Bluetooth gun and camera add products to the cart."
+                />
+                <ChoiceButtons
+                  label="Default product list"
+                  value={ordersSettings.productScopeDefault}
+                  options={[
+                    { id: "activeOnly", label: "Active only" },
+                    { id: "all", label: "All products" },
+                  ]}
+                  onChange={(id) => setOrdersSettings((prev) => ({ ...prev, productScopeDefault: id }))}
+                />
+                <OptionGroupLabel>Cart & payment</OptionGroupLabel>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {(
+                    [
+                      ["allowExtraCharges", "Extra charges section", "Master switch for the Extra Charges accordion."],
+                      ["allowDeliveryCharge", "Delivery charge", "Field inside Extra Charges."],
+                      ["allowPackingCharge", "Packing charge", "Field inside Extra Charges."],
+                      ["allowPriceOverride", "Price override", "Manual line price on cart items."],
+                      ["allowLineDiscount", "Line discount", "Per-item discount on the cart."],
+                      ["allowCreditSale", "Credit / udhar", "Credit option on Complete-order payment."],
+                    ] as const
+                  ).map(([key, title, body]) => (
+                    <CheckOption
+                      key={key}
+                      checked={ordersSettings[key]}
+                      onChange={(value) => setOrder(key, value)}
+                      title={title}
+                      body={body}
+                      scope={key === "allowCreditSale" ? "web-app" : undefined}
+                    />
+                  ))}
+                </div>
+              </FeatureSection>
+
+              <FeatureSection
+                icon={<ShoppingCart className="h-4 w-4 text-[var(--brand-secondary)]" />}
+                title="Active orders"
+                badge={ordersSettings.showActiveOrders ? undefined : "Screen off"}
+                scope="web-app"
+                open={isSectionOpen("orders-active")}
+                onToggle={() => toggleSection("orders-active")}
+              >
+                <p className="text-xs text-[#64748b]">
+                  Buttons on the live queue in <strong>Flutter Active Orders</strong> and the{" "}
+                  <strong>business portal Orders</strong> screen.
+                </p>
+                <ChoiceButtons
+                  label="Queue layout"
+                  scope="app"
+                  value={ordersSettings.viewType}
+                  options={[
+                    { id: "list", label: "List" },
+                    { id: "grid", label: "Grid" },
+                  ]}
+                  onChange={(id) => setOrdersSettings((prev) => ({ ...prev, viewType: id }))}
+                />
+                <OptionGroupLabel>Order card buttons</OptionGroupLabel>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {(
                     [
@@ -1339,418 +1412,129 @@ export function SoftwareControlContent({
                       ["allowRefresh", "Refresh queue"],
                       ["allowEdit", "Edit items and prices"],
                       ["allowChangeTable", "Change table"],
-                      ["allowRemove", "Remove / cancel order (trash icon)"],
+                      ["allowRemove", "Remove / cancel order"],
                       ["allowComplete", "Complete order"],
                       ["allowPrint", "Print order"],
-                      ["allowDownloadPdf", "Download order PDF"],
-                      ["allowSelfOrderApprove", "Approve self-order"],
-                      ["allowSelfOrderReject", "Reject self-order"],
                     ] as const
-                  ).map(([key, label]) => (
-                    <label
+                  ).map(([key, title]) => (
+                    <CheckOption
                       key={key}
-                      className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={ordersSettings[key]}
-                        onChange={(event) =>
-                          setOrdersSettings((prev) => ({
-                            ...prev,
-                            [key]: event.target.checked,
-                          }))
-                        }
-                      />
-                      <span className="text-sm font-medium text-[#0f172a]">{label}</span>
-                    </label>
+                      checked={ordersSettings[key]}
+                      onChange={(value) => setOrder(key, value)}
+                      title={title}
+                      scope={key === "allowChangeTable" ? "app" : undefined}
+                    />
                   ))}
                 </div>
-                <div className="rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] p-4">
-                  <p className="mb-1 text-sm font-semibold text-[#14532d]">Timed table sessions</p>
-                  <p className="mb-3 text-xs text-[#166534]">
-                    Timer card on Active Orders (+5, Pause, edit time). Snooker / pool: turn on; restaurant:
-                    usually off.
-                  </p>
-                  <label className="mb-3 flex items-start gap-3 rounded-lg border border-[#86efac] bg-white p-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4"
-                      checked={ordersSettings.enableTableSession}
-                      onChange={(event) =>
-                        setOrdersSettings((prev) => ({
-                          ...prev,
-                          enableTableSession: event.target.checked,
-                        }))
-                      }
-                    />
-                    <span>
-                      <span className="block text-sm font-medium text-[#0f172a]">
-                        Enable timed table sessions
-                      </span>
-                      <span className="block text-xs text-[#64748b]">
-                        Master switch for session block, timers, and booking status.
-                      </span>
-                    </span>
-                  </label>
-                  {ordersSettings.enableTableSession ? (
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {(
-                        [
-                          {
-                            key: "allowSessionDuration" as const,
-                            title: "Duration picker",
-                            body: "15 / 30 / 60 min when placing an order.",
-                          },
-                          {
-                            key: "allowOpenEndedSession" as const,
-                            title: "Open-ended (∞)",
-                            body: "∞ option in the duration list.",
-                          },
-                          {
-                            key: "allowSessionGameType" as const,
-                            title: "Game type picker",
-                            body: "Single / Double dropdown.",
-                          },
-                          {
-                            key: "allowSessionEditTime" as const,
-                            title: "Edit remaining time",
-                            body: "Pencil on Active Orders.",
-                          },
-                          {
-                            key: "allowSessionAddTime" as const,
-                            title: "+5 / +15 minutes",
-                            body: "Quick-extend on session card.",
-                          },
-                          {
-                            key: "allowSessionPause" as const,
-                            title: "Pause / resume",
-                            body: "Pause control on session card.",
-                          },
-                          {
-                            key: "allowSessionTimeUpAlert" as const,
-                            title: "Time Up alert",
-                            body: "Popup + beep when time expires.",
-                          },
-                          {
-                            key: "showTableBookingStatus" as const,
-                            title: "Booked / overtime ribbons",
-                            body: "BOOKED ribbon on product cards.",
-                          },
-                        ] as const
-                      ).map((feature) => (
-                        <label
-                          key={feature.key}
-                          className="flex items-start gap-3 rounded-lg border border-[#86efac] bg-white p-3"
-                        >
-                          <input
-                            type="checkbox"
-                            className="mt-1 h-4 w-4"
-                            checked={ordersSettings[feature.key]}
-                            onChange={(event) =>
-                              setOrdersSettings((prev) => ({
-                                ...prev,
-                                [feature.key]: event.target.checked,
-                              }))
-                            }
-                          />
-                          <span>
-                            <span className="block text-sm font-medium text-[#0f172a]">
-                              {feature.title}
-                            </span>
-                            <span className="block text-xs text-[#64748b]">{feature.body}</span>
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="space-y-3 border-t border-[#e2e8f0] px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                  Order section — New order / POS (Admin)
-                </p>
-                <p className="text-xs text-[#64748b]">
-                  Controls for the <strong>New order</strong> screen: cart, place order, barcode scan, and
-                  pricing extras. Separate from Active order section above — toggling here does not hide
-                  Complete/Edit on the live queue.
-                </p>
-                <label className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] p-3">
-                  <input
-                    type="checkbox"
-                    checked={ordersSettings.allowCreate}
-                    onChange={(event) =>
-                      setOrdersSettings((prev) => ({
-                        ...prev,
-                        allowCreate: event.target.checked,
-                      }))
-                    }
-                  />
-                  <span className="text-sm font-medium text-[#0f172a]">
-                    Create / place order (cart checkout &amp; FAB on Active screen)
-                  </span>
-                </label>
-                <label className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4"
-                    checked={ordersSettings.allowBarcodeScanner}
-                    onChange={(event) =>
-                      setOrdersSettings((prev) => ({
-                        ...prev,
-                        allowBarcodeScanner: event.target.checked,
-                      }))
-                    }
-                  />
-                  <span>
-                    <span className="block text-sm font-medium text-[#0f172a]">
-                      Barcode scanner on New order
-                    </span>
-                    <span className="block text-xs text-[#64748b]">
-                      USB/Bluetooth gun and camera add products to the cart.
-                    </span>
-                  </span>
-                </label>
+                <OptionGroupLabel>QR self-orders</OptionGroupLabel>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {(
                     [
-                      {
-                        key: "allowExtraCharges" as const,
-                        title: "Extra charges section",
-                        body: "Master: show Extra Charges accordion on the cart.",
-                      },
-                      {
-                        key: "allowDeliveryCharge" as const,
-                        title: "Delivery charge",
-                        body: "Delivery Charge field inside Extra Charges.",
-                      },
-                      {
-                        key: "allowPackingCharge" as const,
-                        title: "Packing charge",
-                        body: "Packing Charge field inside Extra Charges.",
-                      },
-                      {
-                        key: "allowCreditSale" as const,
-                        title: "Credit / udhar",
-                        body: "Credit on Complete-order payment (and cart when enabled).",
-                      },
-                      {
-                        key: "allowPriceOverride" as const,
-                        title: "Price override",
-                        body: "Manual line price on cart items.",
-                      },
-                      {
-                        key: "allowLineDiscount" as const,
-                        title: "Line discount",
-                        body: "Per-item discount field on the cart.",
-                      },
+                      ["allowSelfOrderApprove", "Approve self-order"],
+                      ["allowSelfOrderReject", "Reject self-order"],
                     ] as const
-                  ).map((feature) => (
-                    <label
-                      key={feature.key}
-                      className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3"
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-1 h-4 w-4"
-                        checked={ordersSettings[feature.key]}
-                        onChange={(event) =>
-                          setOrdersSettings((prev) => ({
-                            ...prev,
-                            [feature.key]: event.target.checked,
-                          }))
-                        }
-                      />
-                      <span>
-                        <span className="block text-sm font-medium text-[#0f172a]">
-                          {feature.title}
-                        </span>
-                        <span className="block text-xs text-[#64748b]">{feature.body}</span>
-                      </span>
-                    </label>
+                  ).map(([key, title]) => (
+                    <CheckOption
+                      key={key}
+                      checked={ordersSettings[key]}
+                      onChange={(value) => setOrder(key, value)}
+                      title={title}
+                    />
                   ))}
                 </div>
-              </div>
+              </FeatureSection>
 
-              {expandedModule === "orders" ? (
-                <div className="space-y-5 border-t border-[#e2e8f0] p-4">
-                  <p className="text-xs text-[#64748b]">
-                    Layout and lifecycle defaults (expand/collapse with the Orders header). Per-button
-                    toggles for Active vs New order screens stay visible above — no need to expand for
-                    Complete, cart credit, or session +5 / pause / pencil.
-                  </p>
-                  <div>
-                    <p className="mb-2 text-sm font-medium">Orders layout</p>
-                    <div className="flex gap-2">
-                      {(["list", "grid"] as const).map((option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => setOrdersSettings((prev) => ({ ...prev, viewType: option }))}
-                          className={`rounded-lg border px-4 py-2 text-sm font-semibold capitalize ${
-                            ordersSettings.viewType === option
-                              ? "border-[var(--brand-secondary)] bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]"
-                              : "border-[#e2e8f0] text-[#64748b]"
-                          }`}
-                        >
-                          {option}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <label className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4"
-                      checked={ordersSettings.allowProductScopeSwitch}
-                      onChange={(event) =>
-                        setOrdersSettings((prev) => ({
-                          ...prev,
-                          allowProductScopeSwitch: event.target.checked,
-                        }))
-                      }
-                    />
-                    <span>
-                      <span className="block text-sm font-medium text-[#0f172a]">
-                        All products / Active products switch
-                      </span>
-                      <span className="block text-xs text-[#64748b]">
-                        Lets staff toggle between the full catalog and active-only items on the order grid.
-                      </span>
-                    </span>
-                  </label>
-
-                  <div>
-                    <p className="mb-2 text-sm font-medium">Default product list</p>
-                    <div className="flex gap-2">
-                      {(
-                        [
-                          { id: "activeOnly", label: "Active only" },
-                          { id: "all", label: "All products" },
-                        ] as const
-                      ).map((option) => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() =>
-                            setOrdersSettings((prev) => ({ ...prev, productScopeDefault: option.id }))
-                          }
-                          className={`rounded-lg border px-4 py-2 text-sm font-semibold ${
-                            ordersSettings.productScopeDefault === option.id
-                              ? "border-[var(--brand-secondary)] bg-[var(--brand-primary-soft)] text-[var(--brand-secondary)]"
-                              : "border-[#e2e8f0] text-[#64748b]"
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="mb-2 text-sm font-medium">Order completion</p>
+              <FeatureSection
+                icon={<ShoppingCart className="h-4 w-4 text-[var(--brand-secondary)]" />}
+                title="Timed table sessions"
+                badge={ordersSettings.enableTableSession ? "On" : "Off"}
+                scope="web-app"
+                open={isSectionOpen("orders-sessions")}
+                onToggle={() => toggleSection("orders-sessions")}
+              >
+                <p className="text-xs text-[#64748b]">
+                  Session timers for snooker / pool tables. Restaurants usually keep this off.
+                </p>
+                <CheckOption
+                  checked={ordersSettings.enableTableSession}
+                  onChange={(value) => setOrder("enableTableSession", value)}
+                  title="Enable timed table sessions"
+                  body="Master switch for the session block, timers, and booking status."
+                />
+                {ordersSettings.enableTableSession ? (
+                  <>
+                    <OptionGroupLabel>When placing an order</OptionGroupLabel>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {(
                         [
-                          {
-                            id: "restaurantLifecycle" as const,
-                            title: "Full order lifecycle",
-                            body: "Place order → active / kitchen → complete (restaurant).",
-                          },
-                          {
-                            id: "orderOnly" as const,
-                            title: "Order only",
-                            body: "Select products → cart → complete immediately (retail-style).",
-                          },
+                          ["allowSessionDuration", "Duration picker", "15 / 30 / 60 min when placing an order."],
+                          ["allowOpenEndedSession", "Open-ended (∞)", "∞ option in the duration list."],
+                          ["allowSessionGameType", "Game type picker", "Single / Double dropdown."],
+                          ["showTableBookingStatus", "Booked / overtime ribbons", "BOOKED ribbon on product cards."],
                         ] as const
-                      ).map((option) => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() =>
-                            setOrdersSettings((prev) => ({ ...prev, completionMode: option.id }))
-                          }
-                          className={`rounded-lg border p-3 text-left ${
-                            ordersSettings.completionMode === option.id
-                              ? "border-[var(--brand-secondary)] bg-[var(--brand-primary-soft)]"
-                              : "border-[#e2e8f0] bg-white"
-                          }`}
-                        >
-                          <span className="block text-sm font-semibold text-[#0f172a]">{option.title}</span>
-                          <span className="mt-1 block text-xs text-[#64748b]">{option.body}</span>
-                        </button>
+                      ).map(([key, title, body]) => (
+                        <CheckOption
+                          key={key}
+                          checked={ordersSettings[key]}
+                          onChange={(value) => setOrder(key, value)}
+                          title={title}
+                          body={body}
+                          scope={key === "showTableBookingStatus" ? undefined : "app"}
+                        />
                       ))}
                     </div>
-                  </div>
-                </div>
-              ) : null}
-            </div>
+                    <OptionGroupLabel>On the active session card</OptionGroupLabel>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(
+                        [
+                          ["allowSessionEditTime", "Edit remaining time", "Pencil on Active Orders."],
+                          ["allowSessionAddTime", "+5 / +15 minutes", "Quick-extend on session card."],
+                          ["allowSessionPause", "Pause / resume", "Pause control on session card."],
+                          ["allowSessionTimeUpAlert", "Time Up alert", "Popup + beep when time expires."],
+                        ] as const
+                      ).map(([key, title, body]) => (
+                        <CheckOption
+                          key={key}
+                          checked={ordersSettings[key]}
+                          onChange={(value) => setOrder(key, value)}
+                          title={title}
+                          body={body}
+                          scope={key === "allowSessionTimeUpAlert" ? "app" : undefined}
+                        />
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+              </FeatureSection>
+            </>
           ) : null}
 
           {enabledModules.includes("categories") ? (
-            <div className="rounded-lg border border-[#e2e8f0]">
-              <button
-                type="button"
-                onClick={() =>
-                  setExpandedModule((m) => (m === "categories" ? null : "categories"))
-                }
-                className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-[#0f172a]"
-              >
-                {expandedModule === "categories" ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-                <Tags className="h-4 w-4 text-[var(--brand-secondary)]" />
-                Categories — mobile capability
-              </button>
-              {expandedModule === "categories" ? (
-                <div className="space-y-3 border-t border-[#e2e8f0] p-4">
-                  <p className="text-xs text-[#64748b]">
-                    Not a Flutter tab. When enabled for a role, category tools appear inside Products /
-                    Orders. Disable the module or uncheck the role to hide them.
-                  </p>
-                  <label className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4"
-                      checked={categoriesSettings.allowManage}
-                      onChange={(e) =>
-                        setCategoriesSettings((p) => ({ ...p, allowManage: e.target.checked }))
-                      }
-                    />
-                    <span>
-                      <span className="block text-sm font-medium text-[#0f172a]">
-                        Allow adding / editing categories
-                      </span>
-                      <span className="block text-xs text-[#64748b]">
-                        When on, the Categories button appears on Products (web + mobile) and staff can
-                        manage categories. When off, they can only view / filter.
-                      </span>
-                    </span>
-                  </label>
-                  <label className="flex items-start gap-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4"
-                      checked={categoriesSettings.showFilters}
-                      onChange={(e) =>
-                        setCategoriesSettings((p) => ({ ...p, showFilters: e.target.checked }))
-                      }
-                    />
-                    <span>
-                      <span className="block text-sm font-medium text-[#0f172a]">
-                        Show category filter chips
-                      </span>
-                      <span className="block text-xs text-[#64748b]">
-                        Filter chips on Products and Orders screens.
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              ) : null}
-            </div>
+            <FeatureSection
+              icon={<Tags className="h-4 w-4 text-[var(--brand-secondary)]" />}
+              title="Categories — mobile capability"
+              scope="web-app"
+              open={isSectionOpen("categories")}
+              onToggle={() => toggleSection("categories")}
+            >
+              <p className="text-xs text-[#64748b]">
+                Not a Flutter tab. When enabled for a role, category tools appear inside Products /
+                Orders.
+              </p>
+              <CheckOption
+                checked={categoriesSettings.allowManage}
+                onChange={(value) => setCategoriesSettings((p) => ({ ...p, allowManage: value }))}
+                title="Allow adding / editing categories"
+                body="Shows the Categories button on Products (web + mobile). When off, staff can only view / filter."
+              />
+              <CheckOption
+                checked={categoriesSettings.showFilters}
+                onChange={(value) => setCategoriesSettings((p) => ({ ...p, showFilters: value }))}
+                title="Show category filter chips"
+                body="Filter chips on Products and Orders screens."
+                scope="app"
+              />
+            </FeatureSection>
           ) : null}
         </div>
       </section>

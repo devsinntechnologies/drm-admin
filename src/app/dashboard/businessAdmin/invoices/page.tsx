@@ -430,24 +430,26 @@ function InvoicesContent() {
       pageSubtitle={isPharmacy ? "Paid invoices and pharmacy sale history" : undefined}
     >
       <PortalPage>
-        {/* Stats */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {[
-            { label: "Total Invoices", value: stats.total, tone: "text-[#001840]" },
-            { label: "Paid", value: stats.paid, tone: "text-[#059669]" },
-            { label: "Collected Revenue", value: formatCurrency(stats.revenue, currency), tone: "text-[#0050F8]" },
-          ].map((card) => (
-            <article key={card.label} className="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[#94a3b8]">{card.label}</p>
-              <p className={cn("mt-2 text-2xl font-bold", card.tone)}>{card.value}</p>
-            </article>
-          ))}
-        </section>
+        {/* Stats — "Show revenue totals" hides this whole summary, as on the app. */}
+        {salesSettings.showRevenue ? (
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {[
+              { label: "Total Invoices", value: stats.total, tone: "text-[#001840]" },
+              { label: "Paid", value: stats.paid, tone: "text-[#059669]" },
+              { label: "Collected Revenue", value: formatCurrency(stats.revenue, currency), tone: "text-[#0050F8]" },
+            ].map((card) => (
+              <article key={card.label} className="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#94a3b8]">{card.label}</p>
+                <p className={cn("mt-2 text-2xl font-bold", card.tone)}>{card.value}</p>
+              </article>
+            ))}
+          </section>
+        ) : null}
 
         {/* Filters */}
         <section className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            {salesSettings.allowFilters ? <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wider text-[#94a3b8]">Period</p>
                 <div className="dn-tab-bar !rounded-2xl !py-2 lg:w-auto">
@@ -473,7 +475,7 @@ function InvoicesContent() {
                   ))}
                 </div>
               </div>
-            </div>
+            </div> : null}
             <label className="relative block w-full space-y-1.5 lg:max-w-sm">
               <span className="block text-sm font-semibold text-[#64748b]">Search</span>
               <span className="relative block">

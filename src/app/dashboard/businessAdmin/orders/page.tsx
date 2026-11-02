@@ -875,7 +875,7 @@ function OrdersContent() {
               >
                 Close
               </button>
-              <InvoiceDownloadButton
+              {salesSettings.allowDownloadPdf ? <InvoiceDownloadButton
                 onClick={() =>
                   void downloadInvoicePdf({
                     fileName: `invoice-${orderDetails.orderNumber}.pdf`,
@@ -900,7 +900,7 @@ function OrdersContent() {
                     status: orderDetails.status,
                   })
                 }
-              />
+              /> : null}
               <InvoicePrintButton
                 onClick={() => {
                   if (!allowPrinter) {
