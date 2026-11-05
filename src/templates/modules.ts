@@ -153,6 +153,12 @@ export const MODULE_CATALOG: Record<
     description: "Parking prices, customer details, and vehicle invoices",
     category: "Operations",
   },
+  printers: {
+    id: "printers",
+    label: "Printers",
+    description: "Printer connection, invoice templates, and print queue in the app",
+    category: "Operations",
+  },
 };
 
 export const DASHBOARD_CARD_CATALOG: Record<

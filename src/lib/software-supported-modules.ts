@@ -22,6 +22,7 @@ export const SOFTWARE_SUPPORTED_MODULES = new Set<ModuleId>([
   "pos",
   "production-job-work",
   "parking",
+  "printers",
 ]);
 
 /**
@@ -95,7 +96,7 @@ const FOOD_INDUSTRIES = new Set(["restaurant", "food-cafe", "bakery"]);
  */
 export function mobileModulesForIndustry(industryId?: string | null): ModuleId[] {
   if (!industryId) {
-    return ["dashboard", "products", "orders", "sales", "inventory", "staff", "categories", "reports", "parking"];
+    return ["dashboard", "products", "orders", "sales", "inventory", "staff", "categories", "reports", "parking", "printers"];
   }
 
   if (FOOD_INDUSTRIES.has(industryId)) {
@@ -111,11 +112,12 @@ export function mobileModulesForIndustry(industryId?: string | null): ModuleId[]
       "categories",
       "reports",
       "parking",
+      "printers",
     ];
   }
 
   if (industryId === "pharmacy") {
-    return ["dashboard", "products", "sales", "inventory", "staff", "categories", "expenses", "credits", "reports", "parking"];
+    return ["dashboard", "products", "sales", "inventory", "staff", "categories", "expenses", "credits", "reports", "parking", "printers"];
   }
 
   if (industryId === "snooker-pos") {
@@ -130,6 +132,7 @@ export function mobileModulesForIndustry(industryId?: string | null): ModuleId[]
       "staff",
       "reports",
       "parking",
+      "printers",
     ];
   }
 
@@ -147,6 +150,7 @@ export function mobileModulesForIndustry(industryId?: string | null): ModuleId[]
     "production-job-work",
     "reports",
     "parking",
+    "printers",
   ];
 }
 

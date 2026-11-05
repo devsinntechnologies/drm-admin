@@ -47,9 +47,26 @@ export function BusinessTemplateProvider({ children, businessId = null }: Busine
   // Defer localStorage reads until after mount so SSR and the first client render match.
   const authToken = reduxToken || (hasHydrated ? getStoredAuthToken() : null);
 
-  const { data: business, isLoading, isError, error } = useGetBusinessByIdQuery(businessId || "", {
+  // Poll so Software Control changes reach an open portal tab, like the app's 1-minute refresh.
+  const { data: business, isLoading, isError, error, refetch } = useGetBusinessByIdQuery(businessId || "", {
     skip: !businessId || !authToken,
+    pollingInterval: 60_000,
+    skipPollingIfUnfocused: true,
   });
+
+  const canRefetch = Boolean(businessId && authToken);
+  useEffect(() => {
+    if (!canRefetch) return;
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void refetch();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [canRefetch, refetch]);
 
   const isUnauthorized =
     isError &&

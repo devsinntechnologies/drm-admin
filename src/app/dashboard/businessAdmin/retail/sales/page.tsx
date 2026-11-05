@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Clock3, Eye, FileText, Loader2, Printer, RotateCcw, Search } from "lucide-react";
+import { Clock3, Download, Eye, FileText, Loader2, Printer, RotateCcw, Search, Trash2 } from "lucide-react";
 import Loading from "@/components/common/Loading";
 import AdminShell from "@/components/admin/AdminShell";
 import { PortalPage, PortalPageHeader, portalSearchClass } from "@/components/admin/PortalPage";
@@ -93,6 +93,10 @@ function SalesContent() {
   const resolvedRole =
     role ?? (typeof window !== "undefined" ? localStorage.getItem("roleName") : null);
   const canReturnInvoice = canReturnInvoiceRole(resolvedRole);
+  const roleLower = String(resolvedRole ?? "").toLowerCase().trim();
+  const canDeleteInvoice =
+    salesSettings.allowDelete && (roleLower === "business_admin" || roleLower === "super_admin");
+  const [deletingInvoiceUuid, setDeletingInvoiceUuid] = useState<string | null>(null);
 
   const refreshConnectedPrinter = useCallback(async () => {
     if (!token || !activeBusinessId || !allowPrinterSetup) return;
@@ -134,7 +138,7 @@ function SalesContent() {
     };
   }, [refreshConnectedPrinter]);
 
-  const { invoices, loading, actionLoading, error, refetch, returnInvoice } = useInvoices({
+  const { invoices, loading, actionLoading, error, refetch, returnInvoice, deleteInvoice, exportExcel } = useInvoices({
     page: 1,
     limit: 100,
     range: rangeFilter,
@@ -188,6 +192,32 @@ function SalesContent() {
       toast.error(message, { id: toastId });
     } finally {
       setReturningInvoiceUuid(null);
+    }
+  };
+
+  const handleDeleteInvoice = async (invoice: InvoiceRecord) => {
+    const label = invoice.invoiceNumber || invoice.uuid;
+    if (!window.confirm(`Delete invoice ${label}? Stock is restored and this cannot be undone.`)) return;
+    const toastId = toast.loading("Deleting invoice...");
+    try {
+      setDeletingInvoiceUuid(invoice.uuid);
+      await deleteInvoice(invoice.uuid);
+      toast.success("Invoice deleted.", { id: toastId });
+      setSelectedInvoice((prev) => (prev?.uuid === invoice.uuid ? null : prev));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete invoice.", { id: toastId });
+    } finally {
+      setDeletingInvoiceUuid(null);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    const toastId = toast.loading("Exporting sales...");
+    try {
+      await exportExcel({ range: rangeFilter, status: "paid" });
+      toast.success("Excel exported with invoice and product details.", { id: toastId });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to export sales.", { id: toastId });
     }
   };
 
@@ -252,6 +282,16 @@ function SalesContent() {
               )}
             </button>
             ) : null}
+          {salesSettings.allowExport ? (
+            <button
+              type="button"
+              onClick={() => void handleExportExcel()}
+              className="dn-btn dn-btn-primary !h-9 !px-3"
+            >
+              <Download className="h-4 w-4" />
+              Export Excel
+            </button>
+          ) : null}
           {salesSettings.allowFilters ? (
           <div className="dn-tab-bar !rounded-2xl !py-2 lg:w-auto">
             {(
@@ -364,6 +404,21 @@ function SalesContent() {
                                     <RotateCcw className="h-4 w-4" />
                                     Return
                                   </>
+                                )}
+                              </button>
+                            ) : null}
+                            {canDeleteInvoice && !returned ? (
+                              <button
+                                type="button"
+                                onClick={() => void handleDeleteInvoice(invoice)}
+                                disabled={deletingInvoiceUuid === invoice.uuid}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#fecaca] text-[#dc2626] hover:bg-[#fef2f2]"
+                                title={INVOICE_TIPS.delete}
+                              >
+                                {deletingInvoiceUuid === invoice.uuid ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
                                 )}
                               </button>
                             ) : null}

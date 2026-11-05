@@ -10,6 +10,8 @@ import { PortalPage, PortalPageHeader, portalInputClass, portalSearchClass } fro
 import InvoiceReceipt, { InvoiceDownloadButton, InvoicePrintButton } from "@/components/common/InvoiceReceipt";
 import { useInvoiceBranding } from "@/hooks/useInvoiceBranding";
 import { downloadInvoicePdf } from "@/lib/invoice-pdf";
+import { useBusinessTemplate } from "@/contexts/BusinessTemplateContext";
+import { parseSalesSettings } from "@/lib/module-feature-settings";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessWorkspacePage } from "@/lib/pharmacy-role-nav";
@@ -81,6 +83,8 @@ function PosContent() {
   const router = useRouter();
   const { role, token: reduxToken } = useAuth();
   const branding = useInvoiceBranding();
+  const { templateConfig } = useBusinessTemplate();
+  const salesSettings = parseSalesSettings(templateConfig?.moduleSettings);
   const searchParams = useSearchParams();
   const impersonatedBusinessId = searchParams.get("businessId");
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -618,7 +622,7 @@ function PosContent() {
                 footerNote="Thank you for your purchase!"
               />
               <div className="mt-4 flex justify-end gap-2 px-2 pb-2">
-                <InvoiceDownloadButton
+                {salesSettings.allowDownloadPdf ? <InvoiceDownloadButton
                   onClick={() =>
                     void downloadInvoicePdf({
                       fileName: `invoice-${receipt.saleNumber}.pdf`,
@@ -645,7 +649,7 @@ function PosContent() {
                       website: branding.website,
                     })
                   }
-                />
+                /> : null}
                 <InvoicePrintButton onClick={() => window.print()} />
                 <button
                   type="button"
