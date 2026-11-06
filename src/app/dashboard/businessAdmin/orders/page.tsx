@@ -57,7 +57,8 @@ import { downloadInvoicePdf } from "@/lib/invoice-pdf";
 import { resolveInvoiceTotals } from "@/lib/invoice-totals";
 import { useAuth } from "@/hooks/useAuth";
 import { useCategories, type CategoryRecord } from "@/hooks/useCategories";
-import { useOrders, type OrderRecord } from "@/hooks/useOrders";
+import { useOrders, type OrderRecord, type UpdateOrderPayload } from "@/hooks/useOrders";
+import { estimatePackageCharge } from "@/lib/session-billing.util";
 import { useProducts, type Product, type ProductVariant } from "@/hooks/useProducts";
 import { useTables } from "@/hooks/useTables";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
@@ -172,6 +173,10 @@ function OrdersContent() {
   const [editingStatus, setEditingStatus] = useState<string>("");
   const [editingItems, setEditingItems] = useState<EditableOrderItem[]>([]);
   const [removedEditingItems, setRemovedEditingItems] = useState<string[]>([]);
+  // Game type + minutes picked when a timed table is added to an order that
+  // has no session yet; sent with the edit so the session starts on save.
+  const [editSessionStart, setEditSessionStart] = useState<SnookerBookingDetails | null>(null);
+  const [pendingEditTable, setPendingEditTable] = useState<Product | null>(null);
   const [editingDeliveryCharges, setEditingDeliveryCharges] = useState(0);
   const [editingPackagingCharges, setEditingPackagingCharges] = useState(0);
   const [editingOverridePrice, setEditingOverridePrice] = useState(0);
@@ -455,7 +460,54 @@ function OrdersContent() {
     [activeProducts, selectedProductId],
   );
 
-  const addProductToEditingOrder = (product: Product, variant?: ProductVariant | null) => {
+  const isTimedProductId = (productId?: string | null) => {
+    if (!productId || !ordersSettings.enableTableSession) return false;
+    const product = activeProducts.find((p) => p.id === productId);
+    if (!product) return false;
+    return allCategories.find((c) => c.id === product.categoryId)?.posMode === "timed_session";
+  };
+
+  const editingOrderHasSession =
+    Boolean(editingOrder?.gameType?.trim()) && editingOrder?.sessionMinutes != null;
+
+  /** Session start / end implied by this edit — same rules as the POS app. */
+  const buildEditSessionPatch = (): Pick<UpdateOrderPayload, "gameType" | "sessionMinutes" | "endSession"> => {
+    if (!editingOrder) return {};
+    const hasTimedNow = editingItems.some((item) => isTimedProductId(item.productId));
+    if (editSessionStart && !editingOrderHasSession && hasTimedNow) {
+      return { gameType: editSessionStart.gameType, sessionMinutes: editSessionStart.sessionMinutes };
+    }
+    const hadTimed = (editingOrder.Items ?? []).some((item) => isTimedProductId(item.productId));
+    if (editingOrderHasSession && hadTimed && !hasTimedNow) {
+      return { endSession: true };
+    }
+    return {};
+  };
+
+  const addTimedTableToEditingOrder = (product: Product) => {
+    if (editingItems.some((item) => item.productId === product.id)) {
+      toast.error(`${product.name} is already in this order`);
+      return;
+    }
+    const bookedElsewhere = visibleOrders.some(
+      (order) => order.id !== editingOrderId && order.Items.some((item) => item.productId === product.id),
+    );
+    if (bookedElsewhere) {
+      toast.error(`${product.name} is already booked. Choose an available table.`);
+      return;
+    }
+    if (editingOrderHasSession || editSessionStart) {
+      addProductToEditingOrder(product);
+      return;
+    }
+    setPendingEditTable(product);
+  };
+
+  const addProductToEditingOrder = (
+    product: Product,
+    variant?: ProductVariant | null,
+    priceOverride?: number,
+  ) => {
     const realVariants = getProductVariantsForUi(product);
     const selectedVariant = variant ?? realVariants[0];
     if (!selectedVariant) {
@@ -492,7 +544,7 @@ function OrdersContent() {
           variantId: lineVariantId,
           productName: product.name,
           variantName: selectedVariant.name,
-          price: selectedVariant.price ?? product.price ?? 0,
+          price: priceOverride ?? selectedVariant.price ?? product.price ?? 0,
           quantity: 1,
           image: product.image,
           action: "add" as const,
@@ -503,6 +555,10 @@ function OrdersContent() {
 
   const openVariantDialogForProduct = (product: Product) => {
     const realVariants = (product.variants ?? []).filter((variant) => isUuid(variant.id));
+    if (realVariants.length === 0 && isTimedProductId(product.id)) {
+      addTimedTableToEditingOrder(product);
+      return;
+    }
     if (realVariants.length === 0) {
       addProductToEditingOrder(product);
       return;
@@ -521,6 +577,17 @@ function OrdersContent() {
   };
 
   const updateEditingItemQty = (productId: string, variantId: string, delta: number) => {
+    const target = editingItems.find((item) => item.productId === productId && item.variantId === variantId);
+    // Reaching zero is a removal: a saved line must be sent as "remove",
+    // otherwise it silently stays on the server.
+    if (target && target.quantity + delta <= 0) {
+      removeEditingItem(productId, variantId);
+      return;
+    }
+    if (delta > 0 && isTimedProductId(productId)) {
+      toast.error("A snooker table is booked once per order");
+      return;
+    }
     setEditingItems((prev) =>
       prev
         .map((item) =>
@@ -987,12 +1054,31 @@ function OrdersContent() {
     </Dialog>
   );
 
+  const editSessionDialog = (
+    <SnookerTableBookingDialog
+      open={pendingEditTable != null}
+      tableLabel={pendingEditTable?.name}
+      showGuestName={false}
+      confirmLabel="Start session & add table"
+      onClose={() => setPendingEditTable(null)}
+      onConfirm={(details, option) => {
+        const table = pendingEditTable;
+        if (!table) return;
+        setEditSessionStart(details);
+        addProductToEditingOrder(table, null, estimatePackageCharge(option, details.sessionMinutes));
+        setPendingEditTable(null);
+      }}
+    />
+  );
+
   const openEditOrder = async (orderId: string) => {
     setExpandedOrderId(orderId);
     setEditingOrder(null);
     setEditingStatus("");
     setEditingItems([]);
     setRemovedEditingItems([]);
+    setEditSessionStart(null);
+    setPendingEditTable(null);
     setEditingDeliveryCharges(0);
     setEditingPackagingCharges(0);
     setEditingOverridePrice(0);
@@ -1016,6 +1102,8 @@ function OrdersContent() {
     setEditingStatus("");
     setEditingItems([]);
     setRemovedEditingItems([]);
+    setEditSessionStart(null);
+    setPendingEditTable(null);
     setEditingDeliveryCharges(0);
     setEditingPackagingCharges(0);
     setEditingOverridePrice(0);
@@ -1061,12 +1149,14 @@ function OrdersContent() {
         items: buildPatchItemsFromEditingState(),
         deliveryCharges: editingDeliveryCharges,
         packagingPrice: editingPackagingCharges,
+        ...buildEditSessionPatch(),
       });
       toast.success("Order updated successfully", { id: toastId });
       setEditingOrderId(null);
       setEditingOrder(null);
       setEditingItems([]);
       setRemovedEditingItems([]);
+      setEditSessionStart(null);
       setShowOrderDetailsDialog(false);
       setOrderDetails(null);
       refetch();
@@ -1087,6 +1177,7 @@ function OrdersContent() {
         items: buildPatchItemsFromEditingState(),
         deliveryCharges: editingDeliveryCharges,
         packagingPrice: editingPackagingCharges,
+        ...buildEditSessionPatch(),
       });
 
       await updateOrderStatus(editingOrderId, "COMPLETED");
@@ -1755,6 +1846,8 @@ function OrdersContent() {
             onConfirm={handleSnookerBookingConfirm}
           />
 
+          {editSessionDialog}
+
           {orderDetailsDialog}
 
           {variantPickerDialog}
@@ -1839,7 +1932,7 @@ function OrdersContent() {
                     }}
                   />
 
-                  {!hasSession && ordersSettings.allowEdit ? (
+                  {ordersSettings.allowEdit ? (
                     <div className="flex justify-end px-1">
                       <button
                         type="button"
@@ -2046,6 +2139,8 @@ function OrdersContent() {
         }}
         onConfirm={handleSnookerBookingConfirm}
       />
+
+      {editSessionDialog}
 
       <CompleteOrderDialog
         open={Boolean(completeTarget)}
