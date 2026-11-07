@@ -57,8 +57,14 @@ import { downloadInvoicePdf } from "@/lib/invoice-pdf";
 import { resolveInvoiceTotals } from "@/lib/invoice-totals";
 import { useAuth } from "@/hooks/useAuth";
 import { useCategories, type CategoryRecord } from "@/hooks/useCategories";
-import { useOrders, type OrderRecord, type UpdateOrderPayload } from "@/hooks/useOrders";
+import {
+  useOrders,
+  type CreateOrderItemPayload,
+  type OrderRecord,
+  type UpdateOrderPayload,
+} from "@/hooks/useOrders";
 import { estimatePackageCharge } from "@/lib/session-billing.util";
+import { parseMoneyInput, priceCartProduct } from "@/lib/cart-line-pricing";
 import { useProducts, type Product, type ProductVariant } from "@/hooks/useProducts";
 import { useTables } from "@/hooks/useTables";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
@@ -95,6 +101,7 @@ interface HeldOrder {
   packaging: string;
   override: number;
   productOverrides: Record<string, string>;
+  productDiscounts?: Record<string, string>;
   timestamp: number;
 }
 
@@ -164,6 +171,7 @@ function OrdersContent() {
   const [packagingCharges, setPackagingCharges] = useState<string>("");
   const [overridePrice, setOverridePrice] = useState(0);
   const [productOverrides, setProductOverrides] = useState<Record<string, string>>({});
+  const [productDiscounts, setProductDiscounts] = useState<Record<string, string>>({});
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showOrderDetailsDialog, setShowOrderDetailsDialog] = useState(false);
   const [printerAlertOpen, setPrinterAlertOpen] = useState(false);
@@ -261,6 +269,27 @@ function OrdersContent() {
     [activeProducts, cartProductIds],
   );
 
+  const isTimedProductId = (productId?: string | null) => {
+    if (!productId || !ordersSettings.enableTableSession) return false;
+    const product = activeProducts.find((p) => p.id === productId);
+    if (!product) return false;
+    return allCategories.find((c) => c.id === product.categoryId)?.posMode === "timed_session";
+  };
+
+  // Software Control → New order / POS (shared with the mobile app).
+  const showDeliveryCharge = ordersSettings.allowExtraCharges && ordersSettings.allowDeliveryCharge;
+  const showPackingCharge = ordersSettings.allowExtraCharges && ordersSettings.allowPackingCharge;
+
+  /** Cart pricing for one product with only the extras Software Control allows. */
+  const priceCartLines = (productId: string, lines: Array<{ price: number; quantity: number }>) => {
+    const timed = isTimedProductId(productId);
+    return priceCartProduct(
+      lines,
+      ordersSettings.allowPriceOverride && !timed ? parseMoneyInput(productOverrides[productId]) : null,
+      ordersSettings.allowLineDiscount && !timed ? parseMoneyInput(productDiscounts[productId]) : null,
+    );
+  };
+
   const subtotal = useMemo(
     () => cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0),
     [cartItems],
@@ -269,20 +298,11 @@ function OrdersContent() {
     () => cartItems.reduce((acc, item) => acc + item.quantity, 0),
     [cartItems],
   );
-  const numericDelivery = parseFloat(deliveryCharges || "0") || 0;
-  const numericPackaging = parseFloat(packagingCharges || "0") || 0;
-  const productsTotal = useMemo(() => {
-    const productIds = Array.from(new Set(cartItems.map(i => i.productId)));
-    return productIds.reduce((sum, pid) => {
-      const baseTotal = cartItems
-        .filter(i => i.productId === pid)
-        .reduce((a, b) => a + (Number(b.price) * Number(b.quantity)), 0);
-      const overrideStr = productOverrides[pid];
-      const overrideNum = overrideStr !== undefined && overrideStr !== "" ? parseFloat(overrideStr as string) : NaN;
-      const productTotal = Number.isFinite(overrideNum) ? overrideNum : baseTotal;
-      return sum + productTotal;
-    }, 0);
-  }, [cartItems, productOverrides]);
+  const numericDelivery = showDeliveryCharge ? parseFloat(deliveryCharges || "0") || 0 : 0;
+  const numericPackaging = showPackingCharge ? parseFloat(packagingCharges || "0") || 0 : 0;
+  const productsTotal = Array.from(new Set(cartItems.filter((i) => i.quantity > 0).map((i) => i.productId)))
+    .reduce((sum: number, pid: string) =>
+      sum + priceCartLines(pid, cartItems.filter((i) => i.productId === pid && i.quantity > 0)).total, 0);
   const grandTotal = productsTotal + numericDelivery + numericPackaging + overridePrice;
 
   const editingSubtotal = useMemo(
@@ -383,6 +403,10 @@ function OrdersContent() {
   };
 
   const handlePlaceOrderNow = () => {
+    if (!ordersSettings.allowCreate) {
+      toast.error("Placing orders is turned off in Software Control");
+      return;
+    }
     if (rejectBookedCart()) return;
     if (cartItems.length === 0) {
       toast.error("Add items first");
@@ -459,13 +483,6 @@ function OrdersContent() {
     () => activeProducts.find((product) => product.id === selectedProductId) ?? null,
     [activeProducts, selectedProductId],
   );
-
-  const isTimedProductId = (productId?: string | null) => {
-    if (!productId || !ordersSettings.enableTableSession) return false;
-    const product = activeProducts.find((p) => p.id === productId);
-    if (!product) return false;
-    return allCategories.find((c) => c.id === product.categoryId)?.posMode === "timed_session";
-  };
 
   const editingOrderHasSession =
     Boolean(editingOrder?.gameType?.trim()) && editingOrder?.sessionMinutes != null;
@@ -576,6 +593,21 @@ function OrdersContent() {
     setSelectedProductId(null);
   };
 
+  const updateEditingItemPrice = (productId: string, variantId: string, value: string) => {
+    const price = parseMoneyInput(value) ?? 0;
+    setEditingItems((prev) =>
+      prev.map((item) =>
+        item.productId === productId && item.variantId === variantId
+          ? {
+            ...item,
+            price,
+            action: (item.action === "add" ? "add" : "update") as EditableOrderItem["action"],
+          }
+          : item,
+      ),
+    );
+  };
+
   const updateEditingItemQty = (productId: string, variantId: string, delta: number) => {
     const target = editingItems.find((item) => item.productId === productId && item.variantId === variantId);
     // Reaching zero is a removal: a saved line must be sent as "remove",
@@ -643,6 +675,7 @@ function OrdersContent() {
       packaging: packagingCharges,
       override: overridePrice,
       productOverrides: { ...productOverrides },
+      productDiscounts: { ...productDiscounts },
       timestamp: Date.now(),
     };
     setHeldOrders(prev => [...prev, newHeld]);
@@ -651,6 +684,7 @@ function OrdersContent() {
     setPackagingCharges("");
     setOverridePrice(0);
     setProductOverrides({});
+    setProductDiscounts({});
     toast.success("Order moved to queue");
   };
 
@@ -660,6 +694,7 @@ function OrdersContent() {
     setPackagingCharges(held.packaging);
     setOverridePrice(held.override);
     setProductOverrides(held.productOverrides);
+    setProductDiscounts(held.productDiscounts ?? {});
     setHeldOrders(prev => prev.filter(o => o.id !== held.id));
     setIsQueueOpen(false);
   };
@@ -733,27 +768,30 @@ function OrdersContent() {
 
     const toastId = toast.loading("Placing order...");
     try {
+      const liveLines = cartItems.filter((i) => i.quantity > 0);
+      const items: CreateOrderItemPayload[] = [];
+      for (const productId of Array.from(new Set(liveLines.map((i) => i.productId as string)))) {
+        const lines = liveLines.filter((i) => i.productId === productId);
+        const priced = priceCartLines(productId, lines);
+        lines.forEach((line, index) => {
+          const item: CreateOrderItemPayload = {
+            productId,
+            quantity: line.quantity,
+            price: Math.round(priced.linePrices[index] * 100) / 100,
+          };
+          // API requires a real UUID when product has variants; omit otherwise
+          if (line.variantId && isUuid(line.variantId)) {
+            item.variantId = line.variantId;
+          }
+          if (index === 0 && priced.lineDiscount > 0) {
+            item.discount = priced.lineDiscount;
+          }
+          items.push(item);
+        });
+      }
       const payload = {
         tableId,
-        items: cartItems
-          .filter((i) => i.quantity > 0)
-          .map((i) => {
-            const item: {
-              productId: string;
-              quantity: number;
-              price: number;
-              variantId?: string;
-            } = {
-              productId: i.productId,
-              quantity: i.quantity,
-              price: i.price,
-            };
-            // API requires a real UUID when product has variants; omit otherwise
-            if (i.variantId && isUuid(i.variantId)) {
-              item.variantId = i.variantId;
-            }
-            return item;
-          }),
+        items,
         totalPrice: grandTotal,
         deliveryCharges: numericDelivery,
         packagingPrice: numericPackaging,
@@ -770,6 +808,8 @@ function OrdersContent() {
       await createOrder(payload);
       toast.success("Order placed successfully", { id: toastId });
       setCartItems([]);
+      setProductOverrides({});
+      setProductDiscounts({});
       setPendingTableId(null);
       setPendingTableLabel("");
       setShowSnookerBooking(false);
@@ -1473,16 +1513,12 @@ function OrdersContent() {
                       );
                       if (lines.length === 0) return null;
 
-                      const baseTotal = lines.reduce(
-                        (a, b) => a + Number(b.price) * Number(b.quantity),
-                        0,
-                      );
-                      const overrideStr = productOverrides[product.id];
-                      const overrideNum =
-                        overrideStr !== undefined && overrideStr !== ""
-                          ? parseFloat(overrideStr as string)
-                          : NaN;
-                      const productTotal = Number.isFinite(overrideNum) ? overrideNum : baseTotal;
+                      const priced = priceCartLines(product.id, lines);
+                      const baseTotal = priced.baseTotal;
+                      const productTotal = priced.total;
+                      const timedLine = isTimedProductId(product.id);
+                      const showOverride = ordersSettings.allowPriceOverride && !timedLine;
+                      const showDiscount = ordersSettings.allowLineDiscount && !timedLine;
 
                       return (
                         <div
@@ -1573,27 +1609,56 @@ function OrdersContent() {
                             ))}
                           </div>
 
-                          <div className="mt-3 flex items-center justify-between border-t border-[#edf2f7] pt-3">
-                            <div className="flex items-center gap-2">
-                              <label className="text-xs font-semibold text-[#64748b]">Override</label>
-                              <div className="flex items-center gap-1 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-2 py-1">
-                                <span className="text-xs font-medium text-[#94a3b8]">Rs</span>
-                                <input
-                                  type="number"
-                                  step="1"
-                                  value={
-                                    productOverrides[product.id] ??
-                                    String(Math.round(baseTotal))
-                                  }
-                                  onChange={(e) =>
-                                    setProductOverrides((prev) => ({
-                                      ...prev,
-                                      [product.id]: e.target.value,
-                                    }))
-                                  }
-                                  className="w-16 bg-transparent text-sm font-bold outline-none"
-                                />
-                              </div>
+                          <div className="mt-3 flex items-center justify-between gap-2 border-t border-[#edf2f7] pt-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {showOverride ? (
+                                <>
+                                  <label htmlFor={`override-${product.id}`} className="text-xs font-semibold text-[#64748b]">Override</label>
+                                  <div className="flex items-center gap-1 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-2 py-1">
+                                    <span className="text-xs font-medium text-[#94a3b8]">Rs</span>
+                                    <input
+                                      id={`override-${product.id}`}
+                                      type="number"
+                                      min={0}
+                                      step="1"
+                                      value={
+                                        productOverrides[product.id] ??
+                                        String(Math.round(baseTotal))
+                                      }
+                                      onChange={(e) =>
+                                        setProductOverrides((prev) => ({
+                                          ...prev,
+                                          [product.id]: e.target.value,
+                                        }))
+                                      }
+                                      className="w-16 bg-transparent text-sm font-bold outline-none"
+                                    />
+                                  </div>
+                                </>
+                              ) : null}
+                              {showDiscount ? (
+                                <>
+                                  <label htmlFor={`discount-${product.id}`} className="text-xs font-semibold text-[#64748b]">Discount</label>
+                                  <div className="flex items-center gap-1 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-2 py-1">
+                                    <span className="text-xs font-medium text-[#94a3b8]">Rs</span>
+                                    <input
+                                      id={`discount-${product.id}`}
+                                      type="number"
+                                      min={0}
+                                      step="1"
+                                      placeholder="0"
+                                      value={productDiscounts[product.id] ?? ""}
+                                      onChange={(e) =>
+                                        setProductDiscounts((prev) => ({
+                                          ...prev,
+                                          [product.id]: e.target.value,
+                                        }))
+                                      }
+                                      className="w-14 bg-transparent text-sm font-bold outline-none"
+                                    />
+                                  </div>
+                                </>
+                              ) : null}
                             </div>
                             <span className="text-lg font-bold text-[#001840]">
                               Rs {productTotal.toFixed(2)}
@@ -1608,7 +1673,7 @@ function OrdersContent() {
 
               {cartQuantityTotal > 0 && (
                 <div className="shrink-0 border-t border-[#e2e8f0] bg-white">
-                  <div className="border-b border-[#e2e8f0] px-4 py-3">
+                  {showDeliveryCharge || showPackingCharge ? <div className="border-b border-[#e2e8f0] px-4 py-3">
                     <details className="group rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2">
                       <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
                         <span className="flex items-center gap-2 text-sm font-semibold text-[#475569]">
@@ -1618,7 +1683,7 @@ function OrdersContent() {
                         <ChevronDown className="h-4 w-4 text-[#64748b] transition group-open:rotate-180" />
                       </summary>
                       <div className="mt-3 space-y-3 border-t border-[#e2e8f0] pt-3">
-                        <div className="flex items-center justify-between gap-3">
+                        {showDeliveryCharge ? <div className="flex items-center justify-between gap-3">
                           <span className="text-sm font-semibold text-[#334155]">Delivery</span>
                           <div className="flex items-center gap-1 rounded-xl border border-[#e2e8f0] bg-white px-2 py-1.5">
                             <span className="text-xs text-[#94a3b8]">Rs</span>
@@ -1630,8 +1695,8 @@ function OrdersContent() {
                               className="w-16 bg-transparent text-sm font-bold outline-none"
                             />
                           </div>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
+                        </div> : null}
+                        {showPackingCharge ? <div className="flex items-center justify-between gap-3">
                           <span className="text-sm font-semibold text-[#334155]">Packing</span>
                           <div className="flex items-center gap-1 rounded-xl border border-[#e2e8f0] bg-white px-2 py-1.5">
                             <span className="text-xs text-[#94a3b8]">Rs</span>
@@ -1643,10 +1708,10 @@ function OrdersContent() {
                               className="w-16 bg-transparent text-sm font-bold outline-none"
                             />
                           </div>
-                        </div>
+                        </div> : null}
                       </div>
                     </details>
-                  </div>
+                  </div> : null}
 
                   <div className="px-4 py-4">
                     <div className="mb-4 rounded-2xl border border-[#dbe7ff] bg-[#EEF3FF] p-4">
@@ -1867,7 +1932,7 @@ function OrdersContent() {
       <main className="w-full space-y-8 bg-[#f8fafc] min-h-[calc(100vh-80px)]">
         <SelfOrderRequestsPanel enabled={showQrSelfOrderPanel} onApproved={refetch} />
 
-        {displayedOrders.length > 0 && (
+        {displayedOrders.length > 0 && ordersSettings.allowCreate && (
           <button
             onClick={() => setView("create")}
             className="dn-btn dn-btn-primary w-full !h-auto !py-5 !rounded-2xl !text-2xl"
@@ -1886,12 +1951,14 @@ function OrdersContent() {
             <p className="text-[20px] text-[#9ca3af] font-medium mb-5">
               No active orders found
             </p>
-            <button
-              onClick={() => setView("create")}
-              className="dn-btn dn-btn-primary !h-auto !px-6 !py-2.5 !text-[17px]"
-            >
-              <Plus className="h-5 w-5 stroke-[2.5]" /> Create Your Order
-            </button>
+            {ordersSettings.allowCreate ? (
+              <button
+                onClick={() => setView("create")}
+                className="dn-btn dn-btn-primary !h-auto !px-6 !py-2.5 !text-[17px]"
+              >
+                <Plus className="h-5 w-5 stroke-[2.5]" /> Create Your Order
+              </button>
+            ) : null}
           </div>
         ) : (
           <div className="space-y-8 pb-20  mx-20">
@@ -1994,6 +2061,22 @@ function OrdersContent() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <h5 className="font-black text-[#111827] text-base truncate">{item.productName}</h5>
+                                      {ordersSettings.allowPriceOverride && !isTimedProductId(item.productId) ? (
+                                        <label className="mt-2 flex items-center gap-2 text-xs font-semibold text-[#64748b]">
+                                          Price
+                                          <span className="flex items-center gap-1 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-2 py-1">
+                                            <span className="text-[#94a3b8]">Rs</span>
+                                            <input
+                                              type="number"
+                                              min={0}
+                                              step="1"
+                                              value={item.price}
+                                              onChange={(e) => updateEditingItemPrice(item.productId, item.variantId, e.target.value)}
+                                              className="w-20 bg-transparent text-sm font-bold text-[#0f172a] outline-none"
+                                            />
+                                          </span>
+                                        </label>
+                                      ) : null}
                                       <div className="mt-2 text-[#001840] font-black text-sm leading-none">
                                         <span className="block text-gray-500 font-semibold text-xs uppercase tracking-widest">Total</span>
                                         <span className="block mt-1">Rs {item.price * item.quantity}</span>

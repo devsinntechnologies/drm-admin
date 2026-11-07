@@ -156,6 +156,10 @@ export function defaultOrdersSettingsForIndustry(
       allowSessionAddTime: true,
       allowSessionPause: true,
       allowSessionTimeUpAlert: true,
+      // Same unset-key defaults as the app (SnookerModuleNormalize).
+      ...(snooker
+        ? { allowExtraCharges: false, allowDeliveryCharge: false, allowPackingCharge: false }
+        : {}),
     };
   }
   const retailLike = industryId && industryId !== "pharmacy";

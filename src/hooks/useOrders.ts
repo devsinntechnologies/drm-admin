@@ -90,6 +90,8 @@ export interface CreateOrderItemPayload {
   variantId?: string;
   quantity: number;
   price?: number;
+  /** Line-total discount amount (not per unit). */
+  discount?: number;
 }
 
 export interface CreateOrderPayload {

@@ -1329,13 +1329,14 @@ export function SoftwareControlContent({
                 icon={<ShoppingCart className="h-4 w-4 text-[var(--brand-secondary)]" />}
                 title="New order / POS"
                 badge={ordersSettings.showNewOrders ? undefined : "Screen off"}
-                scope="app"
+                scope="web-app"
                 open={isSectionOpen("orders-new")}
                 onToggle={() => toggleSection("orders-new")}
               >
                 <p className="text-xs text-[#64748b]">
-                  Cart, place order, barcode scan, and pricing extras on the <strong>New order</strong>{" "}
-                  screen.
+                  Cart, place order, and pricing extras on the <strong>New order</strong> screen of the
+                  mobile app and the business web portal. Price override also applies when editing an
+                  active order.
                 </p>
                 <CheckOption
                   checked={ordersSettings.allowCreate}
@@ -1348,9 +1349,11 @@ export function SoftwareControlContent({
                   onChange={(value) => setOrder("allowBarcodeScanner", value)}
                   title="Barcode scanner"
                   body="USB/Bluetooth gun and camera add products to the cart."
+                  scope="app"
                 />
                 <ChoiceButtons
                   label="Default product list"
+                  scope="app"
                   value={ordersSettings.productScopeDefault}
                   options={[
                     { id: "activeOnly", label: "Active only" },
@@ -1365,7 +1368,7 @@ export function SoftwareControlContent({
                       ["allowExtraCharges", "Extra charges section", "Master switch for the Extra Charges accordion."],
                       ["allowDeliveryCharge", "Delivery charge", "Field inside Extra Charges."],
                       ["allowPackingCharge", "Packing charge", "Field inside Extra Charges."],
-                      ["allowPriceOverride", "Price override", "Manual line price on cart items."],
+                      ["allowPriceOverride", "Price override", "Manual item price on the cart and when editing an order."],
                       ["allowLineDiscount", "Line discount", "Per-item discount on the cart."],
                       ["allowCreditSale", "Credit / udhar", "Credit option on Complete-order payment."],
                     ] as const
@@ -1376,7 +1379,6 @@ export function SoftwareControlContent({
                       onChange={(value) => setOrder(key, value)}
                       title={title}
                       body={body}
-                      scope={key === "allowCreditSale" ? "web-app" : undefined}
                     />
                   ))}
                 </div>
