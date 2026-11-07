@@ -1,6 +1,6 @@
 "use client";
 
-import { Wifi } from "lucide-react";
+import { Bell, ChevronDown, Clock3, Cloud, RefreshCw, UserCircle2 } from "lucide-react";
 
 type MobileHeaderPreviewProps = {
   businessName: string;
@@ -10,9 +10,11 @@ type MobileHeaderPreviewProps = {
   enabled: boolean;
   showLogout: boolean;
   showOnlineStatus: boolean;
+  showDateTime: boolean;
   logoBackgroundColor: string;
 };
 
+/** Mirrors the Flutter BrandedHeaderBar (desktop layout, scaled down). */
 export function MobileHeaderPreview({
   businessName,
   logoUrl,
@@ -21,6 +23,7 @@ export function MobileHeaderPreview({
   enabled,
   showLogout,
   showOnlineStatus,
+  showDateTime,
   logoBackgroundColor,
 }: MobileHeaderPreviewProps) {
   if (!enabled) {
@@ -36,48 +39,64 @@ export function MobileHeaderPreview({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-[#e2e8f0] shadow-sm">
-      <div
-        className="px-4 py-3"
-        style={{
-          background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`,
-        }}
-      >
-        <div className="flex items-center gap-3">
+    <div className="space-y-2">
+      <div className="rounded-xl bg-[#f4f6f5] p-2">
+        <div
+          className="flex h-12 items-center gap-2.5 rounded-[12px] px-3 text-white shadow-md"
+          style={{ background: `linear-gradient(90deg, ${primaryColor}, ${secondaryColor})` }}
+        >
           <div
-            className="flex h-10 w-fit items-center justify-center rounded-lg border border-white/80 px-2 shadow-md"
+            className="flex h-8 w-11 shrink-0 items-center justify-center rounded-lg p-1 shadow"
             style={{ backgroundColor: logoBackgroundColor }}
           >
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="" className="max-h-7 w-auto object-contain" />
+              <img src={logoUrl} alt="" className="max-h-6 w-auto object-contain" />
             ) : (
-              <span className="text-[10px] font-bold uppercase tracking-wide text-[#94a3b8]">
-                Your logo
-              </span>
+              <span className="text-[8px] font-bold uppercase text-[#94a3b8]">Logo</span>
             )}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-white">{businessName}</p>
-            <p className="truncate text-[11px] text-white/80">Mobile app header preview</p>
-          </div>
-          {showLogout ? (
-            <div className="rounded-lg bg-white/20 px-2 py-1 text-[10px] font-semibold text-white">
-              Logout
-            </div>
+          <p className="min-w-0 truncate text-sm font-bold">{businessName}</p>
+          {showOnlineStatus ? (
+            <>
+              <span className="h-5 w-px shrink-0 bg-white/55" />
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-2 py-1 text-[10px] backdrop-blur">
+                <span className="relative inline-flex">
+                  <Cloud className="h-4 w-4" />
+                  <RefreshCw className="absolute left-1/2 top-[55%] h-2 w-2 -translate-x-1/2 -translate-y-1/2 animate-spin [animation-duration:3s]" />
+                </span>
+                <strong>Cloud Sync</strong>
+                <span className="h-1.5 w-1.5 rounded-full bg-[#4ade80] shadow-[0_0_6px_#4ade80]" />
+                Live
+              </span>
+            </>
           ) : null}
+          <span className="flex-1" />
+          {showDateTime ? (
+            <>
+              <span className="h-5 w-px shrink-0 bg-white/55" />
+              <span className="inline-flex shrink-0 items-center gap-1.5">
+                <Clock3 className="h-4 w-4" />
+                <span className="leading-tight">
+                  <strong className="block text-[11px]">10:45 AM</strong>
+                  <span className="block text-[9px] text-white/90">Nov 06, 2026</span>
+                </span>
+              </span>
+            </>
+          ) : null}
+          <span className="h-5 w-px shrink-0 bg-white/55" />
+          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-white/30 bg-white/10">
+            <Bell className="h-3.5 w-3.5" />
+          </span>
+          <span className="inline-flex shrink-0 items-center">
+            <UserCircle2 className="h-6 w-6" />
+            <ChevronDown className="h-3 w-3" />
+          </span>
         </div>
-        {showOnlineStatus ? (
-          <div className="mt-2 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-bold text-white">
-              <Wifi className="h-3 w-3" /> ONLINE
-            </span>
-            <span className="text-[10px] text-white/75">STAFF.WAITER</span>
-          </div>
-        ) : null}
       </div>
-      <p className="bg-[#f8fafc] px-3 py-2 text-xs text-[#64748b]">
-        This is how your logo and header controls appear on the Flutter app navbar.
+      <p className="px-1 text-xs text-[#64748b]">
+        Profile menu shows the staff name, role, app version
+        {showLogout ? " and Logout" : " (Logout hidden)"}. Time and date are hidden on phones.
       </p>
     </div>
   );

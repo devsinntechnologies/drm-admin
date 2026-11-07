@@ -844,12 +844,22 @@ export function SoftwareControlContent({
                 />
               </label>
               <label className="flex items-center justify-between rounded-lg border border-[#e2e8f0] px-3 py-2.5 text-sm">
-                <span className="inline-flex items-center gap-1.5 font-medium">Show online / offline badge <FeatureTip text={SOFTWARE_TIPS.showOnline} /></span>
+                <span className="inline-flex items-center gap-1.5 font-medium">Show cloud sync / live badge <FeatureTip text={SOFTWARE_TIPS.showOnline} /></span>
                 <input
                   type="checkbox"
                   checked={mobileHeader.showOnlineStatus}
                   onChange={(e) =>
                     setMobileHeader((p) => ({ ...p, showOnlineStatus: e.target.checked }))
+                  }
+                />
+              </label>
+              <label className="flex items-center justify-between rounded-lg border border-[#e2e8f0] px-3 py-2.5 text-sm">
+                <span className="inline-flex items-center gap-1.5 font-medium">Show time and date <FeatureTip text={SOFTWARE_TIPS.showDateTime} /></span>
+                <input
+                  type="checkbox"
+                  checked={mobileHeader.showDateTime}
+                  onChange={(e) =>
+                    setMobileHeader((p) => ({ ...p, showDateTime: e.target.checked }))
                   }
                 />
               </label>
@@ -905,6 +915,7 @@ export function SoftwareControlContent({
               enabled={mobileHeader.enabled}
               showLogout={mobileHeader.showLogout}
               showOnlineStatus={mobileHeader.showOnlineStatus}
+              showDateTime={mobileHeader.showDateTime}
               logoBackgroundColor={mobileHeader.logoBackgroundColor}
             />
           </div>
@@ -917,6 +928,7 @@ export function SoftwareControlContent({
             enabled={false}
             showLogout={mobileHeader.showLogout}
             showOnlineStatus={mobileHeader.showOnlineStatus}
+              showDateTime={mobileHeader.showDateTime}
             logoBackgroundColor={mobileHeader.logoBackgroundColor}
           />
         )}
