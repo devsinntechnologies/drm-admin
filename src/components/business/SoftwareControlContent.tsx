@@ -844,12 +844,22 @@ export function SoftwareControlContent({
                 />
               </label>
               <label className="flex items-center justify-between rounded-lg border border-[#e2e8f0] px-3 py-2.5 text-sm">
-                <span className="inline-flex items-center gap-1.5 font-medium">Show online / offline badge <FeatureTip text={SOFTWARE_TIPS.showOnline} /></span>
+                <span className="inline-flex items-center gap-1.5 font-medium">Show cloud sync / live badge <FeatureTip text={SOFTWARE_TIPS.showOnline} /></span>
                 <input
                   type="checkbox"
                   checked={mobileHeader.showOnlineStatus}
                   onChange={(e) =>
                     setMobileHeader((p) => ({ ...p, showOnlineStatus: e.target.checked }))
+                  }
+                />
+              </label>
+              <label className="flex items-center justify-between rounded-lg border border-[#e2e8f0] px-3 py-2.5 text-sm">
+                <span className="inline-flex items-center gap-1.5 font-medium">Show time and date <FeatureTip text={SOFTWARE_TIPS.showDateTime} /></span>
+                <input
+                  type="checkbox"
+                  checked={mobileHeader.showDateTime}
+                  onChange={(e) =>
+                    setMobileHeader((p) => ({ ...p, showDateTime: e.target.checked }))
                   }
                 />
               </label>
@@ -905,6 +915,7 @@ export function SoftwareControlContent({
               enabled={mobileHeader.enabled}
               showLogout={mobileHeader.showLogout}
               showOnlineStatus={mobileHeader.showOnlineStatus}
+              showDateTime={mobileHeader.showDateTime}
               logoBackgroundColor={mobileHeader.logoBackgroundColor}
             />
           </div>
@@ -917,6 +928,7 @@ export function SoftwareControlContent({
             enabled={false}
             showLogout={mobileHeader.showLogout}
             showOnlineStatus={mobileHeader.showOnlineStatus}
+              showDateTime={mobileHeader.showDateTime}
             logoBackgroundColor={mobileHeader.logoBackgroundColor}
           />
         )}
@@ -1329,13 +1341,14 @@ export function SoftwareControlContent({
                 icon={<ShoppingCart className="h-4 w-4 text-[var(--brand-secondary)]" />}
                 title="New order / POS"
                 badge={ordersSettings.showNewOrders ? undefined : "Screen off"}
-                scope="app"
+                scope="web-app"
                 open={isSectionOpen("orders-new")}
                 onToggle={() => toggleSection("orders-new")}
               >
                 <p className="text-xs text-[#64748b]">
-                  Cart, place order, barcode scan, and pricing extras on the <strong>New order</strong>{" "}
-                  screen.
+                  Cart, place order, and pricing extras on the <strong>New order</strong> screen of the
+                  mobile app and the business web portal. Price override also applies when editing an
+                  active order.
                 </p>
                 <CheckOption
                   checked={ordersSettings.allowCreate}
@@ -1348,9 +1361,11 @@ export function SoftwareControlContent({
                   onChange={(value) => setOrder("allowBarcodeScanner", value)}
                   title="Barcode scanner"
                   body="USB/Bluetooth gun and camera add products to the cart."
+                  scope="app"
                 />
                 <ChoiceButtons
                   label="Default product list"
+                  scope="app"
                   value={ordersSettings.productScopeDefault}
                   options={[
                     { id: "activeOnly", label: "Active only" },
@@ -1365,7 +1380,7 @@ export function SoftwareControlContent({
                       ["allowExtraCharges", "Extra charges section", "Master switch for the Extra Charges accordion."],
                       ["allowDeliveryCharge", "Delivery charge", "Field inside Extra Charges."],
                       ["allowPackingCharge", "Packing charge", "Field inside Extra Charges."],
-                      ["allowPriceOverride", "Price override", "Manual line price on cart items."],
+                      ["allowPriceOverride", "Price override", "Manual item price on the cart and when editing an order."],
                       ["allowLineDiscount", "Line discount", "Per-item discount on the cart."],
                       ["allowCreditSale", "Credit / udhar", "Credit option on Complete-order payment."],
                     ] as const
@@ -1376,7 +1391,6 @@ export function SoftwareControlContent({
                       onChange={(value) => setOrder(key, value)}
                       title={title}
                       body={body}
-                      scope={key === "allowCreditSale" ? "web-app" : undefined}
                     />
                   ))}
                 </div>

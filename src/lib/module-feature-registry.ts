@@ -215,7 +215,7 @@ export const MODULE_FEATURE_REGISTRY: ModuleFeatureRegistryEntry[] = [
         kind: "boolean",
         key: "allowPriceOverride",
         label: "Allow price override",
-        description: "Manual line-item price override on the cart.",
+        description: "Manual item price on the cart and when editing an order (app and web).",
         defaultValue: true,
       },
       {

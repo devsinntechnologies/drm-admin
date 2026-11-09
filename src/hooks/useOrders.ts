@@ -90,6 +90,8 @@ export interface CreateOrderItemPayload {
   variantId?: string;
   quantity: number;
   price?: number;
+  /** Line-total discount amount (not per unit). */
+  discount?: number;
 }
 
 export interface CreateOrderPayload {
@@ -107,6 +109,11 @@ export interface UpdateOrderPayload {
   items?: Array<Record<string, unknown>>;
   deliveryCharges?: number;
   packagingPrice?: number;
+  /** Start a table session (a timed table was added to an order without one). */
+  gameType?: string;
+  sessionMinutes?: number;
+  /** End the session (the order's timed table was removed). */
+  endSession?: boolean;
 }
 
 export interface OrderVariant {
@@ -299,6 +306,10 @@ export function useOrders(options: UseOrdersOptions = {}) {
           (payload.totalPrice == null || !Array.isArray(payload.Items ?? payload.items))) {
         void fetchOrders(currentPage.current, range, true);
         return;
+      }
+      // Only a payload that really carries gameType may end the session.
+      if (!("gameType" in payload)) {
+        delete (patch as Partial<OrderRecord>).gameType;
       }
 
       setOrders((prev) => {

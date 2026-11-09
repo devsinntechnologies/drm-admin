@@ -19,7 +19,10 @@ type Props = {
   open: boolean;
   tableLabel?: string;
   onClose: () => void;
-  onConfirm: (details: SnookerBookingDetails) => void;
+  onConfirm: (details: SnookerBookingDetails, option: SnookerGameTypeOption) => void;
+  /** Hidden when adding a table to an existing order (name is set at creation). */
+  showGuestName?: boolean;
+  confirmLabel?: string;
 };
 
 export function SnookerTableBookingDialog({
@@ -27,6 +30,8 @@ export function SnookerTableBookingDialog({
   tableLabel,
   onClose,
   onConfirm,
+  showGuestName = true,
+  confirmLabel = "Start session & place order",
 }: Props) {
   const businessId = useActiveBusinessId();
   const [options, setOptions] = useState<SnookerGameTypeOption[]>(SNOOKER_GAME_TYPE_OPTIONS);
@@ -90,10 +95,10 @@ export function SnookerTableBookingDialog({
   const submit = () => {
     const name = guest.trim();
     onConfirm({
-      ...(name ? { tableGuestName: name } : {}),
+      ...(name && showGuestName ? { tableGuestName: name } : {}),
       gameType,
       sessionMinutes: minutes,
-    });
+    }, selectedOption);
   };
 
   return (
@@ -146,13 +151,13 @@ export function SnookerTableBookingDialog({
               {durationChoices.map((m) => <option key={m} value={m}>{m} minutes / Rs {estimatePackageCharge(selectedOption!, m)}</option>)}
             </select>
           </div>
-          <label className="block space-y-2">
+          {showGuestName ? <label className="block space-y-2">
             <span className="flex items-center gap-2 text-sm font-semibold text-slate-600">
               <UserRound className="h-4 w-4" /> Customer name <span className="font-normal">(optional)</span>
             </span>
             <input className="min-h-12 w-full rounded-xl border border-slate-200 px-4 outline-none focus:border-emerald-600"
               placeholder="e.g. Ali Raza" value={guest} onChange={(e) => setGuest(e.target.value)} />
-          </label>
+          </label> : null}
           <div aria-live="polite" className="flex items-center justify-between rounded-xl bg-slate-50 p-4">
             <span className="text-sm font-medium text-slate-600">{gameType} / {minutes === 0 ? "Open ended" : `${minutes} minutes`}</span>
             <strong className="text-xl text-emerald-700">Rs {estimatePackageCharge(selectedOption!, minutes)}</strong>
@@ -163,7 +168,7 @@ export function SnookerTableBookingDialog({
             disabled={pricingLoading || pricingError}
             className="w-full rounded-xl bg-[#001840] py-3.5 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-50"
           >
-            {pricingLoading ? "Loading game prices..." : pricingError ? "Prices unavailable - reopen to retry" : "Start session & place order"}
+            {pricingLoading ? "Loading game prices..." : pricingError ? "Prices unavailable - reopen to retry" : confirmLabel}
           </button>
         </div>
       </DialogContent>

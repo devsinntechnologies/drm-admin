@@ -39,6 +39,29 @@ export function mergeOrderSessionFields<T extends OrderSessionFields>(
     return existing;
   }
   const timer = pickNewerSessionTimerSource(existing, incoming);
+  const updatedAt =
+    updatedAtMs(incoming.updatedAt) >= updatedAtMs(existing.updatedAt)
+      ? incoming.updatedAt ?? existing.updatedAt
+      : existing.updatedAt ?? incoming.updatedAt;
+  // A newer full order row with no session means it was ended (its table was
+  // removed on another device); partial timer patches never carry gameType.
+  const sessionEnded =
+    timer === incoming &&
+    "gameType" in incoming &&
+    incoming.gameType == null &&
+    incoming.sessionMinutes == null;
+  if (sessionEnded) {
+    return {
+      ...existing,
+      ...incoming,
+      sessionMinutes: null,
+      gameType: null,
+      sessionPricing: null,
+      sessionPausedAt: null,
+      sessionPausedMs: 0,
+      updatedAt,
+    };
+  }
   return {
     ...existing,
     ...incoming,
@@ -48,10 +71,7 @@ export function mergeOrderSessionFields<T extends OrderSessionFields>(
     sessionPausedMs: timer.sessionPausedMs ?? existing.sessionPausedMs ?? 0,
     gameType: timer.gameType ?? existing.gameType ?? incoming.gameType,
     sessionPricing: timer.sessionPricing ?? existing.sessionPricing ?? incoming.sessionPricing,
-    updatedAt:
-      updatedAtMs(incoming.updatedAt) >= updatedAtMs(existing.updatedAt)
-        ? incoming.updatedAt ?? existing.updatedAt
-        : existing.updatedAt ?? incoming.updatedAt,
+    updatedAt,
   };
 }
 
