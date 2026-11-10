@@ -10,7 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   SNOOKER_GAME_TYPE_OPTIONS,
   SNOOKER_MINUTE_PRESETS,
+  asRowList,
+  defaultDurationFor,
+  gameTypeRowToOption,
+  isOfferedGameType,
   defaultSessionMinutesForGame,
+  snookerDurationChoices,
   type SnookerBookingDetails,
 } from "@/lib/snooker-session-options";
 import { estimatePackageCharge } from "@/lib/session-billing.util";
@@ -55,19 +60,14 @@ export function SnookerTableBookingDialog({
     let cancelled = false;
     setPricingLoading(true);
     setPricingError(false);
-    apiClient.get<SnookerGameTypeRow[]>("/snooker/game-types", undefined, businessId).then((rows) => {
-      if (cancelled || !Array.isArray(rows)) return;
-      const configured = rows.filter((g) => g.isActive).map((g) => ({
-        name: g.name, basePrice: Number(g.basePrice ?? 0),
-        includedMinutes: Number(g.includedMinutes ?? 0),
-        maxDurationMinutes: g.maxDurationMinutes,
-        isPerMinute: g.billingMethod === "per_minute",
-        perMinuteRate: Number(g.billingMethod === "per_minute" ? g.perMinuteRate ?? 0 : g.billingMethod === "fixed_plus_overtime" && g.overtimeEnabled ? g.overtimeRate ?? 0 : 0),
-      }));
+    apiClient.get<unknown>("/snooker/game-types", undefined, businessId).then((payload) => {
+      if (cancelled) return;
+      const rows = asRowList<SnookerGameTypeRow>(payload);
+      const configured = rows.filter(isOfferedGameType).map(gameTypeRowToOption);
       if (configured.length) {
         setOptions(configured);
         setGameType(configured[0].name);
-        setMinutes(configured[0].isPerMinute ? 0 : configured[0].includedMinutes || SNOOKER_MINUTE_PRESETS[0]);
+        setMinutes(defaultDurationFor(configured[0]));
       } else setPricingError(true);
     }).catch(() => { if (!cancelled) setPricingError(true); })
       .finally(() => { if (!cancelled) setPricingLoading(false); });
@@ -79,18 +79,17 @@ export function SnookerTableBookingDialog({
     setGameMenuOpen(false);
     setGameType(name);
     const option = options.find((o) => o.name === name);
-    setMinutes((current) => option?.maxDurationMinutes && current > option.maxDurationMinutes ? option.maxDurationMinutes : current);
+    // Keep the staff-selected duration when the new game offers it.
+    setMinutes((current) => snookerDurationChoices(option).includes(current) ? current : defaultDurationFor(option));
     requestAnimationFrame(() => {
       durationRef.current?.focus();
       try { durationRef.current?.showPicker(); } catch { /* Keyboard focus remains available. */ }
     });
   };
 
-  const durationChoices = Array.from(new Set([
-    selectedOption.includedMinutes,
-    ...SNOOKER_MINUTE_PRESETS,
-    ...(selectedOption.maxDurationMinutes ? [selectedOption.maxDurationMinutes] : []),
-  ])).filter((m) => m > 0 && (!selectedOption.maxDurationMinutes || m <= selectedOption.maxDurationMinutes)).sort((a, b) => a - b);
+  const allChoices = snookerDurationChoices(selectedOption);
+  const allowOpenEnded = allChoices.includes(0);
+  const durationChoices = allChoices.filter((m) => m > 0);
 
   const submit = () => {
     const name = guest.trim();
@@ -147,7 +146,7 @@ export function SnookerTableBookingDialog({
             <select id="session-duration" ref={durationRef} value={minutes} disabled={pricingLoading}
               onChange={(e) => setMinutes(Number(e.target.value))}
               className="min-h-12 w-full rounded-lg border border-slate-200 bg-white px-3 font-semibold text-slate-900">
-              <option value={0}>Open ended / billed while playing</option>
+              {allowOpenEnded ? <option value={0}>Open ended / billed while playing</option> : null}
               {durationChoices.map((m) => <option key={m} value={m}>{m} minutes / Rs {estimatePackageCharge(selectedOption!, m)}</option>)}
             </select>
           </div>

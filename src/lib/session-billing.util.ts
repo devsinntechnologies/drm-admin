@@ -7,6 +7,8 @@ export type SnookerGameTypeOption = {
   perMinuteRate: number;
   isPerMinute: boolean;
   maxDurationMinutes?: number | null;
+  /** Duration choices set in Snooker Table Control. 0 = open-ended. null = defaults. */
+  durationOptions?: number[] | null;
 };
 
 export const SNOOKER_GAME_TYPE_OPTIONS: SnookerGameTypeOption[] = [

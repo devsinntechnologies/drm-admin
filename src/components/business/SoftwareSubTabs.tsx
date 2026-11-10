@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Monitor, Printer, ReceiptText, ScrollText, SlidersHorizontal } from "lucide-react";
+import { Monitor, Printer, ReceiptText, ScrollText, SlidersHorizontal, Timer } from "lucide-react";
 import { appendBusinessId } from "@/lib/module-routes";
 
 type SoftwareSubTabsProps = {
@@ -63,6 +63,18 @@ export function SoftwareSubTabs({ businessId, basePath, appendBusinessQuery }: S
       icon: ScrollText,
       match: () => pathname.includes(`${base}/logs`) || pathname.endsWith("/software/logs"),
     },
+    // Super-admin only: business workspace passes basePath / appendBusinessQuery.
+    ...(!basePath && !appendBusinessQuery
+      ? [
+          {
+            key: "snooker",
+            label: "Snooker tables",
+            href: hrefFor("snooker"),
+            icon: Timer,
+            match: () => pathname.includes(`${base}/snooker`),
+          },
+        ]
+      : []),
   ];
 
   return (

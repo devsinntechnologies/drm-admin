@@ -203,9 +203,18 @@ export function LivePricingView() {
                 <p className="text-sm font-bold text-[#0f172a]">
                   {game.name}{" "}
                   <span className="font-normal text-[#64748b]">({game.code})</span>
+                  {game.priceLocked ? (
+                    <span
+                      title="Price and durations are managed by DigiNizam (Snooker Table Control)."
+                      className="ml-2 rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2 py-0.5 text-[11px] font-semibold text-[#1d4ed8]"
+                    >
+                      Price locked
+                    </span>
+                  ) : null}
                 </p>
                 <select
                   className="portal-input mt-2"
+                  disabled={Boolean(game.priceLocked)}
                   defaultValue={game.billingMethod || "fixed"}
                   onChange={(e) =>
                     void updateGameType(game.id, {
