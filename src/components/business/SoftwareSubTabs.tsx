@@ -10,9 +10,16 @@ type SoftwareSubTabsProps = {
   basePath?: string;
   /** When true, appends ?businessId= to each tab href (business admin workspace). */
   appendBusinessQuery?: boolean;
+  /** Snooker Table Control is only for snooker-pos businesses (super admin). */
+  showSnookerControl?: boolean;
 };
 
-export function SoftwareSubTabs({ businessId, basePath, appendBusinessQuery }: SoftwareSubTabsProps) {
+export function SoftwareSubTabs({
+  businessId,
+  basePath,
+  appendBusinessQuery,
+  showSnookerControl = false,
+}: SoftwareSubTabsProps) {
   const pathname = usePathname();
   const base = basePath ?? `/dashboard/superAdmin/businesses/${businessId}/software`;
 
@@ -63,8 +70,9 @@ export function SoftwareSubTabs({ businessId, basePath, appendBusinessQuery }: S
       icon: ScrollText,
       match: () => pathname.includes(`${base}/logs`) || pathname.endsWith("/software/logs"),
     },
-    // Super-admin only: business workspace passes basePath / appendBusinessQuery.
-    ...(!basePath && !appendBusinessQuery
+    // Super-admin only (business workspace passes basePath / appendBusinessQuery),
+    // and only when the business is on the snooker industry.
+    ...(showSnookerControl && !basePath && !appendBusinessQuery
       ? [
           {
             key: "snooker",

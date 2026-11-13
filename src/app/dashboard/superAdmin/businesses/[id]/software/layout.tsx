@@ -9,6 +9,7 @@ import { BusinessWorkspaceActions } from "@/components/business/BusinessWorkspac
 import { SoftwareSubTabs } from "@/components/business/SoftwareSubTabs";
 import { Breadcrumbs } from "@/components/design-system/Breadcrumbs";
 import { useGetBusinessByIdQuery } from "@/hooks/useBusiness";
+import { isSnookerIndustry } from "@/lib/industry-workspace";
 
 function SoftwareLayoutContent({ children }: { children: React.ReactNode }) {
   const params = useParams();
@@ -54,7 +55,10 @@ function SoftwareLayoutContent({ children }: { children: React.ReactNode }) {
           portalEnabled={business?.portalEnabled}
           softwareEnabled={business?.softwareEnabled}
         />
-        <SoftwareSubTabs businessId={businessId} />
+        <SoftwareSubTabs
+          businessId={businessId}
+          showSnookerControl={isSnookerIndustry(business?.templateConfig?.industryId)}
+        />
       </div>
 
       {children}
