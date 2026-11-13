@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Monitor, Printer, ReceiptText, ScrollText, SlidersHorizontal } from "lucide-react";
+import { Monitor, Printer, ReceiptText, ScrollText, SlidersHorizontal, Timer } from "lucide-react";
 import { appendBusinessId } from "@/lib/module-routes";
 
 type SoftwareSubTabsProps = {
@@ -10,9 +10,16 @@ type SoftwareSubTabsProps = {
   basePath?: string;
   /** When true, appends ?businessId= to each tab href (business admin workspace). */
   appendBusinessQuery?: boolean;
+  /** Snooker Table Control is only for snooker-pos businesses (super admin). */
+  showSnookerControl?: boolean;
 };
 
-export function SoftwareSubTabs({ businessId, basePath, appendBusinessQuery }: SoftwareSubTabsProps) {
+export function SoftwareSubTabs({
+  businessId,
+  basePath,
+  appendBusinessQuery,
+  showSnookerControl = false,
+}: SoftwareSubTabsProps) {
   const pathname = usePathname();
   const base = basePath ?? `/dashboard/superAdmin/businesses/${businessId}/software`;
 
@@ -63,6 +70,19 @@ export function SoftwareSubTabs({ businessId, basePath, appendBusinessQuery }: S
       icon: ScrollText,
       match: () => pathname.includes(`${base}/logs`) || pathname.endsWith("/software/logs"),
     },
+    // Super-admin only (business workspace passes basePath / appendBusinessQuery),
+    // and only when the business is on the snooker industry.
+    ...(showSnookerControl && !basePath && !appendBusinessQuery
+      ? [
+          {
+            key: "snooker",
+            label: "Snooker tables",
+            href: hrefFor("snooker"),
+            icon: Timer,
+            match: () => pathname.includes(`${base}/snooker`),
+          },
+        ]
+      : []),
   ];
 
   return (

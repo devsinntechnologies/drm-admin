@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
 import { apiClient } from "@/lib/api-client";
 import { getStoredAuthToken } from "@/lib/utils";
+import { asRowList } from "@/lib/snooker-session-options";
 
 export type SnookerCategory = {
   id: string;
@@ -38,6 +39,13 @@ export type SnookerGameTypeRow = {
   roundingMode?: "ceil_minute" | "floor_minute" | "nearest_minute";
   isActive: boolean;
   sortOrder?: number;
+  /** Minutes offered in the POS picker; 0 = open-ended; null = defaults. */
+  durationOptions?: number[] | null;
+  /** Super admin: shown to the business / POS. */
+  visibleToBusiness?: boolean;
+  /** Super admin: business staff cannot change price or durations. */
+  priceLocked?: boolean;
+  managedBy?: "business" | "platform";
 };
 
 export type SnookerSessionDecorated = {
@@ -153,9 +161,9 @@ export function useSnooker(pollMs = 8000) {
         apiClient.get<SnookerGameTypeRow[]>("/snooker/game-types", token, businessId),
         apiClient.get<SnookerDashboard>("/snooker/dashboard", token, businessId),
       ]);
-      setTables(Array.isArray(t) ? t : []);
-      setCategories(Array.isArray(c) ? c : []);
-      setGameTypes(Array.isArray(g) ? g : []);
+      setTables(asRowList<SnookerTableRow>(t));
+      setCategories(asRowList<SnookerCategory>(c));
+      setGameTypes(asRowList<SnookerGameTypeRow>(g));
       setDashboard(d ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load snooker data");
